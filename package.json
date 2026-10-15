@@ -1,0 +1,17 @@
+{
+  "name": "sla-hr-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SLA HR Dashboard - Netlify versie (stap 1: shell, Google-login, Overzicht en Dossier lezend uit Google Sheets)",
+  "scripts": {
+    "dev": "netlify dev",
+    "check": "node --check netlify/functions/*.js && node --check netlify/functions/_lib/*.js && node --check public/app.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "googleapis": "^144.0.0"
+  },
+  "devDependencies": {
+    "netlify-cli": "^17.0.0"
+  }
+}

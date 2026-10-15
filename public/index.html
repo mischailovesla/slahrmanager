@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>SLA HR Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Login -->
+<div class="login" id="login">
+  <div class="login-box">
+    <div class="ll">SLA</div>
+    <div class="tlbl" style="color:#888078">HR Dashboard</div>
+    <p>Log in met je <strong>@<span id="login-domein">ilovesla.com</span></strong> Google-account.<br>Alleen HR-teamleden op de toegangslijst kunnen verder.</p>
+    <button class="btn btn-google" id="btn-login">Inloggen met Google</button>
+    <div class="login-fout" id="login-fout"></div>
+  </div>
+</div>
+
+<!-- Loader -->
+<div class="lo" id="lo"><div class="ll">SLA</div><div class="ls" id="lo-txt">Data laden...</div></div>
+
+<div class="top">
+  <div class="l"><div class="sla">SLA</div><div class="tdiv"></div><div class="tlbl">HR Dashboard</div><span class="tnieuw">NETLIFY · STAP 1</span></div>
+  <div class="r"><span id="top-dt"></span><span id="top-wie"></span><button class="bg2" id="btn-uit" style="display:none">Uitloggen</button></div>
+</div>
+
+<div class="nav" id="nav">
+  <button class="active" data-tab="overview">Overzicht</button>
+  <button data-tab="dossier">Medewerkers</button>
+  <!-- lifecycle-groepen worden door app.js opgebouwd -->
+  <div class="spacer"></div>
+</div>
+
+<div class="main">
+
+  <!-- OVERZICHT -->
+  <div class="tc active" id="tab-overview">
+    <div class="lay-wl" id="lay-wl">
+      <span class="lay-wl-titel">Openstaande acties</span>
+      <button class="lay-chip" data-chip="instroom" data-doel="loonheffing">Instroom <span class="lay-tel">-</span></button>
+      <button class="lay-chip" data-chip="indienst" data-doel="overplaatsing">In dienst <span class="lay-tel">-</span></button>
+      <button class="lay-chip" data-chip="dossier" data-doel="sommatie">Dossier <span class="lay-tel">-</span></button>
+      <button class="lay-chip" data-chip="uitstroom" data-doel="ontslag">Uitstroom <span class="lay-tel">-</span></button>
+      <div class="lay-comp" id="lay-comp"></div>
+    </div>
+
+    <div class="stats">
+      <div class="card cg"><div class="si sig">€</div><div><div class="sv" id="s-lt">-</div><div class="sl">Loonheffing totaal</div></div></div>
+      <div class="card cd"><div class="si sid">✓</div><div><div class="sv" id="s-lok">-</div><div class="sl">Formulieren ontvangen</div></div></div>
+      <div class="card cw"><div class="si siw">⏳</div><div><div class="sv" id="s-lno">-</div><div class="sl">Nog niet ontvangen</div></div></div>
+      <div class="card co"><div class="si sio">▤</div><div><div class="sv" id="s-ot">-</div><div class="sl">Ontslagzaken</div></div></div>
+    </div>
+
+    <div id="aanzeg-sec"></div>
+
+    <div class="sec">
+      <div class="sh"><div class="st">Actieve dossiers <span class="pill" id="ov-open-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('ov-body',this.value)"><button class="btn bd bsm" onclick="laadOverzicht()">↻ Vernieuwen</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV / Info</th><th>Einddatum</th><th>Mail verstuurd</th><th>Status</th><th>Herinneringen</th><th>Naar salaris</th><th>Dossier</th></tr></thead><tbody id="ov-body"></tbody></table></div>
+    </div>
+
+    <div class="alert grijs">Deze Netlify-versie <strong>leest alleen</strong>. Mails versturen, brieven maken en afvinken doe je nog in het bestaande HR Dashboard (Apps Script). Beide kijken naar dezelfde Google Sheets.</div>
+  </div>
+
+  <!-- DOSSIER -->
+  <div class="tc" id="tab-dossier">
+    <div class="sec">
+      <div class="sh"><div class="st">Medewerkersdossier</div>
+        <div class="hr2 zoeklijst" style="position:relative">
+          <input class="sb" type="text" id="dos-zoek" placeholder="Zoek in Shiftbase op naam of e-mail..." autocomplete="off">
+          <button class="btn bd bsm" id="dos-ververs" title="Shiftbase-lijst opnieuw ophalen">↻</button>
+          <div class="zoekres" id="dos-res"></div>
+        </div></div>
+      <div style="padding:14px 24px;font-size:.82rem;color:#888078" id="dos-hint">Zoek een medewerker om het volledige dossier te zien: loonheffing, onboarding, overplaatsing, sommaties, ontslag, contractstatus en verlof.</div>
+    </div>
+    <div id="dos-inhoud"></div>
+  </div>
+
+  <!-- Placeholder-tabs voor modules die later komen -->
+  <div class="tc" id="tab-binnenkort">
+    <div class="sec"><div class="sh"><div class="st" id="binnenkort-titel">Binnenkort</div></div>
+      <div class="leeg grijs">Deze module zit nog in het Apps Script-dashboard en wordt in een volgende stap overgezet.</div></div>
+  </div>
+
+  <div class="voet">SLA · the good food bar · HR Dashboard (Netlify) · <span id="voet-versie">stap 1</span></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
