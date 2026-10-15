@@ -13,11 +13,16 @@ const API = 'https://sheets.googleapis.com/v4/spreadsheets/';
 let _jwt = null;
 function jwt() {
   if (_jwt) return _jwt;
-  const b64 = process.env.GOOGLE_SA_JSON_B64;
-  if (!b64) throw new Error('GOOGLE_SA_JSON_B64 ontbreekt (service account)');
+  const raw = String(process.env.GOOGLE_SA_JSON_B64 || '').trim();
+  if (!raw) throw new Error('GOOGLE_SA_JSON_B64 ontbreekt (service account)');
+  // Accepteert base64 (bedoeld) én per ongeluk geplakte ruwe JSON; witruimte/regeleinden worden genegeerd
   let creds;
-  try { creds = JSON.parse(Buffer.from(b64, 'base64').toString('utf8')); }
-  catch (e) { throw new Error('GOOGLE_SA_JSON_B64 is geen geldige base64-JSON: ' + e.message); }
+  try {
+    const txt = raw.startsWith('{') ? raw : Buffer.from(raw.replace(/\s+/g, ''), 'base64').toString('utf8');
+    creds = JSON.parse(txt);
+  } catch (e) {
+    throw new Error('GOOGLE_SA_JSON_B64 is geen geldige base64-JSON (begint met "' + raw.slice(0, 6) + '…", lengte ' + raw.length + '). Verwacht: begint met "ewog" en is ±3000 tekens.');
+  }
   if (!creds.client_email || !creds.private_key) throw new Error('Service-account-JSON mist client_email/private_key');
   _jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
   return _jwt;
