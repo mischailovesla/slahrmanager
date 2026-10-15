@@ -133,6 +133,24 @@ async function archiveerRij(spreadsheetId, label, rij, naamCheck, wie, isOnboard
   return naamInSheet;
 }
 
+// Loonheffing-sheet: rij vinden op e-mail (na de header 'Naam'), of 0
+async function vindLoonRij(email) {
+  const id = SHEETS.loonheffing.id;
+  const data = await lees(id, q(await eersteTab(id)), 1);
+  const h = headerRij(data); if (h === -1) return 0;
+  const el = String(email || '').trim().toLowerCase();
+  if (!el) return 0;
+  for (let i = h + 1; i < data.length; i++) if (cel(data[i], 1).toLowerCase() === el) return i + 1;
+  return 0;
+}
+// Eerste lege rij ná de laatste gevulde naam (logVerzonden v25: geen vervuilde rijen)
+async function eersteLegeLoonRij() {
+  const id = SHEETS.loonheffing.id;
+  const data = await lees(id, q(await eersteTab(id)), 1);
+  for (let j = data.length - 1; j >= 0; j--) if (cel(data[j], 0)) return j + 2;
+  return data.length + 1;
+}
+
 // Eerste tab + tabnaam opzoeken (Apps Script gebruikt getSheets()[0])
 const _meta = new Map();
 async function tabNamen(spreadsheetId) {
@@ -312,4 +330,4 @@ async function getExtraTabs() {
   return res;
 }
 
-module.exports = { getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR };
+module.exports = { getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij };

@@ -13,7 +13,7 @@
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -48,6 +48,7 @@
     var knop = document.querySelector('.nav button[data-tab="' + tab + '"]');
     if (knop) { knop.classList.add('active'); var grp = knop.closest('.lay-groep'); if (grp) grp.querySelector('.lay-kop').classList.add('kop-actief'); }
     if (tab === 'dossier') setTimeout(function () { g('dos-zoek').focus(); }, 50);
+    if (tab === 'loonheffing' && !lhData) laadLoonheffing();
   }
   window.swT = swT;
 
@@ -166,7 +167,7 @@
 
     var rows = [];
     d.open.loonheffing.forEach(function (r) {
-      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bg">Loonheffing</span></td><td>' + esc(r.email) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + '</td><td>' + dosBtn(r.naam, r.email) + ' ' + bArch('loonheffing', r.rij, r.naam) + '</td></tr>');
+      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bg">Loonheffing</span></td><td>' + esc(r.email) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('loonheffing', r.rij, r.naam) + '</td></tr>');
     });
     d.open.overplaatsing.forEach(function (r) {
       rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>-</td><td>' + dosBtn(r.naam, r.email) + '</td></tr>');
@@ -245,6 +246,66 @@
       default: return kv('Datum', esc(r.datum || '-')) + '<td>' + esc((r.raw || []).slice(0, 8).join(' · ')) + '</td>';
     }
   }
+
+  // ---------- Loonheffing-tab ----------
+  var lhData = null, lhTemplates = [];
+  function lmBtn(r) { return '<button class="btn bp bsm" data-lm-rij="' + r.rij + '">Mail</button>'; }
+  window.laadLoonheffing = async function () {
+    var d = await api('/api/loonheffing');
+    if (!d.success) { toast('Loonheffing: ' + d.bericht, 'err'); return; }
+    lhData = d.rijen; lhTemplates = d.templates;
+    g('lh-count').textContent = lhData.length + ' dossiers';
+    g('lh-body').innerHTML = lhData.map(function (r) {
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + (r.salaris ? '<div class="lay-sub">' + esc(r.salaris) + '</div>' : '') + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
+    }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen dossiers</td></tr>';
+  };
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-lm-rij]');
+    if (!b) return;
+    var rij = parseInt(b.getAttribute('data-lm-rij'), 10);
+    var r = (lhData || []).concat((ovData && ovData.open.loonheffing) || []).find(function (x) { return x.rij === rij; });
+    openLoonMail(r || null);
+  });
+
+  // ---------- Mailmodal loonheffing ----------
+  var lmTpl = 'uitnodiging-nl', lmRij = null;
+  window.openLoonMail = async function (persoon) {
+    if (!lhTemplates.length) { var d = await api('/api/loonheffing'); if (d.success) { lhTemplates = d.templates; lhData = d.rijen; } }
+    lmRij = persoon ? persoon.rij : null;
+    g('lm-to').value = persoon ? persoon.email || '' : '';
+    g('lm-naam').value = persoon ? persoon.naam || '' : '';
+    g('lm-dl').value = persoon ? persoon.deadline || '' : '';
+    // Slimme default: al een mail verstuurd -> herinnering; taal uit de rij
+    var taal = persoon && persoon.taal === 'EN' ? 'en' : 'nl';
+    lmTpl = (persoon && persoon.status && persoon.status.indexOf('Verzonden') === 0 ? 'herinnering-' : 'uitnodiging-') + taal;
+    lmBouwTbar(); lmHerbouw();
+    g('lm-modal').classList.add('open');
+  };
+  window.closeLoonMail = function () { g('lm-modal').classList.remove('open'); };
+  function lmBouwTbar() {
+    g('lm-tbar').innerHTML = lhTemplates.map(function (t) { return '<button type="button" class="tb' + (t.key === lmTpl ? ' sel' : '') + '" data-tpl="' + t.key + '">' + esc(t.label) + '</button>'; }).join('');
+    g('lm-tbar').querySelectorAll('[data-tpl]').forEach(function (b) { b.onclick = function () { lmTpl = b.getAttribute('data-tpl'); lmBouwTbar(); lmHerbouw(); }; });
+  }
+  window.lmHerbouw = async function () {
+    var t = lhTemplates.find(function (x) { return x.key === lmTpl; }); if (!t) return;
+    g('lm-subj').value = t.subject;
+    g('lm-body').value = 'Tekst laden…';
+    var r = await api('/api/loonheffing-mail', { template: lmTpl, naam: g('lm-naam').value.trim(), deadline: g('lm-dl').value.trim(), preview: true });
+    if (r.success) g('lm-body').value = r.text; else g('lm-body').value = '(kon template niet laden: ' + r.bericht + ')';
+  };
+  window.lmKopieer = function () {
+    navigator.clipboard.writeText('Onderwerp: ' + g('lm-subj').value + '\n\n' + g('lm-body').value).then(function () { toast('Gekopieerd', 'ok'); });
+  };
+  window.lmVerstuur = async function () {
+    var to = g('lm-to').value.trim(), naam = g('lm-naam').value.trim();
+    if (!to || !naam) { toast('Vul e-mail en naam in', 'err'); return; }
+    var b = g('lm-sbtn'); b.disabled = true; g('lm-slbl').textContent = 'Versturen…';
+    var r = await api('/api/loonheffing-mail', { template: lmTpl, to: to, naam: naam, deadline: g('lm-dl').value.trim(), rij: lmRij, subject: g('lm-subj').value.trim(), body: g('lm-body').value });
+    b.disabled = false; g('lm-slbl').textContent = 'Verstuur mail';
+    if (r.success) { toast(r.bericht, 'ok'); closeLoonMail(); lhData = null; laadLoonheffing(); laadOverzicht(); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  g('lm-modal').addEventListener('click', function (e) { if (e.target === this) closeLoonMail(); });
 
   // ---------- Toast ----------
   function toast(msg, type) { var t = g('toast'); t.textContent = msg; t.className = 'toast ' + (type === 'ok' ? 'tok' : 'terr') + ' show'; setTimeout(function () { t.classList.remove('show'); }, 3400); }

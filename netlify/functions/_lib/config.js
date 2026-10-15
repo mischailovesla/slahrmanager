@@ -21,6 +21,20 @@ module.exports = {
   ],
 
   AANZEG_VENSTER_DAGEN: 42,
+  COOLDOWN_DAGEN: 3,
+
+  // Mail / huisstijl (uit Code.gs)
+  AFZENDER_TEAM: 'SLA HR Team',
+  AFZENDER_NAAM: 'Jop van de Graaf',
+  HR_EMAIL: 'hr@ilovesla.com',
+  BEDRIJFSNAAM: 'SLA',
+
+  // Loonheffing-flow: links en prefill (v29.4)
+  UPLOAD_LOON: 'https://docs.google.com/forms/d/e/1FAIpQLSccn1Y4826aho-hIBSrbpw07BbCPAYmSVx2Fjlms08H8XNHgA/viewform?usp=header',
+  PREFILL_LOON_ENTRY: 'entry.35290118',
+  INDIENSTLINK: 'https://docs.google.com/spreadsheets/d/14gGKuBmJusIPOMq-WjOEdtPyBZ1amP5-/export?format=xlsx',
+  LB_FORMULIER_NL: 'https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/themaoverstijgend/programmas_en_formulieren/model_opgaaf_gegevens_voor_de_loonheffingen',
+  LB_FORMULIER_EN: 'https://www.belastingdienst.nl/wps/wcm/connect/bldcontenten/themaoverstijgend/applications_and_forms/model-statement-data-payroll-taxes',
 
   WINKEL_BV_MAP: {
     CB: { naam: 'Ceintuurbaan',     bv: 'SLA Ceintuur BV' },

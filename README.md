@@ -3,7 +3,7 @@
 Herbouw van het SLA HR Dashboard (Google Apps Script) als Netlify-app.
 Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend tot een module volledig is overgezet.
 
-## Status: stap 2 — lezen + afvinken + archiveren
+## Status: stap 3b — lezen, afvinken, archiveren, loonheffingsmails
 
 | Werkt | Nog in Apps Script |
 |---|---|
@@ -13,6 +13,7 @@ Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend 
 | Medewerkersdossier: Shiftbase-zoekveld, contract(type), verlof, alle log-tabs | Waarschuwing, Proeftijd, Vrije brieven, Korting, Beschikbaarheid, Vastloners, Vakantieplanner, Verloop |
 | **Vinkjes**: Naar salaris (loonheffing + ontslag), Sommatie verwerkt, Overplaatsing ondertekend | |
 | **Archiveren**: rij naar tab "Archief" (loonheffing, ontslag, sommatie, onboarding) | |
+| **Loonheffing-tab** + mail: uitnodiging en herinnering (NL/EN) via Resend, SLA-huisstijl, persoonlijke upload-link, logging in de sheet (D/E resp. H/I) | Automatische herinneringen (`checkLoonheffingHerinneringen`, 09:00) |
 
 **De Google Sheets blijven de enige waarheid** zolang Apps Script draait. Vinkjes en archiveren schrijven in exact dezelfde cellen (en kleuren) als Code.gs, dus beide dashboards blijven consistent. Supabase bevat alleen toegang en het actielog (`hr_acties`), geen HR-data.
 
@@ -34,8 +35,10 @@ sla-hr-dashboard/
 │  ├─ medewerkers.js        GET /api/medewerkers Shiftbase-lijst (?ververs=1)
 │  ├─ dossier.js            GET /api/dossier     ?id= | ?naam=&email=
 │  ├─ toggle.js             POST /api/toggle     {type, rij, naam}  vinkje om in de sheet
-│  └─ archiveer.js          POST /api/archiveer  {type, rij, naam}  rij naar tab Archief
-├─ supabase/migrations/     0001_toegang.sql, 0002_acties.sql
+│  ├─ archiveer.js          POST /api/archiveer  {type, rij, naam}  rij naar tab Archief
+│  ├─ loonheffing.js        GET /api/loonheffing alle dossiers + templates
+│  └─ loonheffing-mail.js   POST /api/loonheffing-mail {template,to,naam,deadline,rij,subject,body,preview}
+├─ supabase/migrations/     0001_toegang.sql, 0002_acties.sql, 0003_mails.sql
 ├─ netlify.toml, package.json, .env.example
 ```
 
@@ -52,7 +55,7 @@ git push -u origin main
 
 ### 2. Supabase (nieuw project, alleen HR)
 1. Nieuw project aanmaken op supabase.com → regio **eu-central-1 (Frankfurt)**.
-2. **SQL Editor** → plak `supabase/migrations/0001_toegang.sql` → Run. Controleer de seed-e-mails in `hr_toegang`. Daarna `0002_acties.sql` → Run.
+2. **SQL Editor** → plak `supabase/migrations/0001_toegang.sql` → Run. Controleer de seed-e-mails in `hr_toegang`. Daarna `0002_acties.sql` en `0003_mails.sql` → Run.
 3. **Authentication → Providers → Google** aanzetten. Je hebt een Google OAuth Client nodig:
    - Google Cloud Console → APIs & Services → Credentials → *Create OAuth client ID* (Web application)
    - Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`
@@ -86,6 +89,8 @@ git push -u origin main
    | `GOOGLE_SA_JSON_B64` | base64 van de service-account-JSON |
    | `SHIFTBASE_KEY` | dezelfde key als in de Apps Script-scripteigenschappen |
    | `TOEGANG_DOMEIN` | `ilovesla.com` |
+   | `RESEND_API_KEY` | Resend → API Keys (**secret**) |
+   | `MAIL_FROM` | `SLA HR Team <hr@ilovesla.com>` (optioneel; dit is de default) |
 3. Deploy. Open de site, log in met je Google-account.
 
 ### 5. Controle
@@ -100,6 +105,10 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 |---|---|---|
 | 0.1.0 | 15-10-2026 | Stap 1: login, Overzicht, Dossier (lezen) |
 | 0.2.0 | 15-10-2026 | Stap 2: afvinken + archiveren in de sheets, actielog, contracttype |
+| 0.3.0 | 15-10-2026 | Stap 3a/3b: Resend-mail, SLA-sjablonen, Loonheffing-tab met uitnodiging/herinnering |
+
+## Mail (Resend)
+Alle mail gaat via Resend vanaf `hr@ilovesla.com`. Eenmalig: Resend → **Domains → Add domain** → `ilovesla.com` → de DNS-records (DKIM/SPF) bij de domeinbeheerder zetten → *Verify*. Zonder verificatie weigert Resend de afzender (het dashboard geeft dan die hint). Elke verzonden mail staat in `hr_mails` (Supabase) en als actie in `hr_acties`.
 
 ## Lokaal draaien
 ```bash
@@ -117,6 +126,6 @@ Allowlist = tabel `hr_toegang` in Supabase (Table Editor). `actief=false` zet ie
 ## Roadmap
 1. ✅ Shell + login + Overzicht/Dossier (lezen)
 2. ✅ Afvinken + archiveren in de sheets, actielog in Supabase, contracttype uit Shiftbase
-3. Brieven één voor één: Vrije brieven → Ontslag/Aanzegging → Waarschuwing → Proeftijd → Overplaatsing (HTML→PDF, mail via Resend)
+3. 🔄 Mail + brieven: ✅ 3a mailfundament, ✅ 3b loonheffing; 3c Vrije brieven (PDF-pijplijn) → 3d Ontslag/Aanzegging → 3e Sommatie, Overplaatsing, Waarschuwing, Proeftijd
 4. Signaleringen als Netlify Scheduled Functions; per module de Apps Script-trigger uit
 5. Apps Script uit, oude exec-URL doorverwijzen

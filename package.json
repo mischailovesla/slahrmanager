@@ -1,6 +1,6 @@
 {
   "name": "sla-hr-dashboard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "SLA HR Dashboard - Netlify versie (stap 1: shell, Google-login, Overzicht en Dossier lezend uit Google Sheets)",
   "scripts": {
