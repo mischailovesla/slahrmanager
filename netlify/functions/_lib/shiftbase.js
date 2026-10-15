@@ -37,7 +37,8 @@ function isActief(u) {
 }
 const ddmm = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? m[3] + '-' + m[2] + '-' + m[1] : String(s || ''); };
 
-function verwerk(usersLijst, contractsLijst) {
+function verwerk(usersLijst, contractsLijst, typeNamen) {
+  typeNamen = typeNamen || {};
   const perUser = {};
   for (const rec of contractsLijst || []) {
     const c = (rec && rec.Contract) || rec || {};
@@ -50,7 +51,7 @@ function verwerk(usersLijst, contractsLijst) {
         p.laatste = sd;
         if (c['function']) p.functie = String(c['function']).trim();
         p.einde = (ed && ed !== '0000-00-00') ? ed : '';
-        p.contractType = String((c.ContractType && c.ContractType.name) || c.contract_type || '').trim();
+        p.contractType = String((c.ContractType && c.ContractType.name) || typeNamen[String(c.contract_type_id || '')] || c.contract_type || '').trim();
       }
     }
   }
@@ -93,9 +94,14 @@ let _cache = { t: 0, v: null };
 async function getMedewerkers(forceer) {
   if (!forceer && _cache.v && _cache.t > Date.now()) return _cache.v;
   const users = await sbGet('users');
-  let cons = [];
+  let cons = [], typeNamen = {};
   try { cons = await sbGet('contracts'); } catch (e) { console.warn('contracts:', e.message); }
-  const med = verwerk(users, cons);
+  // Contracttypen (Bepaalde tijd / Onbepaalde tijd / Oproep ...) - id -> naam
+  try {
+    const ct = await sbGet('contract_types');
+    for (const rec of ct || []) { const x = (rec && rec.ContractType) || rec || {}; if (x.id) typeNamen[String(x.id)] = String(x.name || '').trim(); }
+  } catch (e) { console.warn('contract_types:', e.message); }
+  const med = verwerk(users, cons, typeNamen);
   _cache = { t: Date.now() + 600000, v: med };
   return med;
 }

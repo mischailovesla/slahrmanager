@@ -82,4 +82,17 @@ function beveiligd(actie, handler) {
   };
 }
 
-module.exports = { controleerToegang, beveiligd, json, log, admin };
+// JSON-body van een POST lezen (leeg object bij GET)
+function body(event) {
+  if (!event.body) return {};
+  try { return JSON.parse(event.isBase64Encoded ? Buffer.from(event.body, 'base64').toString('utf8') : event.body); }
+  catch (e) { throw new Error('Ongeldige JSON in request-body'); }
+}
+
+// Schrijfactie vastleggen in hr_acties (migratie 0002)
+async function logActie(rec) {
+  try { await admin().from('hr_acties').insert(rec); }
+  catch (e) { console.warn('hr_acties log mislukt:', e.message); }
+}
+
+module.exports = { controleerToegang, beveiligd, json, log, admin, body, logActie };

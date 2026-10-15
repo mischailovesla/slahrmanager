@@ -85,6 +85,12 @@ tbody tr:hover td{background:#fdfaf8}
 .doc-link{display:inline-flex;align-items:center;gap:4px;color:var(--groen);font-size:.78rem;font-weight:700;text-decoration:none;padding:3px 8px;border:1.5px solid var(--groen);border-radius:6px;white-space:nowrap}
 .doc-link:hover{background:var(--groen-l)}
 .no-doc{color:var(--grijs-l);font-size:.78rem}
+.mah-btn{padding:4px 10px;border-radius:6px;font-size:.76rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .2s;border:1.5px solid #e8e2de;background:#fff;color:var(--grijs);white-space:nowrap}
+.mah-btn:hover{border-color:var(--groen);color:var(--groen)}
+.mah-btn.ok{background:var(--groen-l);color:var(--groen-t);border-color:var(--groen)}
+.mah-btn.arch{border-color:#f0c8c2;color:var(--rood);padding:4px 8px}
+.mah-btn.arch:hover{background:var(--rood-l);border-color:var(--rood)}
+.mah-btn:disabled{opacity:.5;cursor:default}
 .lay-sub{font-size:11px;color:var(--grijs);margin-top:2px}
 .leeg{text-align:center;color:var(--groen);padding:40px;font-size:15px}
 .leeg.grijs{color:var(--grijs)}

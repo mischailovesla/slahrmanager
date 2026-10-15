@@ -1,7 +1,8 @@
 // ============================================================
-// Google Sheets lezen via service account (ALLEEN LEZEN in stap 1).
-// Apps Script blijft de enige die schrijft, zodat beide systemen
-// veilig naast elkaar kunnen draaien.
+// Google Sheets lezen én schrijven via service account.
+// Stap 2: schrijfacties (vinkjes, archiveren) gaan naar DEZELFDE cellen
+// als Code.gs, zodat Apps Script en Netlify consistent blijven. De
+// sheets zijn de enige waarheid zolang Apps Script draait.
 // Rechtstreeks op de Sheets REST API met google-auth-library
 // (het volledige googleapis-pakket is te zwaar voor Netlify Functions).
 // ============================================================
@@ -24,16 +25,20 @@ function jwt() {
     throw new Error('GOOGLE_SA_JSON_B64 is geen geldige base64-JSON (begint met "' + raw.slice(0, 6) + '…", lengte ' + raw.length + '). Verwacht: begint met "ewog" en is ±3000 tekens.');
   }
   if (!creds.client_email || !creds.private_key) throw new Error('Service-account-JSON mist client_email/private_key');
-  _jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+  _jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
   return _jwt;
 }
-async function gapi(pad) {
+async function gapi(pad, method, body) {
   const { token } = await jwt().getAccessToken();
-  const r = await fetch(API + pad, { headers: { Authorization: 'Bearer ' + token } });
+  const r = await fetch(API + pad, {
+    method: method || 'GET',
+    headers: Object.assign({ Authorization: 'Bearer ' + token }, body ? { 'Content-Type': 'application/json' } : {}),
+    body: body ? JSON.stringify(body) : undefined
+  });
   if (!r.ok) {
     let msg = 'HTTP ' + r.status;
     try { const j = await r.json(); msg += ' - ' + ((j.error && j.error.message) || JSON.stringify(j)); } catch (e) { /* noop */ }
-    if (r.status === 403) msg += ' (is de sheet gedeeld met het service account als Lezer?)';
+    if (r.status === 403) msg += ' (is de sheet gedeeld met het service account' + (method && method !== 'GET' ? ' als Bewerker' : '') + '?)';
     if (r.status === 404) msg += ' (sheet-ID of tabnaam onbekend)';
     throw new Error('Sheets API: ' + msg);
   }
@@ -50,6 +55,82 @@ async function lees(spreadsheetId, range, ttlMs) {
   const v = (r && r.values) || [];
   _cache.set(key, { v, t: Date.now() + (ttlMs || 60000) });
   return v;
+}
+
+function vergeetCache(spreadsheetId) {
+  for (const k of Array.from(_cache.keys())) if (k.startsWith(spreadsheetId + '|')) _cache.delete(k);
+}
+
+// ---- Schrijven --------------------------------------------------------------
+const KLEUR = { groen: '#d9ead3', geel: '#fff2cc', blauw: '#cfe2f3', wit: '#ffffff' };
+function hexNaarRgb(hex) {
+  const m = String(hex || '#ffffff').replace('#', '');
+  return { red: parseInt(m.slice(0, 2), 16) / 255, green: parseInt(m.slice(2, 4), 16) / 255, blue: parseInt(m.slice(4, 6), 16) / 255 };
+}
+const kolLetter = n => { let s = ''; while (n > 0) { const m = (n - 1) % 26; s = String.fromCharCode(65 + m) + s; n = Math.floor((n - 1) / 26); } return s; };
+
+// Zet één cel (1-based rij/kolom) met waarde + achtergrondkleur, zoals
+// sheet.getRange(rij,kol).setValue(v).setBackground(kleur) in Apps Script.
+async function zetCel(spreadsheetId, tabNaam, rij, kol, waarde, kleurHex) {
+  const tabs = await tabNamen(spreadsheetId);
+  const tab = tabs.find(s => s.title === tabNaam) || tabs[0];
+  const range = q(tab.title) + '!' + kolLetter(kol) + rij;
+  await gapi(encodeURIComponent(spreadsheetId) + '/values/' + encodeURIComponent(range) + '?valueInputOption=USER_ENTERED', 'PUT',
+    { range, majorDimension: 'ROWS', values: [[waarde]] });
+  if (kleurHex) {
+    await gapi(encodeURIComponent(spreadsheetId) + ':batchUpdate', 'POST', { requests: [{
+      repeatCell: {
+        range: { sheetId: tab.sheetId, startRowIndex: rij - 1, endRowIndex: rij, startColumnIndex: kol - 1, endColumnIndex: kol },
+        cell: { userEnteredFormat: { backgroundColor: hexNaarRgb(kleurHex) } },
+        fields: 'userEnteredFormat.backgroundColor'
+      } }] });
+  }
+  vergeetCache(spreadsheetId);
+}
+
+// Eén cel lezen (ruwe weergavewaarde), zonder cache
+async function leesCel(spreadsheetId, tabNaam, rij, kol) {
+  const tabs = await tabNamen(spreadsheetId);
+  const tab = tabs.find(s => s.title === tabNaam) || tabs[0];
+  const range = q(tab.title) + '!' + kolLetter(kol) + rij;
+  const r = await gapi(encodeURIComponent(spreadsheetId) + '/values/' + encodeURIComponent(range) + '?valueRenderOption=FORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING');
+  return String(((r.values || [[]])[0] || [])[0] || '').trim();
+}
+
+// Rij archiveren: kopie naar tab "Archief" (met Gearchiveerd op / Door / Bron),
+// daarna de rij uit de brontab verwijderen. Port van archiveerRij in Code.gs v29.5.
+async function archiveerRij(spreadsheetId, label, rij, naamCheck, wie, isOnboarding) {
+  const tabs = await tabNamen(spreadsheetId);
+  const bron = tabs[0];
+  const data = await lees(spreadsheetId, q(bron.title), 1);
+  if (rij < 2 || rij > data.length) throw new Error('Rij bestaat niet meer. Ververs het dashboard.');
+  const rowVals = data[rij - 1] || [];
+  const breedte = Math.max(data.reduce((m, r) => Math.max(m, r.length), 0), 1);
+  let naamInSheet = cel(rowVals, 0);
+  if (isOnboarding) naamInSheet = (naamInSheet + ' ' + cel(rowVals, 1)).trim();
+  if (!naamInSheet) throw new Error('Lege rij - er is niets gearchiveerd.');
+  if (naamCheck && normNaam(naamInSheet) !== normNaam(naamCheck)) {
+    throw new Error('Rij komt niet overeen (sheet: "' + naamInSheet + '", dashboard: "' + naamCheck + '"). Ververs het dashboard en probeer opnieuw.');
+  }
+  // Archief-tab aanmaken als die ontbreekt
+  let arch = tabs.find(s => s.title === 'Archief');
+  if (!arch) {
+    const r = await gapi(encodeURIComponent(spreadsheetId) + ':batchUpdate', 'POST', { requests: [{ addSheet: { properties: { title: 'Archief' } } }] });
+    arch = r.replies[0].addSheet.properties;
+    _meta.delete(spreadsheetId);
+    const hRij = data.findIndex(r => ['naam', 'voornaam'].includes(cel(r, 0).toLowerCase()));
+    const kop = ['Gearchiveerd op', 'Door', 'Bron'].concat(hRij > -1 ? data[hRij] : []);
+    await gapi(encodeURIComponent(spreadsheetId) + '/values/' + encodeURIComponent(q('Archief') + '!A1') + '?valueInputOption=USER_ENTERED', 'PUT',
+      { range: q('Archief') + '!A1', majorDimension: 'ROWS', values: [kop] });
+  }
+  const stempel = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).replace('T', ' ').slice(0, 16);
+  const rijUit = [stempel, wie || '', label].concat(Array.from({ length: breedte }, (_, i) => rowVals[i] === undefined ? '' : rowVals[i]));
+  await gapi(encodeURIComponent(spreadsheetId) + '/values/' + encodeURIComponent(q('Archief') + '!A1') + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', 'POST',
+    { majorDimension: 'ROWS', values: [rijUit] });
+  await gapi(encodeURIComponent(spreadsheetId) + ':batchUpdate', 'POST', { requests: [{
+    deleteDimension: { range: { sheetId: bron.sheetId, dimension: 'ROWS', startIndex: rij - 1, endIndex: rij } } }] });
+  vergeetCache(spreadsheetId);
+  return naamInSheet;
 }
 
 // Eerste tab + tabnaam opzoeken (Apps Script gebruikt getSheets()[0])
@@ -231,4 +312,4 @@ async function getExtraTabs() {
   return res;
 }
 
-module.exports = { getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, lees };
+module.exports = { getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR };
