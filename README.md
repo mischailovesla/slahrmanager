@@ -93,6 +93,14 @@ git push -u origin main
 - Overzicht toont dezelfde open dossiers als het Apps Script-dashboard.
 - Dossier: zoek jezelf of een collega; contract en verlof komen uit Shiftbase.
 
+## Versie
+Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en in de header-badge. Bij elke oplevering ophogen; `package.json` volgt dezelfde nummering.
+
+| Versie | Datum | Inhoud |
+|---|---|---|
+| 0.1.0 | 15-10-2026 | Stap 1: login, Overzicht, Dossier (lezen) |
+| 0.2.0 | 15-10-2026 | Stap 2: afvinken + archiveren in de sheets, actielog, contracttype |
+
 ## Lokaal draaien
 ```bash
 npm install

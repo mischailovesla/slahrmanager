@@ -25,7 +25,7 @@
 <div class="lo" id="lo"><div class="ll">SLA</div><div class="ls" id="lo-txt">Data laden...</div></div>
 
 <div class="top">
-  <div class="l"><div class="sla">SLA</div><div class="tdiv"></div><div class="tlbl">HR Dashboard</div><span class="tnieuw">NETLIFY · STAP 2</span></div>
+  <div class="l"><div class="sla">SLA</div><div class="tdiv"></div><div class="tlbl">HR Dashboard</div><span class="tnieuw" id="top-versie">NETLIFY</span></div>
   <div class="r"><span id="top-dt"></span><span id="top-wie"></span><button class="bg2" id="btn-uit" style="display:none">Uitloggen</button></div>
 </div>
 
@@ -87,12 +87,13 @@
       <div class="leeg grijs">Deze module zit nog in het Apps Script-dashboard en wordt in een volgende stap overgezet.</div></div>
   </div>
 
-  <div class="voet">SLA · the good food bar · HR Dashboard (Netlify) · <span id="voet-versie">stap 2</span></div>
+  <div class="voet">SLA · the good food bar · HR Dashboard (Netlify) · <span id="voet-versie" title="Versie van deze deploy">v?</span></div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="version.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

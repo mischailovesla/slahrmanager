@@ -249,5 +249,12 @@
   // ---------- Toast ----------
   function toast(msg, type) { var t = g('toast'); t.textContent = msg; t.className = 'toast ' + (type === 'ok' ? 'tok' : 'terr') + ' show'; setTimeout(function () { t.classList.remove('show'); }, 3400); }
 
-  document.addEventListener('DOMContentLoaded', init);
+  function toonVersie() {
+    var v = window.HR_VERSIE || {};
+    var txt = 'v' + (v.nummer || '?') + (v.datum ? ' · ' + v.datum : '') + (v.stap ? ' · stap ' + v.stap : '');
+    g('voet-versie').textContent = txt;
+    g('voet-versie').title = v.omschrijving || '';
+    g('top-versie').textContent = 'NETLIFY · v' + (v.nummer || '?');
+  }
+  document.addEventListener('DOMContentLoaded', function () { toonVersie(); init(); });
 })();
