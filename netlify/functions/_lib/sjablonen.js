@@ -93,4 +93,53 @@ const LOON_TEMPLATES = [
 function loonPlain(type, naam, dl, isEN) { return type === 'herinnering' ? loonHerinneringPlain(naam, dl, isEN) : loonUitnodigingPlain(naam, dl, isEN); }
 function loonHtml(type, naam, dl, isEN) { return type === 'herinnering' ? loonHerinneringHtml(naam, dl, isEN) : loonUitnodigingHtml(naam, dl, isEN); }
 
-module.exports = { slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc };
+// --- Vrije brieven (port van VrijeBrief.gs v1.2) ------------------------------
+// Vrije tekst -> huisstijl-alinea's: dubbele enter = alinea, enkele enter = regeleinde,
+// regels die met "- " beginnen = lijst (vbTekstNaarHtml_)
+function tekstNaarHtml(txt) {
+  const s = F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 14px';
+  let html = '';
+  String(txt || '').replace(/\r/g, '').split(/\n{2,}/).forEach(b => {
+    b = b.trim(); if (!b) return;
+    const regels = b.split('\n');
+    const isLijst = regels.every(r => /^\s*-\s+/.test(r) || !r.trim());
+    if (isLijst) {
+      html += '<ul style="margin:0 0 14px;padding-left:20px">';
+      regels.forEach(r => { r = r.replace(/^\s*-\s+/, '').trim(); if (r) html += '<li style="' + s + ';margin:0 0 6px">' + esc(r) + '</li>'; });
+      html += '</ul>';
+    } else html += '<p style="' + s + '">' + regels.map(esc).join('<br>') + '</p>';
+  });
+  return html;
+}
+function briefHtml(p, bv, categorie) {
+  let body = '<p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Beste ' + esc(p.naam) + ',</p>';
+  body += tekstNaarHtml(p.tekst);
+  body += '<p style="' + F + 'font-size:14px;color:#333d3a;margin:24px 0 6px">Met vriendelijke groet,<br><strong>' + esc(C.AFZENDER_NAAM) + '</strong><br>' + esc(bv) + '</p>';
+  return slaWrap(slaHead('#333d3a', 'SLA HR &middot; ' + esc(categorie)) + '<tr><td style="padding:32px 36px 28px">' + body + '</td></tr>' + slaFoot());
+}
+function briefPlain(p, bv) {
+  return 'Beste ' + p.naam + ',\n\n' + String(p.tekst || '').trim() + '\n\nMet vriendelijke groet,\n' + C.AFZENDER_NAAM + '\n' + bv;
+}
+// Startpunten voor de Brief-modal; {NAAM} {BV} {DATUM} worden in de browser live vervangen
+const BRIEF_TEMPLATES = [
+  { key: 'leeg', label: 'Leeg (zelf schrijven)', subject: '', hint: '', body: '' },
+  { key: 'ontslagname', label: 'Bevestiging ontslagname per direct', subject: 'Bevestiging opzegging dienstverband - {NAAM}',
+    hint: 'Voor de situatie dat een medewerker mondeling/telefonisch per direct opzegt en niet op de dienst verschijnt. Juridisch belangrijk: een opzegging door de medewerker moet duidelijk en ondubbelzinnig zijn - vraag daarom altijd om schriftelijke bevestiging en bied ruimte om erop terug te komen (onderzoeksplicht werkgever).',
+    body: 'Op {DATUM} heb je bij jouw Store Manager gemeld dat je niet op je ingeplande dienst verschijnt en dat je per direct ontslag neemt.\n\n' +
+      'Met deze brief bevestigen wij de ontvangst van jouw mondelinge opzegging. Omdat een opzegging duidelijk en ondubbelzinnig moet zijn, vragen we je om jouw opzegging binnen 5 werkdagen schriftelijk te bevestigen via hr@ilovesla.com, met vermelding van de door jou gewenste einddatum.\n\n' +
+      'Mocht je van gedachten zijn veranderd of is deze beslissing in een emotioneel moment genomen, neem dan zo snel mogelijk contact op met je Store Manager of met HR - dan kijken we samen naar de situatie.\n\n' +
+      'Zonder tegenbericht gaan wij uit van beeindiging van jouw dienstverband bij {BV}. De niet-gewerkte dienst van {DATUM} wordt geregistreerd als ongeoorloofd verzuim en wordt niet uitbetaald.\n\n' +
+      'Verder wijzen we je op het volgende:\n' +
+      '- De eindafrekening (loon, vakantiegeld en openstaande vakantie-uren) ontvang je bij de eerstvolgende loonrun.\n' +
+      '- Bedrijfseigendommen zoals kleding, sleutels en pas lever je in bij je Store Manager.\n' +
+      '- Door zelf op te zeggen heb je in de regel geen recht op een WW-uitkering.' },
+  { key: 'afspraken', label: 'Bevestiging gemaakte afspraken', subject: 'Bevestiging gemaakte afspraken - {NAAM}',
+    hint: 'Voor het schriftelijk vastleggen van een gesprek (verbetertraject, gedragsafspraken, urenwijziging etc.). Vul de afspraken zelf in.',
+    body: 'Op {DATUM} hebben wij met elkaar gesproken. Met deze brief bevestigen we de afspraken die we daarin hebben gemaakt:\n\n' +
+      '- [afspraak 1]\n- [afspraak 2]\n- [afspraak 3]\n\n' +
+      'We vertrouwen erop dat we hiermee samen tot een goede oplossing komen. Heb je vragen over de inhoud van deze brief, neem dan contact op met je Store Manager of met HR via hr@ilovesla.com.' },
+  { key: 'mededeling', label: 'Algemene mededeling', subject: 'Mededeling - {NAAM}', hint: '',
+    body: '[Typ hier je mededeling.]\n\nHeb je vragen naar aanleiding van deze brief, neem dan contact op via hr@ilovesla.com.' }
+];
+
+module.exports = { slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES };

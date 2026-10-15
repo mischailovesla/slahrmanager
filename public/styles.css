@@ -162,3 +162,8 @@ tbody tr:hover td{background:#fdfaf8}
 .tb:hover{border-color:var(--groen);color:var(--groen)}
 .tb.sel{background:var(--groen);color:#fff;border-color:var(--groen)}
 @media (max-width:700px){.fr{grid-template-columns:1fr}}
+/* stap 3c: vrije brieven */
+.fg label.chk{display:flex;align-items:center;gap:8px;text-transform:none;letter-spacing:0;font-size:.85rem;color:var(--donker);cursor:pointer;font-weight:500}
+.fg label.chk input{width:auto}
+.fg .zoeklijst input[type=text]{width:100%}
+.vb-knoppen{display:flex;gap:6px;flex-wrap:wrap}

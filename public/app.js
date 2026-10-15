@@ -1,4 +1,4 @@
-/* SLA HR Dashboard - Netlify stap 1 (alleen lezen) */
+/* SLA HR Dashboard - Netlify (stap 3c: vrije brieven met PDF) */
 (function () {
   'use strict';
   var g = function (id) { return document.getElementById(id); };
@@ -13,7 +13,7 @@
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -49,6 +49,7 @@
     if (knop) { knop.classList.add('active'); var grp = knop.closest('.lay-groep'); if (grp) grp.querySelector('.lay-kop').classList.add('kop-actief'); }
     if (tab === 'dossier') setTimeout(function () { g('dos-zoek').focus(); }, 50);
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
+    if (tab === 'brief' && !vbData) laadBrieven();
   }
   window.swT = swT;
 
@@ -242,6 +243,7 @@
       case 'onboarding': return kv('Locatie', esc(r.locatie || '-')) + kv('Taal', esc(r.taal)) + kv('Welkomstmail', bSent(r.status)) + kv('Datum', esc(r.verzenddatum || '-')) + kv('', bArch('onboarding', r.rij, r.naam));
       case 'overplaatsing': return kv('Type', '<span class="badge bo">' + esc(r.type || '-') + '</span>') + kv('Van → naar', esc(r.huidigeBV) + ' → ' + esc(r.nieuweBV)) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ja', 'Aanvinken')) + kv('Brief', bDoc(r.briefUrl, '⬇ PDF'));
       case 'sommatie': return kv('Type', '<span class="badge bdk">' + esc(r.type) + '</span>') + kv('BV', esc(r.bv || '-')) + kv('Afwezig', esc(r.datumAfwezig || '-')) + kv('Afspraak', esc(r.datumAfspraak || '-')) + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('Status', esc(r.status || '-')) + kv('Verwerkt', bTog('som-verwerkt', r.verwerkt, r.rij, r.naam)) + (r.aanvullend ? kv('Aanvullend', esc(r.aanvullend)) : '') + kv('', bArch('sommatie', r.rij, r.naam));
+      case 'brief': return kv('Categorie', '<span class="badge bdk">' + esc(r.categorie || '-') + '</span>') + kv('Onderwerp', esc(r.onderwerp || '-')) + kv('BV', esc(r.bv || '-')) + kv('PDF', r.pdf === 'Ja' ? '<span class="badge bg">Ja</span>' : '<span class="no-doc">-</span>') + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('', '<button class="btn bd bsm" data-vb-print="' + esc(r.rij) + '">Brief</button> <button class="btn bd bsm" data-vb-opnieuw="' + esc(r.rij) + '">Opnieuw</button>');
       case 'ontslag': return kv('Type', '<span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span>') + kv('BV', esc(r.bedrijf || '-')) + kv('Opzegging', esc(r.opzegging || '-')) + kv('Einddatum', esc(r.einddatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bOk(r.ondertekend, 'Ja', 'Nee')) + kv('Docs', bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief')) + kv('Naar salaris', bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam)) + kv('', bArch('ontslag', r.rij, r.naam));
       default: return kv('Datum', esc(r.datum || '-')) + '<td>' + esc((r.raw || []).slice(0, 8).join(' · ')) + '</td>';
     }
@@ -306,6 +308,163 @@
     else toast('Fout: ' + r.bericht, 'err');
   };
   g('lm-modal').addEventListener('click', function (e) { if (e.target === this) closeLoonMail(); });
+
+  // ---------- Vrije brieven (port van getVrijeBriefUI, VrijeBrief.gs v1.2) ----------
+  var vbData = null, vbTpl = [], vbBvs = [], vbWinkelBv = {}, vbTplKey = 'leeg', vbAfzender = 'SLA HR Team';
+  window.laadBrieven = async function () {
+    var d = await api('/api/brieven');
+    if (!d.success) { toast('Brieven: ' + d.bericht, 'err'); return; }
+    vbData = d.rijen; vbTpl = d.templates; vbBvs = d.bvs; vbWinkelBv = d.winkelBv || {}; vbAfzender = d.afzender || vbAfzender;
+    g('vb-bv-list').innerHTML = vbBvs.map(function (b) { return '<option value="' + esc(b) + '">'; }).join('');
+    g('vb-count').textContent = vbData.length + ' verstuurd';
+    g('vb-body').innerHTML = vbData.map(function (r) {
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bdk">' + esc(r.categorie || '-') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.onderwerp || '-') + '</td><td>' + (r.pdf === 'Ja' ? '<span class="badge bg">Ja</span>' : '<span class="no-doc">-</span>') + '</td><td>' + esc(r.verzenddatum || '-') + '</td><td><div class="vb-knoppen"><button class="btn bd bsm" data-vb-opnieuw="' + r.rij + '">Opnieuw</button><button class="btn bsm" style="background:#333d3a;color:#fff" data-vb-print="' + r.rij + '">Brief</button>' + dosBtn(r.naam, r.email) + '</div></td></tr>';
+    }).join('') || '<tr><td colspan="8" class="leeg grijs">Nog geen brieven verstuurd</td></tr>';
+  };
+  function vbZoekRij(rij) { return (vbData || []).find(function (x) { return String(x.rij) === String(rij); }) || null; }
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && (e.target.closest('button[data-vb-opnieuw]') || e.target.closest('button[data-vb-print]'));
+    if (!b) return;
+    if (!vbData) await laadBrieven();
+    var rij = b.getAttribute('data-vb-opnieuw') || b.getAttribute('data-vb-print');
+    var r = vbZoekRij(rij);
+    if (!r) { toast('Brief niet gevonden — ververs de lijst', 'err'); return; }
+    if (b.hasAttribute('data-vb-opnieuw')) openVbModal(r);
+    else vbOpenPrintBrief({ titel: r.categorie || 'Personeelszaken', onderwerp: r.onderwerp, naam: r.naam, bv: r.bv, bodyHtml: vbAlineas(r.tekst) });
+  });
+  window.openVbModal = async function (d) {
+    if (!vbTpl.length) await laadBrieven();
+    g('vb-naam').value = d ? d.naam || '' : '';
+    g('vb-email').value = d ? d.email || '' : '';
+    g('vb-bv').value = d ? d.bv || '' : '';
+    g('vb-datum').value = '';
+    g('vb-cat').value = d ? d.categorie || 'Personeelszaken' : 'Personeelszaken';
+    g('vb-subj').value = d ? d.onderwerp || '' : '';
+    g('vb-tekst').value = d ? d.tekst || '' : '';
+    g('vb-pdf').checked = true;
+    g('vb-zoek').value = ''; g('vb-zoek-res').classList.remove('open');
+    vbTplKey = 'leeg'; vbBouwTbar(); g('vb-tpl-hint').style.display = 'none';
+    g('vb-modal').classList.add('open');
+    setTimeout(function () { g(d ? 'vb-tekst' : 'vb-zoek').focus(); }, 60);
+  };
+  window.closeVbModal = function () { g('vb-modal').classList.remove('open'); };
+  g('vb-modal').addEventListener('click', function (e) { if (e.target === this) closeVbModal(); });
+  function vbBouwTbar() {
+    g('vb-tbar').innerHTML = vbTpl.map(function (t) { return '<button type="button" class="tb' + (t.key === vbTplKey ? ' sel' : '') + '" data-vbtpl="' + t.key + '">' + esc(t.label) + '</button>'; }).join('');
+    g('vb-tbar').querySelectorAll('[data-vbtpl]').forEach(function (b) { b.onclick = function () { vbKiesTpl(b.getAttribute('data-vbtpl')); }; });
+  }
+  function vbVar(str) {
+    var n = g('vb-naam').value.trim() || '[Naam]', b = g('vb-bv').value.trim() || 'SLA', d = g('vb-datum').value.trim() || '[datum]';
+    return String(str || '').split('{NAAM}').join(n).split('{BV}').join(b).split('{DATUM}').join(d);
+  }
+  function vbKiesTpl(key) {
+    vbTplKey = key; vbBouwTbar();
+    var t = vbTpl.find(function (x) { return x.key === key; }) || {};
+    var hint = g('vb-tpl-hint');
+    if (t.hint) { hint.innerHTML = '💡 ' + esc(t.hint); hint.style.display = ''; } else hint.style.display = 'none';
+    g('vb-subj').value = t.subject ? vbVar(t.subject) : '';
+    g('vb-tekst').value = t.body ? vbVar(t.body) : '';
+  }
+  // Template live hervullen zolang de tekst nog niet handmatig is aangepast
+  window.vbHervulTpl = function () {
+    var t = vbTpl.find(function (x) { return x.key === vbTplKey; }); if (!t || !t.body) return;
+    var ta = g('vb-tekst'), kaal = t.body.split('{NAAM}').join('').split('{BV}').join('').split('{DATUM}').join('');
+    var ongewijzigd = ta.value.indexOf(kaal.substring(0, 40)) > -1 || ta.value.indexOf(kaal.substring(3, 43)) > -1;
+    if (ta.value === '' || ongewijzigd) { ta.value = vbVar(t.body); g('vb-subj').value = vbVar(t.subject); }
+  };
+  // Shiftbase-zoekveld in het modal (zelfde lijst als het dossier)
+  (function () {
+    var inp = g('vb-zoek'), res = g('vb-zoek-res');
+    inp.oninput = function () {
+      var q = inp.value.trim().toLowerCase();
+      if (q.length < 2) { res.classList.remove('open'); return; }
+      if (!medewerkers.length) { res.innerHTML = '<button type="button" disabled><small>Shiftbase-lijst wordt nog geladen…</small></button>'; res.classList.add('open'); return; }
+      var hits = medewerkers.filter(function (m) { return m.naam.toLowerCase().indexOf(q) > -1 || (m.email || '').toLowerCase().indexOf(q) > -1; }).slice(0, 12);
+      res.innerHTML = hits.length ? hits.map(function (m) { return '<button type="button" data-id="' + esc(m.id) + '"><strong>' + esc(m.naam) + '</strong><small>' + esc(m.winkelNaam || '-') + ' · ' + esc(m.email || '(geen e-mail)') + '</small></button>'; }).join('')
+        : '<button type="button" disabled><small>Geen medewerker gevonden — vul handmatig in</small></button>';
+      res.classList.add('open');
+      res.querySelectorAll('button[data-id]').forEach(function (b) { b.onclick = function () { vbKies(medewerkers.find(function (m) { return m.id === b.getAttribute('data-id'); })); }; });
+    };
+    inp.onblur = function () { setTimeout(function () { res.classList.remove('open'); }, 180); };
+  })();
+  function vbKies(m) {
+    if (!m) return;
+    g('vb-naam').value = m.naam || ''; g('vb-email').value = m.email || '';
+    var bv = m.winkelBv || '';
+    if (!bv && m.winkelNaam) { var wn = m.winkelNaam.toLowerCase(); Object.keys(vbWinkelBv).forEach(function (w) { if (!bv && (wn.indexOf(w.toLowerCase()) > -1 || w.toLowerCase().indexOf(wn) > -1)) bv = vbWinkelBv[w]; }); }
+    if (bv) g('vb-bv').value = bv;
+    g('vb-zoek').value = ''; g('vb-zoek-res').classList.remove('open');
+    if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+    else if (!bv && m.winkelNaam) toast('BV niet herkend voor winkel ' + m.winkelNaam + ' — kies zelf de BV', 'err');
+    vbHervulTpl();
+  }
+  function vbLees() {
+    return { naam: g('vb-naam').value.trim(), email: g('vb-email').value.trim(), bv: g('vb-bv').value.trim(), categorie: g('vb-cat').value.trim() || 'Personeelszaken', onderwerp: g('vb-subj').value.trim(), tekst: g('vb-tekst').value, metPdf: g('vb-pdf').checked };
+  }
+  window.vbVerstuur = async function () {
+    var p = vbLees();
+    if (!p.naam || !p.email) { toast('Vul naam en e-mail in', 'err'); return; }
+    if (!p.tekst.trim()) { toast('De brief is nog leeg', 'err'); return; }
+    if (!p.onderwerp) { toast('Vul een onderwerp in', 'err'); return; }
+    var b = g('vb-sbtn'); b.disabled = true; g('vb-slbl').textContent = 'Versturen…';
+    var r = await api('/api/brief-mail', p);
+    b.disabled = false; g('vb-slbl').textContent = 'Verstuur brief';
+    if (r.success) { toast(r.bericht, 'ok'); closeVbModal(); laadBrieven(); if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  window.vbKopieer = function () {
+    var txt = 'Onderwerp: ' + g('vb-subj').value + '\n\nBeste ' + g('vb-naam').value + ',\n\n' + g('vb-tekst').value + '\n\nMet vriendelijke groet,\n' + vbAfzender + '\n' + (g('vb-bv').value.trim() || 'SLA');
+    navigator.clipboard.writeText(txt).then(function () { toast('Gekopieerd', 'ok'); });
+  };
+  // PDF zoals die als bijlage meegaat, zonder te versturen (downloaden)
+  window.vbPdf = async function () {
+    var p = vbLees();
+    if (!p.naam) { toast('Vul eerst de naam in', 'err'); return; }
+    if (!p.tekst.trim()) { toast('De brief is nog leeg', 'err'); return; }
+    toast('PDF maken…', 'ok');
+    var r = await api('/api/brief-mail', Object.assign(p, { alleenPdf: true }));
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    var bin = atob(r.pdf), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
+    var a = document.createElement('a'); a.href = url; a.download = r.bestandsnaam || 'Brief.pdf'; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  };
+  function vbAlineas(txt) {
+    var out = '';
+    String(txt || '').replace(/\r/g, '').split(/\n{2,}/).forEach(function (b) {
+      b = b.trim(); if (!b) return;
+      var regels = b.split('\n'), isLijst = regels.every(function (r) { return /^\s*-\s+/.test(r) || !r.trim(); });
+      if (isLijst) { out += '<ul>'; regels.forEach(function (r) { r = r.replace(/^\s*-\s+/, '').trim(); if (r) out += '<li>' + esc(r) + '</li>'; }); out += '</ul>'; }
+      else out += '<p>' + regels.map(esc).join('<br>') + '</p>';
+    });
+    return out;
+  }
+  // Printbare brief (zelfde opmaak als de sommatie-printbrief in Apps Script)
+  function vbOpenPrintBrief(o) {
+    var datum = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }), kleur = o.kleur || '#333d3a';
+    var html = '<!DOCTYPE html><html lang="nl"><head><meta charset="UTF-8"><title>' + esc(o.titel) + ' - ' + esc(o.naam) + '</title><style>' +
+      '@media print{@page{margin:2cm;size:A4}body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}}' +
+      'body{font-family:Arial,sans-serif;font-size:12pt;color:#1a1a1a;padding:30px;max-width:700px;margin:0 auto}p{line-height:1.7;margin:0 0 12px}ul{margin:0 0 12px;padding-left:22px}li{line-height:1.7;margin:0 0 6px}' +
+      'hr{border:none;border-top:2px solid ' + kleur + ';margin:20px 0}.header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:30px}.logo{font-size:22pt;font-weight:700;color:#009f4b;letter-spacing:-1px}.adres{font-size:9pt;color:#888;text-align:right;line-height:1.6}' +
+      '.meta{margin:24px 0;border-left:4px solid ' + kleur + ';padding-left:14px}.meta p{margin:2px 0;font-size:10pt}.badge{display:inline-block;background:' + kleur + ';color:#fff;padding:4px 12px;border-radius:20px;font-size:10pt;font-weight:700;margin-bottom:16px}' +
+      '.footer{margin-top:40px;padding-top:16px;border-top:1px solid #ddd;font-size:9pt;color:#888}.sign{margin-top:32px}.print-btn{position:fixed;bottom:24px;right:24px;background:#009f4b;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:12pt;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}' +
+      '</style></head><body><button class="print-btn no-print" onclick="window.print()">🖨 Afdrukken</button>' +
+      '<div class="header"><div class="logo">SLA</div><div class="adres">SLA HR Team<br>hr@ilovesla.com</div></div><hr>' +
+      '<div class="meta"><p><strong>Datum:</strong> ' + datum + '</p><p><strong>Aan:</strong> ' + esc(o.naam) + '</p>' + (o.bv ? '<p><strong>BV:</strong> ' + esc(o.bv) + '</p>' : '') + '</div>' +
+      '<div class="badge">' + esc(o.titel) + '</div><p><strong>Betreft: ' + esc(o.onderwerp || o.titel) + '</strong></p><p>Beste ' + esc(o.naam) + ',</p>' + o.bodyHtml +
+      '<div class="sign"><p>Met vriendelijke groet,</p><p><strong>' + esc(vbAfzender) + '</strong><br>' + esc(o.bv || 'SLA') + '</p></div>' +
+      '<div class="footer"><p>Kopie van deze brief bewaren in het personeelsdossier.</p></div></body></html>';
+    var win = window.open('', '_blank', 'width=820,height=1000,scrollbars=yes');
+    if (!win) { toast('Pop-up geblokkeerd — sta pop-ups toe voor deze site', 'err'); return; }
+    win.document.write(html); win.document.close(); win.focus();
+    setTimeout(function () { win.print(); }, 600);
+  }
+  window.vbPrint = function () {
+    var p = vbLees();
+    if (!p.naam) { toast('Vul eerst de naam in', 'err'); return; }
+    vbOpenPrintBrief({ titel: p.categorie, onderwerp: p.onderwerp, naam: p.naam, bv: p.bv, bodyHtml: vbAlineas(p.tekst) });
+  };
 
   // ---------- Toast ----------
   function toast(msg, type) { var t = g('toast'); t.textContent = msg; t.className = 'toast ' + (type === 'ok' ? 'tok' : 'terr') + ' show'; setTimeout(function () { t.classList.remove('show'); }, 3400); }

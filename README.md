@@ -3,17 +3,18 @@
 Herbouw van het SLA HR Dashboard (Google Apps Script) als Netlify-app.
 Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend tot een module volledig is overgezet.
 
-## Status: stap 3b — lezen, afvinken, archiveren, loonheffingsmails
+## Status: stap 3c — lezen, afvinken, archiveren, loonheffingsmails, vrije brieven met PDF
 
 | Werkt | Nog in Apps Script |
 |---|---|
-| Google-login (alleen @ilovesla.com + allowlist) | Mails versturen, brieven/PDF's maken |
+| Google-login (alleen @ilovesla.com + allowlist) | Ontslag/aanzegging-, sommatie- en overplaatsingsmails + brieven |
 | Toegangslog + actielog in Supabase (AVG) | Formulierstatus syncen (`syncFormulierStatus`) |
 | Overzicht: werklijst, stats, aanzeg-alerts, open dossiers | Documenten doorsturen naar salarisadministratie |
-| Medewerkersdossier: Shiftbase-zoekveld, contract(type), verlof, alle log-tabs | Waarschuwing, Proeftijd, Vrije brieven, Korting, Beschikbaarheid, Vastloners, Vakantieplanner, Verloop |
+| Medewerkersdossier: Shiftbase-zoekveld, contract(type), verlof, alle log-tabs (incl. Brieven) | Waarschuwing, Proeftijd, Korting, Beschikbaarheid, Vastloners, Vakantieplanner, Verloop |
 | **Vinkjes**: Naar salaris (loonheffing + ontslag), Sommatie verwerkt, Overplaatsing ondertekend | |
 | **Archiveren**: rij naar tab "Archief" (loonheffing, ontslag, sommatie, onboarding) | |
 | **Loonheffing-tab** + mail: uitnodiging en herinnering (NL/EN) via Resend, SLA-huisstijl, persoonlijke upload-link, logging in de sheet (D/E resp. H/I) | Automatische herinneringen (`checkLoonheffingHerinneringen`, 09:00) |
+| **Vrije brieven-tab**: brief in SLA-huisstijl (templates: ontslagname per direct, gemaakte afspraken, mededeling), Shiftbase-zoekveld, mail via Resend met optionele **PDF-brief als bijlage** (pdf-lib, zelfde briefopmaak als de Docs-versie), PDF downloaden, printbrief, logging in tab `Brieven` (A–I) | Drive-archief van verzonden PDF's; sommatie "Aanvullende tekst" |
 
 **De Google Sheets blijven de enige waarheid** zolang Apps Script draait. Vinkjes en archiveren schrijven in exact dezelfde cellen (en kleuren) als Code.gs, dus beide dashboards blijven consistent. Supabase bevat alleen toegang en het actielog (`hr_acties`), geen HR-data.
 
@@ -22,13 +23,14 @@ Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend 
 - **Frontend**: `public/` — één `index.html` + `app.js` + `styles.css`, vanilla JS, SLA-huisstijl
 - **Backend**: `netlify/functions/` — Node (Netlify Functions). Alle secrets blijven server-side.
 - **Auth**: Supabase Auth (Google OAuth) + tabel `hr_toegang` als allowlist, `hr_toegangslog` als audit-log
-- **Data**: Google Sheets (service account, read-only scope), Shiftbase API
+- **Data**: Google Sheets (service account, lees+schrijf), Shiftbase API
+- **Mail/PDF**: Resend (REST) voor mail, `pdf-lib` voor de brief-PDF (puur JS, geen Chromium in de function)
 
 ```
 sla-hr-dashboard/
 ├─ public/                  index.html, app.js, styles.css
 ├─ netlify/functions/
-│  ├─ _lib/                 auth.js, config.js, sheets.js, shiftbase.js, util.js
+│  ├─ _lib/                 auth.js, config.js, sheets.js, shiftbase.js, util.js, mail.js, sjablonen.js, pdf.js
 │  ├─ config.js             GET /api/config      publieke config voor de browser
 │  ├─ ik.js                 GET /api/ik          wie ben ik + toegang (logt 'login')
 │  ├─ overzicht.js          GET /api/overzicht   open dossiers + werklijst
@@ -37,7 +39,9 @@ sla-hr-dashboard/
 │  ├─ toggle.js             POST /api/toggle     {type, rij, naam}  vinkje om in de sheet
 │  ├─ archiveer.js          POST /api/archiveer  {type, rij, naam}  rij naar tab Archief
 │  ├─ loonheffing.js        GET /api/loonheffing alle dossiers + templates
-│  └─ loonheffing-mail.js   POST /api/loonheffing-mail {template,to,naam,deadline,rij,subject,body,preview}
+│  ├─ loonheffing-mail.js   POST /api/loonheffing-mail {template,to,naam,deadline,rij,subject,body,preview}
+│  ├─ brieven.js            GET /api/brieven     verstuurde brieven (tab Brieven) + templates + BV-lijst
+│  └─ brief-mail.js         POST /api/brief-mail {naam,email,bv,categorie,onderwerp,tekst,metPdf | preview | alleenPdf}
 ├─ supabase/migrations/     0001_toegang.sql, 0002_acties.sql, 0003_mails.sql
 ├─ netlify.toml, package.json, .env.example
 ```
@@ -106,9 +110,13 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.1.0 | 15-10-2026 | Stap 1: login, Overzicht, Dossier (lezen) |
 | 0.2.0 | 15-10-2026 | Stap 2: afvinken + archiveren in de sheets, actielog, contracttype |
 | 0.3.0 | 15-10-2026 | Stap 3a/3b: Resend-mail, SLA-sjablonen, Loonheffing-tab met uitnodiging/herinnering |
+| 0.4.0 | 15-10-2026 | Stap 3c: Vrije brieven-tab, PDF-brief via pdf-lib, printbrief, tab Brieven, dossier-sectie Brieven |
 
 ## Mail (Resend)
 Alle mail gaat via Resend vanaf `hr@ilovesla.com`. Eenmalig: Resend → **Domains → Add domain** → `ilovesla.com` → de DNS-records (DKIM/SPF) bij de domeinbeheerder zetten → *Verify*. Zonder verificatie weigert Resend de afzender (het dashboard geeft dan die hint). Elke verzonden mail staat in `hr_mails` (Supabase) en als actie in `hr_acties`.
+
+## Vrije brieven (PDF)
+De PDF wordt in de Netlify Function opgebouwd met `pdf-lib` (Helvetica ≈ Arial, A4, marges 56/56/64/64 pt): logo **SLA** groen, categorie in kapitalen, Datum/Aan/BV, *Betreft*, aanhef, alinea's en lijsten (regels met `- `), groet met `AFZENDER_NAAM` + BV, voettekst. Bestandsnaam `Brief_<Naam>.pdf`, gaat als Resend-bijlage mee (base64). Elke verzonden brief komt in tab **Brieven** van de HR-acties-sheet (kolommen A–I, exact als `vbLogBrief_`); de tab wordt aangemaakt als hij ontbreekt. De PDF wordt (nog) niet in Drive bewaard — "⬇ PDF" in het modal downloadt dezelfde PDF lokaal.
 
 ## Lokaal draaien
 ```bash
@@ -121,11 +129,11 @@ npx netlify dev        # http://localhost:8888
 Allowlist = tabel `hr_toegang` in Supabase (Table Editor). `actief=false` zet iemand uit zonder de regel te verwijderen. Alle opvragen worden gelogd in `hr_toegangslog`; de view `hr_toegangslog_recent` toont de laatste 200.
 
 ## Extra dossier-tabs
-`DOSSIER_EXTRA_TABS` in `netlify/functions/_lib/config.js` — per tab sheet-ID, tabnaam en de kolomindex van naam/e-mail/datum. Zodra Waarschuwing.gs, Proeftijd.gs, VrijeBrief.gs, Korting.gs en Beschikbaarheid.gs zijn aangeleverd worden die hier ingevuld.
+`DOSSIER_EXTRA_TABS` in `netlify/functions/_lib/config.js` — per tab sheet-ID, tabnaam en de kolomindex van naam/e-mail/datum. Zodra Waarschuwing.gs, Proeftijd.gs, Korting.gs en Beschikbaarheid.gs zijn aangeleverd worden die hier ingevuld (Brieven heeft al een eigen sectie).
 
 ## Roadmap
 1. ✅ Shell + login + Overzicht/Dossier (lezen)
 2. ✅ Afvinken + archiveren in de sheets, actielog in Supabase, contracttype uit Shiftbase
-3. 🔄 Mail + brieven: ✅ 3a mailfundament, ✅ 3b loonheffing; 3c Vrije brieven (PDF-pijplijn) → 3d Ontslag/Aanzegging → 3e Sommatie, Overplaatsing, Waarschuwing, Proeftijd
+3. 🔄 Mail + brieven: ✅ 3a mailfundament, ✅ 3b loonheffing, ✅ 3c Vrije brieven (PDF-pijplijn); 3d Ontslag/Aanzegging → 3e Sommatie, Overplaatsing, Waarschuwing, Proeftijd
 4. Signaleringen als Netlify Scheduled Functions; per module de Apps Script-trigger uit
 5. Apps Script uit, oude exec-URL doorverwijzen

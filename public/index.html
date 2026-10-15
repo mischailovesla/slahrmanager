@@ -64,7 +64,7 @@
       <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV / Info</th><th>Einddatum</th><th>Mail verstuurd</th><th>Status</th><th>Herinneringen</th><th>Naar salaris</th><th>Dossier</th></tr></thead><tbody id="ov-body"></tbody></table></div>
     </div>
 
-    <div class="alert grijs"><strong>Afvinken en archiveren</strong> kan hier (Naar salaris, Verwerkt, Ondertekend, 🗑) — dat schrijft in dezelfde Google Sheets als het Apps Script-dashboard, dus beide blijven gelijk. Mails versturen en brieven maken doe je nog in het bestaande dashboard.</div>
+    <div class="alert grijs"><strong>Afvinken en archiveren</strong> kan hier (Naar salaris, Verwerkt, Ondertekend, 🗑) — dat schrijft in dezelfde Google Sheets als het Apps Script-dashboard, dus beide blijven gelijk. Loonheffingsmails en vrije brieven (met PDF) verstuur je hier; de overige mails en brieven nog in het bestaande dashboard.</div>
   </div>
 
   <!-- DOSSIER -->
@@ -103,6 +103,36 @@
       <div class="lay-sub">De upload-link wordt bij versturen automatisch persoonlijk gemaakt (naam voor-ingevuld).</div>
     </div>
     <div class="mf"><button class="btn bd" onclick="lmKopieer()">Kopieer</button><button class="btn bp" id="lm-sbtn" onclick="lmVerstuur()"><span id="lm-slbl">Verstuur mail</span></button></div>
+  </div></div>
+
+  <!-- VRIJE BRIEVEN -->
+  <div class="tc" id="tab-brief">
+    <div class="sec">
+      <div class="sh"><div class="st">✉ Vrije brieven <span class="pill" id="vb-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('vb-body',this.value)"><button class="btn bd bsm" onclick="laadBrieven()">↻</button><button class="btn bp bsm" onclick="openVbModal(null)">+ Nieuwe brief</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Categorie</th><th>Email</th><th>BV</th><th>Onderwerp</th><th>PDF</th><th>Verstuurd op</th><th>Actie</th></tr></thead><tbody id="vb-body"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- Modal vrije brief -->
+  <div class="mo" id="vb-modal"><div class="modal">
+    <div class="mh"><div class="mti">✉ Vrije brief in SLA-huisstijl</div><button class="mc" onclick="closeVbModal()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Zoek in Shiftbase <span style="color:#888;font-weight:400">(vult naam, e-mail en BV in)</span></label>
+        <div class="zoeklijst" style="position:relative"><input type="text" id="vb-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="vb-zoek-res"></div></div></div>
+      <div class="fg"><label>Startpunt (template)</label><div class="tbar" id="vb-tbar"></div></div>
+      <div id="vb-tpl-hint" class="alert grijs" style="display:none;margin:0 0 14px;font-size:.8rem"></div>
+      <div class="fr"><div class="fg"><label>Naam medewerker</label><input type="text" id="vb-naam" placeholder="Voornaam Achternaam" oninput="vbHervulTpl()"></div>
+        <div class="fg"><label>Email</label><input type="email" id="vb-email" placeholder="medewerker@email.com"></div></div>
+      <div class="fr"><div class="fg"><label>BV / Bedrijf</label><input type="text" id="vb-bv" list="vb-bv-list" placeholder="bijv. SLA Ceintuur BV" oninput="vbHervulTpl()"><datalist id="vb-bv-list"></datalist></div>
+        <div class="fg"><label>Datum gebeurtenis <span style="color:#888;font-weight:400">(optioneel, voor de template)</span></label><input type="text" id="vb-datum" placeholder="bijv. maandag 31 augustus 2026" oninput="vbHervulTpl()"></div></div>
+      <div class="fr"><div class="fg"><label>Categorie (kop van mail/brief)</label><input type="text" id="vb-cat" value="Personeelszaken"></div>
+        <div class="fg"><label>Onderwerp</label><input type="text" id="vb-subj" placeholder="Onderwerp van de mail/brief"></div></div>
+      <div class="fg"><label>Brieftekst <span style="color:#888;font-weight:400">(dubbele enter = nieuwe alinea, regels met "- " worden een lijst; aanhef en groet worden automatisch toegevoegd)</span></label>
+        <textarea id="vb-tekst" rows="14" placeholder="Typ hier je brief..."></textarea></div>
+      <div class="fg"><label class="chk"><input type="checkbox" id="vb-pdf" checked> PDF-brief als bijlage meesturen</label></div>
+    </div>
+    <div class="mf"><button class="btn bd" onclick="vbKopieer()">Kopieer tekst</button><button class="btn bd" onclick="vbPdf()">⬇ PDF</button><button class="btn bd" onclick="vbPrint()">🖨 Printbrief</button><button class="btn bp" id="vb-sbtn" onclick="vbVerstuur()"><span id="vb-slbl">Verstuur brief</span></button></div>
   </div></div>
 
   <!-- Placeholder-tabs voor modules die later komen -->

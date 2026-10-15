@@ -330,4 +330,54 @@ async function getExtraTabs() {
   return res;
 }
 
-module.exports = { getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij };
+// --- Vrije brieven: tab 'Brieven' in de HR-acties-sheet (VrijeBrief.gs v1.2) ----
+// Kolommen A Naam, B Email, C BV, D Categorie, E Onderwerp, F Tekst, G PDF (Ja/Nee),
+// H Verzenddatum, I Status ('Verstuurd', groen). Nieuwste bovenaan, zoals getVrijeBriefData.
+const BRIEF_TAB = 'Brieven';
+const BRIEF_KOP = ['Naam', 'Email', 'BV', 'Categorie', 'Onderwerp', 'Tekst', 'PDF', 'Verzenddatum', 'Status'];
+async function getBrieven() {
+  const id = SHEETS.brieven.id;
+  let data;
+  try { data = await lees(id, q(BRIEF_TAB)); } catch (e) { if (/tabnaam onbekend|Unable to parse range/i.test(e.message)) return []; throw e; }
+  const out = [];
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue;
+    out.push({ rij: i + 1, naam: cel(r, 0), email: cel(r, 1), bv: cel(r, 2), categorie: cel(r, 3), onderwerp: cel(r, 4), tekst: String((r && r[5]) || ''), pdf: cel(r, 6) === 'Ja' ? 'Ja' : 'Nee', verzenddatum: cel(r, 7), status: cel(r, 8) });
+  }
+  return out.reverse();
+}
+// Tab 'Brieven' aanmaken als die ontbreekt (initBriefSheet in Apps Script); geeft tab-properties terug
+async function zorgBrievenTab() {
+  const id = SHEETS.brieven.id;
+  let tab = (await tabNamen(id)).find(s => s.title === BRIEF_TAB);
+  if (tab) return tab;
+  const r = await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{ addSheet: { properties: { title: BRIEF_TAB, gridProperties: { frozenRowCount: 1 } } } }] });
+  tab = r.replies[0].addSheet.properties;
+  _meta.delete(id);
+  await gapi(encodeURIComponent(id) + '/values/' + encodeURIComponent(q(BRIEF_TAB) + '!A1') + '?valueInputOption=USER_ENTERED', 'PUT',
+    { range: q(BRIEF_TAB) + '!A1', majorDimension: 'ROWS', values: [BRIEF_KOP] });
+  await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{
+    repeatCell: { range: { sheetId: tab.sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: BRIEF_KOP.length },
+      cell: { userEnteredFormat: { backgroundColor: hexNaarRgb('#333d3a'), textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } } } },
+      fields: 'userEnteredFormat(backgroundColor,textFormat)' } }] });
+  return tab;
+}
+// Brief loggen: eerste lege rij na de laatste gevulde naam (vbLaatsteDataRij_ + 1), status groen
+async function logBrief(b, stempelTekst) {
+  const id = SHEETS.brieven.id;
+  const tab = await zorgBrievenTab();
+  vergeetCache(id);
+  const data = await lees(id, q(BRIEF_TAB), 1);
+  let rij = 2;
+  for (let j = data.length - 1; j >= 0; j--) if (cel(data[j], 0)) { rij = j + 2; break; }
+  const range = q(BRIEF_TAB) + '!A' + rij + ':I' + rij;
+  await gapi(encodeURIComponent(id) + '/values/' + encodeURIComponent(range) + '?valueInputOption=USER_ENTERED', 'PUT',
+    { range, majorDimension: 'ROWS', values: [[b.naam, b.email, b.bv || '', b.categorie, b.onderwerp, String(b.tekst || ''), b.metPdf ? 'Ja' : 'Nee', stempelTekst, 'Verstuurd']] });
+  await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{
+    repeatCell: { range: { sheetId: tab.sheetId, startRowIndex: rij - 1, endRowIndex: rij, startColumnIndex: 8, endColumnIndex: 9 },
+      cell: { userEnteredFormat: { backgroundColor: hexNaarRgb(KLEUR.groen) } }, fields: 'userEnteredFormat.backgroundColor' } }] });
+  vergeetCache(id);
+  return rij;
+}
+
+module.exports = { getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij };

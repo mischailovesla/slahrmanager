@@ -23,8 +23,8 @@ exports.handler = beveiligd('dossier', async (event) => {
   const nn = normNaam(naam);
   const match = r => (email && String(r.email || '').toLowerCase() === email) || (nn && normNaam(r.naam) === nn);
 
-  const [loon, ontslag, som, opl, onb, extra] = await Promise.all([
-    S.getLoonheffing(), S.getOntslag(), S.getSommatie(), S.getOverplaatsing(), S.getOnboarding(), S.getExtraTabs()
+  const [loon, ontslag, som, opl, onb, extra, brieven] = await Promise.all([
+    S.getLoonheffing(), S.getOntslag(), S.getSommatie(), S.getOverplaatsing(), S.getOnboarding(), S.getExtraTabs(), S.getBrieven().catch(() => [])
   ]);
 
   const secties = [
@@ -32,7 +32,8 @@ exports.handler = beveiligd('dossier', async (event) => {
     { key: 'onboarding', label: 'Onboarding (historie)', rijen: onb.filter(match) },
     { key: 'overplaatsing', label: 'Overplaatsing / standplaats', rijen: opl.filter(match) },
     { key: 'sommatie', label: 'Sommaties', rijen: som.filter(match) },
-    { key: 'ontslag', label: 'Ontslag & aanzegging', rijen: ontslag.filter(match) }
+    { key: 'ontslag', label: 'Ontslag & aanzegging', rijen: ontslag.filter(match) },
+    { key: 'brief', label: 'Vrije brieven', rijen: brieven.filter(match) }
   ].concat(extra.map(t => ({ key: 'extra', label: t.label, rijen: t.rijen.filter(match), fout: t.fout })));
 
   // Contractstatus + aanzeg-alert (42 dagen) uit Shiftbase
