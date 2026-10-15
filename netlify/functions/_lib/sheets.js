@@ -2,23 +2,37 @@
 // Google Sheets lezen via service account (ALLEEN LEZEN in stap 1).
 // Apps Script blijft de enige die schrijft, zodat beide systemen
 // veilig naast elkaar kunnen draaien.
+// Rechtstreeks op de Sheets REST API met google-auth-library
+// (het volledige googleapis-pakket is te zwaar voor Netlify Functions).
 // ============================================================
-const { google } = require('googleapis');
+const { JWT } = require('google-auth-library');
 const { SHEETS } = require('./config');
 const { normNaam, toDownloadUrl, vindKolommen } = require('./util');
 
-let _sheets = null;
-function client() {
-  if (_sheets) return _sheets;
+const API = 'https://sheets.googleapis.com/v4/spreadsheets/';
+let _jwt = null;
+function jwt() {
+  if (_jwt) return _jwt;
   const b64 = process.env.GOOGLE_SA_JSON_B64;
   if (!b64) throw new Error('GOOGLE_SA_JSON_B64 ontbreekt (service account)');
-  const creds = JSON.parse(Buffer.from(b64, 'base64').toString('utf8'));
-  const auth = new google.auth.GoogleAuth({
-    credentials: creds,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly']
-  });
-  _sheets = google.sheets({ version: 'v4', auth });
-  return _sheets;
+  let creds;
+  try { creds = JSON.parse(Buffer.from(b64, 'base64').toString('utf8')); }
+  catch (e) { throw new Error('GOOGLE_SA_JSON_B64 is geen geldige base64-JSON: ' + e.message); }
+  if (!creds.client_email || !creds.private_key) throw new Error('Service-account-JSON mist client_email/private_key');
+  _jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'] });
+  return _jwt;
+}
+async function gapi(pad) {
+  const { token } = await jwt().getAccessToken();
+  const r = await fetch(API + pad, { headers: { Authorization: 'Bearer ' + token } });
+  if (!r.ok) {
+    let msg = 'HTTP ' + r.status;
+    try { const j = await r.json(); msg += ' - ' + ((j.error && j.error.message) || JSON.stringify(j)); } catch (e) { /* noop */ }
+    if (r.status === 403) msg += ' (is de sheet gedeeld met het service account als Lezer?)';
+    if (r.status === 404) msg += ' (sheet-ID of tabnaam onbekend)';
+    throw new Error('Sheets API: ' + msg);
+  }
+  return r.json();
 }
 
 // Eenvoudige in-memory cache per function-instance (60 s)
@@ -27,10 +41,8 @@ async function lees(spreadsheetId, range, ttlMs) {
   const key = spreadsheetId + '|' + range;
   const hit = _cache.get(key);
   if (hit && hit.t > Date.now()) return hit.v;
-  const r = await client().spreadsheets.values.get({
-    spreadsheetId, range, valueRenderOption: 'FORMATTED_VALUE', dateTimeRenderOption: 'FORMATTED_STRING'
-  });
-  const v = (r.data && r.data.values) || [];
+  const r = await gapi(encodeURIComponent(spreadsheetId) + '/values/' + encodeURIComponent(range) + '?valueRenderOption=FORMATTED_VALUE&dateTimeRenderOption=FORMATTED_STRING');
+  const v = (r && r.values) || [];
   _cache.set(key, { v, t: Date.now() + (ttlMs || 60000) });
   return v;
 }
@@ -39,8 +51,8 @@ async function lees(spreadsheetId, range, ttlMs) {
 const _meta = new Map();
 async function tabNamen(spreadsheetId) {
   if (_meta.has(spreadsheetId)) return _meta.get(spreadsheetId);
-  const r = await client().spreadsheets.get({ spreadsheetId, fields: 'sheets(properties(sheetId,title,index))' });
-  const tabs = (r.data.sheets || []).map(s => s.properties).sort((a, b) => a.index - b.index);
+  const r = await gapi(encodeURIComponent(spreadsheetId) + '?fields=' + encodeURIComponent('sheets(properties(sheetId,title,index))'));
+  const tabs = (r.sheets || []).map(s => s.properties).sort((a, b) => a.index - b.index);
   _meta.set(spreadsheetId, tabs);
   return tabs;
 }
