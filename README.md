@@ -3,21 +3,22 @@
 Herbouw van het SLA HR Dashboard (Google Apps Script) als Netlify-app.
 Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend tot een module volledig is overgezet.
 
-## Status: stap 3 afgerond — alle mails en brieven draaien in Netlify
+## Status: stap 4 — alle mails, brieven én automatische checks in Netlify (checks in droogloop tot de cutover)
 
 | Werkt | Nog in Apps Script |
 |---|---|
-| Google-login (alleen @ilovesla.com + allowlist) | Automatische herinneringen en signaleringen (triggers) |
+| Google-login (alleen @ilovesla.com + allowlist) | Vakantiepieken, weekendbeschikbaarheid, data-hygiënerapport (losse modules) |
 | Toegangslog + actielog in Supabase (AVG) | Formulierstatus syncen (`syncFormulierStatus`) |
 | Overzicht: werklijst, stats, aanzeg-alerts, open dossiers | Documenten doorsturen naar salarisadministratie |
 | Medewerkersdossier: Shiftbase-zoekveld, contract(type), verlof, alle log-tabs (incl. Brieven) | Waarschuwing, Proeftijd, Korting, Beschikbaarheid, Vastloners, Vakantieplanner, Verloop |
 | **Vinkjes**: Naar salaris (loonheffing + ontslag), Sommatie verwerkt, Overplaatsing ondertekend | |
 | **Archiveren**: rij naar tab "Archief" (loonheffing, ontslag, sommatie, onboarding) | |
-| **Loonheffing-tab** + mail: uitnodiging en herinnering (NL/EN) via Resend, SLA-huisstijl, persoonlijke upload-link, logging in de sheet (D/E resp. H/I) | Automatische herinneringen (`checkLoonheffingHerinneringen`, 09:00) |
+| **Loonheffing-tab** + mail: uitnodiging en herinnering (NL/EN) via Resend, SLA-huisstijl, persoonlijke upload-link, logging in de sheet (D/E resp. H/I) |  |
 | **Vrije brieven-tab**: brief in SLA-huisstijl (templates: ontslagname per direct, gemaakte afspraken, mededeling), Shiftbase-zoekveld, mail via Resend met optionele **PDF-brief als bijlage** (pdf-lib, zelfde briefopmaak als de Docs-versie), PDF downloaden, printbrief, logging in tab `Brieven` (A–I) |  |
-| **Ontslag & aanzegging-tab** + mail: ontslagbevestiging + PDF, herinnering ondertekening, aanzegging NL/EN + PDF. De brieftekst staat in `_lib/brieftemplates.js` (1-op-1 uit de Docs-templates overgenomen) en wordt met pdf-lib als PDF opgebouwd. Aanzeg-knop in de 42-dagen-alert, aanzegplicht-check (30 dagen) in het modal | Automatische herinneringen (`checkOntslagHerinneringen`), `syncOntslagFormulieren`, Drive-archief van brieven |
+| **Ontslag & aanzegging-tab** + mail: ontslagbevestiging + PDF, herinnering ondertekening, aanzegging NL/EN + PDF. De brieftekst staat in `_lib/brieftemplates.js` (1-op-1 uit de Docs-templates overgenomen) en wordt met pdf-lib als PDF opgebouwd. Aanzeg-knop in de 42-dagen-alert, aanzegplicht-check (30 dagen) in het modal | Drive-archief van brieven |
 | **Sommaties-tab** + modal: oproepbrief, 1e/2e/finale sommatie, ontslag op staande voet — mail in huisstijl (kleur per type), aanvullende tekst (kolom J), printbare aangetekende brief, logging A–H met kleur per type | Drive-archief |
 | **Overplaatsing-tab** + modal: overplaatsing (art. 6:159 BW) of standplaatswijziging (art. 7:613 BW, automatisch bepaald op BV), NL/EN, PDF-brief uit `brieftemplates.js`, logging tab Overplaatsing A–L + P | |
+| **Signaleringen-tab** + 6 scheduled functions: formulierstatus syncen (4-uurlijks), loonheffing- en ontslagherinneringen (09:00/09:15), nieuwe medewerkers (09:45), aanzegtermijnen (09:50), stille afwezigen (ma 10:00). **Droogloop** tot `SIGNALERINGEN_ACTIEF=1`; elke run gelogd in `hr_signaleringen` | |
 
 **De Google Sheets blijven de enige waarheid** zolang Apps Script draait. Vinkjes en archiveren schrijven in exact dezelfde cellen (en kleuren) als Code.gs, dus beide dashboards blijven consistent. Supabase bevat alleen toegang en het actielog (`hr_acties`), geen HR-data.
 
@@ -33,7 +34,7 @@ Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend 
 sla-hr-dashboard/
 ├─ public/                  index.html, app.js, styles.css
 ├─ netlify/functions/
-│  ├─ _lib/                 auth.js, config.js, sheets.js, shiftbase.js, util.js, mail.js, sjablonen.js, pdf.js, brieftemplates.js
+│  ├─ _lib/                 auth.js, config.js, sheets.js, shiftbase.js, util.js, mail.js, sjablonen.js, pdf.js, brieftemplates.js, signaleringen.js
 │  ├─ config.js             GET /api/config      publieke config voor de browser
 │  ├─ ik.js                 GET /api/ik          wie ben ik + toegang (logt 'login')
 │  ├─ overzicht.js          GET /api/overzicht   open dossiers + werklijst
@@ -49,9 +50,11 @@ sla-hr-dashboard/
 │  ├─ sommatie-mail.js      POST /api/sommatie-mail {type,naam,email,bv,storeManager,datumAfwezig,datumAfspraak,eigenTekst | preview}
 │  ├─ overplaatsing.js      GET /api/overplaatsing alle overplaatsingen + winkellijst
 │  ├─ overplaatsing-mail.js POST /api/overplaatsing-mail {naam,to,adres,huidigeWinkel,nieuweWinkel,datumIndienst,ingangsdatum,functie,taal,rij | preview | alleenPdf}
+│  ├─ signalering.js        GET/POST /api/signalering  status + laatste runs / check handmatig draaien (droog of echt)
+│  ├─ sched-*.js            6 scheduled functions (cron in UTC), roepen _lib/signaleringen.js aan
 │  ├─ brieven.js            GET /api/brieven     verstuurde brieven (tab Brieven) + templates + BV-lijst
 │  └─ brief-mail.js         POST /api/brief-mail {naam,email,bv,categorie,onderwerp,tekst,metPdf | preview | alleenPdf}
-├─ supabase/migrations/     0001_toegang.sql, 0002_acties.sql, 0003_mails.sql
+├─ supabase/migrations/     0001_toegang.sql, 0002_acties.sql, 0003_mails.sql, 0004_signaleringen.sql
 ├─ netlify.toml, package.json, .env.example
 ```
 
@@ -68,7 +71,7 @@ git push -u origin main
 
 ### 2. Supabase (nieuw project, alleen HR)
 1. Nieuw project aanmaken op supabase.com → regio **eu-central-1 (Frankfurt)**.
-2. **SQL Editor** → plak `supabase/migrations/0001_toegang.sql` → Run. Controleer de seed-e-mails in `hr_toegang`. Daarna `0002_acties.sql` en `0003_mails.sql` → Run.
+2. **SQL Editor** → plak `supabase/migrations/0001_toegang.sql` → Run. Controleer de seed-e-mails in `hr_toegang`. Daarna `0002_acties.sql`, `0003_mails.sql` en `0004_signaleringen.sql` → Run.
 3. **Authentication → Providers → Google** aanzetten. Je hebt een Google OAuth Client nodig:
    - Google Cloud Console → APIs & Services → Credentials → *Create OAuth client ID* (Web application)
    - Authorized redirect URI: `https://<project-ref>.supabase.co/auth/v1/callback`
@@ -124,6 +127,7 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.5.1 | 16-10-2026 | Shiftbase-zoekveld in het ontslag- en loonheffingsmodal (vult naam, e-mail, BV, adres, einddatum) |
 | 0.5.2 | 16-10-2026 | Handtekening (i.o. Jop van de Graaf) in de ontslagbevestiging-PDF: `_lib/assets/handtekening_io_jop.png`, meegebundeld via `included_files` |
 | 0.6.0 | 16-10-2026 | Stap 3e: Sommaties-tab (mail, printbrief, aanvullende tekst) en Overplaatsing-tab (mail + PDF NL/EN, standplaats vs. overplaatsing) |
+| 0.7.0 | 16-10-2026 | Stap 4: 6 scheduled functions + Signaleringen-tab, droogloop-schakelaar `SIGNALERINGEN_ACTIEF`, log `hr_signaleringen` |
 
 ## Mail (Resend)
 Alle mail gaat via Resend vanaf `hr@ilovesla.com`. Eenmalig: Resend → **Domains → Add domain** → `ilovesla.com` → de DNS-records (DKIM/SPF) bij de domeinbeheerder zetten → *Verify*. Zonder verificatie weigert Resend de afzender (het dashboard geeft dan die hint). Elke verzonden mail staat in `hr_mails` (Supabase) en als actie in `hr_acties`.
@@ -137,6 +141,16 @@ De drie brieven (ontslagbevestiging, aanzegging NL, aanzegging EN) staan als tek
 ## Sommaties & overplaatsing
 **Sommatie**: mailtekst per type in `sjablonen.js` (`sommatieHtml/Plain`, 1-op-1 uit Code.gs); de aanvullende tekst komt als extra alinea vóór de groet en in kolom J. De aangetekende printbrief wordt in de browser opgebouwd (knop *Brief* / *Printbrief*). Sheet: nieuwe rij A–H, status 'Verstuurd' met kleur per type (groen / `#fff2cc` 2e / `#fce5cd` finale / `#f4cccc` OoSV).
 **Overplaatsing**: zelfde BV voor beide winkels → standplaatswijziging, anders overplaatsing; de vier brieven staan in `brieftemplates.js` (`OVERPL_NL/EN`, `STANDPL_NL/EN`, uit de Docs-templates); winkeladressen in `WINKEL_BV_MAP`. Sheet: tab Overplaatsing A–L + P (type); bij een bestaande rij alleen K/L.
+
+## Automatische checks (stap 4) en de cutover
+De zes checks uit `instaleerTriggers()` draaien als Netlify Scheduled Functions (`netlify/functions/sched-*.js`, cron in **UTC**: 07:00 UTC = 09:00 zomertijd / 08:00 wintertijd). Logica staat in `_lib/signaleringen.js`, 1-op-1 uit Code.gs/Shiftbase.gs v9.4 (incl. cooldown 3 dagen, `SIGNALERING_NEGEREN_NAMEN`, indiensttredingsregel bij stille afwezigen).
+
+**Droogloop**: zolang `SIGNALERINGEN_ACTIEF` niet `1` is, mailen en schrijven de checks niets — ze loggen alleen wat ze gedaan zouden hebben (tab Signaleringen → Laatste runs, en per check *Droogloop nu*). Zo kun je een week meekijken of Netlify hetzelfde vindt als Apps Script.
+
+**Cutover (één moment, ±5 min):**
+1. Apps Script-editor → Triggers → alle triggers van `syncFormulierStatus`, `checkLoonheffingHerinneringen`, `checkOntslagHerinneringen`, `checkNieuweMedewerkers`, `checkAanzegtermijnen`, `checkStilleAfwezigen` verwijderen (laat `checkVakantiepieken`, `checkWeekendBeschikbaarheid`, `stuurDataHygieneRapport` staan — die modules zijn nog niet over).
+2. Netlify → Environment variables → `SIGNALERINGEN_ACTIEF` = `1` → redeploy.
+3. Tab Signaleringen toont "ACTIEF"; de eerstvolgende run om 09:00 mailt echt. Terugdraaien = env var weghalen + triggers opnieuw installeren.
 
 ## Lokaal draaien
 ```bash
@@ -155,5 +169,5 @@ Allowlist = tabel `hr_toegang` in Supabase (Table Editor). `actief=false` zet ie
 1. ✅ Shell + login + Overzicht/Dossier (lezen)
 2. ✅ Afvinken + archiveren in de sheets, actielog in Supabase, contracttype uit Shiftbase
 3. ✅ Mail + brieven: 3a mailfundament, 3b loonheffing, 3c vrije brieven, 3d ontslag/aanzegging, 3e sommatie + overplaatsing. (Waarschuwing, Proeftijd, Korting, Beschikbaarheid: aparte modules, nog in Apps Script)
-4. Signaleringen als Netlify Scheduled Functions; per module de Apps Script-trigger uit
+4. ✅ Signaleringen als Netlify Scheduled Functions (droogloop) → cutover: Apps Script-triggers uit + `SIGNALERINGEN_ACTIEF=1`
 5. Apps Script uit, oude exec-URL doorverwijzen

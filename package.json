@@ -1,6 +1,6 @@
 {
   "name": "sla-hr-dashboard",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "SLA HR Dashboard - Netlify versie (login, Overzicht, Dossier, vinkjes/archiveren, loonheffingsmails, vrije brieven met PDF)",
   "scripts": {
@@ -8,6 +8,7 @@
     "check": "node --check netlify/functions/*.js && node --check netlify/functions/_lib/*.js && node --check public/app.js"
   },
   "dependencies": {
+    "@netlify/functions": "^2.8.2",
     "@supabase/supabase-js": "^2.45.0",
     "google-auth-library": "^9.14.0",
     "pdf-lib": "^1.17.1"

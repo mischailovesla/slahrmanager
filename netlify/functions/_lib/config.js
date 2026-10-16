@@ -25,6 +25,21 @@ module.exports = {
   AANZEG_VENSTER_DAGEN: 42,
   COOLDOWN_DAGEN: 3,
 
+  // Signaleringen (uit Shiftbase.gs v9.4) — stap 4
+  SIGNALERING_ONTVANGERS: {
+    nieuweMedewerkers: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    aanzegtermijn: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    stilleAfwezigen: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
+  },
+  SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
+  SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam
+    'Hannah Frederique Maria Vos'
+  ],
+  STIL_VENSTER_DAGEN: 28,          // "stil" = geen dienst in de laatste 4 weken
+  STIL_LOOKBACK_DAGEN: 84,         // hoever terugkijken voor "laatste dienst"
+  STIL_TOEKOMST_DAGEN: 14,         // wie binnenkort is ingeroosterd, is niet stil
+  STIL_UITGESLOTEN_WINKELS: ['HQ'],
+
   // Mail / huisstijl (uit Code.gs)
   AFZENDER_TEAM: 'SLA HR Team',
   AFZENDER_NAAM: 'Jop van de Graaf',

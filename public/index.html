@@ -32,6 +32,7 @@
 <div class="nav" id="nav">
   <button class="active" data-tab="overview">Overzicht</button>
   <button data-tab="dossier">Medewerkers</button>
+  <button data-tab="signalering">Signaleringen</button>
   <!-- lifecycle-groepen worden door app.js opgebouwd -->
   <div class="spacer"></div>
 </div>
@@ -223,6 +224,24 @@
     </div>
     <div class="mf"><button class="btn bd" onclick="vbKopieer()">Kopieer tekst</button><button class="btn bd" onclick="vbPdf()">⬇ PDF</button><button class="btn bd" onclick="vbPrint()">🖨 Printbrief</button><button class="btn bp" id="vb-sbtn" onclick="vbVerstuur()"><span id="vb-slbl">Verstuur brief</span></button></div>
   </div></div>
+
+  <!-- SIGNALERINGEN (stap 4) -->
+  <div class="tc" id="tab-signalering">
+    <div class="sec">
+      <div class="sh"><div class="st">Automatische checks <span class="pill" id="sg-status">-</span></div>
+        <div class="hr2"><button class="btn bd bsm" onclick="laadSignaleringen()">↻</button></div></div>
+      <div id="sg-uitleg" class="alert grijs" style="margin:16px 24px"></div>
+      <div id="sg-cards" style="padding:0 24px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px"></div>
+    </div>
+    <div class="sec" id="sg-rapport-sec" style="display:none">
+      <div class="sh"><div class="st" id="sg-rapport-titel">Resultaat</div></div>
+      <div id="sg-rapport" style="padding:14px 24px;font-size:.85rem"></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Laatste runs</div></div>
+      <div class="tw"><table><thead><tr><th>Tijdstip</th><th>Check</th><th>Bron</th><th>Modus</th><th>Gevonden</th><th>Verstuurd</th><th>Fouten</th></tr></thead><tbody id="sg-body"></tbody></table></div>
+    </div>
+  </div>
 
   <!-- Placeholder-tabs voor modules die later komen -->
   <div class="tc" id="tab-binnenkort">

@@ -1,0 +1,255 @@
+// ============================================================
+// Automatische checks (stap 4) — port van de Apps Script-triggers:
+//   syncFormulierStatus (4-uurlijks), checkLoonheffingHerinneringen (09:00),
+//   checkOntslagHerinneringen (09:15), checkNieuweMedewerkers (09:45),
+//   checkAanzegtermijnen (09:50), checkStilleAfwezigen (ma 10:00).
+// Elke check geeft een rapport terug: { naam, gevonden:[...], verstuurd:[...], droog, fouten:[] }.
+// DROOGLOOP: zolang env SIGNALERINGEN_ACTIEF niet '1' is wordt er niets gemaild
+// en niets in de sheets geschreven — alleen gerapporteerd. Zo kun je de Netlify-
+// versie naast Apps Script laten meedraaien en daarna in één keer omschakelen
+// (env var aan + Apps Script-triggers uit), zonder dubbele mails.
+// ============================================================
+const S = require('./sheets');
+const SB = require('./shiftbase');
+const T = require('./sjablonen');
+const M = require('./mail');
+const C = require('./config');
+const { normNaam, parseNLDatum, dagenTot } = require('./util');
+const { admin } = require('./auth');
+
+const actief = () => String(process.env.SIGNALERINGEN_ACTIEF || '').trim() === '1';
+function stempel() {
+  const f = new Intl.DateTimeFormat('nl-NL', { timeZone: 'Europe/Amsterdam', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).formatToParts(new Date());
+  const g = k => (f.find(x => x.type === k) || {}).value || '';
+  return g('day') + '-' + g('month') + '-' + g('year') + ' ' + g('hour') + ':' + g('minute');
+}
+const vandaag0 = () => { const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })); d.setHours(0, 0, 0, 0); return d; };
+const isoDag = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+const plusDagen = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const dagenSinds = (datumTekst, vandaag) => { const d = parseNLDatum(datumTekst); return d ? Math.floor((vandaag - d) / 864e5) : null; };
+const ontvangers = k => (C.SIGNALERING_ONTVANGERS[k] || C.HR_EMAIL).split(',').map(s => s.trim()).filter(Boolean);
+const F = 'font-family:Arial,sans-serif;';
+const esc = T.esc;
+
+// Verzendhulp: in droogloop alleen registreren
+async function mailOfDroog(rap, opts, doen) {
+  if (!actief() || rap.droog) { rap.verstuurd.push(Object.assign({ droog: true }, opts.kort)); return; }
+  try {
+    const id = await M.verstuur({ to: opts.to, subject: opts.subject, text: opts.text, html: opts.html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: rap.naam }] });
+    if (doen) await doen();
+    rap.verstuurd.push(Object.assign({ resendId: id }, opts.kort));
+    await M.logMail({ door: 'signalering', bron: 'signalering', type: rap.naam, naar: Array.isArray(opts.to) ? opts.to.join(',') : opts.to, naam: opts.kort.naam || '', onderwerp: opts.subject, taal: opts.kort.taal || 'NL', rij: opts.kort.rij || 0, resend_id: id });
+  } catch (e) { rap.fouten.push((opts.kort.naam || opts.subject) + ': ' + e.message); }
+}
+
+// ---- 1. Formulierstatus syncen (syncLoonheffingFormulieren / syncOntslagFormulieren) ----
+async function syncFormulieren(droog) {
+  const rap = { naam: 'sync-formulieren', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const [loon, ontslag] = await Promise.all([S.getLoonheffing(), S.getOntslag()]);
+  for (const r of loon) if (r.ontvangen !== 'Ja' && r.docUrl) {
+    rap.gevonden.push({ bron: 'loonheffing', naam: r.naam, rij: r.rij });
+    if (!rap.droog) { try { await S.zetCel(C.SHEETS.loonheffing.id, null, r.rij, 6, 'Ja', S.KLEUR.groen); } catch (e) { rap.fouten.push(r.naam + ': ' + e.message); } }
+  }
+  for (const r of ontslag) if (r.ondertekend !== 'Ja' && r.docUrl) {
+    rap.gevonden.push({ bron: 'ontslag', naam: r.naam, rij: r.rij });
+    if (!rap.droog) { try { await S.zetCel(C.SHEETS.ontslag.id, null, r.rij, 10, 'Ja', S.KLEUR.groen); } catch (e) { rap.fouten.push(r.naam + ': ' + e.message); } }
+  }
+  return rap;
+}
+
+// ---- 2. Loonheffing-herinneringen (checkLoonheffingHerinneringen) ----
+async function loonHerinneringen(droog) {
+  const rap = { naam: 'loonheffing-herinneringen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const vandaag = vandaag0(), id = C.SHEETS.loonheffing.id;
+  for (const r of await S.getLoonheffing()) {
+    if (r.ontvangen === 'Ja' || !r.email || r.email.indexOf('@') === -1 || !r.deadline) continue;
+    const naDeadline = dagenSinds(r.deadline, vandaag);
+    if (naDeadline === null || naDeadline < 0) continue;
+    const sindsLaatste = dagenSinds(r.herinnering, vandaag);
+    if (r.herinnering && sindsLaatste !== null && sindsLaatste < C.COOLDOWN_DAGEN) continue;
+    const isEN = r.taal === 'EN';
+    rap.gevonden.push({ naam: r.naam, email: r.email, deadline: r.deadline, rij: r.rij, taal: r.taal, eerder: r.aantalHer });
+    const tpl = T.LOON_TEMPLATES.find(x => x.type === 'herinnering' && x.taal === (isEN ? 'EN' : 'NL'));
+    await mailOfDroog(rap, {
+      to: r.email, subject: tpl.subject, text: T.personaliseerUploadLinks(T.loonPlain('herinnering', r.naam, r.deadline, isEN), r.naam), html: T.loonHtml('herinnering', r.naam, r.deadline, isEN),
+      kort: { naam: r.naam, email: r.email, rij: r.rij, taal: r.taal }
+    }, async () => { await S.zetCel(id, null, r.rij, 8, stempel()); await S.zetCel(id, null, r.rij, 9, String((r.aantalHer || 0) + 1)); });
+  }
+  return rap;
+}
+
+// ---- 3. Ontslag-herinneringen (checkOntslagHerinneringen) ----
+async function ontslagHerinneringen(droog) {
+  const rap = { naam: 'ontslag-herinneringen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const vandaag = vandaag0(), id = C.SHEETS.ontslag.id;
+  for (const r of await S.getOntslag()) {
+    if (r.ondertekend === 'Ja' || !r.email || r.email.indexOf('@') === -1 || !r.verzenddatum) continue;
+    const sindsVerzonden = dagenSinds(r.verzenddatum, vandaag);
+    if (sindsVerzonden === null || sindsVerzonden < C.COOLDOWN_DAGEN) continue;
+    const sindsLaatste = dagenSinds(r.herinnering, vandaag);
+    if (r.herinnering && sindsLaatste !== null && sindsLaatste < C.COOLDOWN_DAGEN) continue;
+    const bv = r.bedrijf || C.BEDRIJFSNAAM;
+    rap.gevonden.push({ naam: r.naam, email: r.email, verzonden: r.verzenddatum, rij: r.rij, eerder: r.aantalHer, type: r.type });
+    await mailOfDroog(rap, {
+      to: r.email, subject: 'Herinnering: ondertekend HR-document nog niet ontvangen',
+      text: 'Beste ' + r.naam + ',\n\nWe hebben het ondertekende HR-document nog niet retour ontvangen. Upload zo spoedig mogelijk via:\n' + T.prefillOntslagUrl(r.naam) + '\n\nMet vriendelijke groet,\n' + C.AFZENDER_NAAM + '\n' + bv,
+      html: T.ontslagHerHtml(r.naam, bv), kort: { naam: r.naam, email: r.email, rij: r.rij }
+    }, async () => { await S.zetCel(id, null, r.rij, 11, stempel()); await S.zetCel(id, null, r.rij, 12, String((r.aantalHer || 0) + 1)); });
+  }
+  return rap;
+}
+
+// ---- 4. Nieuwe medewerkers zonder loonheffingsuitnodiging (checkNieuweMedewerkers v9.4) ----
+function vindNieuweMedewerkers(med, loonEmails, loonNamen, vandaag) {
+  const grens = plusDagen(vandaag, -C.SB_NIEUW_DAGEN);
+  const negeer = {}; (C.SIGNALERING_NEGEREN_NAMEN || []).forEach(n => { const k = normNaam(n); if (k) negeer[k] = true; });
+  const nieuw = [];
+  for (const m of med || []) {
+    const d = parseNLDatum(m.indienst); if (!d || d < grens) continue;
+    const em = String(m.email || '').trim().toLowerCase(), nn = normNaam(m.naam);
+    if (nn && negeer[nn]) continue;
+    if ((em && loonEmails[em]) || (nn && loonNamen[nn])) continue;
+    nieuw.push({ naam: m.naam, email: m.email || '', winkel: m.winkelNaam || '-', start: m.indienst });
+  }
+  return nieuw.sort((a, b) => a.winkel.localeCompare(b.winkel) || a.naam.localeCompare(b.naam));
+}
+function nieuweMedewerkersHtml(nieuw) {
+  const blokken = nieuw.map(p => '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px"><tr><td style="padding:14px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #009f4b"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 4px">' + esc(p.naam) + ' <span style="font-weight:400;color:#888078;font-size:12px">&middot; ' + esc(p.winkel) + ' &middot; start ' + esc(p.start) + '</span></p><p style="' + F + 'font-size:12px;color:#666;margin:0 0 6px">' + esc(p.email || '(geen e-mail in Shiftbase)') + '</p><p style="' + F + 'font-size:11px;color:#888078;margin:0">Nog te doen: <span style="display:inline-block;background:#fdf0e8;color:#9a4a1a;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700">loonheffingsuitnodiging</span></p></td></tr></table>').join('');
+  return T.slaWrap(T.slaHead('#009f4b', 'HR &middot; Nieuwe medewerkers') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">Volgens Shiftbase zijn deze <strong>' + nieuw.length + ' medewerker(s)</strong> recent gestart of starten ze binnenkort, maar hebben nog geen loonheffingsuitnodiging ontvangen:</p>' + blokken + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0"><tr><td style="padding:12px 16px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + F + 'font-size:12px;color:#7a5c00;line-height:1.6">Zonder loonheffingsverklaring v&oacute;&oacute;r de eerste loonrun geldt het anoniementarief (52%). Verstuur de loonheffingsuitnodiging via het HR Dashboard (Instroom &rarr; Loonheffingsverklaring).</td></tr></table><p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch bericht - dagelijkse Shiftbase-check</p></td></tr>' + T.slaFoot());
+}
+async function nieuweMedewerkers(droog) {
+  const rap = { naam: 'nieuwe-medewerkers', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const [med, loon] = await Promise.all([SB.getMedewerkers(true), S.getLoonheffing()]);
+  const loonEmails = {}, loonNamen = {};
+  loon.forEach(r => { const e = r.email.toLowerCase(); if (e) loonEmails[e] = true; const n = normNaam(r.naam); if (n) loonNamen[n] = true; });
+  const nieuw = vindNieuweMedewerkers(med, loonEmails, loonNamen, vandaag0());
+  rap.gevonden = nieuw;
+  if (!nieuw.length) return rap;
+  const plain = 'Hallo,\n\nDeze medewerkers zijn recent gestart (of starten binnenkort) volgens Shiftbase, maar hebben nog geen loonheffingsuitnodiging vanuit het HR Dashboard ontvangen:\n\n' + nieuw.map(p => '- ' + p.naam + ' (' + p.winkel + ', start ' + p.start + ')').join('\n') + '\n\n(Automatisch bericht van het SLA HR systeem - dagelijkse Shiftbase-check)';
+  await mailOfDroog(rap, { to: ontvangers('nieuweMedewerkers'), subject: 'Nieuwe medewerkers gevonden in Shiftbase: ' + nieuw.length + ' zonder loonheffingsuitnodiging', text: plain, html: nieuweMedewerkersHtml(nieuw), kort: { naam: 'HR-team', aantal: nieuw.length } });
+  return rap;
+}
+
+// ---- 5. Aanzegtermijnen (checkAanzegtermijnen) ----
+function vindAflopendeContracten(med, contracts, verzE, verzN, vandaag, venster) {
+  const medById = {}; (med || []).forEach(m => { if (m.id) medById[String(m.id)] = m; });
+  const perUser = {};
+  (contracts || []).forEach(c0 => {
+    const c = (c0 && c0.Contract) || c0 || {}; const uid = String(c.user_id || ''); if (!uid) return;
+    const sd = String(c.startdate || '').trim();
+    if (!perUser[uid] || sd > perUser[uid].sd) perUser[uid] = { sd, ed: String(c.enddate || '').trim() };
+  });
+  const out = [];
+  Object.keys(perUser).forEach(uid => {
+    const m = medById[uid]; if (!m) return;
+    const ed = perUser[uid].ed; if (!ed || ed === '0000-00-00') return;
+    const mm = ed.match(/^(\d{4})-(\d{2})-(\d{2})$/); if (!mm) return;
+    const eind = new Date(+mm[1], +mm[2] - 1, +mm[3]);
+    const dagenTotEinde = Math.round((eind - vandaag) / 864e5);
+    if (dagenTotEinde < 0 || dagenTotEinde > venster) return;
+    const em = String(m.email || '').trim().toLowerCase(), nn = normNaam(m.naam);
+    if ((em && verzE[em]) || (nn && verzN[nn])) return;
+    const deadline = new Date(eind.getTime()); deadline.setMonth(deadline.getMonth() - 1);
+    out.push({ naam: m.naam, email: m.email || '', winkel: m.winkelNaam || '-', einddatum: mm[3] + '-' + mm[2] + '-' + mm[1], dagenTotEinde, dagenTotDeadline: Math.round((deadline - vandaag) / 864e5) });
+  });
+  return out.sort((a, b) => a.dagenTotDeadline - b.dagenTotDeadline);
+}
+function aanzegHtml(lijst) {
+  const blokken = lijst.map(p => {
+    let kleur, st;
+    if (p.dagenTotDeadline < 0) { kleur = '#c0392b'; st = '<strong style="color:#c0392b">DEADLINE ' + (-p.dagenTotDeadline) + ' DAGEN VERSTREKEN</strong> &mdash; pro-rata aanzegvergoeding loopt op: nu ' + (-p.dagenTotDeadline) + '/30 maandloon'; }
+    else if (p.dagenTotDeadline <= 7) { kleur = '#e8824a'; st = '<strong style="color:#9a4a1a">Aanzegdeadline ' + (p.dagenTotDeadline === 0 ? 'VANDAAG' : 'over ' + p.dagenTotDeadline + ' dagen') + '</strong> &mdash; verstuur deze week'; }
+    else { kleur = '#009f4b'; st = 'Aanzegdeadline over ' + p.dagenTotDeadline + ' dagen'; }
+    return '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px"><tr><td style="padding:14px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid ' + kleur + '"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 4px">' + esc(p.naam) + ' <span style="font-weight:400;color:#888078;font-size:12px">&middot; ' + esc(p.winkel) + '</span></p><p style="' + F + 'font-size:12px;color:#666;margin:0 0 6px">Contract eindigt <strong>' + esc(p.einddatum) + '</strong> (over ' + p.dagenTotEinde + ' dagen)</p><p style="' + F + 'font-size:12px;margin:0">' + st + '</p></td></tr></table>';
+  }).join('');
+  return T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Aanzegtermijn-bewaking') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">Deze contracten lopen binnen <strong>' + C.AANZEG_VENSTER_DAGEN + ' dagen</strong> af en er is volgens het HR Dashboard nog <strong>geen aanzegging of ontslagbevestiging verstuurd</strong>:</p>' + blokken + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0"><tr><td style="padding:12px 16px;background:#e6f7ee;border-radius:8px;border-left:4px solid #009f4b;' + F + 'font-size:12px;color:#006b30;line-height:1.6">&#10003; Verstuur de aanzegging via <strong>HR Dashboard &rarr; Uitstroom &rarr; Ontslag &amp; aanzegging &rarr; Aanzegging niet-verlengen + PDF</strong>. Is het contract verlengd? Zet de verlenging in Shiftbase &mdash; dan verdwijnt deze melding vanzelf.</td></tr></table><p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch bericht &mdash; dagelijkse aanzegtermijn-check (art. 7:668 BW)</p></td></tr>' + T.slaFoot());
+}
+async function aanzegtermijnen(droog) {
+  const rap = { naam: 'aanzegtermijnen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const [med, cons, ontslag] = await Promise.all([SB.getMedewerkers(true), SB.sbGet('contracts').then(c => (c && c.data) || c || []), S.getOntslag()]);
+  const verzE = {}, verzN = {};
+  ontslag.forEach(r => { if (String(r.status || '').indexOf('Verzonden') !== 0) return; const e = r.email.toLowerCase(); if (e) verzE[e] = true; const n = normNaam(r.naam); if (n) verzN[n] = true; });
+  const lijst = vindAflopendeContracten(med, cons, verzE, verzN, vandaag0(), C.AANZEG_VENSTER_DAGEN);
+  rap.gevonden = lijst;
+  if (!lijst.length) return rap;
+  const teLaat = lijst.filter(x => x.dagenTotDeadline < 0).length;
+  const subject = teLaat > 0 ? '⚠ Aanzegtermijn: ' + teLaat + ' deadline(s) VERSTREKEN, ' + lijst.length + ' contract(en) lopen af' : 'Aanzegtermijn: ' + lijst.length + ' contract(en) lopen af zonder verstuurde aanzegging';
+  const plain = 'Hallo,\n\nDeze contracten lopen binnen ' + C.AANZEG_VENSTER_DAGEN + ' dagen af en er is volgens het HR Dashboard nog GEEN aanzegging of ontslagbevestiging verstuurd:\n\n' +
+    lijst.map(p => '- ' + p.naam + ' (' + p.winkel + ') - einddatum ' + p.einddatum + ' - ' + (p.dagenTotDeadline < 0 ? 'DEADLINE ' + (-p.dagenTotDeadline) + ' DAGEN VERSTREKEN: pro-rata vergoeding loopt op (' + (-p.dagenTotDeadline) + '/30 maandloon)' : p.dagenTotDeadline === 0 ? 'aanzegdeadline is VANDAAG' : 'aanzegdeadline over ' + p.dagenTotDeadline + ' dagen')).join('\n') +
+    '\n\nVerstuur de aanzegging via HR Dashboard -> Ontslag & aanzegging -> "Aanzegging niet-verlengen + PDF".\nIs het contract verlengd? Zet de verlenging in Shiftbase, dan verdwijnt de melding vanzelf.\n\n(Automatisch bericht - dagelijkse aanzegtermijn-check, art. 7:668 BW)';
+  await mailOfDroog(rap, { to: ontvangers('aanzegtermijn'), subject, text: plain, html: aanzegHtml(lijst), kort: { naam: 'HR-team', aantal: lijst.length, teLaat } });
+  return rap;
+}
+
+// ---- 6. Stille afwezigen (checkStilleAfwezigen, wekelijks) ----
+function bepaalStilleAfwezigen(med, rosters, absentees, vandaag, venster, uitgesloten) {
+  const vandaagIso = isoDag(vandaag), grensIso = isoDag(plusDagen(vandaag, -venster));
+  const uit = {}; (uitgesloten || []).forEach(w => { uit[w] = true; });
+  const laatste = {}, toekomst = {};
+  (rosters || []).forEach(r0 => {
+    const rr = (r0 && r0.Roster) || r0 || {}; if (rr.deleted === true || String(rr.deleted) === '1') return;
+    const uid = String(rr.user_id || ''), dt = String(rr.date || ''); if (!uid || !dt) return;
+    if (dt <= vandaagIso) { if (!laatste[uid] || dt > laatste[uid]) laatste[uid] = dt; } else toekomst[uid] = true;
+  });
+  const verlof = {};
+  (absentees || []).forEach(a0 => {
+    const a = (a0 && a0.Absentee) || a0 || {}; if (String(a.status || '') !== 'Approved') return;
+    const sd = String(a.startdate || ''), ed = String(a.enddate || a.startdate || '');
+    if (sd <= vandaagIso && ed >= grensIso) verlof[String(a.user_id || '')] = true;
+  });
+  const out = [];
+  (med || []).forEach(m => {
+    const w = m.winkelNaam || '(geen winkel)'; if (uit[w]) return;
+    const uid = String(m.id || ''); if (toekomst[uid]) return;
+    const ind = parseNLDatum(m.indienst); if (ind && isoDag(ind) > grensIso) return;   // te kort in dienst (v9.4)
+    const l = laatste[uid] || ''; if (l >= grensIso) return; if (verlof[uid]) return;
+    let dagen = null, label = '';
+    const mm = l.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (mm) { dagen = Math.round((vandaag - new Date(+mm[1], +mm[2] - 1, +mm[3])) / 864e5); label = mm[3] + '-' + mm[2] + '-' + mm[1]; }
+    out.push({ naam: m.naam, email: m.email || '', winkel: w, laatsteDienst: label, dagen, indienst: m.indienst || '' });
+  });
+  return out.sort((a, b) => a.winkel !== b.winkel ? (a.winkel < b.winkel ? -1 : 1) : (b.dagen === null ? 9999 : b.dagen) - (a.dagen === null ? 9999 : a.dagen));
+}
+function stilHtml(lijst, venster, lookback) {
+  let blokken = '', vorige = '', open = false;
+  lijst.forEach(p => {
+    if (p.winkel !== vorige) { if (open) blokken += '</td></tr></table>'; blokken += '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px"><tr><td style="padding:14px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #e8824a"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 8px">' + esc(p.winkel) + '</p>'; vorige = p.winkel; open = true; }
+    blokken += '<p style="' + F + 'font-size:12px;color:#666;margin:0 0 4px">&bull; <strong>' + esc(p.naam) + '</strong> &mdash; ' + (p.laatsteDienst ? 'laatste dienst ' + esc(p.laatsteDienst) + ' <span style="color:#c0392b;font-weight:700">(' + p.dagen + ' dagen geleden)</span>' : '<span style="color:#c0392b;font-weight:700">geen dienst in de laatste ' + lookback + ' dagen</span>' + (p.indienst ? ' <span style="color:#888078">(in dienst sinds ' + esc(p.indienst) + ')</span>' : '')) + '</p>';
+  });
+  if (open) blokken += '</td></tr></table>';
+  return T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Stille afwezigen') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">Deze actieve medewerkers hadden de afgelopen <strong>' + venster + ' dagen</strong> geen enkele ingeroosterde dienst &mdash; zonder goedgekeurd verlof en zonder toekomstige dienst in het rooster:</p>' + blokken + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0"><tr><td style="padding:12px 16px;background:#e6f7ee;border-radius:8px;border-left:4px solid #009f4b;' + F + 'font-size:12px;color:#006b30;line-height:1.6">&#10003; Check bij de store manager wat er speelt. Blijft het stil, dan is de <strong>oproepbrief</strong> in het HR Dashboard (Dossier &rarr; Sommaties) de volgende stap.</td></tr></table><p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch wekelijks bericht &mdash; stille-afwezigen check</p></td></tr>' + T.slaFoot());
+}
+async function stilleAfwezigen(droog) {
+  const rap = { naam: 'stille-afwezigen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const vandaag = vandaag0();
+  const [med, ros, abs] = await Promise.all([
+    SB.getMedewerkers(true),
+    SB.sbGet('rosters?min_date=' + isoDag(plusDagen(vandaag, -C.STIL_LOOKBACK_DAGEN)) + '&max_date=' + isoDag(plusDagen(vandaag, C.STIL_TOEKOMST_DAGEN))).then(r => (r && r.data) || r || []),
+    SB.sbGet('absentees?min_date=' + isoDag(plusDagen(vandaag, -C.STIL_VENSTER_DAGEN)) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || [])
+  ]);
+  const lijst = bepaalStilleAfwezigen(med, ros, abs, vandaag, C.STIL_VENSTER_DAGEN, C.STIL_UITGESLOTEN_WINKELS);
+  rap.gevonden = lijst;
+  if (!lijst.length) return rap;
+  let plain = 'Hallo,\n\nDeze actieve medewerkers hadden de afgelopen ' + C.STIL_VENSTER_DAGEN + ' dagen geen enkele ingeroosterde dienst, zonder goedgekeurd verlof en zonder toekomstige dienst in het rooster:\n', vorige = '';
+  lijst.forEach(p => { if (p.winkel !== vorige) { plain += '\n' + p.winkel + ':\n'; vorige = p.winkel; } plain += '- ' + p.naam + ' - laatste dienst: ' + (p.laatsteDienst ? p.laatsteDienst + ' (' + p.dagen + ' dagen geleden)' : 'geen in de laatste ' + C.STIL_LOOKBACK_DAGEN + ' dagen' + (p.indienst ? ' (in dienst sinds ' + p.indienst + ')' : '')) + '\n'; });
+  plain += '\nCheck bij de store manager wat er speelt. Blijft het stil, dan is de oproepbrief in het HR Dashboard (Sommaties) de volgende stap.\n\n(Automatisch wekelijks bericht van het SLA HR systeem)';
+  await mailOfDroog(rap, { to: ontvangers('stilleAfwezigen'), subject: 'Stille afwezigen: ' + lijst.length + ' medewerker(s) zonder dienst in ' + C.STIL_VENSTER_DAGEN + ' dagen', text: plain, html: stilHtml(lijst, C.STIL_VENSTER_DAGEN, C.STIL_LOOKBACK_DAGEN), kort: { naam: 'HR-team', aantal: lijst.length } });
+  return rap;
+}
+
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen };
+
+// Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
+async function draai(naam, droog, bron) {
+  const fn = CHECKS[naam]; if (!fn) throw new Error('Onbekende check: ' + naam);
+  const start = Date.now();
+  let rap;
+  try { rap = await fn(droog); }
+  catch (e) { rap = { naam, gevonden: [], verstuurd: [], fouten: ['check mislukt: ' + e.message], droog: !!droog || !actief() }; }
+  rap.actief = actief(); rap.duurMs = Date.now() - start; rap.bron = bron || 'schedule'; rap.tijd = stempel();
+  try { await admin().from('hr_signaleringen').insert({ check: naam, bron: rap.bron, droog: rap.droog, gevonden: rap.gevonden.length, verstuurd: rap.verstuurd.length, fouten: rap.fouten.length, details: rap }); }
+  catch (e) { console.warn('hr_signaleringen log mislukt:', e.message); }
+  return rap;
+}
+
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen };

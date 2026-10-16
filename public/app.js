@@ -13,7 +13,7 @@
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -53,6 +53,7 @@
     if (tab === 'ontslag' && !omData) laadOntslag();
     if (tab === 'sommatie' && !smData) laadSommaties();
     if (tab === 'overplaatsing' && !opData) laadOverplaatsingen();
+    if (tab === 'signalering' && !sgData) laadSignaleringen();
   }
   window.swT = swT;
 
@@ -604,6 +605,42 @@
     if (m.winkelCode && opWinkels.some(function (w) { return w.code === m.winkelCode; })) g('op-van').value = m.winkelCode;
     opCheckType();
     if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+  });
+
+  // ---------- Signaleringen (stap 4: scheduled functions + handmatig draaien) ----------
+  var sgData = null;
+  window.laadSignaleringen = async function () {
+    var d = await api('/api/signalering');
+    if (!d.success) { toast('Signaleringen: ' + d.bericht, 'err'); return; }
+    sgData = d;
+    g('sg-status').textContent = d.actief ? 'ACTIEF — mailt echt' : 'DROOGLOOP';
+    g('sg-status').style.background = d.actief ? '#009f4b' : '#e8824a'; g('sg-status').style.color = '#fff';
+    g('sg-uitleg').innerHTML = d.actief
+      ? '<strong>Actief.</strong> De checks draaien volgens schema in Netlify en versturen echte mails. Zorg dat de Apps Script-triggers uit staan, anders krijgen medewerkers dubbele herinneringen.'
+      : '<strong>Droogloop.</strong> De checks draaien volgens schema in Netlify, maar versturen niets en schrijven niets — ze rapporteren alleen wat ze zouden doen (zie Laatste runs). Zet in Netlify <code>SIGNALERINGEN_ACTIEF=1</code> op het moment dat je de Apps Script-triggers uitzet. Met <em>Droogloop nu</em> zie je direct wat een check vandaag zou doen.';
+    g('sg-cards').innerHTML = d.checks.map(function (c) {
+      return '<div class="dos-kaart"><div style="font-weight:700;color:#333d3a;margin-bottom:4px">' + esc(c.label) + ' <span class="badge boat">' + esc(c.wanneer) + '</span></div><div class="lay-sub" style="margin-bottom:10px">' + esc(c.wat) + '</div><div class="vb-knoppen"><button class="btn bd bsm" data-sg-run="' + esc(c.key) + '" data-droog="1">Droogloop nu</button>' + (d.actief ? '<button class="btn bp bsm" data-sg-run="' + esc(c.key) + '" data-droog="0">Nu echt draaien</button>' : '') + '</div></div>';
+    }).join('');
+    g('sg-body').innerHTML = (d.laatste || []).map(function (r) {
+      return '<tr><td>' + esc(new Date(r.tijdstip).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' })) + '</td><td>' + esc(r.check) + '</td><td>' + esc(r.bron) + '</td><td>' + (r.droog ? '<span class="badge boat">droog</span>' : '<span class="badge bg">echt</span>') + '</td><td>' + r.gevonden + '</td><td>' + r.verstuurd + '</td><td>' + (r.fouten ? '<span class="badge br">' + r.fouten + '</span>' : '0') + '</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="leeg grijs">Nog geen runs gelogd (tabel hr_signaleringen — migratie 0004)</td></tr>';
+  };
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-sg-run]');
+    if (!b) return;
+    var check = b.getAttribute('data-sg-run'), droog = b.getAttribute('data-droog') === '1';
+    if (!droog && !confirm('Check "' + check + '" nu ECHT draaien? Er worden mails verstuurd en sheets bijgewerkt.')) return;
+    b.disabled = true; var oud = b.textContent; b.textContent = 'Bezig…';
+    g('sg-rapport-sec').style.display = ''; g('sg-rapport-titel').textContent = 'Resultaat — ' + check + (droog ? ' (droogloop)' : ''); g('sg-rapport').innerHTML = '<span class="lay-sub">Shiftbase en sheets lezen…</span>';
+    var r = await api('/api/signalering', { check: check, droog: droog });
+    b.disabled = false; b.textContent = oud;
+    if (!r.success) { g('sg-rapport').innerHTML = '<span style="color:#c0392b">' + esc(r.bericht) + '</span>'; return; }
+    var rap = r.rapport, h = '<div class="lay-sub" style="margin-bottom:8px">' + rap.gevonden.length + ' gevonden · ' + rap.verstuurd.length + (rap.droog ? ' zou(den) verstuurd worden' : ' verstuurd') + ' · ' + rap.fouten.length + ' fouten · ' + rap.duurMs + ' ms</div>';
+    if (rap.fouten.length) h += '<div class="alert rood">' + rap.fouten.map(esc).join('<br>') + '</div>';
+    if (!rap.gevonden.length) h += '<div class="alert groen">Niets te doen vandaag.</div>';
+    else h += '<div class="tw"><table><tbody>' + rap.gevonden.map(function (x) { return '<tr>' + Object.keys(x).map(function (k) { return '<td><div class="lay-sub">' + esc(k) + '</div>' + esc(x[k] === null || x[k] === undefined ? '-' : x[k]) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+    g('sg-rapport').innerHTML = h;
+    laadSignaleringen();
   });
 
   // ---------- Vrije brieven (port van getVrijeBriefUI, VrijeBrief.gs v1.2) ----------

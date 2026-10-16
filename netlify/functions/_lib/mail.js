@@ -14,10 +14,11 @@ function afzender() {
 async function verstuur(opts) {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error('RESEND_API_KEY ontbreekt (Netlify env var)');
-  if (!opts.to || String(opts.to).indexOf('@') === -1) throw new Error('Ongeldig e-mailadres.');
+  const naar = (Array.isArray(opts.to) ? opts.to : String(opts.to || '').split(',')).map(s => String(s).trim()).filter(Boolean);
+  if (!naar.length || naar.some(s => s.indexOf('@') === -1)) throw new Error('Ongeldig e-mailadres.');
   const payload = {
     from: afzender(),
-    to: [String(opts.to).trim()],
+    to: naar,
     reply_to: opts.replyTo || HR_EMAIL,
     subject: opts.subject,
     text: opts.text || '',
