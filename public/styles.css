@@ -167,3 +167,6 @@ tbody tr:hover td{background:#fdfaf8}
 .fg label.chk input{width:auto}
 .fg .zoeklijst input[type=text]{width:100%}
 .vb-knoppen{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Sorteerbare kolomkoppen (batch D) */
+.tw table thead th{cursor:pointer;user-select:none}.tw table thead th:hover{color:var(--groen)}

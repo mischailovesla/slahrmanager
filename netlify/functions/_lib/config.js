@@ -31,7 +31,9 @@ module.exports = {
     aanzegtermijn: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     stilleAfwezigen: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     weekendBeschikbaarheid: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
-    vakantiepiek: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
+    vakantiepiek: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    dataHygiene: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    bewaartermijn: 'mischa@ilovesla.com'
   },
   SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
   SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam
@@ -95,6 +97,12 @@ module.exports = {
   VRL_UITGESLOTEN_TEAMS: ['HQ', 'Keuken', 'Logistiek', 'Flexpool Den Haag'],
   VRL_FLEX_UITSLUITEN: true,
   VRL_COHORTEN: [30, 60, 90],
+
+  // Batch D
+  TAB_NOTITIES: 'Notities',        // tab in de loonheffing-sheet (Dossier.gs): A Naam B Email C Datum D Auteur E Notitie
+  TAB_ARCHIEF: 'Archief',
+  BHR_JAREN_DOSSIER: 2,            // AVG-bewaartermijn personeelsdossier (ontslag, sommaties, waarschuwingen) na einde dienstverband
+  BHR_JAREN_LOON: 5,               // loonheffingsverklaring-administratie (fiscaal; kopie in de sheets)
 
   // Mail / huisstijl (uit Code.gs)
   AFZENDER_TEAM: 'SLA HR Team',

@@ -16,7 +16,9 @@ const OMSCHRIJVING = {
   'stille-afwezigen': { label: 'Stille afwezigen', wanneer: 'maandag 10:00', wat: 'Mail aan HR: actieve medewerkers zonder dienst in 28 dagen, zonder verlof en zonder toekomstige dienst.' },
   'weekend-beschikbaarheid': { label: 'Weekendbeschikbaarheid', wanneer: 'maandag 09:45', wat: 'Mail aan HR: medewerkers die 3 volledige weekenden geen dienst hadden maar wél doordeweeks werkten (huisregel 2 weekenddiensten), met brief-klare onderbouwing.' },
   'korting-herinneringen': { label: 'Loonheffingskorting-herinneringen', wanneer: 'dagelijks 09:55', wat: 'Herinnering aan medewerkers van wie het kortingsformulier na 3 dagen nog niet retour is (tab Korting K/L), max. 1 per 3 dagen.' },
-  'vakantiepieken': { label: 'Afwezigheidspieken', wanneer: 'maandag 09:00', wat: 'Mail aan HR: winkels waar in de komende 4 weken ≥30% van de bezetting tegelijk weg is (vakantie + stille afwezigen, open aanvragen meegerekend).' }
+  'vakantiepieken': { label: 'Afwezigheidspieken', wanneer: 'maandag 09:00', wat: 'Mail aan HR: winkels waar in de komende 4 weken ≥30% van de bezetting tegelijk weg is (vakantie + stille afwezigen, open aanvragen meegerekend).' },
+  'bewaartermijnen': { label: 'AVG-bewaartermijnen', wanneer: '1e van de maand 08:00', wat: 'Mail aan Mischa: dossierregels voorbij hun bewaartermijn (2 jaar dossier, 5 jaar loonheffing). Verwijdert niets — beoordelen blijft mensenwerk.' },
+  'data-hygiene': { label: 'Datakwaliteit Shiftbase', wanneer: '1e van de maand 09:00', wat: 'Mail aan HR: actieve medewerkers zonder adres of functie in Shiftbase, per winkel.' }
 };
 
 exports.handler = beveiligd('signalering', async (event, g) => {

@@ -10,10 +10,11 @@
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters']] },
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners']] },
     { label: 'Dossier', items: [['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
-    { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] }
+    { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] },
+    { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -60,6 +61,8 @@
     if (tab === 'contract' && !ctrData) laadContract(false);
     if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
+    if (tab === 'toegang' && !tgData) laadToegang();
+    if (tab === 'archief' && !arData) laadArchief();
   }
   window.swT = swT;
 
@@ -101,9 +104,12 @@
     try {
       var opts = { headers: { Authorization: 'Bearer ' + s.access_token } };
       if (postBody) { opts.method = 'POST'; opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(postBody); }
-      var r = await fetch(pad, opts);
+      var r;
+      try { r = await fetch(pad, opts); }
+      catch (e1) { await new Promise(function (ok) { setTimeout(ok, 1500); }); r = await fetch(pad, opts); } // netwerkhik / cold start na deploy: één keer opnieuw
+      if (r.status === 502 || r.status === 504) return { success: false, bericht: 'De server deed er te lang over (' + r.status + '). Probeer het nog een keer.' };
       return await r.json();
-    } catch (e) { return { success: false, bericht: e.message }; }
+    } catch (e) { return { success: false, bericht: e.message === 'Failed to fetch' ? 'Geen verbinding met de server — controleer je internet en probeer opnieuw.' : e.message }; }
   }
 
   // ---------- Overzicht ----------
@@ -277,7 +283,8 @@
     var d = await api('/api/dossier?' + qs);
     if (!d.success) { g('dos-inhoud').innerHTML = '<div class="alert rood">' + esc(d.bericht) + '</div>'; return; }
     var p = d.persoon, c = d.contract, h = '';
-    h += '<div style="padding:0 0 10px"><button class="btn bd bsm" onclick="renderMedewerkersLijst()">← Alle medewerkers</button></div>';
+    laatsteDossierQs = qs;
+    h += '<div style="padding:0 0 10px;display:flex;gap:8px;align-items:center"><button class="btn bd bsm" onclick="renderMedewerkersLijst()">← Alle medewerkers</button><span style="flex:1"></span><button class="btn bd bsm" id="dos-pdf" onclick="dossierPdf()" title="Volledig dossier als PDF (inzageverzoek / jurist) — wordt gelogd">⬇ Dossier als PDF</button></div>';
     h += '<div class="dos-kop"><div class="dos-kaart"><div class="dos-naam">' + esc(d.naam) + '</div><div class="lay-sub">' + esc(d.email || '(geen e-mail)') + (p ? ' · ' + esc(p.winkelNaam || '-') + (p.winkelBv ? ' · ' + esc(p.winkelBv) : '') : ' · <em>niet gevonden in Shiftbase (alleen sheet-data)</em>') + '</div>';
     if (p) h += '<div class="dos-meta"><div><label>Functie</label><span>' + esc(p.functie || '-') + '</span></div><div><label>In dienst sinds</label><span>' + esc(p.indienst || '-') + '</span></div><div><label>Contract</label><span>' + esc(c.type || '-') + '</span></div><div><label>Contract eindigt</label><span>' + esc(c.einde || 'onbepaalde tijd / onbekend') + '</span></div><div><label>Adres</label><span>' + esc(p.adres || '-') + '</span></div></div>';
     h += '</div><div class="dos-kaart">';
@@ -294,7 +301,24 @@
       h += '<div class="tw"><table><tbody>' + s.rijen.map(function (r) { return '<tr>' + rijNaarCellen(s.key, r) + '</tr>'; }).join('') + '</tbody></table></div>';
     });
     h += '</div>';
+    h += '<div class="sec"><div class="sh"><div class="st">Notitie toevoegen</div></div><div style="padding:14px 24px"><textarea id="dos-notitie" rows="3" style="width:100%;padding:10px 14px;border:1.5px solid #e8e2de;border-radius:8px;font:inherit;font-size:.88rem;min-height:70px" placeholder="Interne notitie (gesprek, afspraak, observatie). Wordt opgeslagen met jouw naam en datum en komt in het dossier en de PDF-export."></textarea><div style="margin-top:8px;text-align:right"><button class="btn bp bsm" id="dos-notitie-btn" onclick="dossierNotitie()">Notitie opslaan</button></div></div></div>';
     g('dos-inhoud').innerHTML = h;
+  };
+  var laatsteDossierQs = '';
+  window.dossierNotitie = async function () {
+    var ta = g('dos-notitie'), tekst = ta.value.trim(); if (tekst.length < 3) { toast('Typ eerst een notitie', 'err'); return; }
+    var b = g('dos-notitie-btn'); b.disabled = true;
+    var r = await api('/api/notitie', { naam: laatsteDossier[0], email: laatsteDossier[1], tekst: tekst });
+    b.disabled = false;
+    if (!r.success) { toast('Notitie: ' + r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); openDossier.apply(null, laatsteDossier);
+  };
+  window.dossierPdf = async function () {
+    var b = g('dos-pdf'); b.disabled = true; toast('Dossier-PDF maken…', 'ok');
+    var r = await api('/api/dossier-pdf?' + laatsteDossierQs);
+    b.disabled = false;
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.b64, r.bestandsnaam);
   };
   function kv(l, v) { return '<td><div class="lay-sub">' + esc(l) + '</div>' + v + '</td>'; }
   function rijNaarCellen(key, r) {
@@ -306,6 +330,7 @@
       case 'brief': return kv('Categorie', '<span class="badge bdk">' + esc(r.categorie || '-') + '</span>') + kv('Onderwerp', esc(r.onderwerp || '-')) + kv('BV', esc(r.bv || '-')) + kv('PDF', r.pdf === 'Ja' ? '<span class="badge bg">Ja</span>' : '<span class="no-doc">-</span>') + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('', '<button class="btn bd bsm" data-vb-print="' + esc(r.rij) + '">Brief</button> <button class="btn bd bsm" data-vb-opnieuw="' + esc(r.rij) + '">Opnieuw</button>');
       case 'ontslag': return kv('Type', '<span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span>') + kv('BV', esc(r.bedrijf || '-')) + kv('Opzegging', esc(r.opzegging || '-')) + kv('Einddatum', esc(r.einddatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bOk(r.ondertekend, 'Ja', 'Nee')) + kv('Docs', bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief')) + kv('Naar salaris', bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r)) + kv('', omBtn(r) + ' ' + bArch('ontslag', r.rij, r.naam));
       case 'korting': return kv('Keuze', krtKeuzeBadge(r.keuze)) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Deadline', esc(r.deadline || '-')) + kv('Mail', bSent(r.status)) + kv('Retour', bOk(r.retour) + (r.docUrl ? ' ' + bDoc(r.docUrl, 'Formulier') : '')) + kv('Herinneringen', bH(r.herinnering, r.aantalHer)) + kv('Naar salaris', r.retour === 'Ja' ? bSal('korting', r) : '-') + kv('', '<button class="btn bd bsm" data-krt-rij="' + esc(r.rij) + '">Opnieuw</button>');
+      case 'notitie': return kv('Datum', esc(r.datum || '-')) + kv('Auteur', esc(r.auteur || '-')) + '<td colspan="4" style="white-space:pre-wrap;font-size:.85rem">' + esc(r.tekst || '') + '</td>';
       case 'waarschuwing': return kv('Winkel', esc(r.winkel || '-')) + kv('Datum overtreding', esc(r.datumOvertreding || '-')) + kv('Regels', '<span title="' + esc(r.regels || '') + '">' + esc((r.regels || '-').length > 90 ? r.regels.substring(0, 90) + '…' : (r.regels || '-')) + '</span>') + kv('Taal', esc(r.taal || 'NL')) + kv('Status', esc(r.status || '-')) + kv('', '<button class="btn bd bsm" data-wr-rij="' + esc(r.rij) + '">Opnieuw</button>');
       case 'beschikbaarheid': return kv('Winkel', esc(r.winkel || '-')) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Onderbouwing', '<span title="' + esc(r.onderbouwing || '') + '">' + esc((r.onderbouwing || '-').length > 90 ? r.onderbouwing.substring(0, 90) + '…' : (r.onderbouwing || '-')) + '</span>') + kv('Taal', esc(r.taal || 'NL')) + kv('Status', esc(r.status || '-')) + kv('', '<button class="btn bd bsm" data-bk-rij="' + esc(r.rij) + '">Opnieuw</button>');
       default: return kv('Datum', esc(r.datum || '-')) + '<td>' + esc((r.raw || []).slice(0, 8).join(' · ')) + '</td>';
@@ -1112,6 +1137,61 @@
     sec.style.display = 'block'; g('vrl-vroeg-dagen').textContent = vrlData.vroegDagen;
     g('vrl-vroeg').innerHTML = vrlData.vroegeLijst.map(function (p) { return '<div style="display:flex;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid #f0ebe7;font-size:.85rem"><strong style="min-width:230px">' + esc(p.naam) + '</strong><span style="color:#888078;min-width:150px">' + esc(p.winkel) + '</span><span class="badge ' + (p.dagen <= 30 ? 'br' : 'bo') + '" style="margin-left:auto">' + p.dagen + ' dagen in dienst</span></div>'; }).join('');
   }
+
+  // ---------- Toegangslog (port van Toegang.gs: AVG-verantwoording in het dashboard zelf) ----------
+  var tgData = null;
+  window.laadToegang = async function () {
+    g('tg-body').innerHTML = '<tr><td colspan="5" class="leeg grijs">Laden…</td></tr>';
+    var d = await api('/api/toegangslog');
+    if (!d.success) { g('tg-body').innerHTML = '<tr><td colspan="5" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    tgData = d; var s = d.samenvatting;
+    g('tg-kpi').innerHTML = '<div class="card cg"><div class="si sig">👁</div><div><div class="sv">' + s.opvragen + '</div><div class="sl">Opvragen (30 d)</div></div></div><div class="card cd"><div class="si sid">📁</div><div><div class="sv">' + s.inzagen + '</div><div class="sl">Dossiers ingezien</div></div></div><div class="card cw"><div class="si siw">⬇</div><div><div class="sv">' + s.exports + '</div><div class="sl">Exports / documenten</div></div></div><div class="card ' + (s.geweigerd ? 'co' : 'cd') + '"><div class="si ' + (s.geweigerd ? 'sio' : 'sid') + '">🔒</div><div><div class="sv">' + s.geweigerd + '</div><div class="sl">Geweigerde logins</div></div></div>';
+    g('tg-accounts').innerHTML = s.accounts.length ? s.accounts.map(function (a) { return '<span class="badge boat" style="margin:0 6px 6px 0">' + esc(a.account) + ' · ' + a.aantal + '</span>'; }).join('') : '<span class="lay-sub">Geen activiteit in de laatste 30 dagen</span>';
+    var kleur = function (r) { return r === 'geweigerd' ? 'br' : r === 'login' ? 'bg' : r === 'dossier' || r === 'dossier-pdf' || r === 'export' || r === 'document' ? 'bo' : 'boat'; };
+    g('tg-body').innerHTML = d.regels.map(function (r) { return '<tr><td style="white-space:nowrap">' + esc(r.tijd) + '</td><td>' + esc(r.account) + '</td><td><span class="badge ' + kleur(r.resultaat) + '">' + esc(r.resultaat) + '</span></td><td style="font-size:.8rem">' + esc(r.details || '-') + '</td><td class="lay-sub">' + esc(r.ip || '') + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="leeg grijs">Nog geen logregels</td></tr>';
+    g('tg-mut-body').innerHTML = d.mutaties.map(function (r) { return '<tr><td style="white-space:nowrap">' + esc(r.tijd) + '</td><td>' + esc(r.account) + '</td><td><span class="badge boat">' + esc(r.actie) + '</span></td><td>' + esc(r.bron) + (r.veld ? ' · ' + esc(r.veld) : '') + '</td><td><strong>' + esc(r.naam || '-') + '</strong></td><td style="font-size:.8rem">' + esc(r.details || '') + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="leeg grijs">Nog geen schrijfacties</td></tr>';
+  };
+
+  // ---------- Archief herstellen (port van herstelUitArchief, Code.gs v29.5) ----------
+  var arData = null, arType = 'loonheffing';
+  window.laadArchief = async function (type) {
+    if (type) arType = type;
+    document.querySelectorAll('#ar-types .tb').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-ar') === arType); });
+    g('ar-body').innerHTML = '<tr><td colspan="5" class="leeg grijs">Archief laden…</td></tr>';
+    var d = await api('/api/archief?type=' + arType);
+    if (!d.success) { g('ar-body').innerHTML = '<tr><td colspan="5" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    arData = d; g('ar-count').textContent = d.rijen.length + ' gearchiveerd';
+    g('ar-body').innerHTML = d.rijen.map(function (r) { return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.gearchiveerd || '-') + '</td><td>' + esc(r.door || '-') + '</td><td style="font-size:.78rem;color:#888078;max-width:520px;white-space:normal">' + esc(r.velden.filter(Boolean).slice(0, 8).join(' · ')) + '</td><td><button class="btn bp bsm" data-ar-herstel="' + r.rij + '" data-naam="' + esc(r.naam) + '">↩ Terugzetten</button></td></tr>'; }).join('') || '<tr><td colspan="5" class="leeg grijs">Geen gearchiveerde rijen in deze sheet</td></tr>';
+  };
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-ar-herstel]'); if (!b || b.disabled) return;
+    var naam = b.getAttribute('data-naam');
+    if (!confirm(naam + ' terugzetten uit het archief? De rij komt weer onderaan de hoofdtab en in het dashboard.')) return;
+    b.disabled = true; b.textContent = '…';
+    var r = await api('/api/archief', { type: arType, rij: parseInt(b.getAttribute('data-ar-herstel'), 10) });
+    if (!r.success) { b.disabled = false; b.textContent = '↩ Terugzetten'; toast('Herstel: ' + r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); laadArchief(); ovData = null; lhData = null; omData = null; smData = null;
+  });
+
+  // ---------- Sorteren op kolomkop (port van SorteerUI.gs, nu voor álle tabellen; datums dd-mm-jjjj, getallen, tekst) ----------
+  var SRT_RE = /(\d{1,2})-(\d{1,2})-(\d{4})(?:[ T](\d{1,2}):(\d{2}))?/;
+  function srtWaarde(td) {
+    var t = (td.textContent || '').trim(), m = t.match(SRT_RE);
+    if (m) return { k: 'd', v: new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)).getTime() };
+    var n = parseFloat(t.replace(',', '.')); if (t && !isNaN(n) && /^[-+]?[\d.,]+%?$/.test(t)) return { k: 'n', v: n };
+    return { k: 't', v: t.toLowerCase() };
+  }
+  document.addEventListener('click', function (e) {
+    var th = e.target.closest && e.target.closest('.tw table thead th'); if (!th || e.target.closest('button,input,a')) return;
+    var table = th.closest('table'), tbody = table.querySelector('tbody'); if (!tbody) return;
+    var rows = Array.prototype.slice.call(tbody.querySelectorAll(':scope > tr')).filter(function (r) { return r.children.length > 1; }); if (rows.length < 2) return;
+    var idx = Array.prototype.indexOf.call(th.parentNode.children, th), richting = th.getAttribute('data-srt') === 'desc' ? 'asc' : 'desc';
+    table.querySelectorAll('thead th').forEach(function (x) { x.removeAttribute('data-srt'); x.textContent = x.textContent.replace(/ [▲▼]$/, ''); });
+    th.setAttribute('data-srt', richting); th.textContent += richting === 'desc' ? ' ▼' : ' ▲';
+    rows.map(function (r, i) { var c = r.children[idx]; return { r: r, i: i, w: c ? srtWaarde(c) : { k: 't', v: '' } }; })
+      .sort(function (a, b) { if (a.w.k !== b.w.k) return a.w.k < b.w.k ? -1 : 1; var d = a.w.v < b.w.v ? -1 : a.w.v > b.w.v ? 1 : a.i - b.i; return richting === 'desc' ? -d : d; })
+      .forEach(function (x) { tbody.appendChild(x.r); });
+  });
 
   // ---------- Signaleringen (stap 4: scheduled functions + handmatig draaien) ----------
   var sgData = null;

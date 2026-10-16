@@ -10,8 +10,7 @@ const SB = require('./_lib/shiftbase');
 const { AANZEG_VENSTER_DAGEN } = require('./_lib/config');
 const { normNaam, parseNLDatum, dagenTot } = require('./_lib/util');
 
-exports.handler = beveiligd('dossier', async (event) => {
-  const qs = event.queryStringParameters || {};
+async function laad(qs) {
   let persoon = null;
   const med = await SB.getMedewerkers(false).catch(() => []);
   if (qs.id) persoon = med.find(m => m.id === String(qs.id)) || null;
@@ -23,9 +22,9 @@ exports.handler = beveiligd('dossier', async (event) => {
   const nn = normNaam(naam);
   const match = r => (email && String(r.email || '').toLowerCase() === email) || (nn && normNaam(r.naam) === nn);
 
-  const [loon, ontslag, som, opl, onb, extra, brieven, wrs, bsk, kort] = await Promise.all([
+  const [loon, ontslag, som, opl, onb, extra, brieven, wrs, bsk, kort, notities] = await Promise.all([
     S.getLoonheffing(), S.getOntslag(), S.getSommatie(), S.getOverplaatsing(), S.getOnboarding(), S.getExtraTabs(), S.getBrieven().catch(() => []),
-    S.getWaarschuwingen().catch(() => []), S.getBeschikbaarheid().catch(() => []), S.getKorting().catch(() => [])
+    S.getWaarschuwingen().catch(() => []), S.getBeschikbaarheid().catch(() => []), S.getKorting().catch(() => []), S.getNotities().catch(() => [])
   ]);
 
   const secties = [
@@ -37,7 +36,8 @@ exports.handler = beveiligd('dossier', async (event) => {
     { key: 'ontslag', label: 'Ontslag & aanzegging', rijen: ontslag.filter(match) },
     { key: 'brief', label: 'Vrije brieven', rijen: brieven.filter(match) },
     { key: 'waarschuwing', label: 'Officiële waarschuwingen', rijen: wrs.filter(match) },
-    { key: 'beschikbaarheid', label: 'Weekendbeschikbaarheid', rijen: bsk.filter(match) }
+    { key: 'beschikbaarheid', label: 'Weekendbeschikbaarheid', rijen: bsk.filter(match) },
+    { key: 'notitie', label: 'Notities', rijen: notities.filter(match) }
   ].concat(extra.map(t => ({ key: 'extra', label: t.label, rijen: t.rijen.filter(match), fout: t.fout })));
 
   // Contractstatus + aanzeg-alert (42 dagen) uit Shiftbase
@@ -56,4 +56,6 @@ exports.handler = beveiligd('dossier', async (event) => {
   if (persoon) { try { verlof = await SB.getVerlof(persoon.id); } catch (e) { verlof = []; } }
 
   return { persoon, naam, email, contract, verlof, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
-});
+}
+exports.laad = laad;
+exports.handler = beveiligd('dossier', async (event) => laad(event.queryStringParameters || {}));

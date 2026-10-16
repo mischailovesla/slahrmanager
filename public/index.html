@@ -384,6 +384,31 @@
     <div class="alert grijs"><strong>Formule:</strong> verloop% = uitstroom in de periode / gemiddeld bestand ((begin + eind) / 2) × 100. Vergelijking tegen het eigen organisatiegemiddelde (oranje &gt; 110%, rood &gt; 130%), niet tegen een externe norm — horeca kent structureel hoog verloop. HQ, Keuken, Logistiek en flexpools tellen niet mee; contracten voor bepaalde tijd met een einddatum in de toekomst zijn geen uitstroom.</div>
   </div>
 
+  <!-- TOEGANGSLOG (Toegang.gs: AVG-verantwoording) -->
+  <div class="tc" id="tab-toegang">
+    <div class="stats" id="tg-kpi"></div>
+    <div class="sec">
+      <div class="sh"><div class="st">Toegangslog <span class="pill">laatste 300</span></div><div class="hr2"><input class="sb" type="text" placeholder="Filter op account / details..." oninput="flt('tg-body',this.value)"><button class="btn bd bsm" onclick="laadToegang()">↻</button></div></div>
+      <div style="padding:12px 24px 4px"><div class="lay-sub" style="margin-bottom:6px">Opvragen per account, laatste 30 dagen</div><div id="tg-accounts"></div></div>
+      <div class="tw"><table><thead><tr><th>Tijdstip</th><th>Account</th><th>Actie</th><th>Details</th><th>IP</th></tr></thead><tbody id="tg-body"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Schrijfacties &amp; exports <span class="pill">laatste 300</span></div><div class="hr2"><input class="sb" type="text" placeholder="Filter op naam..." oninput="flt('tg-mut-body',this.value)"></div></div>
+      <div class="tw"><table><thead><tr><th>Tijdstip</th><th>Door</th><th>Actie</th><th>Bron</th><th>Medewerker</th><th>Details</th></tr></thead><tbody id="tg-mut-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>AVG art. 5 lid 2 (verantwoordingsplicht):</strong> elke login, opvraag, dossierinzage, export en schrijfactie wordt automatisch gelogd in Supabase (`hr_toegangslog` en `hr_acties`). Deze tab laat zien wie wanneer welke persoonsgegevens heeft geraadpleegd — bewaar dit, verwijder het niet. Geweigerde logins (buiten @ilovesla.com of niet op de allowlist) staan er ook in.</div>
+  </div>
+
+  <!-- ARCHIEF HERSTELLEN (herstelUitArchief, Code.gs v29.5) -->
+  <div class="tc" id="tab-archief">
+    <div class="sec">
+      <div class="sh"><div class="st">Archief herstellen <span class="pill" id="ar-count">-</span></div><div class="hr2"><button class="btn bd bsm" onclick="laadArchief()">↻</button></div></div>
+      <div style="padding:12px 24px 4px"><div class="tbar" id="ar-types"><button type="button" class="tb sel" data-ar="loonheffing" onclick="laadArchief('loonheffing')">Loonheffing</button><button type="button" class="tb" data-ar="ontslag" onclick="laadArchief('ontslag')">Ontslag &amp; aanzegging</button><button type="button" class="tb" data-ar="sommatie" onclick="laadArchief('sommatie')">Sommaties</button><button type="button" class="tb" data-ar="onboarding" onclick="laadArchief('onboarding')">Onboarding</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Gearchiveerd op</th><th>Door</th><th>Inhoud</th><th>Actie</th></tr></thead><tbody id="ar-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Werkwijze:</strong> 🗑 in een tabel verplaatst een rij naar de tab <em>Archief</em> van het betreffende Google Sheet (met datum en wie). Hier zet je zo'n rij weer terug: de rij komt onderaan de hoofdtab en is direct weer zichtbaar in het dashboard. Er wordt nooit iets definitief verwijderd vanuit het dashboard; de maandelijkse AVG-bewaartermijncheck (Signaleringen) meldt wat beoordeeld kan worden.</div>
+  </div>
+
   <!-- SIGNALERINGEN (stap 4) -->
   <div class="tc" id="tab-signalering">
     <div class="sec">

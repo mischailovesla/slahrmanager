@@ -318,7 +318,81 @@ async function vakantiepieken(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken };
+// ---- 10. AVG-bewaartermijnen (bewaartermijnRapport, Beheer.gs v1.0; 1e van de maand 08:00) ----
+// Rapporteert, verwijdert NIETS: beoordelen en verwijderen blijft een menselijke beslissing (gedocumenteerd opschoonproces).
+function bhrScan(data, datumKoppen, jaren) {
+  if (!data || data.length < 2) return [];
+  let hRij = 0;
+  for (let i = 0; i < Math.min(data.length, 10); i++) { const k = (data[i] || []).map(x => String(x || '').trim().toLowerCase()); if (k.indexOf('naam') > -1 || k.indexOf('voornaam') > -1) { hRij = i; break; } }
+  const koppen = (data[hRij] || []).map(x => String(x || '').trim().toLowerCase());
+  let kNaam = koppen.indexOf('naam'); if (kNaam === -1) kNaam = koppen.indexOf('voornaam');
+  let kDatum = -1;
+  for (const dk of datumKoppen) { if (kDatum > -1) break; for (let c = 0; c < koppen.length; c++) if (koppen[c].indexOf(dk) > -1) { kDatum = c; break; } }
+  if (kNaam === -1 || kDatum === -1) return [];
+  const grens = new Date(); grens.setFullYear(grens.getFullYear() - jaren);
+  const uit = [];
+  for (let r = hRij + 1; r < data.length; r++) {
+    const naam = String((data[r] || [])[kNaam] || '').trim(); if (!naam) continue;
+    const dt = parseNLDatum((data[r] || [])[kDatum]); if (!dt || dt > grens) continue;
+    uit.push({ rij: r + 1, naam, datum: String(data[r][kDatum]) });
+  }
+  return uit;
+}
+async function bewaartermijnen(droog) {
+  const rap = { naam: 'bewaartermijnen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const blokken = [];
+  const scan = async (titel, id, tab, koppen, jaren, termijn) => { try { const items = bhrScan(await S.leesRuw(id, tab), koppen, jaren); if (items.length) blokken.push({ titel, items, termijn }); } catch (e) { rap.fouten.push(titel + ': ' + e.message); } };
+  const tabs = { loon: await S.eersteTabNaam(C.SHEETS.loonheffing.id), ontslag: await S.eersteTabNaam(C.SHEETS.ontslag.id), som: await S.eersteTabNaam(C.SHEETS.sommatie.id) };
+  await scan('Ontslag / aanzegging (hoofdtab)', C.SHEETS.ontslag.id, tabs.ontslag, ['einddatum'], C.BHR_JAREN_DOSSIER, C.BHR_JAREN_DOSSIER + ' jaar na einddatum');
+  await scan('Sommaties', C.SHEETS.sommatie.id, tabs.som, ['verzenddatum', 'verzonden'], C.BHR_JAREN_DOSSIER, C.BHR_JAREN_DOSSIER + ' jaar na verzending');
+  await scan('Waarschuwingen', C.SHEETS.ontslag.id, C.TAB_WAARSCHUWINGEN, ['datum', 'verzonden'], C.BHR_JAREN_DOSSIER, C.BHR_JAREN_DOSSIER + ' jaar');
+  await scan('Loonheffingsverklaringen', C.SHEETS.loonheffing.id, tabs.loon, ['deadline', 'verzenddatum'], C.BHR_JAREN_LOON, C.BHR_JAREN_LOON + ' jaar (fiscaal)');
+  rap.gevonden = blokken.flatMap(b => b.items.map(i => Object.assign({ categorie: b.titel, termijn: b.termijn }, i)));
+  if (!blokken.length) return rap;
+  const totaal = rap.gevonden.length, st = F + 'font-size:13px;color:#333d3a;line-height:1.6';
+  let plain = 'Hoi,\n\nDe maandelijkse AVG-bewaartermijncontrole heeft records gevonden die hun termijn voorbij zijn. Verwijderen gebeurt NIET automatisch - beoordeel en verwijder handmatig (rij in de sheet + bijbehorend document):\n', html = '';
+  for (const bl of blokken) {
+    plain += '\n=== ' + bl.titel + ' (termijn: ' + bl.termijn + ') ===\n';
+    let rijen = '';
+    for (const it of bl.items) { plain += '  rij ' + it.rij + ': ' + it.naam + ' (' + it.datum + ')\n'; rijen += '<div style="' + st + ';padding:3px 0">rij ' + it.rij + ' &bull; <strong>' + esc(it.naam) + '</strong> &bull; ' + esc(it.datum) + '</div>'; }
+    html += '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px"><tr><td style="padding:12px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #2b6cb0"><p style="' + st + ';font-weight:700;margin:0 0 6px">' + esc(bl.titel) + ' <span style="font-weight:400;color:#888078">(termijn: ' + esc(bl.termijn) + ')</span></p>' + rijen + '</td></tr></table>';
+  }
+  plain += '\nDeze controle draait maandelijks en is onderdeel van het AVG-opschoonproces.\n\n(Automatisch bericht van het SLA HR Dashboard)';
+  await mailOfDroog(rap, { to: ontvangers('bewaartermijn'), subject: 'AVG-bewaartermijnen: ' + totaal + ' record(s) te beoordelen', text: plain,
+    html: T.slaWrap(T.slaHead('#2b6cb0', 'HR &middot; AVG-bewaartermijnen') + '<tr><td style="padding:32px 36px 28px"><p style="' + st + ';font-size:15px;margin:0 0 14px">Hoi,</p><p style="' + st + ';margin:0 0 18px">De maandelijkse bewaartermijncontrole heeft <strong>' + totaal + ' record(s)</strong> gevonden die hun termijn voorbij zijn. Er wordt <strong>niets automatisch verwijderd</strong> - beoordeel de records en verwijder handmatig (sheet-rij + bijbehorend document).</p>' + html + '<p style="' + F + 'font-size:11px;color:#aaa;margin:14px 0 0">Onderdeel van het periodieke AVG-opschoonproces &bull; automatisch bericht van het SLA HR Dashboard</p></td></tr>' + T.slaFoot()),
+    kort: { naam: 'HR-team', aantal: totaal } });
+  return rap;
+}
+
+// ---- 11. Datakwaliteit Shiftbase (stuurDataHygieneRapport, Shiftbase.gs; 1e van de maand 09:00) ----
+function hygieneOverzicht(med) {
+  const perWinkel = {}; let totAdres = 0, totFunctie = 0;
+  for (const m of med || []) { const mistA = !m.adres, mistF = !m.functie; if (!mistA && !mistF) continue; if (mistA) totAdres++; if (mistF) totFunctie++; const w = m.winkelNaam || '(geen winkel)'; (perWinkel[w] = perWinkel[w] || []).push({ naam: m.naam, mistAdres: mistA, mistFunctie: mistF }); }
+  return { perWinkel, totAdres, totFunctie, totaal: (med || []).length };
+}
+async function dataHygiene(droog) {
+  const rap = { naam: 'data-hygiene', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const ov = hygieneOverzicht(await SB.getMedewerkers(true));
+  const winkels = Object.keys(ov.perWinkel).sort();
+  rap.gevonden = winkels.flatMap(w => ov.perWinkel[w].map(p => ({ winkel: w, naam: p.naam, mist: [p.mistAdres ? 'adres' : '', p.mistFunctie ? 'functie' : ''].filter(Boolean).join(' + ') })));
+  if (!winkels.length) return rap;
+  const pct = n => Math.round(n / ov.totaal * 100);
+  let plain = 'Hallo,\n\nMaandelijkse datakwaliteit-check van Shiftbase (' + ov.totaal + ' actieve medewerkers):\n- Zonder adres: ' + ov.totAdres + ' (' + pct(ov.totAdres) + '%)\n- Zonder functie: ' + ov.totFunctie + ' (' + pct(ov.totFunctie) + '%)\n\n', blokken = '';
+  winkels.forEach((w, i) => {
+    const lijst = ov.perWinkel[w];
+    plain += '=== ' + w + ' (' + lijst.length + ') ===\n';
+    blokken += '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 8px"><tr><td style="padding:10px 16px;background:#333d3a;border-radius:6px 6px 0 0"><p style="' + F + 'font-size:13px;font-weight:700;color:#fff;margin:0">' + esc(w) + ' <span style="float:right;background:rgba(255,255,255,.2);padding:2px 10px;border-radius:10px;font-size:11px">' + lijst.length + '</span></p></td></tr></table>';
+    lijst.forEach((p, j) => { const mist = [p.mistAdres ? 'adres' : '', p.mistFunctie ? 'functie' : ''].filter(Boolean).join(' + '); plain += '  - ' + p.naam + ': ' + mist + '\n'; blokken += '<table width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:10px 16px;background:#fff;border-left:4px solid #e8824a;border-right:1px solid #f0ebe7;' + (j === lijst.length - 1 ? 'border-radius:0 0 8px 8px;' : 'border-bottom:1px solid #f0ebe7;') + '"><span style="' + F + 'font-size:13px;font-weight:700;color:#333d3a">' + esc(p.naam) + '</span><span style="' + F + 'font-size:12px;color:#9a4a1a;float:right">mist: ' + mist + '</span></td></tr></table>'; });
+    plain += '\n'; if (i < winkels.length - 1) blokken += '<div style="height:12px;line-height:12px;font-size:1px">&nbsp;</div>';
+  });
+  plain += 'Aanvullen kan direct in Shiftbase (medewerkerprofiel). Complete data = complete juridische brieven.\n\n(Automatisch maandelijks bericht van het SLA HR systeem)';
+  await mailOfDroog(rap, { to: ontvangers('dataHygiene'), subject: 'Shiftbase datakwaliteit: ' + ov.totAdres + 'x adres en ' + ov.totFunctie + 'x functie ontbreekt', text: plain,
+    html: T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Datakwaliteit Shiftbase') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">Maandelijkse check over <strong>' + ov.totaal + ' actieve medewerkers</strong>: <strong>' + ov.totAdres + '</strong> zonder adres (' + pct(ov.totAdres) + '%), <strong>' + ov.totFunctie + '</strong> zonder functie (' + pct(ov.totFunctie) + '%). Compleet aangevulde profielen betekenen complete juridische brieven vanuit het dashboard.</p>' + blokken + '<p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch maandelijks bericht - aanvullen kan direct in Shiftbase</p></td></tr>' + T.slaFoot()),
+    kort: { naam: 'HR-team', aantal: rap.gevonden.length } });
+  return rap;
+}
+
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 async function draai(naam, droog, bron) {
@@ -333,4 +407,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht };

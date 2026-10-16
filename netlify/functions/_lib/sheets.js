@@ -7,7 +7,7 @@
 // (het volledige googleapis-pakket is te zwaar voor Netlify Functions).
 // ============================================================
 const { JWT } = require('google-auth-library');
-const { SHEETS, TAB_WAARSCHUWINGEN, TAB_BESCHIKBAARHEID, TAB_KORTING } = require('./config');
+const { SHEETS, TAB_WAARSCHUWINGEN, TAB_BESCHIKBAARHEID, TAB_KORTING, TAB_NOTITIES, TAB_ARCHIEF } = require('./config');
 const { normNaam, toDownloadUrl, vindKolommen } = require('./util');
 
 const API = 'https://sheets.googleapis.com/v4/spreadsheets/';
@@ -163,6 +163,7 @@ async function tabNamen(spreadsheetId) {
   return tabs;
 }
 async function eersteTab(spreadsheetId) { return (await tabNamen(spreadsheetId))[0].title; }
+const eersteTabNaam = eersteTab;
 async function tabBijGid(spreadsheetId, gid) {
   const t = (await tabNamen(spreadsheetId)).find(s => String(s.sheetId) === String(gid));
   return t ? t.title : null;
@@ -578,4 +579,40 @@ async function zetSalarisStempel(type, rij, stempelTekst) {
   throw new Error('Onbekend type: ' + type);
 }
 
-module.exports = { jwt, getKorting, logKorting, syncKortingUploads, zetSalarisStempel, zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };
+// --- Notities (Dossier.gs): tab 'Notities' in de loonheffing-sheet ---
+const NOT_KOP = ['Naam', 'Email', 'Datum', 'Auteur', 'Notitie'];
+async function getNotities() {
+  return leesTab(SHEETS.loonheffing.id, TAB_NOTITIES, (r, rij) => ({ rij, naam: cel(r, 0), email: cel(r, 1), datum: cel(r, 2), auteur: cel(r, 3), tekst: String((r && r[4]) || '') }));
+}
+async function voegNotitieToe(naam, email, auteur, tekst, stempelTekst) {
+  return logRij(SHEETS.loonheffing.id, TAB_NOTITIES, NOT_KOP, [naam, email || '', stempelTekst, auteur, tekst], 0, 3, stempelTekst, stempelTekst, '#ffffff');
+}
+// --- Archief (herstelUitArchief in Code.gs): tab 'Archief' per sheet; kolommen A Gearchiveerd op, B Door, C Bron, D.. de oorspronkelijke rij ---
+const ARCHIEF_BRONNEN = { loonheffing: SHEETS.loonheffing.id, ontslag: SHEETS.ontslag.id, sommatie: SHEETS.sommatie.id, onboarding: SHEETS.onboarding.id };
+async function leesRuw(id, tabNaam) { try { return await lees(id, q(tabNaam), 1); } catch (e) { if (/tabnaam onbekend|Unable to parse range/i.test(e.message)) return []; throw e; } }
+async function getArchief(type) {
+  const id = ARCHIEF_BRONNEN[type]; if (!id) throw new Error('Onbekend type: ' + type);
+  const data = await leesRuw(id, TAB_ARCHIEF);
+  const kop = (data[0] || []).slice(3);
+  const out = [];
+  for (let i = 1; i < data.length; i++) { const r = data[i] || []; if (!cel(r, 3) && !cel(r, 4)) continue; out.push({ rij: i + 1, gearchiveerd: cel(r, 0), door: cel(r, 1), bron: cel(r, 2), naam: type === 'onboarding' ? (cel(r, 3) + ' ' + cel(r, 4)).trim() : cel(r, 3), velden: r.slice(3, 3 + Math.max(kop.length, 8)).map(v => v == null ? '' : String(v)) }); }
+  return { kop, rijen: out.reverse() };
+}
+async function herstelUitArchief(type, archiefRij) {
+  const id = ARCHIEF_BRONNEN[type]; if (!id) throw new Error('Onbekend type: ' + type);
+  const tabs = await tabNamen(id), arch = tabs.find(s => s.title === TAB_ARCHIEF);
+  if (!arch) throw new Error('Geen tab "' + TAB_ARCHIEF + '" gevonden.');
+  const data = await leesRuw(id, TAB_ARCHIEF);
+  archiefRij = parseInt(archiefRij, 10);
+  if (!archiefRij || archiefRij < 2 || archiefRij > data.length) throw new Error('Ongeldige archiefrij.');
+  const vals = (data[archiefRij - 1] || []).slice(3);
+  while (vals.length && (vals[vals.length - 1] === '' || vals[vals.length - 1] == null)) vals.pop();
+  if (!vals.length) throw new Error('Lege archiefrij.');
+  const bron = tabs[0];
+  await gapi(encodeURIComponent(id) + '/values/' + encodeURIComponent(q(bron.title) + '!A1') + ':append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS', 'POST', { majorDimension: 'ROWS', values: [vals] });
+  await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{ deleteDimension: { range: { sheetId: arch.sheetId, dimension: 'ROWS', startIndex: archiefRij - 1, endIndex: archiefRij } } }] });
+  vergeetCache(id);
+  return type === 'onboarding' ? (String(vals[0] || '') + ' ' + String(vals[1] || '')).trim() : String(vals[0] || '');
+}
+
+module.exports = { jwt, eersteTabNaam, getNotities, voegNotitieToe, getArchief, herstelUitArchief, leesRuw, getKorting, logKorting, syncKortingUploads, zetSalarisStempel, zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };
