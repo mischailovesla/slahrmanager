@@ -131,3 +131,88 @@ async function maakBriefPdf(p, bv, categorie, onderwerp, opties) {
 function pdfBestandsnaam(naam) { return 'Brief_' + String(naam || 'medewerker').trim().replace(/\s+/g, '_').replace(/[^\w\-]/g, '') + '.pdf'; }
 
 module.exports = { maakBriefPdf, pdfBestandsnaam, blokken, wrap, veilig, datumNL };
+
+// ============================================================
+// Generieke brief-renderer met eenvoudige opmaak (stap 3d, ontslag/aanzegging).
+// Invoer: tekst met **vet**, *cursief*, regels die met "• " of "- " beginnen = lijst,
+// lege regel = nieuwe alinea. Zelfde pagina-opzet als maakBriefPdf.
+// ============================================================
+function parseRuns(regel) {
+  const runs = [];
+  const re = /(\*\*[^*]+\*\*|\*[^*]+\*)/g;
+  let last = 0, m;
+  while ((m = re.exec(regel))) {
+    if (m.index > last) runs.push({ t: regel.slice(last, m.index), b: false, i: false });
+    const s = m[0];
+    if (s.startsWith('**')) runs.push({ t: s.slice(2, -2), b: true, i: false });
+    else runs.push({ t: s.slice(1, -1), b: false, i: true });
+    last = m.index + s.length;
+  }
+  if (last < regel.length) runs.push({ t: regel.slice(last), b: false, i: false });
+  return runs.filter(r => r.t.length);
+}
+// Runs in woorden splitsen en afbreken op breedte -> regels van runs
+function wrapRuns(fonts, size, runs, breedte) {
+  const woorden = [];
+  runs.forEach(r => {
+    const delen = r.t.split(/(\s+)/);
+    delen.forEach(d => { if (d) woorden.push({ t: d, b: r.b, i: r.i, sp: /^\s+$/.test(d) }); });
+  });
+  const f = w => (w.b ? fonts.vet : w.i ? fonts.cursief : fonts.norm);
+  const regels = []; let huidig = [], w = 0;
+  woorden.forEach(wd => {
+    const bw = f(wd).widthOfTextAtSize(wd.t, size);
+    if (w + bw > breedte && huidig.length && !wd.sp) { regels.push(huidig); huidig = []; w = 0; }
+    if (!huidig.length && wd.sp) return;
+    huidig.push(wd); w += bw;
+  });
+  if (huidig.length) regels.push(huidig);
+  return regels;
+}
+
+// opties: { titel?, kop? (true = SLA-logo + 'the good food bar'), voet? }
+async function maakOpgemaakteBrief(tekst, opties) {
+  const o = opties || {};
+  const doc = await PDFDocument.create();
+  doc.setTitle(o.titel || 'Brief'); doc.setAuthor('SLA HR Team');
+  const fonts = { norm: await doc.embedFont(StandardFonts.Helvetica), vet: await doc.embedFont(StandardFonts.HelveticaBold), cursief: await doc.embedFont(StandardFonts.HelveticaOblique) };
+  const breedte = A4[0] - MARGE.links - MARGE.rechts;
+  let pagina = doc.addPage(A4), y = A4[1] - MARGE.boven;
+  const ruimte = h => { if (y - h < MARGE.onder) { pagina = doc.addPage(A4); y = A4[1] - MARGE.boven; } };
+  const teken = (runsRegel, size, x, kleur) => {
+    let cx = MARGE.links + (x || 0);
+    runsRegel.forEach(w => {
+      const f = w.b ? fonts.vet : w.i ? fonts.cursief : fonts.norm;
+      pagina.drawText(w.t, { x: cx, y: y - size, size, font: f, color: kleur || KL.tekst });
+      cx += f.widthOfTextAtSize(w.t, size);
+    });
+  };
+  if (o.kop !== false) {
+    ruimte(44);
+    pagina.drawText('SLA', { x: MARGE.links, y: y - 22, size: 22, font: fonts.vet, color: KL.groen }); y -= 28;
+    pagina.drawText('the good food bar', { x: MARGE.links, y: y - 8, size: 8, font: fonts.norm, color: KL.grijs }); y -= 24;
+  }
+  const size = 10.5, lh = size * 1.45;
+  const blokken = String(tekst || '').replace(/\r/g, '').split('\n');
+  blokken.forEach(regel => {
+    const r = regel.replace(/\s+$/, '');
+    if (!r.trim()) { y -= lh * 0.55; return; }
+    const isBullet = /^\s*[•\-]\s+/.test(r);
+    const inhoud = isBullet ? r.replace(/^\s*[•\-]\s+/, '') : r;
+    const runs = parseRuns(veilig(inhoud));
+    const inspring = isBullet ? 16 : 0;
+    const regels = wrapRuns(fonts, size, runs, breedte - inspring);
+    regels.forEach((rr, i) => {
+      ruimte(lh);
+      if (isBullet && i === 0) pagina.drawText('•', { x: MARGE.links + 4, y: y - size, size, font: fonts.norm, color: KL.tekst });
+      teken(rr, size, inspring);
+      y -= lh;
+    });
+    if (isBullet) y -= 2;
+  });
+  if (o.voet !== false) { y -= 18; ruimte(12); pagina.drawText('SLA · the good food bar · ' + HR_EMAIL, { x: MARGE.links, y: y - 8, size: 8, font: fonts.norm, color: KL.grijs }); }
+  return Buffer.from(await doc.save());
+}
+
+module.exports.maakOpgemaakteBrief = maakOpgemaakteBrief;
+module.exports.parseRuns = parseRuns;

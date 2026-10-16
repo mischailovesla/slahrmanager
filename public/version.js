@@ -1,2 +1,2 @@
 // Eén plek voor het versienummer. Ophogen bij elke oplevering; package.json volgt.
-window.HR_VERSIE = { nummer: '0.4.0', datum: '15-10-2026', stap: 3, omschrijving: 'stap 3c: vrije brieven — mail in huisstijl, PDF-bijlage (pdf-lib), printbrief, logging in tab Brieven, dossier-sectie' };
+window.HR_VERSIE = { nummer: '0.5.0', datum: '16-10-2026', stap: 3, omschrijving: 'stap 3d: ontslag & aanzegging — mail + PDF-brief (pdf-lib), Ontslag-tab, aanzeg-knop in het overzicht' };

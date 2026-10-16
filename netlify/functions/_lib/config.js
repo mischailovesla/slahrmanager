@@ -34,6 +34,9 @@ module.exports = {
   // Loonheffing-flow: links en prefill (v29.4)
   UPLOAD_LOON: 'https://docs.google.com/forms/d/e/1FAIpQLSccn1Y4826aho-hIBSrbpw07BbCPAYmSVx2Fjlms08H8XNHgA/viewform?usp=header',
   PREFILL_LOON_ENTRY: 'entry.35290118',
+  // Ontslag/aanzegging-flow (uit Code.gs): upload-formulier. De brieven zelf staan in _lib/brieftemplates.js
+  UPLOAD_ONTSLAG: 'https://docs.google.com/forms/d/e/1FAIpQLSfI7REFmrvQFDBtfnGTbot_ra2RV6-w_g137FcnD7Dnaakgaw/viewform?usp=sf_link',
+  PREFILL_ONTSLAG_ENTRY: 'entry.967349986',
   INDIENSTLINK: 'https://docs.google.com/spreadsheets/d/14gGKuBmJusIPOMq-WjOEdtPyBZ1amP5-/export?format=xlsx',
   LB_FORMULIER_NL: 'https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/themaoverstijgend/programmas_en_formulieren/model_opgaaf_gegevens_voor_de_loonheffingen',
   LB_FORMULIER_EN: 'https://www.belastingdienst.nl/wps/wcm/connect/bldcontenten/themaoverstijgend/applications_and_forms/model-statement-data-payroll-taxes',

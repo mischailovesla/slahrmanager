@@ -133,9 +133,8 @@ async function archiveerRij(spreadsheetId, label, rij, naamCheck, wie, isOnboard
   return naamInSheet;
 }
 
-// Loonheffing-sheet: rij vinden op e-mail (na de header 'Naam'), of 0
-async function vindLoonRij(email) {
-  const id = SHEETS.loonheffing.id;
+// Rij vinden op e-mail (kolom B, na de header 'Naam'), of 0 — logVerzonden in Code.gs
+async function vindRijOpEmail(id, email) {
   const data = await lees(id, q(await eersteTab(id)), 1);
   const h = headerRij(data); if (h === -1) return 0;
   const el = String(email || '').trim().toLowerCase();
@@ -144,12 +143,15 @@ async function vindLoonRij(email) {
   return 0;
 }
 // Eerste lege rij ná de laatste gevulde naam (logVerzonden v25: geen vervuilde rijen)
-async function eersteLegeLoonRij() {
-  const id = SHEETS.loonheffing.id;
+async function eersteLegeRij(id) {
   const data = await lees(id, q(await eersteTab(id)), 1);
   for (let j = data.length - 1; j >= 0; j--) if (cel(data[j], 0)) return j + 2;
   return data.length + 1;
 }
+const vindLoonRij = email => vindRijOpEmail(SHEETS.loonheffing.id, email);
+const eersteLegeLoonRij = () => eersteLegeRij(SHEETS.loonheffing.id);
+const vindOntslagRij = email => vindRijOpEmail(SHEETS.ontslag.id, email);
+const eersteLegeOntslagRij = () => eersteLegeRij(SHEETS.ontslag.id);
 
 // Eerste tab + tabnaam opzoeken (Apps Script gebruikt getSheets()[0])
 const _meta = new Map();
@@ -380,4 +382,4 @@ async function logBrief(b, stempelTekst) {
   return rij;
 }
 
-module.exports = { getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij };
+module.exports = { getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };

@@ -1,4 +1,4 @@
-/* SLA HR Dashboard - Netlify (stap 3c: vrije brieven met PDF) */
+/* SLA HR Dashboard - Netlify (stap 3d: ontslag & aanzegging met Docs-PDF) */
 (function () {
   'use strict';
   var g = function (id) { return document.getElementById(id); };
@@ -13,7 +13,7 @@
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -50,6 +50,7 @@
     if (tab === 'dossier') setTimeout(function () { g('dos-zoek').focus(); }, 50);
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
     if (tab === 'brief' && !vbData) laadBrieven();
+    if (tab === 'ontslag' && !omData) laadOntslag();
   }
   window.swT = swT;
 
@@ -164,7 +165,7 @@
     // Aanzeg-alerts
     var a = d.aanzegAlerts || [];
     g('aanzeg-sec').innerHTML = a.length ? '<div class="alert geel"><strong>Aanzegtermijn (art. 7:668 BW):</strong> ' + a.length + ' contract(en) lopen binnen 42 dagen af zonder ondertekende aanzegging/bevestiging: ' +
-      a.map(function (x) { return '<strong>' + esc(x.naam) + '</strong> (' + esc(x.bedrijf || '-') + ', ' + esc(x.einddatum) + ', nog ' + x.dagen + ' dagen' + (isVerz(x.status) ? ', verstuurd' : ', <span style="color:#c0392b">niet verstuurd</span>') + ')'; }).join(' · ') + '</div>' : '';
+      a.map(function (x) { return '<strong>' + esc(x.naam) + '</strong> (' + esc(x.bedrijf || '-') + ', ' + esc(x.einddatum) + ', nog ' + x.dagen + ' dagen' + (isVerz(x.status) ? ', verstuurd' : ', <span style="color:#c0392b">niet verstuurd</span>') + ')' + (isVerz(x.status) ? '' : ' <button class="btn bp bsm" data-om-aanzeg="1" data-naam="' + esc(x.naam) + '" data-email="' + esc(x.email || '') + '" data-bv="' + esc(x.bedrijf || '') + '" data-eind="' + esc(x.einddatum) + '">Aanzegging</button>'); }).join(' · ') + '</div>' : '';
 
     var rows = [];
     d.open.loonheffing.forEach(function (r) {
@@ -178,7 +179,7 @@
       rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge" style="background:' + (somK[r.type] || '#333d3a') + ';color:#fff">' + esc(r.type) + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.datumAfspraak || '-') + '</td><td>' + bSent(r.verzenddatum ? 'Verstuurd ' + r.verzenddatum : '') + '</td><td><span class="badge boat">' + esc(r.status || '-') + '</span></td><td>-</td><td>' + bTog('som-verwerkt', r.verwerkt, r.rij, r.naam) + '</td><td>' + dosBtn(r.naam, r.email) + ' ' + bArch('sommatie', r.rij, r.naam) + '</td></tr>');
     });
     d.open.ontslag.forEach(function (r) {
-      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span> ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + '</td><td>' + dosBtn(r.naam, r.email) + ' ' + bArch('ontslag', r.rij, r.naam) + '</td></tr>');
+      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span> ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('ontslag', r.rij, r.naam) + '</td></tr>');
     });
     g('ov-open-count').textContent = rows.length + ' open';
     g('ov-body').innerHTML = rows.length ? rows.join('') : '<tr><td colspan="10" class="leeg">✓ Alle taken verwerkt — geen open dossiers</td></tr>';
@@ -244,7 +245,7 @@
       case 'overplaatsing': return kv('Type', '<span class="badge bo">' + esc(r.type || '-') + '</span>') + kv('Van → naar', esc(r.huidigeBV) + ' → ' + esc(r.nieuweBV)) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ja', 'Aanvinken')) + kv('Brief', bDoc(r.briefUrl, '⬇ PDF'));
       case 'sommatie': return kv('Type', '<span class="badge bdk">' + esc(r.type) + '</span>') + kv('BV', esc(r.bv || '-')) + kv('Afwezig', esc(r.datumAfwezig || '-')) + kv('Afspraak', esc(r.datumAfspraak || '-')) + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('Status', esc(r.status || '-')) + kv('Verwerkt', bTog('som-verwerkt', r.verwerkt, r.rij, r.naam)) + (r.aanvullend ? kv('Aanvullend', esc(r.aanvullend)) : '') + kv('', bArch('sommatie', r.rij, r.naam));
       case 'brief': return kv('Categorie', '<span class="badge bdk">' + esc(r.categorie || '-') + '</span>') + kv('Onderwerp', esc(r.onderwerp || '-')) + kv('BV', esc(r.bv || '-')) + kv('PDF', r.pdf === 'Ja' ? '<span class="badge bg">Ja</span>' : '<span class="no-doc">-</span>') + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('', '<button class="btn bd bsm" data-vb-print="' + esc(r.rij) + '">Brief</button> <button class="btn bd bsm" data-vb-opnieuw="' + esc(r.rij) + '">Opnieuw</button>');
-      case 'ontslag': return kv('Type', '<span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span>') + kv('BV', esc(r.bedrijf || '-')) + kv('Opzegging', esc(r.opzegging || '-')) + kv('Einddatum', esc(r.einddatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bOk(r.ondertekend, 'Ja', 'Nee')) + kv('Docs', bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief')) + kv('Naar salaris', bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam)) + kv('', bArch('ontslag', r.rij, r.naam));
+      case 'ontslag': return kv('Type', '<span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span>') + kv('BV', esc(r.bedrijf || '-')) + kv('Opzegging', esc(r.opzegging || '-')) + kv('Einddatum', esc(r.einddatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bOk(r.ondertekend, 'Ja', 'Nee')) + kv('Docs', bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief')) + kv('Naar salaris', bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam)) + kv('', omBtn(r) + ' ' + bArch('ontslag', r.rij, r.naam));
       default: return kv('Datum', esc(r.datum || '-')) + '<td>' + esc((r.raw || []).slice(0, 8).join(' · ')) + '</td>';
     }
   }
@@ -308,6 +309,109 @@
     else toast('Fout: ' + r.bericht, 'err');
   };
   g('lm-modal').addEventListener('click', function (e) { if (e.target === this) closeLoonMail(); });
+
+  // ---------- Ontslag & aanzegging (port van openM/apl/sendM uit de dashboard-UI) ----------
+  var omData = null, omTpl = [], omKey = 'ontslag-pdf', omRij = null;
+  function omBtn(r) { return '<button class="btn bp bsm" data-om-rij="' + r.rij + '">Mail</button>'; }
+  window.laadOntslag = async function () {
+    var d = await api('/api/ontslag');
+    if (!d.success) { toast('Ontslag: ' + d.bericht, 'err'); return; }
+    omData = d.rijen; omTpl = d.templates;
+    g('om-count').textContent = omData.length + ' dossiers';
+    g('om-body').innerHTML = omData.map(function (r) {
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + (r.salaris ? '<div class="lay-sub">' + esc(r.salaris) + '</div>' : '') + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
+    }).join('') || '<tr><td colspan="12" class="leeg grijs">Geen dossiers</td></tr>';
+  };
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-om-rij]');
+    if (b) {
+      var rij = parseInt(b.getAttribute('data-om-rij'), 10);
+      var r = (omData || []).concat((ovData && ovData.open.ontslag) || []).find(function (x) { return x.rij === rij; });
+      openOntslagMail(r || null); return;
+    }
+    var a = e.target.closest && e.target.closest('button[data-om-aanzeg]');
+    if (a) openOntslagMail({ naam: a.getAttribute('data-naam'), email: a.getAttribute('data-email'), bedrijf: a.getAttribute('data-bv'), einddatum: a.getAttribute('data-eind'), type: 'aanzegging' });
+  });
+  window.openOntslagMail = async function (persoon) {
+    if (!omTpl.length) { var d = await api('/api/ontslag'); if (d.success) { omTpl = d.templates; omData = d.rijen; } }
+    if (!vbBvs.length) { var b = await api('/api/brieven'); if (b.success) vbBvs = b.bvs; }
+    g('om-bv-list').innerHTML = vbBvs.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
+    omRij = persoon && persoon.rij ? persoon.rij : null;
+    g('om-to').value = persoon ? persoon.email || '' : '';
+    g('om-naam').value = persoon ? persoon.naam || '' : '';
+    g('om-bv').value = persoon ? persoon.bedrijf || '' : '';
+    g('om-adres').value = persoon ? persoon.adres || '' : '';
+    g('om-opz').value = persoon ? persoon.opzegging || '' : '';
+    g('om-eind').value = persoon ? persoon.einddatum || '' : '';
+    // Slimme default: aanzegging-dossier -> aanzegging; al verstuurd -> herinnering
+    omKey = persoon && persoon.type === 'aanzegging' ? (isVerz(persoon.status) ? 'ontslag-herinnering' : 'aanzegging-nl') : (persoon && isVerz(persoon.status) ? 'ontslag-herinnering' : 'ontslag-pdf');
+    omBouwTbar(); omHerbouw();
+    g('om-modal').classList.add('open');
+  };
+  window.closeOntslagMail = function () { g('om-modal').classList.remove('open'); };
+  g('om-modal').addEventListener('click', function (e) { if (e.target === this) closeOntslagMail(); });
+  function omT() { return omTpl.find(function (x) { return x.key === omKey; }) || {}; }
+  function omBouwTbar() {
+    g('om-tbar').innerHTML = omTpl.map(function (t) { return '<button type="button" class="tb' + (t.key === omKey ? ' sel' : '') + '" data-omtpl="' + t.key + '">' + esc(t.label) + '</button>'; }).join('');
+    g('om-tbar').querySelectorAll('[data-omtpl]').forEach(function (b) { b.onclick = function () { omKey = b.getAttribute('data-omtpl'); omBouwTbar(); omHerbouw(); }; });
+    var t = omT(), isA = t.type === 'aanzegging';
+    g('om-titel').textContent = isA ? t.label : (t.pdf ? 'Mail + PDF — Ontslag' : 'Mail — Herinnering ondertekening');
+    g('om-pn').style.display = t.pdf ? '' : 'none';
+    g('om-aanzeg').style.display = isA ? '' : 'none';
+    g('om-fg-opz').style.display = isA ? 'none' : '';
+    g('om-pdfbtn').style.display = t.pdf ? '' : 'none';
+    omAanzegDagen();
+  }
+  window.omAanzegDagen = function () {
+    var v = g('om-eind').value.trim(), el = g('om-dagen');
+    if (!v) { el.textContent = ''; return; }
+    var m = v.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+    if (!m) { el.textContent = ' (datum niet herkend)'; return; }
+    var eind = new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10)), nu = new Date(); nu.setHours(0, 0, 0, 0);
+    var dgn = Math.round((eind - nu) / 864e5);
+    if (dgn >= 30) el.innerHTML = ' — <span style="color:#006b30">' + dgn + ' dagen tot einddatum: op tijd ✓</span>';
+    else if (dgn >= 0) el.innerHTML = ' — <span style="color:#c0392b">LET OP: ' + dgn + ' dagen tot einddatum — ' + (30 - dgn) + ' dagen te laat = pro-rata vergoeding</span>';
+    else el.innerHTML = ' — <span style="color:#c0392b">Einddatum ligt in het verleden</span>';
+  };
+  window.omHerbouw = async function () {
+    var t = omT(); if (!t.key) return;
+    g('om-subj').value = (t.subject || '').replace('[BV]', g('om-bv').value.trim() || 'SLA');
+    g('om-tekst').value = 'Tekst laden…';
+    var r = await api('/api/ontslag-mail', { template: omKey, naam: g('om-naam').value.trim(), bv: g('om-bv').value.trim(), einddatum: g('om-eind').value.trim(), preview: true });
+    if (r.success) g('om-tekst').value = r.text; else g('om-tekst').value = '(kon template niet laden: ' + r.bericht + ')';
+  };
+  function omLees() {
+    return { template: omKey, to: g('om-to').value.trim(), naam: g('om-naam').value.trim(), bv: g('om-bv').value.trim(), adres: g('om-adres').value.trim(), datumOpzegging: g('om-opz').value.trim(), einddatum: g('om-eind').value.trim(), rij: omRij, subject: g('om-subj').value.trim(), body: g('om-tekst').value };
+  }
+  window.omKopieer = function () { navigator.clipboard.writeText('Onderwerp: ' + g('om-subj').value + '\n\n' + g('om-tekst').value).then(function () { toast('Gekopieerd', 'ok'); }); };
+  window.omPdf = async function () {
+    var p = omLees();
+    if (!p.naam) { toast('Vul eerst de naam in', 'err'); return; }
+    var b = g('om-pdfbtn'); b.disabled = true; toast('PDF maken…', 'ok');
+    var r = await api('/api/ontslag-mail', Object.assign(p, { alleenPdf: true }));
+    b.disabled = false;
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam || 'Brief.pdf');
+  };
+  window.omVerstuur = async function () {
+    var p = omLees();
+    if (!p.to || !p.naam) { toast('Vul e-mail en naam in', 'err'); return; }
+    var t = omT();
+    if (t.type === 'aanzegging' && !p.einddatum) { toast('Vul de einddatum in (staat in de aanzegging)', 'err'); return; }
+    if (t.key === 'ontslag-pdf' && !confirm('Ontslagbevestiging + PDF versturen naar ' + p.to + '?')) return;
+    var b = g('om-sbtn'); b.disabled = true; g('om-slbl').textContent = t.pdf ? 'PDF maken en versturen…' : 'Versturen…';
+    var r = await api('/api/ontslag-mail', p);
+    b.disabled = false; g('om-slbl').textContent = 'Verstuur mail';
+    if (r.success) { toast(r.bericht, r.bericht.indexOf('LET OP') > -1 ? 'err' : 'ok'); closeOntslagMail(); omData = null; laadOntslag(); laadOverzicht(); if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  function downloadB64(b64, naam) {
+    var bin = atob(b64), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
+    var a = document.createElement('a'); a.href = url; a.download = naam; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
 
   // ---------- Vrije brieven (port van getVrijeBriefUI, VrijeBrief.gs v1.2) ----------
   var vbData = null, vbTpl = [], vbBvs = [], vbWinkelBv = {}, vbTplKey = 'leeg', vbAfzender = 'SLA HR Team';
@@ -424,11 +528,7 @@
     toast('PDF maken…', 'ok');
     var r = await api('/api/brief-mail', Object.assign(p, { alleenPdf: true }));
     if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
-    var bin = atob(r.pdf), arr = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
-    var url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }));
-    var a = document.createElement('a'); a.href = url; a.download = r.bestandsnaam || 'Brief.pdf'; document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    downloadB64(r.pdf, r.bestandsnaam || 'Brief.pdf');
   };
   function vbAlineas(txt) {
     var out = '';

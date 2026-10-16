@@ -26,10 +26,14 @@ function prefillLoonUrl(naam) {
   if (!naam) return C.UPLOAD_LOON;
   return C.UPLOAD_LOON.split('?')[0] + '?usp=pp_url&' + C.PREFILL_LOON_ENTRY + '=' + encodeURIComponent(String(naam).trim());
 }
-// Generieke upload-link in een (door HR bewerkte) tekst vervangen door de persoonlijke
+function prefillOntslagUrl(naam) {
+  if (!naam) return C.UPLOAD_ONTSLAG;
+  return C.UPLOAD_ONTSLAG.split('?')[0] + '?usp=pp_url&' + C.PREFILL_ONTSLAG_ENTRY + '=' + encodeURIComponent(String(naam).trim());
+}
+// Generieke upload-links in een (door HR bewerkte) tekst vervangen door de persoonlijke
 function personaliseerUploadLinks(body, naam) {
   if (!body || !naam) return body;
-  return String(body).split(C.UPLOAD_LOON).join(prefillLoonUrl(naam));
+  return String(body).split(C.UPLOAD_LOON).join(prefillLoonUrl(naam)).split(C.UPLOAD_ONTSLAG).join(prefillOntslagUrl(naam));
 }
 
 // --- Loonheffing: uitnodiging ------------------------------------------------
@@ -142,4 +146,46 @@ const BRIEF_TEMPLATES = [
     body: '[Typ hier je mededeling.]\n\nHeb je vragen naar aanleiding van deze brief, neem dan contact op via hr@ilovesla.com.' }
 ];
 
-module.exports = { slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES };
+// --- Ontslag & aanzegging (buildOntslagHtml / buildOntslagHerHtml / buildAanzeggingHtml) ---
+const P14 = F + 'font-size:14px;color:#333d3a;';
+const knop = (url, txt) => '<a href="' + url + '" style="display:inline-block;background:#009f4b;color:#fff;' + F + 'font-size:12px;font-weight:700;padding:10px 20px;border-radius:6px;text-decoration:none">' + txt + '</a>';
+const groet = (tekst, bv) => '<p style="' + P14 + 'margin:0">' + tekst + '<br><br><strong>' + esc(C.AFZENDER_NAAM) + '</strong><br>' + esc(bv) + '</p>';
+function ontslagHtml(naam, bv) {
+  return slaWrap(slaHead('#333d3a', 'HR &middot; Uitdiensttreding') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Beste ' + esc(naam) + ',</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">Naar aanleiding van jouw opzegging sturen wij je hierbij de offici&euml;le bevestiging als PDF bijlage.</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding:16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #333d3a"><p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 12px">Onderteken de bijlage en upload via:</p>' + knop(prefillOntslagUrl(naam), '&rarr; Upload ondertekend document') + '</td></tr></table><p style="' + P14 + 'margin:0 0 20px">Vragen? <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p>' + groet('Met vriendelijke groet,', bv) + '</td></tr>' + slaFoot());
+}
+function ontslagHerHtml(naam, bv) {
+  return slaWrap(slaHead('#333d3a', 'HR &middot; Herinnering') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Beste ' + esc(naam) + ',</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">We hebben het ondertekende HR-document nog niet retour ontvangen. Upload zo spoedig mogelijk:</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding:16px">' + knop(prefillOntslagUrl(naam), '&rarr; Upload ondertekend document') + '</td></tr></table>' + groet('Met vriendelijke groet,', bv) + '</td></tr>' + slaFoot());
+}
+function aanzeggingHtml(naam, bv, einddatum, isEN) {
+  const b = esc(bv), e = esc(einddatum);
+  const L = isEN ? {
+    head: 'HR &middot; Notice of non-renewal', greet: 'Dear ',
+    intro: 'Attached you will find the official notice that your employment agreement with <strong>' + b + '</strong>' + (e ? ' will end by operation of law on <strong>' + e + '</strong>' : '') + ' and will not be renewed.',
+    body: 'Until that date we expect you to complete your tasks properly and ensure a good handover. The attached letter contains further information about the final settlement, returning company property and applying for unemployment benefits.',
+    cta: 'Please sign for receipt and upload via:', btn: '&rarr; Upload signed document', q: 'Questions?', sign: 'Kind regards,'
+  } : {
+    head: 'HR &middot; Aanzegging', greet: 'Beste ',
+    intro: 'In de bijlage tref je de officiele aanzegging dat jouw arbeidsovereenkomst met <strong>' + b + '</strong>' + (e ? ' op <strong>' + e + '</strong>' : '') + ' van rechtswege eindigt en niet wordt verlengd.',
+    body: 'Tot die datum verwachten we dat je jouw werkzaamheden netjes afmaakt en zorgt voor een goede overdracht. In de bijlage lees je wat je verder kunt verwachten rondom eindafrekening, inleveren van bedrijfseigendommen en het WW-traject.',
+    cta: 'Onderteken de brief voor ontvangst en upload via:', btn: '&rarr; Upload ondertekend document', q: 'Vragen?', sign: 'Met vriendelijke groet,'
+  };
+  return slaWrap(slaHead('#e8824a', L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">' + L.greet + esc(naam) + ',</p><p style="' + P14 + 'line-height:1.7;margin:0 0 16px">' + L.intro + '</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">' + L.body + '</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding:16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #e8824a"><p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 12px">' + L.cta + '</p>' + knop(prefillOntslagUrl(naam), L.btn) + '</td></tr></table><p style="' + P14 + 'margin:0 0 20px">' + L.q + ' <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p>' + groet(L.sign, bv) + '</td></tr>' + slaFoot());
+}
+// Plain-text templates uit de dashboard-UI (T.ontslag); [BV] in het onderwerp wordt vervangen
+const ONTSLAG_TEMPLATES = [
+  { key: 'ontslag-pdf', label: 'Ontslagbevestiging + PDF', type: 'ontslag', taal: 'NL', pdf: true, subject: 'Bevestiging opzegging dienstverband - [BV]',
+    body: (n, bv) => 'Beste ' + (n || '[Naam]') + ',\n\nHierbij de officiele ontslagbevestiging als PDF bijlage.\n\nOnderteken en upload via:\n' + C.UPLOAD_ONTSLAG + '\n\nMet vriendelijke groet,\n' + C.AFZENDER_NAAM + '\n' + (bv || 'SLA') },
+  { key: 'ontslag-herinnering', label: 'Herinnering ondertekening', type: 'herinnering', taal: 'NL', pdf: false, subject: 'Herinnering: ontslagbevestiging nog niet ontvangen',
+    body: (n, bv) => 'Beste ' + (n || '[Naam]') + ',\n\nNog niet ondertekend. Upload via:\n' + C.UPLOAD_ONTSLAG + '\n\nMet vriendelijke groet,\n' + C.AFZENDER_NAAM + '\n' + (bv || 'SLA') },
+  { key: 'aanzegging-nl', label: 'Aanzegging niet-verlengen + PDF', type: 'aanzegging', taal: 'NL', pdf: true, subject: 'Aanzegging einde arbeidsovereenkomst - [BV]',
+    body: (n, bv) => 'Beste ' + (n || '[Naam]') + ',\n\nIn de bijlage vind je de officiele aanzegging waarin we je informeren dat jouw arbeidsovereenkomst met ' + (bv || 'SLA') + ' op de einddatum van rechtswege eindigt en niet wordt verlengd.\n\nTot de einddatum verwachten we dat je jouw werkzaamheden netjes afmaakt en zorgt voor een goede overdracht aan jouw collegas. In de bijlage lees je verder over de eindafrekening, inleveren van bedrijfseigendommen en het WW-traject.\n\nOnderteken de brief voor ontvangst en upload via:\n' + C.UPLOAD_ONTSLAG + '\n\nMet vriendelijke groet,\n' + C.AFZENDER_NAAM + '\n' + (bv || 'SLA') },
+  { key: 'aanzegging-en', label: 'Notice of non-renewal + PDF (EN)', type: 'aanzegging', taal: 'EN', pdf: true, subject: 'Notice of non-renewal of employment agreement - [BV]',
+    body: (n, bv) => 'Dear ' + (n || '[Name]') + ',\n\nAttached you will find the official notice that your fixed-term employment agreement with ' + (bv || 'SLA') + ' will end by operation of law on the end date and will not be renewed.\n\nUntil that date we expect you to complete your tasks properly and ensure a careful handover to your colleagues. The attached letter contains further information about the final settlement, returning company property and applying for unemployment benefits.\n\nPlease sign for receipt and upload via:\n' + C.UPLOAD_ONTSLAG + '\n\nKind regards,\n' + C.AFZENDER_NAAM + '\n' + (bv || 'SLA') }
+];
+function ontslagMailHtml(tpl, naam, bv, einddatum) {
+  if (tpl.type === 'aanzegging') return aanzeggingHtml(naam, bv, einddatum, tpl.taal === 'EN');
+  if (tpl.type === 'herinnering') return ontslagHerHtml(naam, bv);
+  return ontslagHtml(naam, bv);
+}
+
+module.exports = { slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml };

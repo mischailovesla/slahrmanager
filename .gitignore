@@ -4,3 +4,7 @@ node_modules/
 .env.*
 !.env.example
 .DS_Store
+
+# tijdelijke map voor bestanden die weg mogen (Claude kan niet verwijderen)
+_to_delete/
+Claude outputs/

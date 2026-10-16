@@ -64,7 +64,7 @@
       <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV / Info</th><th>Einddatum</th><th>Mail verstuurd</th><th>Status</th><th>Herinneringen</th><th>Naar salaris</th><th>Dossier</th></tr></thead><tbody id="ov-body"></tbody></table></div>
     </div>
 
-    <div class="alert grijs"><strong>Afvinken en archiveren</strong> kan hier (Naar salaris, Verwerkt, Ondertekend, 🗑) — dat schrijft in dezelfde Google Sheets als het Apps Script-dashboard, dus beide blijven gelijk. Loonheffingsmails en vrije brieven (met PDF) verstuur je hier; de overige mails en brieven nog in het bestaande dashboard.</div>
+    <div class="alert grijs"><strong>Afvinken en archiveren</strong> kan hier (Naar salaris, Verwerkt, Ondertekend, 🗑) — dat schrijft in dezelfde Google Sheets als het Apps Script-dashboard, dus beide blijven gelijk. Loonheffing, ontslag/aanzegging (met PDF-brief) en vrije brieven verstuur je hier; sommatie en overplaatsing nog in het bestaande dashboard.</div>
   </div>
 
   <!-- DOSSIER -->
@@ -103,6 +103,35 @@
       <div class="lay-sub">De upload-link wordt bij versturen automatisch persoonlijk gemaakt (naam voor-ingevuld).</div>
     </div>
     <div class="mf"><button class="btn bd" onclick="lmKopieer()">Kopieer</button><button class="btn bp" id="lm-sbtn" onclick="lmVerstuur()"><span id="lm-slbl">Verstuur mail</span></button></div>
+  </div></div>
+
+  <!-- ONTSLAG & AANZEGGING -->
+  <div class="tc" id="tab-ontslag">
+    <div class="sec">
+      <div class="sh"><div class="st">Ontslag &amp; aanzegging <span class="pill" id="om-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('om-body',this.value)"><button class="btn bd bsm" onclick="laadOntslag()">↻</button><button class="btn bp bsm" onclick="openOntslagMail(null)">Nieuwe mail + PDF</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV</th><th>Opzegging</th><th>Einddatum</th><th>Mail verstuurd</th><th>Ondertekend</th><th>Herinneringen</th><th>Naar salaris</th><th>Brief</th><th>Actie</th></tr></thead><tbody id="om-body"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- Mailmodal ontslag / aanzegging -->
+  <div class="mo" id="om-modal"><div class="modal">
+    <div class="mh"><div class="mti" id="om-titel">Mail + PDF — Ontslag</div><button class="mc" onclick="closeOntslagMail()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Template</label><div class="tbar" id="om-tbar"></div></div>
+      <div class="alert grijs" id="om-pn" style="margin:0 0 14px;font-size:.8rem">PDF-bijlage inbegrepen — de brief wordt in SLA-briefopmaak opgebouwd en gaat als bijlage mee.</div>
+      <div class="alert geel" id="om-aanzeg" style="display:none;margin:0 0 14px;font-size:.8rem"><strong>⚠ Aanzegplicht (art. 7:668 BW):</strong> verstuur uiterlijk één maand vóór de einddatum. Te laat = pro-rata aanzegvergoeding (1/30 maand bruto loon per dag te laat). <span id="om-dagen" style="font-weight:700"></span></div>
+      <div class="fr"><div class="fg"><label>Aan (e-mail)</label><input type="email" id="om-to" placeholder="medewerker@email.com"></div>
+        <div class="fg"><label>Naam medewerker</label><input type="text" id="om-naam" placeholder="Voornaam Achternaam" oninput="omHerbouw()"></div></div>
+      <div class="fr"><div class="fg"><label>BV naam</label><input type="text" id="om-bv" list="om-bv-list" placeholder="SLA Ceintuur BV" oninput="omHerbouw()"><datalist id="om-bv-list"></datalist></div>
+        <div class="fg"><label>Privéadres</label><input type="text" id="om-adres" placeholder="Straat 1, 1234AB Amsterdam"></div></div>
+      <div class="fr"><div class="fg" id="om-fg-opz"><label>Datum opzegging</label><input type="text" id="om-opz" placeholder="01-04-2026"></div>
+        <div class="fg"><label>Einddatum</label><input type="text" id="om-eind" placeholder="30-04-2026" oninput="omAanzegDagen()"></div></div>
+      <div class="fg"><label>Onderwerp</label><input type="text" id="om-subj"></div>
+      <div class="fg"><label>Begeleidende mail (platte tekst — de medewerker krijgt daarnaast de opgemaakte SLA-versie)</label><textarea id="om-tekst" rows="10"></textarea></div>
+      <div class="lay-sub">De upload-link wordt bij versturen automatisch persoonlijk gemaakt (naam voor-ingevuld).</div>
+    </div>
+    <div class="mf"><button class="btn bd" onclick="omKopieer()">Kopieer</button><button class="btn bd" id="om-pdfbtn" onclick="omPdf()">⬇ PDF bekijken</button><button class="btn bp" id="om-sbtn" onclick="omVerstuur()"><span id="om-slbl">Verstuur mail</span></button></div>
   </div></div>
 
   <!-- VRIJE BRIEVEN -->
