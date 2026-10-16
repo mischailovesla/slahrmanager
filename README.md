@@ -106,7 +106,8 @@ git push -u origin main
    | `SUPABASE_URL` | Project URL |
    | `SUPABASE_ANON_KEY` | anon key |
    | `SUPABASE_SERVICE_KEY` | service_role key (**geheim**) |
-   | `GOOGLE_SA_JSON_B64` | base64 van de service-account-JSON |
+   | `GOOGLE_SA_EMAIL` | `client_email` uit de service-account-JSON |
+   | `GOOGLE_SA_KEY` | alleen de base64-body van de private key, zonder BEGIN/END-regels (maak beide met `node scripts/sa-compact.js service-account.json`). De oude `GOOGLE_SA_JSON_B64` werkt nog lokaal, maar is op Netlify te groot: AWS Lambda staat max. 4 KB aan env vars toe |
    | `SHIFTBASE_KEY` | dezelfde key als in de Apps Script-scripteigenschappen |
    | `TOEGANG_DOMEIN` | `ilovesla.com` |
    | `RESEND_API_KEY` | Resend → API Keys (**secret**) |
@@ -133,6 +134,7 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.6.0 | 16-10-2026 | Stap 3e: Sommaties-tab (mail, printbrief, aanvullende tekst) en Overplaatsing-tab (mail + PDF NL/EN, standplaats vs. overplaatsing) |
 | 0.7.0 | 16-10-2026 | Stap 4: 6 scheduled functions + Signaleringen-tab, droogloop-schakelaar `SIGNALERINGEN_ACTIEF`, log `hr_signaleringen` |
 | 0.7.1 | 16-10-2026 | Medewerkers-tab toont standaard de volledige Shiftbase-lijst per winkel (zoekveld filtert), knop "← Alle medewerkers" in het dossier |
+| 0.11.3 | 16-10-2026 | Service account als `GOOGLE_SA_EMAIL` + `GOOGLE_SA_KEY` (compact) i.p.v. `GOOGLE_SA_JSON_B64` — de deploy faalde op de 4 KB-limiet van AWS Lambda voor env vars |
 | 0.11.2 | 16-10-2026 | Indiensttredingsformulier wordt geserveerd vanuit `public/Indiensttredingsformulier_SLA.xlsx` (welkomstmail stap 1) i.p.v. een Google Drive-exportlink — de laatste Drive-verwijzing in de mails is weg |
 | 0.11.1 | 16-10-2026 | Knop *⇅ Sorteer op datum* (nieuw → oud / oud → nieuw / uit) in de Loonheffing- en Ontslag-tab; sortering blijft staan na verversen (SorteerUI.gs-gedrag) |
 | 0.11.0 | 16-10-2026 | Batch D: notities (`/api/notitie`), dossier-PDF (`/api/dossier-pdf`), Toegangslog-tab (`/api/toegangslog`), Archief herstellen (`/api/archief`), sorteerbare kolomkoppen, `sched-bewaartermijnen` (1e 08:00) + `sched-data-hygiene` (1e 09:00). Apps Script volledig overgezet. |
@@ -158,7 +160,7 @@ De zes checks uit `instaleerTriggers()` plus `checkWeekendBeschikbaarheid` (eige
 
 **Droogloop**: zolang `SIGNALERINGEN_ACTIEF` niet `1` is, mailen en schrijven de checks niets — ze loggen alleen wat ze gedaan zouden hebben (tab Signaleringen → Laatste runs, en per check *Droogloop nu*). Zo kun je een week meekijken of Netlify hetzelfde vindt als Apps Script.
 
-**Cutover (één moment, ±5 min):**
+**Cutover:** volledige checklist in [`CUTOVER.md`](CUTOVER.md); doorverwijspagina voor Apps Script in `apps-script/doorverwijzing.gs`. Samengevat:
 1. Apps Script-editor → Triggers → alle triggers van `syncFormulierStatus`, `checkLoonheffingHerinneringen`, `checkOntslagHerinneringen`, `checkNieuweMedewerkers`, `checkAanzegtermijnen`, `checkStilleAfwezigen`, `checkWeekendBeschikbaarheid`, `checkKortingHerinneringen`, `checkVakantiepieken`, `stuurDataHygieneRapport`, `bewaartermijnRapport` verwijderen — dat zijn ze allemaal.
 2. Netlify → Environment variables → `SIGNALERINGEN_ACTIEF` = `1` → redeploy.
 3. Tab Signaleringen toont "ACTIEF"; de eerstvolgende run om 09:00 mailt echt. Terugdraaien = env var weghalen + triggers opnieuw installeren.

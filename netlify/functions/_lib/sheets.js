@@ -11,19 +11,39 @@ const { SHEETS, TAB_WAARSCHUWINGEN, TAB_BESCHIKBAARHEID, TAB_KORTING, TAB_NOTITI
 const { normNaam, toDownloadUrl, vindKolommen } = require('./util');
 
 const API = 'https://sheets.googleapis.com/v4/spreadsheets/';
+
+// Service-account-gegevens uit de env vars. AWS Lambda (waar Netlify Functions
+// op draaien) staat maximaal 4 KB aan env vars toe, en de volledige
+// service-account-JSON als base64 (±3 KB) past daar met de andere sleutels niet
+// meer bij. Daarom de compacte vorm (voorkeur): GOOGLE_SA_EMAIL + GOOGLE_SA_KEY,
+// waarbij GOOGLE_SA_KEY alléén de base64-body van de private key is (zonder
+// BEGIN/END-regels en zonder regeleinden, ±1,6 KB). Maak die twee waarden met
+// `node scripts/sa-compact.js <service-account.json>`.
+// Fallback: GOOGLE_SA_JSON_B64 (oude vorm) blijft werken voor lokaal testen.
+function leesServiceAccount() {
+  const email = String(process.env.GOOGLE_SA_EMAIL || '').trim();
+  const body = String(process.env.GOOGLE_SA_KEY || '').replace(/\s+/g, '');
+  if (email && body) {
+    const pem = body.indexOf('BEGIN') > -1
+      ? String(process.env.GOOGLE_SA_KEY).replace(/\\n/g, '\n')
+      : '-----BEGIN PRIVATE KEY-----\n' + (body.match(/.{1,64}/g) || []).join('\n') + '\n-----END PRIVATE KEY-----\n';
+    return { client_email: email, private_key: pem };
+  }
+  const raw = String(process.env.GOOGLE_SA_JSON_B64 || '').trim();
+  if (!raw) throw new Error('GOOGLE_SA_EMAIL + GOOGLE_SA_KEY ontbreken (service account). Zie scripts/sa-compact.js');
+  // Accepteert base64 (bedoeld) én per ongeluk geplakte ruwe JSON; witruimte/regeleinden worden genegeerd
+  try {
+    const txt = raw.startsWith('{') ? raw : Buffer.from(raw.replace(/\s+/g, ''), 'base64').toString('utf8');
+    return JSON.parse(txt);
+  } catch (e) {
+    throw new Error('GOOGLE_SA_JSON_B64 is geen geldige base64-JSON (begint met "' + raw.slice(0, 6) + '…", lengte ' + raw.length + ').');
+  }
+}
+
 let _jwt = null;
 function jwt() {
   if (_jwt) return _jwt;
-  const raw = String(process.env.GOOGLE_SA_JSON_B64 || '').trim();
-  if (!raw) throw new Error('GOOGLE_SA_JSON_B64 ontbreekt (service account)');
-  // Accepteert base64 (bedoeld) én per ongeluk geplakte ruwe JSON; witruimte/regeleinden worden genegeerd
-  let creds;
-  try {
-    const txt = raw.startsWith('{') ? raw : Buffer.from(raw.replace(/\s+/g, ''), 'base64').toString('utf8');
-    creds = JSON.parse(txt);
-  } catch (e) {
-    throw new Error('GOOGLE_SA_JSON_B64 is geen geldige base64-JSON (begint met "' + raw.slice(0, 6) + '…", lengte ' + raw.length + '). Verwacht: begint met "ewog" en is ±3000 tekens.');
-  }
+  const creds = leesServiceAccount();
   if (!creds.client_email || !creds.private_key) throw new Error('Service-account-JSON mist client_email/private_key');
   _jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
   return _jwt;
