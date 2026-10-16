@@ -282,7 +282,9 @@
     var taal = persoon && persoon.taal === 'EN' ? 'en' : 'nl';
     lmTpl = (persoon && persoon.status && persoon.status.indexOf('Verzonden') === 0 ? 'herinnering-' : 'uitnodiging-') + taal;
     lmBouwTbar(); lmHerbouw();
+    g('lm-zoek').value = ''; g('lm-zoek-res').classList.remove('open');
     g('lm-modal').classList.add('open');
+    if (!persoon) setTimeout(function () { g('lm-zoek').focus(); }, 60);
   };
   window.closeLoonMail = function () { g('lm-modal').classList.remove('open'); };
   function lmBouwTbar() {
@@ -346,7 +348,9 @@
     // Slimme default: aanzegging-dossier -> aanzegging; al verstuurd -> herinnering
     omKey = persoon && persoon.type === 'aanzegging' ? (isVerz(persoon.status) ? 'ontslag-herinnering' : 'aanzegging-nl') : (persoon && isVerz(persoon.status) ? 'ontslag-herinnering' : 'ontslag-pdf');
     omBouwTbar(); omHerbouw();
+    g('om-zoek').value = ''; g('om-zoek-res').classList.remove('open');
     g('om-modal').classList.add('open');
+    if (!persoon) setTimeout(function () { g('om-zoek').focus(); }, 60);
   };
   window.closeOntslagMail = function () { g('om-modal').classList.remove('open'); };
   g('om-modal').addEventListener('click', function (e) { if (e.target === this) closeOntslagMail(); });
@@ -476,9 +480,9 @@
     var ongewijzigd = ta.value.indexOf(kaal.substring(0, 40)) > -1 || ta.value.indexOf(kaal.substring(3, 43)) > -1;
     if (ta.value === '' || ongewijzigd) { ta.value = vbVar(t.body); g('vb-subj').value = vbVar(t.subject); }
   };
-  // Shiftbase-zoekveld in het modal (zelfde lijst als het dossier)
-  (function () {
-    var inp = g('vb-zoek'), res = g('vb-zoek-res');
+  // Shiftbase-zoekveld in een modal (zelfde lijst als het dossier); onKies(m) vult de velden
+  function koppelSbZoek(inpId, resId, onKies) {
+    var inp = g(inpId), res = g(resId);
     inp.oninput = function () {
       var q = inp.value.trim().toLowerCase();
       if (q.length < 2) { res.classList.remove('open'); return; }
@@ -487,10 +491,26 @@
       res.innerHTML = hits.length ? hits.map(function (m) { return '<button type="button" data-id="' + esc(m.id) + '"><strong>' + esc(m.naam) + '</strong><small>' + esc(m.winkelNaam || '-') + ' · ' + esc(m.email || '(geen e-mail)') + '</small></button>'; }).join('')
         : '<button type="button" disabled><small>Geen medewerker gevonden — vul handmatig in</small></button>';
       res.classList.add('open');
-      res.querySelectorAll('button[data-id]').forEach(function (b) { b.onclick = function () { vbKies(medewerkers.find(function (m) { return m.id === b.getAttribute('data-id'); })); }; });
+      res.querySelectorAll('button[data-id]').forEach(function (b) { b.onclick = function () { inp.value = ''; res.classList.remove('open'); onKies(medewerkers.find(function (m) { return m.id === b.getAttribute('data-id'); })); }; });
     };
     inp.onblur = function () { setTimeout(function () { res.classList.remove('open'); }, 180); };
-  })();
+  }
+  koppelSbZoek('vb-zoek', 'vb-zoek-res', vbKies);
+  koppelSbZoek('om-zoek', 'om-zoek-res', function (m) {
+    if (!m) return;
+    g('om-naam').value = m.naam || ''; g('om-to').value = m.email || '';
+    if (m.winkelBv) g('om-bv').value = m.winkelBv;
+    if (m.adres) g('om-adres').value = m.adres;
+    if (m.contractEinde && !g('om-eind').value) { g('om-eind').value = m.contractEinde; omAanzegDagen(); }
+    if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+    omHerbouw();
+  });
+  koppelSbZoek('lm-zoek', 'lm-zoek-res', function (m) {
+    if (!m) return;
+    g('lm-naam').value = m.naam || ''; g('lm-to').value = m.email || '';
+    if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+    lmHerbouw();
+  });
   function vbKies(m) {
     if (!m) return;
     g('vb-naam').value = m.naam || ''; g('vb-email').value = m.email || '';
