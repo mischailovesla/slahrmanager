@@ -133,6 +133,7 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.6.0 | 16-10-2026 | Stap 3e: Sommaties-tab (mail, printbrief, aanvullende tekst) en Overplaatsing-tab (mail + PDF NL/EN, standplaats vs. overplaatsing) |
 | 0.7.0 | 16-10-2026 | Stap 4: 6 scheduled functions + Signaleringen-tab, droogloop-schakelaar `SIGNALERINGEN_ACTIEF`, log `hr_signaleringen` |
 | 0.7.1 | 16-10-2026 | Medewerkers-tab toont standaard de volledige Shiftbase-lijst per winkel (zoekveld filtert), knop "← Alle medewerkers" in het dossier |
+| 0.11.2 | 16-10-2026 | Indiensttredingsformulier wordt geserveerd vanuit `public/Indiensttredingsformulier_SLA.xlsx` (welkomstmail stap 1) i.p.v. een Google Drive-exportlink — de laatste Drive-verwijzing in de mails is weg |
 | 0.11.1 | 16-10-2026 | Knop *⇅ Sorteer op datum* (nieuw → oud / oud → nieuw / uit) in de Loonheffing- en Ontslag-tab; sortering blijft staan na verversen (SorteerUI.gs-gedrag) |
 | 0.11.0 | 16-10-2026 | Batch D: notities (`/api/notitie`), dossier-PDF (`/api/dossier-pdf`), Toegangslog-tab (`/api/toegangslog`), Archief herstellen (`/api/archief`), sorteerbare kolomkoppen, `sched-bewaartermijnen` (1e 08:00) + `sched-data-hygiene` (1e 09:00). Apps Script volledig overgezet. |
 | 0.10.0 | 16-10-2026 | Batch C: Vastloners-, Vakantieplanner- en Verloopanalyse-tab (`_lib/vastloners.js`, `_lib/vakantie.js`, `_lib/verloop.js`), scheduled function `sched-vakantiepieken` (ma 09:00). Geen placeholder-tabs meer. |

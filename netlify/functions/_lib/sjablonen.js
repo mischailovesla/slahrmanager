@@ -27,6 +27,8 @@ const U = require('./uploads');
 function prefillLoonUrl(naam) { return naam ? U.uploadLink('loon', naam) : C.UPLOAD_LOON; }
 function prefillOntslagUrl(naam) { return naam ? U.uploadLink('ontslag', naam) : C.UPLOAD_ONTSLAG; }
 function prefillKortingUrl(naam) { return naam ? U.uploadLink('korting', naam) : C.UPLOAD_LOON; }
+// Indiensttredingsformulier: bestand in public/ van het dashboard zelf (voorheen een Google Drive-exportlink, INDIENSTLINK)
+function indienstLink() { return U.site() + '/Indiensttredingsformulier_SLA.xlsx'; }
 // Generieke upload-links in een (door HR bewerkte) tekst vervangen door de persoonlijke
 function personaliseerUploadLinks(body, naam) {
   if (!body || !naam) return body;
@@ -55,15 +57,15 @@ function loonUitnodigingHtml(naam, dl, isEN) {
   };
   const db = dl ? '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px"><tr><td style="padding:12px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + F + 'font-size:12px;color:#7a5c00"><strong>' + L.dlLbl + '</strong> ' + L.dlTxt + '</td></tr></table>' : '';
   return slaWrap(slaHead('#009f4b', L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">' + L.greet + n + ',</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">' + L.intro + '</p>'
-    + slaStep(1, L.s1, C.INDIENSTLINK, L.s1b, isEN) + slaStep(2, L.s2, isEN ? C.LB_FORMULIER_EN : C.LB_FORMULIER_NL, L.s2b, isEN) + slaStep(3, L.s3, prefillLoonUrl(naam), L.s3b, isEN) + db
+    + slaStep(1, L.s1, indienstLink(), L.s1b, isEN) + slaStep(2, L.s2, isEN ? C.LB_FORMULIER_EN : C.LB_FORMULIER_NL, L.s2b, isEN) + slaStep(3, L.s3, prefillLoonUrl(naam), L.s3b, isEN) + db
     + '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr><td style="padding:12px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + F + 'font-size:12px;color:#7a5c00;line-height:1.5">' + L.warn + '</td></tr></table>'
     + '<p style="' + F + 'font-size:14px;color:#333d3a;margin:0 0 6px">' + L.q + ' <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p><p style="' + F + 'font-size:14px;color:#333d3a;margin:0 0 20px">' + L.bye + '</p><p style="' + F + 'font-size:14px;color:#333d3a;margin:0">' + L.sign + '<br><strong>SLA HR Team</strong></p></td></tr>' + slaFoot());
 }
 function loonUitnodigingPlain(naam, dl, isEN) {
   const n = naam || (isEN ? '[Name]' : '[Naam]');
   return isEN
-    ? 'Dear ' + n + ',\n\nWelcome to SLA!\n\nStep 1:\n' + C.INDIENSTLINK + '\n\nStep 2:\n' + C.LB_FORMULIER_EN + '\n\nStep 3:\n' + C.UPLOAD_LOON + '\n\n' + (dl ? 'Deadline: ' + dl + '\n\n' : '') + 'Without payroll tax form 52% rate applies.\n\nQuestions? hr@ilovesla.com\n\nKind regards,\nSLA HR Team'
-    : 'Beste ' + n + ',\n\nWelkom bij SLA!\n\nStap 1:\n' + C.INDIENSTLINK + '\n\nStap 2:\n' + C.LB_FORMULIER_NL + '\n\nStap 3:\n' + C.UPLOAD_LOON + '\n\n' + (dl ? 'Uiterlijk ' + dl + '.\n\n' : '') + 'Zonder loonheffingsverklaring geldt het anoniementarief (52%).\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team';
+    ? 'Dear ' + n + ',\n\nWelcome to SLA!\n\nStep 1:\n' + indienstLink() + '\n\nStep 2:\n' + C.LB_FORMULIER_EN + '\n\nStep 3:\n' + C.UPLOAD_LOON + '\n\n' + (dl ? 'Deadline: ' + dl + '\n\n' : '') + 'Without payroll tax form 52% rate applies.\n\nQuestions? hr@ilovesla.com\n\nKind regards,\nSLA HR Team'
+    : 'Beste ' + n + ',\n\nWelkom bij SLA!\n\nStap 1:\n' + indienstLink() + '\n\nStap 2:\n' + C.LB_FORMULIER_NL + '\n\nStap 3:\n' + C.UPLOAD_LOON + '\n\n' + (dl ? 'Uiterlijk ' + dl + '.\n\n' : '') + 'Zonder loonheffingsverklaring geldt het anoniementarief (52%).\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team';
 }
 
 // --- Loonheffing: herinnering (buildLoonHerHtml) --------------------------------
@@ -510,6 +512,6 @@ function salarisPlain(naam, labels, kortKeuze, kortIngang) {
 }
 
 module.exports = { KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
-  slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
+  slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, indienstLink, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
   HUISREGELS, regelsById, wrsPlain, wrsHtml, beschikbPlain, beschikbHtml, oosvPlain, oosvHtml,
   SOM_TYPES, SOM_KLEUR, SOM_SHEETKLEUR, SOM_HINTS, sommatieSubject, sommatieHtml, sommatiePlain, overplaatsingSubject, overplaatsingPlain, overplaatsingHtml };

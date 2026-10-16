@@ -117,4 +117,4 @@ async function bestandMetLabel(ref, label, naam) {
   const ext = (b.naam_orig && b.naam_orig.lastIndexOf('.') > -1 ? b.naam_orig.substring(b.naam_orig.lastIndexOf('.')) : TOEGESTAAN[b.mime]) || '';
   return { filename: label + '_' + String(naam || '').trim().replace(/\s+/g, '_') + ext.toLowerCase(), content: buf.toString('base64'), bytes: buf.length };
 }
-module.exports = { SOORTEN, BUCKET, maakToken, leesToken, uploadLink, startUpload, registreer, vindUploads, isRef, zoekBestand, signedUrl, bestandMetLabel };
+module.exports = { site, SOORTEN, BUCKET, maakToken, leesToken, uploadLink, startUpload, registreer, vindUploads, isRef, zoekBestand, signedUrl, bestandMetLabel };
