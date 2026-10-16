@@ -293,7 +293,32 @@ async function kortingHerinneringen(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen };
+// ---- 9. Vakantiepieken (checkVakantiepieken, Shiftbase.gs v6; maandag 09:00) ----
+function piekHtml(pieken) {
+  const blokken = pieken.map(p => {
+    const totaal = p.app + p.stil + p.pend, kleur = p.alRood ? '#c0392b' : '#e8824a';
+    const status = p.alRood ? '<strong style="color:#c0392b">Al boven de drempel</strong>' : '<strong style="color:#9a4a1a">Komt boven de drempel</strong> als de open aanvragen worden goedgekeurd';
+    return '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px"><tr><td style="padding:14px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid ' + kleur + '"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 4px">' + esc(p.winkel) + ' <span style="font-weight:400;color:#888078;font-size:12px">&middot; bezetting ' + p.bezetting + ' &middot; week ' + esc(p.week) + '</span></p><p style="' + F + 'font-size:12px;color:#666;margin:0 0 6px"><strong>' + p.app + '</strong> vakantie' + (p.stil ? ' + <strong>' + p.stil + '</strong> stil' : '') + (p.pend ? ' + <strong>' + p.pend + '</strong> aangevraagd' : '') + ' = <strong>' + totaal + '</strong> totaal tegelijk weg &mdash; ' + status + '</p>'
+      + (p.namen.length ? '<p style="' + F + 'font-size:11px;color:#888078;margin:0 0 2px"><strong>Vakantie:</strong> ' + esc(p.namen.join(', ')) + '</p>' : '') + (p.stilNamen.length ? '<p style="' + F + 'font-size:11px;color:#888078;margin:0"><strong>Stil:</strong> ' + esc(p.stilNamen.join(', ')) + '</p>' : '') + '</td></tr></table>';
+  }).join('');
+  return T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Afwezigheidspieken') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">In de komende <strong>' + C.VAKANTIE_PIEK_WEKEN + ' weken</strong> gaan deze winkels over de drempel van <strong>' + Math.round(C.VAKANTIE_DREMPEL_ROOD * 100) + '%</strong> van de bezetting gelijktijdig afwezig (vakantie + stille afwezigen samen):</p>' + blokken
+    + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0"><tr><td style="padding:12px 16px;background:#e6f7ee;border-radius:8px;border-left:4px solid #009f4b;' + F + 'font-size:12px;color:#006b30;line-height:1.6">&#10003; Bekijk de volledige heatmap in <strong>HR Dashboard &rarr; Vakantieplanner</strong>. Open aanvragen kun je nu nog met de store manager bespreken v&oacute;&oacute;rdat ze worden goedgekeurd.</td></tr></table><p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch wekelijks bericht &mdash; vakantiepiek-check</p></td></tr>' + T.slaFoot());
+}
+async function vakantiepieken(droog) {
+  const rap = { naam: 'vakantiepieken', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const VK = require('./vakantie');
+  const d = await VK.getVakantiePlannerData();
+  const pieken = VK.bepaalPieken(d);
+  rap.gevonden = pieken;
+  if (!pieken.length) return rap;
+  let plain = 'Hallo,\n\nIn de komende ' + C.VAKANTIE_PIEK_WEKEN + ' weken zijn er pieken van gelijktijdige afwezigheid (vakantie + stille afwezigen samen, >= ' + Math.round(C.VAKANTIE_DREMPEL_ROOD * 100) + '% van de bezetting):\n\n';
+  pieken.forEach(p => { plain += '- ' + p.winkel + ' (bezetting ' + p.bezetting + '), week ' + p.week + ': ' + p.app + ' vakantie' + (p.stil ? ' + ' + p.stil + ' stil' : '') + (p.pend ? ' + ' + p.pend + ' aangevraagd' : '') + ' = ' + (p.app + p.stil + p.pend) + ' totaal\n' + (p.namen.length ? '  Vakantie: ' + p.namen.join(', ') + '\n' : '') + (p.stilNamen.length ? '  Stil: ' + p.stilNamen.join(', ') + '\n' : ''); });
+  plain += '\nBekijk de volledige heatmap in HR Dashboard -> Vakantieplanner. Aanvragen die nog open staan kun je nu nog met de store manager bespreken.\n\n(Automatisch wekelijks bericht van het SLA HR systeem)';
+  await mailOfDroog(rap, { to: ontvangers('vakantiepiek'), subject: 'Afwezigheidspieken: ' + pieken.length + ' winkel-week combinatie(s) boven de drempel', text: plain, html: piekHtml(pieken), kort: { naam: 'HR-team', aantal: pieken.length } });
+  return rap;
+}
+
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 async function draai(naam, droog, bron) {
@@ -308,4 +333,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken };

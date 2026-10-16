@@ -30,7 +30,8 @@ module.exports = {
     nieuweMedewerkers: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     aanzegtermijn: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     stilleAfwezigen: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
-    weekendBeschikbaarheid: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
+    weekendBeschikbaarheid: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    vakantiepiek: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
   },
   SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
   SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam
@@ -58,6 +59,42 @@ module.exports = {
   SALARIS_ONTSLAG_KOL: 15,         // O in de ontslag-sheet
   CONTRACT_DAGEN_TERUG: 90,        // Contract.gs v3.0: starters vanaf 90 dagen geleden (incl. toekomst)
   CONTRACT_MAX_USERS: 40,
+
+  // Batch C — Vastloners (Vastloners.gs v30.0 + claude/vastloners-configuratie.md)
+  VASTLONER_TREFWOORDEN: ['store manager', 'storemanager', 'shopmanager', 'bedrijfsleider'],
+  VASTLONER_NAMEN: ['Lisa Seidelt', 'Cassandra Liacos', 'Frida Csaszar', 'Joline van Wegen', 'Julia Vesseur', 'Anna Maeda', 'Viktoria Platthy', 'Sophie van den Broek', 'Maria-Daria Puia', 'Amber Tomas', 'Arle Koster', 'Puck Hermans'],
+  VASTLONER_EXTRA: [],        // e-mailadressen die altijd meetellen
+  VASTLONER_UITSLUITEN: [],   // e-mailadressen die nooit meetellen
+  // Verloftypes op Shiftbase absentee_option_id: categorie + loonconsequentie (hoofdregel wet; nog af te stemmen met salarisadministratie/CAO)
+  VL_TYPE_MAP: {
+    '1019457': { naam: 'Vakantie', cat: 'vakantie', loon: '' },
+    '1019458': { naam: 'Ziek', cat: 'ziekte', loon: 'wachtdag via Shiftbase' },
+    '1019459': { naam: 'Nationale feestdag', cat: 'negeren', loon: 'geen mutatie' },
+    '1019460': { naam: 'Bijzonder verlof', cat: 'overig', loon: 'betaald of onbetaald volgens CAO' },
+    '1019461': { naam: 'Zwangerschapsverlof', cat: 'overig', loon: 'WAZO-uitkering via UWV' },
+    '1019462': { naam: 'Kortdurend zorgverlof', cat: 'overig', loon: '70% van het loon' },
+    '1019463': { naam: 'Langdurend zorgverlof', cat: 'overig', loon: 'in beginsel onbetaald' },
+    '1019464': { naam: 'Ouderschapsverlof', cat: 'overig', loon: 'betaald deel via UWV' },
+    '1019465': { naam: 'Onbetaald verlof', cat: 'onbetaald', loon: 'inhouden op het salaris' }
+  },
+  VL_ZIEKTE_WOORDEN: ['ziek', 'sick', 'verzuim'],
+  VL_VERLOF_WOORDEN: ['vakantie', 'verlof', 'vrij', 'holiday', 'vacation', 'atv', 'tvt'],
+  VL_SAMENTEL_DAGEN: 28,      // 4-wekenregel art. 7:629 lid 10 BW
+  VL_TERUGKIJK_DAGEN: 70,     // om samentelling te kunnen beoordelen
+
+  // Vakantieplanner (Shiftbase.gs v6)
+  VAKANTIE_WEKEN: 8,
+  VAKANTIE_DREMPEL_ORANJE: 0.20,
+  VAKANTIE_DREMPEL_ROOD: 0.30,
+  VAKANTIE_PIEK_WEKEN: 4,
+  VAKANTIE_PIEK_MIN_BEZETTING: 3,
+
+  // Verloopanalyse (Verloop.gs v1.3)
+  VRL_VROEG_DAGEN: 90,
+  VRL_MIN_BESTAND: 3,
+  VRL_UITGESLOTEN_TEAMS: ['HQ', 'Keuken', 'Logistiek', 'Flexpool Den Haag'],
+  VRL_FLEX_UITSLUITEN: true,
+  VRL_COHORTEN: [30, 60, 90],
 
   // Mail / huisstijl (uit Code.gs)
   AFZENDER_TEAM: 'SLA HR Team',

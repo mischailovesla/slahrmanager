@@ -330,6 +330,60 @@
     <div class="alert grijs"><strong>Werkwijze:</strong> alle starters met een startdatum in de laatste 90 dagen (of in de toekomst) uit Shiftbase. <em>Contract</em> = het arbeidscontract dat in Shiftbase bij de medewerker staat — alleen voor interne controle/download, gaat <strong>niet</strong> mee naar de salarisadministratie (afspraak 07-04-2026). <em>Loonheffing</em> en <em>Indienst</em> zijn de geüploade formulieren uit het loonheffingsdossier (gematcht op e-mail, volledige naam of roepnaam+achternaam). <strong>→ Salaris</strong> gebruikt dezelfde flow als in de Loonheffing-tab.</div>
   </div>
 
+  <!-- VASTLONERS (Vastloners.gs v30.0) -->
+  <div class="tc" id="tab-vastloners">
+    <div class="sec">
+      <div class="sh"><div class="st">Maandmutaties vastloners <span class="pill" id="vl-pill">-</span></div>
+        <div class="hr2"><select id="vl-maand" class="sb" style="width:auto"></select><select id="vl-jaar" class="sb" style="width:auto"></select><button class="btn bp bsm" onclick="vlLaad()">Ophalen</button><button class="btn bd bsm" onclick="vlKopieer()">📋 Kopieer overzicht</button></div></div>
+      <div id="vl-status" class="lay-sub" style="padding:10px 24px 0">Kies een maand en klik op Ophalen.</div>
+      <div class="stats" id="vl-kpi" style="display:none;padding:16px 24px 0"></div>
+      <div id="vl-waarsch" style="display:none;padding:14px 24px 0"></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Locatie</th><th>Vakantie</th><th>Ziek</th><th>Ziekteperiodes</th><th>Wachtdag</th><th>Overig (loonconsequentie)</th></tr></thead><tbody id="vl-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Werkwijze:</strong> de maandkiezer staat standaard op de vorige maand — de maand die naar de salarisadministratie gaat. Vastloner = functie met "store manager" in Shiftbase óf naam in de vaste lijst (config.js). Wachtdag komt uit Shiftbase; de 4-wekenregel (art. 7:629 lid 10 BW) wordt nagerekend en afwijkingen staan in het gele blok. Loonconsequenties bij "Overig" zijn de wettelijke hoofdregel — nog af te stemmen met de salarisadministratie/CAO.</div>
+  </div>
+
+  <!-- VAKANTIEPLANNER (Shiftbase.gs v6) -->
+  <div class="tc" id="tab-vakantie">
+    <div class="sec">
+      <div class="sh"><div class="st">Vakantieplanner <span class="pill" id="vak-jaar">-</span></div>
+        <div class="hr2"><button class="btn bd bsm" onclick="vakJaarWissel(-1)">◀</button><button class="btn bd bsm" onclick="vakJaarWissel(1)">▶</button><button class="btn bd bsm" onclick="laadVakantie(vakJaar)">↻ Ververs</button></div></div>
+      <div id="vak-upd" class="lay-sub" style="padding:8px 24px 0"></div>
+      <div style="padding:10px 24px 0;font-size:.78rem;color:#888078;display:flex;gap:16px;flex-wrap:wrap"><span><span class="badge bg">n</span> &lt; 20% van de bezetting tegelijk weg</span><span><span class="badge bo">n</span> ≥ 20%, of ≥ 30% als open aanvragen worden goedgekeurd</span><span><span class="badge br">n</span> ≥ 30% (goedgekeurd + stil)</span><span><strong>n+m</strong> = goedgekeurd (+ stil) + aangevraagd · klik op een cel voor de namen</span></div>
+      <div class="tw" id="vak-tabel" style="padding:12px 0 0"></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Stille afwezigen <span class="pill" id="stil-pill">-</span></div><div class="hr2"><button class="btn bd bsm" onclick="laadStil()">↻ Laden</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Winkel</th><th>Laatste dienst</th><th>Dagen geleden</th><th>In dienst sinds</th><th>Actie</th></tr></thead><tbody id="stil-body"><tr><td colspan="6" class="leeg grijs">Klik op ↻ Laden</td></tr></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Heatmap:</strong> per winkel per week het maximum aantal medewerkers dat op één dag tegelijk met vakantie is (type "Vakantie" in Shiftbase), afgezet tegen de bezetting. Stille afwezigen (0-urencontract, 4 weken geen dienst, geen verlof, niets ingeroosterd) tellen vanaf de huidige week mee. De wekelijkse signalering (maandag 09:00) mailt HR bij ≥ 30% in de komende 4 weken.</div>
+  </div>
+
+  <!-- VERLOOPANALYSE (Verloop.gs v1.3) -->
+  <div class="tc" id="tab-verloopanalyse">
+    <div class="sec">
+      <div class="sh"><div class="st">Verloopanalyse</div>
+        <div class="hr2"><button class="btn bd bsm" id="vrl-b12" onclick="laadVerloop(12,false)">12 maanden</button><button class="btn bd bsm" id="vrl-b24" onclick="laadVerloop(24,false)">24 maanden</button><button class="btn bd bsm" onclick="laadVerloop(0,true)">↻ Vernieuwen</button></div></div>
+      <div id="vrl-kpi" style="padding:14px 24px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;font-size:.85rem">Verloopdata berekenen uit Shiftbase…</div>
+      <div id="vrl-periode" class="lay-sub" style="padding:4px 24px 0"></div>
+      <div id="vrl-grafiek" style="padding:16px 24px 8px"></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Per winkel</div></div>
+      <div class="tw"><table><thead><tr><th>Winkel</th><th>Bestand</th><th>Instroom</th><th>Uitstroom</th><th>Netto</th><th>Verloop</th><th>Vertrekkers ≤90 dgn</th><th>Gem. diensttijd</th></tr></thead><tbody id="vrl-body"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Uitval nieuwe medewerkers (cohort 30/60/90 dagen)</div></div>
+      <div class="lay-sub" style="padding:8px 24px 0">Van iedereen die in de periode instroomde: welk deel haalde de mijlpaal niet? Wie de mijlpaal nog niet kón halen telt niet mee in de noemer.</div>
+      <div class="tw"><table><thead><tr><th>Winkel</th><th>≤ 30 dagen</th><th>≤ 60 dagen</th><th>≤ 90 dagen</th><th>Instroom in periode</th></tr></thead><tbody id="vrl-cohort-body"></tbody></table></div>
+    </div>
+    <div class="sec" id="vrl-vroeg-sec" style="display:none">
+      <div class="sh"><div class="st">Vroege uitstroom (vertrokken binnen <span id="vrl-vroeg-dagen">90</span> dagen)</div></div>
+      <div id="vrl-vroeg" style="padding:8px 24px 14px"></div>
+    </div>
+    <div class="alert grijs"><strong>Formule:</strong> verloop% = uitstroom in de periode / gemiddeld bestand ((begin + eind) / 2) × 100. Vergelijking tegen het eigen organisatiegemiddelde (oranje &gt; 110%, rood &gt; 130%), niet tegen een externe norm — horeca kent structureel hoog verloop. HQ, Keuken, Logistiek en flexpools tellen niet mee; contracten voor bepaalde tijd met een einddatum in de toekomst zijn geen uitstroom.</div>
+  </div>
+
   <!-- SIGNALERINGEN (stap 4) -->
   <div class="tc" id="tab-signalering">
     <div class="sec">

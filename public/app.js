@@ -13,7 +13,7 @@
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -58,6 +58,8 @@
     if (tab === 'beschikbaarheid' && !bkData) laadBeschikbaarheid();
     if (tab === 'loonheffingskorting' && !krtData) laadKorting();
     if (tab === 'contract' && !ctrData) laadContract(false);
+    if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
+    if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
   }
   window.swT = swT;
 
@@ -971,6 +973,145 @@
     if (!r.success) { toast('Contract: ' + r.bericht, 'err'); return; }
     downloadB64(r.base64, r.bestandsnaam);
   });
+
+  // ---------- Vastloners: maandmutaties salaris (port van Vastloners.gs v30.0) ----------
+  var vlData = null;
+  (function () {
+    var mn = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+    var nu = new Date(), vm = new Date(nu.getFullYear(), nu.getMonth() - 1, 1), h = '', jh = '';
+    for (var i = 0; i < 12; i++) h += '<option value="' + (i + 1) + '">' + mn[i] + '</option>';
+    for (var y = nu.getFullYear(); y >= nu.getFullYear() - 2; y--) jh += '<option value="' + y + '">' + y + '</option>';
+    g('vl-maand').innerHTML = h; g('vl-jaar').innerHTML = jh; g('vl-maand').value = String(vm.getMonth() + 1); g('vl-jaar').value = String(vm.getFullYear());
+  })();
+  function vlCel(d, u) { if (!d && !u) return '<span class="no-doc">-</span>'; return '<strong>' + d + '</strong> dag' + (d === 1 ? '' : 'en') + (u ? '<div class="lay-sub">' + u + ' uur</div>' : ''); }
+  window.vlLaad = async function () {
+    var st = g('vl-status'); st.innerHTML = 'Gegevens ophalen uit Shiftbase…'; g('vl-body').innerHTML = ''; g('vl-kpi').style.display = 'none'; g('vl-waarsch').style.display = 'none';
+    var r = await api('/api/vastloners?jaar=' + g('vl-jaar').value + '&maand=' + g('vl-maand').value);
+    if (!r.success) { st.innerHTML = '<span style="color:#c0392b">' + esc(r.bericht) + '</span>'; return; }
+    vlData = r;
+    g('vl-pill').textContent = r.periode.label;
+    st.innerHTML = 'Periode <strong>' + esc(r.periode.start) + ' t/m ' + esc(r.periode.eind) + '</strong> · ' + r.aantalVastloners + ' vastloners · opgehaald ' + esc(r.opgehaald);
+    var t = r.totalen, kpi = g('vl-kpi');
+    kpi.innerHTML = '<div class="card cg"><div class="si sig">🏝</div><div><div class="sv">' + t.verlofDagen + '</div><div class="sl">Vakantiedagen</div></div></div><div class="card cw"><div class="si siw">🤒</div><div><div class="sv">' + t.ziekDagen + '</div><div class="sl">Ziektedagen</div></div></div><div class="card" style="border-top:3px solid #c0392b"><div class="si" style="background:#fdecea">⚠</div><div><div class="sv">' + t.wachtdagen + '</div><div class="sl">Wachtdagen</div></div></div><div class="card cd"><div class="si sid">👤</div><div><div class="sv">' + t.metMutatie + '</div><div class="sl">Met mutatie</div></div></div>';
+    kpi.style.display = 'grid';
+    var w = g('vl-waarsch');
+    if (r.waarschuwingen.length) { w.innerHTML = '<div class="alert geel" style="margin:0"><strong>⚠ Controleren (' + r.waarschuwingen.length + ')</strong><ul style="margin:8px 0 0;padding-left:18px">' + r.waarschuwingen.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>'; w.style.display = 'block'; }
+    var rows = r.regels.filter(function (d) { return d.heeftMutatie; }), geen = r.regels.length - rows.length;
+    var html = rows.map(function (d) {
+      var zp = d.ziekteperiodes.length ? d.ziekteperiodes.map(function (p) { return esc(p.start) + ' t/m ' + esc(p.eind) + ' (' + p.dagen + 'd' + (p.deelDag ? ', deel van de dag' : '') + ')'; }).join('<br>') : '<span class="no-doc">-</span>';
+      var wd = d.wachtdagen.length ? d.wachtdagen.map(function (p) { return '<span class="badge br">' + esc(p.datum) + '</span>' + (p.uren ? '<div class="lay-sub">' + p.uren + ' uur</div>' : ''); }).join(' ') : '<span class="no-doc">-</span>';
+      var ov = d.overig.length ? d.overig.map(function (p) { return '<strong>' + esc(p.type) + '</strong> (' + esc(p.start) + ', ' + p.dagen + 'd)' + (p.loon ? '<div class="lay-sub">' + esc(p.loon) + '</div>' : ''); }).join('<br>') : '<span class="no-doc">-</span>';
+      return '<tr><td><strong>' + esc(d.naam) + '</strong><div class="lay-sub">' + esc(d.functie) + '</div></td><td><span class="badge boat">' + esc(d.locatie) + '</span></td><td>' + vlCel(d.verlofDagen, d.verlofUren) + '</td><td>' + vlCel(d.ziekDagen, d.ziekUren) + '</td><td style="font-size:.78rem">' + zp + '</td><td>' + wd + '</td><td style="font-size:.78rem">' + ov + '</td></tr>';
+    }).join('');
+    if (!html) html = '<tr><td colspan="7" style="text-align:center;color:#009f4b;padding:36px;font-size:15px">✓ Geen bijzonderheden deze maand</td></tr>';
+    else if (geen > 0) html += '<tr><td colspan="7" style="text-align:center;color:#888078;padding:14px;font-size:12px">' + geen + ' vastloner(s) zonder mutatie deze maand</td></tr>';
+    g('vl-body').innerHTML = html;
+  };
+  window.vlKopieer = function () {
+    if (!vlData) { toast('Haal eerst een maand op', 'err'); return; }
+    var t = 'Maandmutaties vastloners - ' + vlData.periode.label + '\nPeriode: ' + vlData.periode.start + ' t/m ' + vlData.periode.eind + '\n\n', n = 0;
+    vlData.regels.forEach(function (d) {
+      if (!d.heeftMutatie) return; n++;
+      t += d.naam + ' (' + d.locatie + ')\n';
+      if (d.verlofDagen) t += '  - Vakantie: ' + d.verlofDagen + ' dag(en)' + (d.verlofUren ? ' / ' + d.verlofUren + ' uur' : '') + '\n';
+      if (d.ziekDagen) t += '  - Ziek: ' + d.ziekDagen + ' dag(en)' + (d.ziekUren ? ' / ' + d.ziekUren + ' uur' : '') + '\n';
+      d.ziekteperiodes.forEach(function (p) { t += '      periode ' + p.start + ' t/m ' + p.eind + '\n'; });
+      d.wachtdagen.forEach(function (p) { t += '  - WACHTDAG: ' + p.datum + (p.uren ? ' (' + p.uren + ' uur)' : '') + '\n'; });
+      d.overig.forEach(function (p) { t += '  - ' + p.type + ': ' + p.start + ' (' + p.dagen + ' dag(en))' + (p.loon ? ' - ' + p.loon : '') + '\n'; });
+      t += '\n';
+    });
+    if (!n) t += 'Geen bijzonderheden deze maand.\n';
+    navigator.clipboard.writeText(t).then(function () { toast('Overzicht gekopieerd', 'ok'); }, function () { toast('Kopiëren mislukt', 'err'); });
+  };
+
+  // ---------- Vakantieplanner (port van Shiftbase.gs v6: heatmap + stille afwezigen) ----------
+  var vakData = null, vakJaar = new Date().getFullYear();
+  window.vakJaarWissel = function (d) { laadVakantie(vakJaar + d); };
+  window.laadVakantie = async function (jaar) {
+    vakJaar = jaar || vakJaar; g('vak-jaar').textContent = vakJaar;
+    var c = g('vak-tabel'); c.innerHTML = '<div class="leeg grijs">Vakantiedata ' + vakJaar + ' laden uit Shiftbase…</div>';
+    var d = await api('/api/vakantie?jaar=' + vakJaar);
+    if (!d.success) { c.innerHTML = '<div class="leeg grijs" style="color:#c0392b">' + esc(d.bericht) + '</div>'; return; }
+    vakData = d; renderVakantie(d);
+  };
+  function renderVakantie(d) {
+    var c = g('vak-tabel'); g('vak-upd').textContent = 'Bijgewerkt ' + (d.bijgewerkt || ''); g('vak-jaar').textContent = d.jaar;
+    var h = '<table><thead><tr><th></th>'; var i = 0;
+    while (i < d.weken.length) { var maand = d.weken[i].maand, span = 1; while (i + span < d.weken.length && d.weken[i + span].maand === maand) span++; h += '<th colspan="' + span + '" style="text-align:center;border-left:2px solid #ede8e4">' + esc(maand) + '</th>'; i += span; }
+    h += '</tr><tr><th>Winkel (bezetting)</th>' + d.weken.map(function (w, idx) { return '<th style="text-align:center' + (idx === d.huidigeWeek ? ';background:#009f4b;color:#fff' : '') + '" title="Week ' + w.weeknr + ': ' + esc(w.label) + (idx === d.huidigeWeek ? ' (huidige week)' : '') + '">' + w.weeknr + '</th>'; }).join('') + '</tr></thead><tbody>';
+    d.rijen.forEach(function (rij, ri) {
+      h += '<tr><td style="white-space:nowrap"><strong>' + esc(rij.naam) + '</strong> <span class="lay-sub" style="display:inline">(' + rij.bezetting + ')</span></td>';
+      rij.cellen.forEach(function (cel, idx) {
+        var bgTd = idx === d.huidigeWeek ? 'background:#f0f9f4;' : '';
+        if (cel.app === 0 && cel.pend === 0 && !cel.stil) { h += '<td style="text-align:center;padding:6px 4px;' + bgTd + '"><span style="color:#ddd">-</span></td>'; return; }
+        var stil = cel.stil || 0, vast = cel.app + stil, ratio = rij.bezetting ? vast / rij.bezetting : 0, ratioTot = rij.bezetting ? (vast + cel.pend) / rij.bezetting : 0;
+        var cls = ratio >= d.drempelRood ? 'br' : (ratio >= d.drempelOranje || ratioTot >= d.drempelRood) ? 'bo' : 'bg';
+        var titel = cel.app + ' vakantie' + (cel.pend ? ' (+' + cel.pend + ' aangevraagd)' : '') + (stil ? ', ' + stil + ' stil' : '') + ' = ' + (vast + cel.pend) + ' totaal afwezig van ' + rij.bezetting;
+        h += '<td style="text-align:center;padding:6px 4px;' + bgTd + '"><span class="badge ' + cls + '" style="cursor:pointer" title="' + esc(titel) + '" data-vak-rij="' + ri + '" data-vak-wk="' + idx + '">' + vast + (cel.pend ? '+' + cel.pend : '') + '</span></td>';
+      });
+      h += '</tr>';
+    });
+    c.innerHTML = h + '</tbody></table>';
+  }
+  document.addEventListener('click', function (e) {
+    var s = e.target.closest && e.target.closest('[data-vak-rij]'); if (!s || !vakData) return;
+    var rij = vakData.rijen[+s.getAttribute('data-vak-rij')], cel = rij.cellen[+s.getAttribute('data-vak-wk')], nm = cel.namen || [], sn = cel.stilNamen || [];
+    toast(rij.naam + ': ' + (nm.length ? nm.join(', ') : '(geen vakantie)') + (sn.length ? ' | Stil: ' + sn.join(', ') : ''), 'ok');
+  });
+  window.laadStil = async function () {
+    g('stil-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">Rooster en verlof ophalen…</td></tr>';
+    var d = await api('/api/vakantie?stil=1');
+    if (!d.success) { g('stil-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    g('stil-pill').textContent = d.lijst.length + ' stil · ' + d.vensterDagen + ' dagen';
+    g('stil-body').innerHTML = d.lijst.map(function (p) { return '<tr><td><strong>' + esc(p.naam) + '</strong></td><td>' + esc(p.winkel) + '</td><td>' + esc(p.laatsteDienst || 'geen in ' + d.lookback + ' dagen') + '</td><td>' + (p.dagen === null ? '-' : '<span class="badge br">' + p.dagen + '</span>') + '</td><td>' + esc(p.indienst || '-') + '</td><td>' + dosBtn(p.naam, p.email) + '</td></tr>'; }).join('') || '<tr><td colspan="6" style="text-align:center;color:#009f4b;padding:24px">✓ Geen stille afwezigen gevonden</td></tr>';
+  };
+
+  // ---------- Verloopanalyse (port van Verloop.gs v1.3) ----------
+  var vrlData = null, vrlMaanden = 12;
+  window.laadVerloop = async function (mnd, vers) {
+    if (mnd) vrlMaanden = mnd;
+    g('vrl-b12').className = 'btn bsm ' + (vrlMaanden === 12 ? 'bp' : 'bd'); g('vrl-b24').className = 'btn bsm ' + (vrlMaanden === 24 ? 'bp' : 'bd');
+    g('vrl-kpi').textContent = 'Verloopdata berekenen uit Shiftbase…'; g('vrl-body').innerHTML = '<tr><td colspan="8" class="leeg grijs">Rekenen…</td></tr>';
+    var r = await api('/api/verloop?maanden=' + vrlMaanden + (vers ? '&ververs=1' : ''));
+    if (!r.success) { g('vrl-kpi').textContent = 'Fout: ' + r.bericht; return; }
+    vrlData = r; vrlKpi(); vrlGrafiek(); vrlTabel(); vrlCohort(); vrlVroeg();
+  };
+  function vrlKpi() {
+    var t = vrlData.totaal, sep = '<span style="color:#e8e2de;margin:0 6px">|</span>';
+    g('vrl-kpi').innerHTML = '<span class="lay-sub" style="text-transform:uppercase;letter-spacing:.5px;margin-right:4px">' + esc(vrlData.periode) + '</span><span><strong style="font-size:1.15rem;color:#333d3a">' + (t.verloop === null ? '-' : t.verloop + '%') + '</strong> verloop</span>' + sep + '<span><strong style="font-size:1.05rem">' + t.bestandNu + '</strong> in dienst</span>' + sep
+      + '<span title="Bestand aan het begin en het einde van de periode - het verloop% rekent met het gemiddelde hiervan">bestand ' + t.bestandStart + ' → ' + t.bestandEind + ' <span style="color:' + (t.bestandEind < t.bestandStart ? '#9b1c1c' : t.bestandEind > t.bestandStart ? '#006b30' : '#888078') + '">(' + (t.bestandEind - t.bestandStart > 0 ? '+' : '') + (t.bestandEind - t.bestandStart) + ')</span></span>' + sep
+      + '<span style="color:#006b30">+' + t.instroom + ' in</span> / <span style="color:#9a4a1a">-' + t.uitstroom + ' uit</span>' + sep + '<span>gem. diensttijd vertrekkers <strong>' + (t.gemDienstMnd === null ? '-' : t.gemDienstMnd + ' mnd') + '</strong></span>'
+      + (t.cohort && t.cohort['90'].n ? '<span style="margin-left:auto"><span class="lay-sub" style="text-transform:uppercase;letter-spacing:.5px;margin-right:6px">Uitval nieuwe medewerkers</span><span class="badge bo">30d ' + t.cohort['30'].pct + '% · 60d ' + t.cohort['60'].pct + '% · 90d ' + t.cohort['90'].pct + '%</span></span>' : '');
+    g('vrl-periode').textContent = 'Bijgewerkt ' + (vrlData.bijgewerkt || '');
+  }
+  function vrlGrafiek() {
+    var mx = 1; vrlData.totaal.maandIn.forEach(function (v, i) { mx = Math.max(mx, v, vrlData.totaal.maandUit[i]); });
+    var h = '<div style="display:flex;align-items:flex-end;gap:8px;height:150px;padding-bottom:6px">';
+    vrlData.maanden.forEach(function (m, i) {
+      var inH = Math.round(vrlData.totaal.maandIn[i] / mx * 110), uitH = Math.round(vrlData.totaal.maandUit[i] / mx * 110);
+      h += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;height:100%;justify-content:flex-end"><div style="display:flex;gap:2px;align-items:flex-end;width:100%;justify-content:center;height:100%"><div title="' + esc(m.label) + ': ' + vrlData.totaal.maandIn[i] + ' instroom" style="width:42%;max-width:22px;background:#009f4b;border-radius:3px 3px 0 0;height:' + Math.max(inH, 2) + 'px"></div><div title="' + esc(m.label) + ': ' + vrlData.totaal.maandUit[i] + ' uitstroom" style="width:42%;max-width:22px;background:#e8824a;border-radius:3px 3px 0 0;height:' + Math.max(uitH, 2) + 'px"></div></div><div style="font-size:10px;color:#888078;white-space:nowrap">' + esc(m.label) + '</div></div>';
+    });
+    h += '</div><div style="display:flex;gap:16px;font-size:.78rem;color:#888078;margin-top:10px"><span><span style="display:inline-block;width:10px;height:10px;background:#009f4b;border-radius:2px;margin-right:5px"></span>Instroom</span><span><span style="display:inline-block;width:10px;height:10px;background:#e8824a;border-radius:2px;margin-right:5px"></span>Uitstroom</span></div>';
+    g('vrl-grafiek').innerHTML = h;
+  }
+  function vrlBadge(v, gem) { if (v === null) return '<span class="no-doc">te klein</span>'; var cls = gem !== null && v > gem * 1.3 ? 'br' : gem !== null && v > gem * 1.1 ? 'bo' : 'bg'; return '<span class="badge ' + cls + '">' + v + '%</span>'; }
+  function vrlTabel() {
+    var gem = vrlData.totaal.verloop, t = vrlData.totaal;
+    var rij = function (w, tot) { var nk = w.netto > 0 ? '#006b30' : w.netto < 0 ? '#9b1c1c' : '#888078'; return '<tr' + (tot ? ' style="background:#f8f3f0;font-weight:700"' : '') + '><td><strong>' + esc(tot ? 'Organisatie' : w.naam) + '</strong></td><td>' + w.bestandNu + '</td><td style="color:#006b30">+' + w.instroom + '</td><td style="color:#9a4a1a">-' + w.uitstroom + '</td><td style="color:' + nk + ';font-weight:700">' + (w.netto > 0 ? '+' : '') + w.netto + '</td><td>' + (tot ? (w.verloop === null ? '-' : w.verloop + '%') : vrlBadge(w.verloop, gem)) + '</td><td>' + (w.uitstroom ? w.vroeg + ' <span style="color:#888078">(' + w.vroegPct + '%)</span>' : '<span class="no-doc">-</span>') + '</td><td>' + (w.gemDienstMnd === null ? '<span class="no-doc">-</span>' : w.gemDienstMnd + ' mnd') + '</td></tr>'; };
+    g('vrl-body').innerHTML = vrlData.winkels.map(function (w) { return rij(w, false); }).join('') + rij(t, true);
+  }
+  function vrlCohort() {
+    var tc = vrlData.totaal.cohort;
+    var cel = function (c, gemPct) { if (!c.n) return '<td><span class="no-doc">geen cohort</span></td>'; var cls = gemPct !== null && c.pct > gemPct * 1.3 ? 'br' : gemPct !== null && c.pct > gemPct * 1.1 ? 'bo' : 'bg'; return '<td><span class="badge ' + cls + '">' + c.pct + '%</span> <span style="color:#888078;font-size:.78rem">' + c.uit + '/' + c.n + '</span></td>'; };
+    g('vrl-cohort-body').innerHTML = vrlData.winkels.map(function (w) { return '<tr><td><strong>' + esc(w.naam) + '</strong></td>' + cel(w.cohort['30'], tc['30'].pct) + cel(w.cohort['60'], tc['60'].pct) + cel(w.cohort['90'], tc['90'].pct) + '<td style="color:#006b30">+' + w.instroom + '</td></tr>'; }).join('')
+      + '<tr style="background:#f8f3f0;font-weight:700"><td><strong>Organisatie</strong></td>' + cel(tc['30'], null) + cel(tc['60'], null) + cel(tc['90'], null) + '<td>+' + vrlData.totaal.instroom + '</td></tr>';
+  }
+  function vrlVroeg() {
+    var sec = g('vrl-vroeg-sec');
+    if (!vrlData.vroegeLijst.length) { sec.style.display = 'none'; return; }
+    sec.style.display = 'block'; g('vrl-vroeg-dagen').textContent = vrlData.vroegDagen;
+    g('vrl-vroeg').innerHTML = vrlData.vroegeLijst.map(function (p) { return '<div style="display:flex;gap:14px;align-items:center;padding:8px 0;border-bottom:1px solid #f0ebe7;font-size:.85rem"><strong style="min-width:230px">' + esc(p.naam) + '</strong><span style="color:#888078;min-width:150px">' + esc(p.winkel) + '</span><span class="badge ' + (p.dagen <= 30 ? 'br' : 'bo') + '" style="margin-left:auto">' + p.dagen + ' dagen in dienst</span></div>'; }).join('');
+  }
 
   // ---------- Signaleringen (stap 4: scheduled functions + handmatig draaien) ----------
   var sgData = null;
