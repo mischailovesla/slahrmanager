@@ -21,15 +21,12 @@ function slaStep(n, t, l, tx, isEN) {
   return '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px"><tr><td style="padding:14px;background:#f8f3f0;border-radius:8px;border-left:4px solid #009f4b"><p style="' + F + 'font-size:11px;font-weight:700;color:#009f4b;margin:0 0 4px;text-transform:uppercase;letter-spacing:.5px">' + (isEN ? 'Step ' : 'Stap ') + n + '</p><p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 7px">' + t + '</p><a href="' + l + '" style="' + F + 'font-size:12px;color:#009f4b;text-decoration:none;font-weight:700">&rarr; ' + tx + '</a></td></tr></table>';
 }
 
-// Persoonlijke upload-link (prefillLoonUrl in Code.gs)
-function prefillLoonUrl(naam) {
-  if (!naam) return C.UPLOAD_LOON;
-  return C.UPLOAD_LOON.split('?')[0] + '?usp=pp_url&' + C.PREFILL_LOON_ENTRY + '=' + encodeURIComponent(String(naam).trim());
-}
-function prefillOntslagUrl(naam) {
-  if (!naam) return C.UPLOAD_ONTSLAG;
-  return C.UPLOAD_ONTSLAG.split('?')[0] + '?usp=pp_url&' + C.PREFILL_ONTSLAG_ENTRY + '=' + encodeURIComponent(String(naam).trim());
-}
+// Persoonlijke upload-link: eigen uploadpagina + Supabase Storage (geen Google Forms/Drive meer, besluit 16-10-2026).
+// Zonder naam (lege preview) blijft de generieke placeholder staan; personaliseerUploadLinks vervangt die alsnog.
+const U = require('./uploads');
+function prefillLoonUrl(naam) { return naam ? U.uploadLink('loon', naam) : C.UPLOAD_LOON; }
+function prefillOntslagUrl(naam) { return naam ? U.uploadLink('ontslag', naam) : C.UPLOAD_ONTSLAG; }
+function prefillKortingUrl(naam) { return naam ? U.uploadLink('korting', naam) : C.UPLOAD_LOON; }
 // Generieke upload-links in een (door HR bewerkte) tekst vervangen door de persoonlijke
 function personaliseerUploadLinks(body, naam) {
   if (!body || !naam) return body;
@@ -480,14 +477,14 @@ function kortingHtml(naam, keuze, ingang, deadline, isEN, isHer) {
   if (ingang) box += '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px"><tr><td style="padding:12px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #009f4b;' + F + 'font-size:13px;color:#333d3a">' + L.ingang + '<strong>' + esc(ingang) + '</strong></td></tr></table>';
   if (deadline) box += '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px"><tr><td style="padding:12px 16px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + F + 'font-size:13px;color:#7a5c00">' + L.dl + '<strong>' + esc(deadline) + '</strong>' + L.dlx + '</td></tr></table>';
   return slaWrap(slaHead(kleur, L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 6px">' + L.greet + n + ',</p><p style="' + F + 'font-size:12px;font-weight:700;color:#009f4b;margin:0 0 16px;text-transform:uppercase;letter-spacing:.5px">' + titel + '</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">' + kortIntro(keuze, isEN, isHer) + '</p>'
-    + kortStep(L.st + ' 1', L.s1t, isEN ? C.KORT_LB_EN : C.KORT_LB_NL, L.s1l) + kortStep(L.st + ' 2', L.s2t, '', '') + kortStep(L.st + ' 3', L.s3t, prefillLoonUrl(naam), L.s3l) + box
+    + kortStep(L.st + ' 1', L.s1t, isEN ? C.KORT_LB_EN : C.KORT_LB_NL, L.s1l) + kortStep(L.st + ' 2', L.s2t, '', '') + kortStep(L.st + ' 3', L.s3t, prefillKortingUrl(naam), L.s3l) + box
     + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 20px"><tr><td style="padding:12px 16px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + F + 'font-size:12px;color:#7a5c00;line-height:1.6">' + kortWarn(keuze, isEN) + '</td></tr></table>'
     + '<p style="' + P14 + 'margin:0 0 20px">' + L.q + ' <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p><p style="' + P14 + 'margin:0">' + L.sign + '<br><strong>SLA HR Team</strong></p></td></tr>' + slaFoot());
 }
 function kortingPlain(naam, keuze, ingang, deadline, isEN, isHer) {
   const vinkNL = keuze === 'Aanzetten' ? 'Ja' : keuze === 'Uitzetten' ? 'Nee' : 'de gewenste optie', vinkEN = keuze === 'Aanzetten' ? 'Yes' : keuze === 'Uitzetten' ? 'No' : 'the option of your choice';
-  if (isEN) return 'Dear ' + naam + ',\n\n' + kortStrip(kortIntro(keuze, true, isHer)) + '\n\nStep 1 - Download the form:\n' + C.KORT_LB_EN + '\n\nStep 2 - Complete it, tick "' + vinkEN + '" at the question about the payroll tax credit, sign and date.\n\nStep 3 - Upload the form:\n' + prefillLoonUrl(naam) + '\n\n' + (ingang ? 'Requested start date: ' + ingang + '\n' : '') + (deadline ? 'Please submit before ' + deadline + '.\n' : '') + '\n' + kortStrip(kortWarn(keuze, true)) + '\n\nQuestions? hr@ilovesla.com\n\nKind regards,\nSLA HR Team';
-  return 'Beste ' + naam + ',\n\n' + kortStrip(kortIntro(keuze, false, isHer)) + '\n\nStap 1 - Download het formulier:\n' + C.KORT_LB_NL + '\n\nStap 2 - Vul in, kruis bij de loonheffingskorting "' + vinkNL + '" aan, onderteken en zet de datum erbij.\n\nStap 3 - Upload het formulier:\n' + prefillLoonUrl(naam) + '\n\n' + (ingang ? 'Gewenste ingangsdatum: ' + ingang + '\n' : '') + (deadline ? 'Aanleveren voor ' + deadline + '.\n' : '') + '\n' + kortStrip(kortWarn(keuze, false)) + '\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team';
+  if (isEN) return 'Dear ' + naam + ',\n\n' + kortStrip(kortIntro(keuze, true, isHer)) + '\n\nStep 1 - Download the form:\n' + C.KORT_LB_EN + '\n\nStep 2 - Complete it, tick "' + vinkEN + '" at the question about the payroll tax credit, sign and date.\n\nStep 3 - Upload the form:\n' + prefillKortingUrl(naam) + '\n\n' + (ingang ? 'Requested start date: ' + ingang + '\n' : '') + (deadline ? 'Please submit before ' + deadline + '.\n' : '') + '\n' + kortStrip(kortWarn(keuze, true)) + '\n\nQuestions? hr@ilovesla.com\n\nKind regards,\nSLA HR Team';
+  return 'Beste ' + naam + ',\n\n' + kortStrip(kortIntro(keuze, false, isHer)) + '\n\nStap 1 - Download het formulier:\n' + C.KORT_LB_NL + '\n\nStap 2 - Vul in, kruis bij de loonheffingskorting "' + vinkNL + '" aan, onderteken en zet de datum erbij.\n\nStap 3 - Upload het formulier:\n' + prefillKortingUrl(naam) + '\n\n' + (ingang ? 'Gewenste ingangsdatum: ' + ingang + '\n' : '') + (deadline ? 'Aanleveren voor ' + deadline + '.\n' : '') + '\n' + kortStrip(kortWarn(keuze, false)) + '\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team';
 }
 
 // ============================================================
@@ -513,6 +510,6 @@ function salarisPlain(naam, labels, kortKeuze, kortIngang) {
 }
 
 module.exports = { KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
-  slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
+  slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
   HUISREGELS, regelsById, wrsPlain, wrsHtml, beschikbPlain, beschikbHtml, oosvPlain, oosvHtml,
   SOM_TYPES, SOM_KLEUR, SOM_SHEETKLEUR, SOM_HINTS, sommatieSubject, sommatieHtml, sommatiePlain, overplaatsingSubject, overplaatsingPlain, overplaatsingHtml };

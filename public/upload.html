@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>SLA · Document uploaden</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--groen:#009f4b;--donker:#333d3a;--grijs:#888078;--zand:#f8f3f0;--lijn:#e8e2de;--rood:#c0392b}
+  *{box-sizing:border-box}body{margin:0;font-family:'DM Sans',Arial,sans-serif;background:var(--zand);color:var(--donker);line-height:1.5}
+  .wrap{max-width:560px;margin:0 auto;padding:28px 16px 48px}
+  .logo{font-size:30px;font-weight:700;color:var(--groen);letter-spacing:1px}.logo small{display:block;font-size:11px;color:var(--grijs);font-weight:500;letter-spacing:0}
+  .card{background:#fff;border-radius:14px;padding:26px 24px;margin-top:20px;box-shadow:0 6px 24px rgba(51,61,58,.08)}
+  h1{font-size:1.15rem;margin:0 0 6px}.sub{color:var(--grijs);font-size:.9rem;margin:0 0 18px}
+  .fg{margin:0 0 18px}label.kop{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--grijs);margin-bottom:6px}
+  .drop{border:2px dashed var(--lijn);border-radius:10px;padding:16px;background:#fff;cursor:pointer;display:flex;gap:12px;align-items:center}
+  .drop.ok{border-color:var(--groen);background:#e6f7ee}.drop input{display:none}.drop .ic{font-size:26px}.drop .t{font-size:.9rem}.drop .t small{display:block;color:var(--grijs)}
+  input[type=email]{width:100%;padding:11px 14px;border:1.5px solid var(--lijn);border-radius:8px;font:inherit;font-size:.95rem}
+  .btn{width:100%;padding:14px;border:0;border-radius:10px;background:var(--groen);color:#fff;font:inherit;font-size:1rem;font-weight:700;cursor:pointer}.btn:disabled{opacity:.5;cursor:default}
+  .melding{border-radius:8px;padding:12px 14px;font-size:.88rem;margin:0 0 16px;border-left:4px solid}.melding.rood{background:#fdecea;color:#8a1c12;border-color:var(--rood)}.melding.groen{background:#e6f7ee;color:#006b30;border-color:var(--groen)}
+  .voet{margin-top:22px;font-size:.75rem;color:var(--grijs);text-align:center}
+  .taal{float:right;font-size:.8rem}.taal a{color:var(--grijs);text-decoration:none;margin-left:8px}.taal a.sel{color:var(--groen);font-weight:700}
+  .bar{height:6px;background:var(--lijn);border-radius:3px;margin-top:8px;overflow:hidden;display:none}.bar i{display:block;height:100%;background:var(--groen);width:0;transition:width .3s}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="taal"><a href="#" data-taal="nl" class="sel">NL</a><a href="#" data-taal="en">EN</a></div>
+  <div class="logo">SLA<small>the good food bar · HR</small></div>
+  <div class="card" id="card"><p class="sub" id="laden">Even geduld…</p></div>
+  <div class="voet">Je document wordt versleuteld opgeslagen in de beveiligde HR-omgeving van SLA en is alleen zichtbaar voor HR. Vragen? <a href="mailto:hr@ilovesla.com" style="color:var(--groen)">hr@ilovesla.com</a></div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('t') || '', info = null, cfg = null, taal = /^en/i.test(navigator.language) ? 'en' : 'nl', gekozen = {};
+  var TX = {
+    nl: { titel: 'Document uploaden', hallo: 'Hallo {n}, upload hieronder je {l}. Je kunt een PDF of een duidelijke foto (JPG/PNG/HEIC) kiezen, max. 15 MB per bestand.', kies: 'Kies een bestand of maak een foto', optioneel: 'optioneel', email: 'Jouw e-mailadres (optioneel, voor de bevestiging)', verstuur: 'Verstuur', bezig: 'Bezig met uploaden…', klaar: 'Gelukt! {a} document(en) ontvangen. HR verwerkt het verder; je hoeft niets meer te doen.', fout: 'Er ging iets mis: ', ongeldig: 'Deze link is niet geldig. Gebruik de link uit de e-mail van HR of mail hr@ilovesla.com.', verplicht: 'Kies eerst het verplichte bestand.' },
+    en: { titel: 'Upload document', hallo: 'Hi {n}, please upload your {l} below. You can choose a PDF or a clear photo (JPG/PNG/HEIC), max. 15 MB per file.', kies: 'Choose a file or take a photo', optioneel: 'optional', email: 'Your e-mail address (optional, for the confirmation)', verstuur: 'Send', bezig: 'Uploading…', klaar: 'Done! {a} document(s) received. HR will take it from here; nothing else is needed.', fout: 'Something went wrong: ', ongeldig: 'This link is not valid. Use the link from the HR e-mail or contact hr@ilovesla.com.', verplicht: 'Please choose the required file first.' }
+  };
+  var g = function (id) { return document.getElementById(id); }, tx = function (k) { return TX[taal][k]; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  document.querySelectorAll('[data-taal]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); taal = a.getAttribute('data-taal'); document.querySelectorAll('[data-taal]').forEach(function (x) { x.classList.toggle('sel', x === a); }); render(); }; });
+  async function post(b) { var r = await fetch('/api/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ t: t }, b)) }); return r.json(); }
+  function render() {
+    if (!info) return;
+    var label = taal === 'en' ? info.labelEN : info.label, h = '<h1>' + tx('titel') + '</h1><p class="sub">' + tx('hallo').replace('{n}', esc(info.naam)).replace('{l}', esc(label)) + '</p><div id="melding"></div>';
+    info.bestanden.forEach(function (b) {
+      var f = gekozen[b.key];
+      h += '<div class="fg"><label class="kop">' + esc(taal === 'en' ? b.labelEN : b.label) + (b.verplicht ? '' : ' <span style="font-weight:400;text-transform:none">(' + tx('optioneel') + ')</span>') + '</label>'
+        + '<label class="drop' + (f ? ' ok' : '') + '" id="drop-' + b.key + '"><input type="file" data-key="' + b.key + '" accept="application/pdf,image/*"><span class="ic">' + (f ? '✓' : '📎') + '</span><span class="t">' + (f ? esc(f.name) + '<small>' + Math.round(f.size / 1024) + ' kB</small>' : tx('kies') + '<small>PDF · JPG · PNG · HEIC</small>') + '</span></label><div class="bar" id="bar-' + b.key + '"><i></i></div></div>';
+    });
+    h += '<div class="fg"><label class="kop">' + tx('email') + '</label><input type="email" id="email" placeholder="naam@voorbeeld.nl" value="' + esc((g('email') || {}).value || '') + '"></div><button class="btn" id="btn">' + tx('verstuur') + '</button>';
+    g('card').innerHTML = h;
+    document.querySelectorAll('input[type=file]').forEach(function (inp) { inp.onchange = function () { if (inp.files[0]) { gekozen[inp.getAttribute('data-key')] = inp.files[0]; render(); } }; });
+    g('btn').onclick = verstuur;
+  }
+  function melding(cls, tekst) { g('melding').innerHTML = '<div class="melding ' + cls + '">' + esc(tekst) + '</div>'; }
+  async function verstuur() {
+    for (var i = 0; i < info.bestanden.length; i++) if (info.bestanden[i].verplicht && !gekozen[info.bestanden[i].key]) { melding('rood', tx('verplicht')); return; }
+    var btn = g('btn'); btn.disabled = true; btn.textContent = tx('bezig');
+    try {
+      var sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { persistSession: false } });
+      var klaar = [];
+      for (var k in gekozen) {
+        var f = gekozen[k], mime = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.hei[cf]$/i.test(f.name) ? 'image/heic' : 'image/jpeg');
+        var s = await post({ stap: 'start', key: k, naam: f.name, mime: mime, bytes: f.size });
+        if (!s.success) throw new Error(s.bericht);
+        var bar = g('bar-' + k); bar.style.display = 'block'; bar.firstChild.style.width = '30%';
+        var up = await sb.storage.from(s.bucket).uploadToSignedUrl(s.pad, s.token, f, { contentType: mime, upsert: false });
+        if (up.error) throw new Error(up.error.message);
+        bar.firstChild.style.width = '100%';
+        klaar.push({ key: k, pad: s.pad, naam_orig: f.name, bytes: f.size, mime: mime });
+      }
+      var r = await post({ stap: 'klaar', email: g('email').value.trim(), bestanden: klaar });
+      if (!r.success) throw new Error(r.bericht);
+      g('card').innerHTML = '<h1>✓</h1><div class="melding groen">' + esc(tx('klaar').replace('{a}', r.aantal)) + '</div>';
+    } catch (e) { melding('rood', tx('fout') + e.message); btn.disabled = false; btn.textContent = tx('verstuur'); }
+  }
+  (async function () {
+    try {
+      cfg = await (await fetch('/api/config')).json();
+      var r = await post({});
+      if (!r.success) throw new Error(r.bericht);
+      info = r; document.querySelectorAll('[data-taal]').forEach(function (x) { x.classList.toggle('sel', x.getAttribute('data-taal') === taal); }); render();
+    } catch (e) { g('card').innerHTML = '<div class="melding rood">' + esc(tx('ongeldig')) + '</div>'; }
+  })();
+})();
+</script>
+</body>
+</html>

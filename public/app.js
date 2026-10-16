@@ -164,7 +164,20 @@
       if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier);
     } else { toast('Fout: ' + r.bericht, 'err'); b.disabled = false; b.innerHTML = oud; }
   });
-  function bDoc(url, lbl) { return url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" class="doc-link">' + (lbl || 'Open') + '</a>' : '<span class="no-doc">-</span>'; }
+  // Documentlink: Supabase-upload ('sb:…', tijdelijke link via /api/document) of oude Google-Forms/Drive-link
+  function bDoc(url, lbl) {
+    if (!url) return '<span class="no-doc">-</span>';
+    if (/^sb:/.test(url)) return '<a href="#" class="doc-link" data-doc-ref="' + esc(url) + '" title="Opgeslagen in de HR-omgeving (Supabase)">' + (lbl || 'Open') + '</a>';
+    return '<a href="' + esc(url) + '" target="_blank" rel="noopener" class="doc-link" title="Oud Google-formulier (Drive)">' + (lbl || 'Open') + '</a>';
+  }
+  document.addEventListener('click', async function (e) {
+    var a = e.target.closest && e.target.closest('a[data-doc-ref]'); if (!a) return;
+    e.preventDefault();
+    var w = window.open('', '_blank');
+    var r = await api('/api/document?ref=' + encodeURIComponent(a.getAttribute('data-doc-ref')));
+    if (!r.success) { if (w) w.close(); toast('Document: ' + r.bericht, 'err'); return; }
+    if (w) w.location = r.url; else window.open(r.url, '_blank');
+  });
   function dosBtn(naam, email) { return '<button class="btn bd bsm" data-dos-naam="' + esc(naam) + '" data-dos-email="' + esc(email || '') + '">Dossier</button>'; }
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('button[data-dos-naam]');

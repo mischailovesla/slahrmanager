@@ -25,7 +25,7 @@ function jwt() {
     throw new Error('GOOGLE_SA_JSON_B64 is geen geldige base64-JSON (begint met "' + raw.slice(0, 6) + '…", lengte ' + raw.length + '). Verwacht: begint met "ewog" en is ±3000 tekens.');
   }
   if (!creds.client_email || !creds.private_key) throw new Error('Service-account-JSON mist client_email/private_key');
-  _jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.readonly'] });
+  _jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
   return _jwt;
 }
 async function gapi(pad, method, body) {
@@ -180,6 +180,11 @@ function headerRij(data, label) {
 
 // --- Formulier-responses: upload-links per naam/e-mail --------------------
 async function loonDocLinks() {
+  const dl = await loonFormLinks();
+  await mergeUploads(dl, 'loon', r => ({ loon: r.loon || '', indienst: r.indienst || '' }), (oud, nw) => ({ loon: nw.loon || (oud || {}).loon || '', indienst: nw.indienst || (oud || {}).indienst || '' }));
+  return dl;
+}
+async function loonFormLinks() {
   const tab = await tabBijGid(SHEETS.loonheffing.id, SHEETS.loonheffing.responsesGid);
   if (!tab) return { byNaam: {}, byEmail: {} };
   const data = await lees(SHEETS.loonheffing.id, q(tab));
@@ -196,7 +201,18 @@ async function loonDocLinks() {
   }
   return { byNaam, byEmail };
 }
+// Supabase-uploads (eigen uploadpagina, zonder Drive) bovenop de Google-Forms-links leggen; nieuwste upload wint
+async function mergeUploads(dl, soort, maak, combineer) {
+  let up; try { up = await require('./uploads').vindUploads(soort); } catch (e) { console.warn('uploads:', e.message); return; }
+  for (const k of Object.keys(up.byNaam)) dl.byNaam[k] = combineer(dl.byNaam[k], maak(up.byNaam[k]));
+  for (const k of Object.keys(up.byEmail)) dl.byEmail[k] = combineer(dl.byEmail[k], maak(up.byEmail[k]));
+}
 async function ontslagDocLinks() {
+  const dl = await ontslagFormLinks();
+  await mergeUploads(dl, 'ontslag', r => r.ontslag || '', (oud, nw) => nw || oud || '');
+  return dl;
+}
+async function ontslagFormLinks() {
   const tab = await tabBijGid(SHEETS.ontslag.id, SHEETS.ontslag.responsesGid);
   if (!tab) return { byNaam: {}, byEmail: {} };
   const data = await lees(SHEETS.ontslag.id, q(tab));
