@@ -128,6 +128,7 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.5.2 | 16-10-2026 | Handtekening (i.o. Jop van de Graaf) in de ontslagbevestiging-PDF: `_lib/assets/handtekening_io_jop.png`, meegebundeld via `included_files` |
 | 0.6.0 | 16-10-2026 | Stap 3e: Sommaties-tab (mail, printbrief, aanvullende tekst) en Overplaatsing-tab (mail + PDF NL/EN, standplaats vs. overplaatsing) |
 | 0.7.0 | 16-10-2026 | Stap 4: 6 scheduled functions + Signaleringen-tab, droogloop-schakelaar `SIGNALERINGEN_ACTIEF`, log `hr_signaleringen` |
+| 0.7.1 | 16-10-2026 | Medewerkers-tab toont standaard de volledige Shiftbase-lijst per winkel (zoekveld filtert), knop "← Alle medewerkers" in het dossier |
 
 ## Mail (Resend)
 Alle mail gaat via Resend vanaf `hr@ilovesla.com`. Eenmalig: Resend → **Domains → Add domain** → `ilovesla.com` → de DNS-records (DKIM/SPF) bij de domeinbeheerder zetten → *Verify*. Zonder verificatie weigert Resend de afzender (het dashboard geeft dan die hint). Elke verzonden mail staat in `hr_mails` (Supabase) en als actie in `hr_acties`.

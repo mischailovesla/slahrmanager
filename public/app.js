@@ -47,7 +47,7 @@
     if (!ECHT[tab]) g('binnenkort-titel').textContent = label || tab;
     var knop = document.querySelector('.nav button[data-tab="' + tab + '"]');
     if (knop) { knop.classList.add('active'); var grp = knop.closest('.lay-groep'); if (grp) grp.querySelector('.lay-kop').classList.add('kop-actief'); }
-    if (tab === 'dossier') setTimeout(function () { g('dos-zoek').focus(); }, 50);
+    if (tab === 'dossier') { setTimeout(function () { g('dos-zoek').focus(); }, 50); if (!g('dos-inhoud').innerHTML) renderMedewerkersLijst(); }
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
     if (tab === 'brief' && !vbData) laadBrieven();
     if (tab === 'ontslag' && !omData) laadOntslag();
@@ -194,21 +194,39 @@
   };
 
   // ---------- Dossier ----------
+  var medewerkersFout = '';
   async function laadMedewerkers(forceer) {
+    g('dos-lijst').innerHTML = '<tr><td colspan="8" class="leeg grijs">Shiftbase-lijst laden…</td></tr>';
     var d = await api('/api/medewerkers' + (forceer ? '?ververs=1' : ''));
-    if (d.success) { medewerkers = d.medewerkers || []; if (forceer) toast(medewerkers.length + ' medewerkers opgehaald uit Shiftbase', 'ok'); }
-    else toast('Shiftbase: ' + d.bericht, 'err');
+    if (d.success) { medewerkers = d.medewerkers || []; medewerkersFout = ''; if (forceer) toast(medewerkers.length + ' medewerkers opgehaald uit Shiftbase', 'ok'); }
+    else { medewerkersFout = d.bericht || 'onbekende fout'; toast('Shiftbase: ' + medewerkersFout, 'err'); }
+    renderMedewerkersLijst();
   }
+  // Volledige lijst in de Medewerkers-tab (gefilterd op het zoekveld)
+  function renderMedewerkersLijst() {
+    var q = (g('dos-zoek').value || '').trim().toLowerCase();
+    if (medewerkersFout) { g('dos-lijst').innerHTML = '<tr><td colspan="8"><div class="alert rood" style="margin:12px 0">Shiftbase niet bereikbaar: ' + esc(medewerkersFout) + ' — klik op ↻ om het opnieuw te proberen.</div></td></tr>'; return; }
+    var lijst = medewerkers.filter(function (m) { return !q || m.naam.toLowerCase().indexOf(q) > -1 || (m.email || '').toLowerCase().indexOf(q) > -1 || (m.winkelNaam || '').toLowerCase().indexOf(q) > -1; })
+      .slice().sort(function (a, b) { return (a.winkelNaam || '~').localeCompare(b.winkelNaam || '~') || a.naam.localeCompare(b.naam); });
+    var perWinkel = {}; lijst.forEach(function (m) { perWinkel[m.winkelNaam || ''] = (perWinkel[m.winkelNaam || ''] || 0) + 1; });
+    var h = '', vorige = null;
+    lijst.forEach(function (m) {
+      if (m.winkelNaam !== vorige) { h += '<tr><td colspan="8" class="sec-sub" style="padding:10px 14px">' + esc(m.winkelNaam || 'Geen winkel') + ' <span class="pill">' + perWinkel[m.winkelNaam || ''] + '</span></td></tr>'; vorige = m.winkelNaam; }
+      h += '<tr><td><strong>' + esc(m.naam) + '</strong></td><td>' + esc(m.winkelNaam || '-') + '</td><td>' + esc(m.functie || '-') + '</td><td>' + esc(m.indienst || '-') + '</td><td>' + esc(m.contractType || '-') + '</td><td>' + (m.contractEinde ? esc(m.contractEinde) : '<span class="lay-sub">onbepaald</span>') + '</td><td>' + esc(m.email || '-') + '</td><td><button class="btn bd bsm" data-dos-id="' + esc(m.id) + '">Dossier</button></td></tr>';
+    });
+    g('dos-lijst').innerHTML = h || '<tr><td colspan="8" class="leeg grijs">' + (medewerkers.length ? 'Geen medewerker gevonden voor "' + esc(q) + '"' : 'Geen medewerkers in Shiftbase gevonden') + '</td></tr>';
+    g('dos-hint').style.display = ''; g('dos-lijst-wrap').style.display = ''; g('dos-inhoud').innerHTML = '';
+  }
+  window.renderMedewerkersLijst = renderMedewerkersLijst;
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-dos-id]');
+    if (b) openDossier(null, null, b.getAttribute('data-dos-id'));
+  });
   function zetDossierZoek() {
     var inp = g('dos-zoek'), res = g('dos-res');
     inp.oninput = function () {
-      var q = inp.value.trim().toLowerCase();
-      if (q.length < 2) { res.classList.remove('open'); return; }
-      var hits = medewerkers.filter(function (m) { return m.naam.toLowerCase().indexOf(q) > -1 || (m.email || '').toLowerCase().indexOf(q) > -1; }).slice(0, 12);
-      res.innerHTML = hits.length ? hits.map(function (m) { return '<button type="button" data-id="' + esc(m.id) + '"><strong>' + esc(m.naam) + '</strong><small>' + esc(m.winkelNaam || '-') + (m.functie ? ' · ' + esc(m.functie) : '') + '</small></button>'; }).join('')
-        : '<button type="button" disabled><small>Geen match in Shiftbase — zoek via het Overzicht op naam uit de sheets</small></button>';
-      res.classList.add('open');
-      res.querySelectorAll('button[data-id]').forEach(function (b) { b.onclick = function () { res.classList.remove('open'); inp.value = ''; openDossier(null, null, b.getAttribute('data-id')); }; });
+      res.classList.remove('open');
+      renderMedewerkersLijst();   // typen filtert de lijst; Dossier-knop opent het dossier
     };
     inp.onblur = function () { setTimeout(function () { res.classList.remove('open'); }, 180); };
     g('dos-ververs').onclick = function () { laadMedewerkers(true); };
@@ -216,12 +234,13 @@
   window.openDossier = async function (naam, email, id) {
     laatsteDossier = [naam, email, id];
     swT('dossier', 'Medewerkers');
-    g('dos-hint').style.display = 'none';
+    g('dos-hint').style.display = 'none'; g('dos-lijst-wrap').style.display = 'none';
     g('dos-inhoud').innerHTML = '<div class="sec"><div class="leeg grijs"><span class="sp" style="border-color:rgba(0,0,0,.15);border-top-color:#009f4b"></span> Dossier laden...</div></div>';
     var qs = id ? 'id=' + encodeURIComponent(id) : 'naam=' + encodeURIComponent(naam || '') + '&email=' + encodeURIComponent(email || '');
     var d = await api('/api/dossier?' + qs);
     if (!d.success) { g('dos-inhoud').innerHTML = '<div class="alert rood">' + esc(d.bericht) + '</div>'; return; }
     var p = d.persoon, c = d.contract, h = '';
+    h += '<div style="padding:0 0 10px"><button class="btn bd bsm" onclick="renderMedewerkersLijst()">← Alle medewerkers</button></div>';
     h += '<div class="dos-kop"><div class="dos-kaart"><div class="dos-naam">' + esc(d.naam) + '</div><div class="lay-sub">' + esc(d.email || '(geen e-mail)') + (p ? ' · ' + esc(p.winkelNaam || '-') + (p.winkelBv ? ' · ' + esc(p.winkelBv) : '') : ' · <em>niet gevonden in Shiftbase (alleen sheet-data)</em>') + '</div>';
     if (p) h += '<div class="dos-meta"><div><label>Functie</label><span>' + esc(p.functie || '-') + '</span></div><div><label>In dienst sinds</label><span>' + esc(p.indienst || '-') + '</span></div><div><label>Contract</label><span>' + esc(c.type || '-') + '</span></div><div><label>Contract eindigt</label><span>' + esc(c.einde || 'onbepaalde tijd / onbekend') + '</span></div><div><label>Adres</label><span>' + esc(p.adres || '-') + '</span></div></div>';
     h += '</div><div class="dos-kaart">';
