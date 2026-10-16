@@ -7,7 +7,7 @@
 // (het volledige googleapis-pakket is te zwaar voor Netlify Functions).
 // ============================================================
 const { JWT } = require('google-auth-library');
-const { SHEETS, TAB_WAARSCHUWINGEN, TAB_BESCHIKBAARHEID } = require('./config');
+const { SHEETS, TAB_WAARSCHUWINGEN, TAB_BESCHIKBAARHEID, TAB_KORTING } = require('./config');
 const { normNaam, toDownloadUrl, vindKolommen } = require('./util');
 
 const API = 'https://sheets.googleapis.com/v4/spreadsheets/';
@@ -25,7 +25,7 @@ function jwt() {
     throw new Error('GOOGLE_SA_JSON_B64 is geen geldige base64-JSON (begint met "' + raw.slice(0, 6) + '…", lengte ' + raw.length + '). Verwacht: begint met "ewog" en is ±3000 tekens.');
   }
   if (!creds.client_email || !creds.private_key) throw new Error('Service-account-JSON mist client_email/private_key');
-  _jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets'] });
+  _jwt = new JWT({ email: creds.client_email, key: creds.private_key, scopes: ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.readonly'] });
   return _jwt;
 }
 async function gapi(pad, method, body) {
@@ -496,4 +496,70 @@ async function logBeschikbaarheid(p, w, stempelTekst) {
     p.rij, 9, status, stempelTekst, '#d9ead3');
 }
 
-module.exports = { zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };
+// --- Loonheffingskorting (Korting.gs v1.5): tab 'Korting' in de loonheffing-sheet ---
+// A Naam B Email C Keuze D Ingangsdatum E Deadline F Taal G Status H Verzenddatum I Retour J Document K Herinnering L Aantal M Naar salaris
+const KORT_KOP = ['Naam', 'Email', 'Keuze', 'Gewenste ingangsdatum', 'Deadline', 'Taal', 'Status', 'Verzenddatum', 'Formulier retour', 'Document', 'Herinnering', 'Aantal herinneringen', 'Naar salaris'];
+async function getKorting() {
+  return leesTab(SHEETS.loonheffing.id, TAB_KORTING, (r, rij) => ({ rij, naam: cel(r, 0), email: cel(r, 1), keuze: cel(r, 2), ingangsdatum: cel(r, 3), deadline: cel(r, 4), taal: (cel(r, 5) || 'NL').toUpperCase(), status: cel(r, 6), verzenddatum: cel(r, 7), retour: cel(r, 8) === 'Ja' ? 'Ja' : 'Nee', docUrl: cel(r, 9), herinnering: cel(r, 10), aantalHer: parseInt(cel(r, 11), 10) || 0, salaris: cel(r, 12) }));
+}
+// Uploads (responses-tab) koppelen op tijdstempel: alleen uploads NA de verzenddatum tellen. Geeft aantal nieuwe 'retour'.
+async function syncKortingUploads(droog) {
+  const id = SHEETS.loonheffing.id;
+  const rijen = (await getKorting()).filter(r => r.naam && r.retour !== 'Ja' && r.verzenddatum);
+  if (!rijen.length) return [];
+  const tab = await tabBijGid(id, SHEETS.loonheffing.responsesGid);
+  if (!tab) return [];
+  const data = await lees(id, q(tab));
+  if (data.length < 2) return [];
+  const kol = vindKolommen(data[0], { ts: ['tijdstempel', 'timestamp'], naam: ['naam'], email: ['mail'], loon: ['loonbelast'] });
+  if (kol.ts === -1) kol.ts = 0;
+  const { parseNLDatum } = require('./util');
+  const parseTs = s => { const m = String(s || '').match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})(?:\s+(\d{1,2}):(\d{2}))?/); return m ? new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)) : null; };
+  const uploads = [];
+  for (let i = 1; i < data.length; i++) {
+    const url = kol.loon > -1 ? cel(data[i], kol.loon) : ''; if (!url) continue;
+    uploads.push({ ts: parseTs(cel(data[i], kol.ts)), naam: kol.naam > -1 ? normNaam(cel(data[i], kol.naam)) : '', email: kol.email > -1 ? cel(data[i], kol.email).toLowerCase() : '', url: toDownloadUrl(url) });
+  }
+  const gevonden = [];
+  for (const r of rijen) {
+    const verz = parseTs(r.verzenddatum); if (!verz) continue;
+    const em = r.email.toLowerCase(), nn = normNaam(r.naam);
+    let hit = null;
+    for (const up of uploads) { if (!up.ts || up.ts < verz) continue; if ((em && up.email === em) || (nn && up.naam === nn)) { if (!hit || up.ts > hit.ts) hit = up; } }
+    if (!hit) continue;
+    gevonden.push({ rij: r.rij, naam: r.naam, url: hit.url });
+    if (!droog) { await zetCel(id, TAB_KORTING, r.rij, 9, 'Ja', KLEUR.groen); await zetCel(id, TAB_KORTING, r.rij, 10, hit.url); }
+  }
+  if (gevonden.length && !droog) vergeetCache(id);
+  return gevonden;
+}
+// Kortingsmail loggen; bestaande rij (opnieuw versturen) = dossier weer open (I..M leeg)
+async function logKorting(p, stempelTekst) {
+  const id = SHEETS.loonheffing.id, w = 'Verstuurd op ' + stempelTekst;
+  const taal = String(p.taal || 'NL').toUpperCase();
+  let rij = parseInt(p.rij, 10) || 0;
+  if (!rij) {
+    return logRij(id, TAB_KORTING, KORT_KOP, [p.naam, p.email, p.keuze || '', p.ingangsdatum || '', p.deadline || '', taal, w, stempelTekst, '', '', '', 0, ''], 0, 7, w, stempelTekst, KLEUR.groen);
+  }
+  await zorgTab(id, TAB_KORTING, KORT_KOP);
+  const range = q(TAB_KORTING) + '!A' + rij + ':M' + rij;
+  await gapi(encodeURIComponent(id) + '/values/' + encodeURIComponent(range) + '?valueInputOption=USER_ENTERED', 'PUT',
+    { range, majorDimension: 'ROWS', values: [[p.naam, p.email, p.keuze || '', p.ingangsdatum || '', p.deadline || '', taal, w, stempelTekst, '', '', '', 0, '']] });
+  const tab = (await tabNamen(id)).find(s => s.title === TAB_KORTING);
+  await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [
+    { repeatCell: { range: { sheetId: tab.sheetId, startRowIndex: rij - 1, endRowIndex: rij, startColumnIndex: 6, endColumnIndex: 7 }, cell: { userEnteredFormat: { backgroundColor: hexNaarRgb(KLEUR.groen) } }, fields: 'userEnteredFormat.backgroundColor' } },
+    { repeatCell: { range: { sheetId: tab.sheetId, startRowIndex: rij - 1, endRowIndex: rij, startColumnIndex: 8, endColumnIndex: 13 }, cell: { userEnteredFormat: { backgroundColor: { red: 1, green: 1, blue: 1 } } }, fields: 'userEnteredFormat.backgroundColor' } }
+  ] });
+  vergeetCache(id);
+  return rij;
+}
+// 'Naar salaris'-tijdstempel (stuurDocsNaarSalaris / stuurKortingNaarSalaris): groen
+async function zetSalarisStempel(type, rij, stempelTekst) {
+  const C = require('./config');
+  if (type === 'loonheffing') return zetCel(SHEETS.loonheffing.id, null, rij, C.SALARIS_LOON_KOL, stempelTekst, KLEUR.groen);
+  if (type === 'ontslag') return zetCel(SHEETS.ontslag.id, null, rij, C.SALARIS_ONTSLAG_KOL, stempelTekst, KLEUR.groen);
+  if (type === 'korting') return zetCel(SHEETS.loonheffing.id, TAB_KORTING, rij, 13, stempelTekst, KLEUR.groen);
+  throw new Error('Onbekend type: ' + type);
+}
+
+module.exports = { jwt, getKorting, logKorting, syncKortingUploads, zetSalarisStempel, zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };

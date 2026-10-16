@@ -14,7 +14,8 @@ const OMSCHRIJVING = {
   'nieuwe-medewerkers': { label: 'Nieuwe medewerkers', wanneer: 'dagelijks 09:45', wat: 'Mail aan HR: Shiftbase-medewerkers die recent gestart zijn zonder loonheffingsuitnodiging.' },
   'aanzegtermijnen': { label: 'Aanzegtermijnen', wanneer: 'dagelijks 09:50', wat: 'Mail aan HR: contracten die binnen 42 dagen aflopen zonder verstuurde aanzegging (art. 7:668 BW).' },
   'stille-afwezigen': { label: 'Stille afwezigen', wanneer: 'maandag 10:00', wat: 'Mail aan HR: actieve medewerkers zonder dienst in 28 dagen, zonder verlof en zonder toekomstige dienst.' },
-  'weekend-beschikbaarheid': { label: 'Weekendbeschikbaarheid', wanneer: 'maandag 09:45', wat: 'Mail aan HR: medewerkers die 3 volledige weekenden geen dienst hadden maar wél doordeweeks werkten (huisregel 2 weekenddiensten), met brief-klare onderbouwing.' }
+  'weekend-beschikbaarheid': { label: 'Weekendbeschikbaarheid', wanneer: 'maandag 09:45', wat: 'Mail aan HR: medewerkers die 3 volledige weekenden geen dienst hadden maar wél doordeweeks werkten (huisregel 2 weekenddiensten), met brief-klare onderbouwing.' },
+  'korting-herinneringen': { label: 'Loonheffingskorting-herinneringen', wanneer: 'dagelijks 09:55', wat: 'Herinnering aan medewerkers van wie het kortingsformulier na 3 dagen nog niet retour is (tab Korting K/L), max. 1 per 3 dagen.' }
 };
 
 exports.handler = beveiligd('signalering', async (event, g) => {

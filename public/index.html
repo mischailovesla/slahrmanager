@@ -294,6 +294,42 @@
     <div class="mf"><button class="btn bd" id="bk-pdfbtn" onclick="bkPdf()">⬇ PDF bekijken</button><button class="btn bp" id="bk-sbtn" onclick="bkVerstuur()"><span id="bk-slbl">Verstuur kennisgeving + PDF</span></button></div>
   </div></div>
 
+  <!-- LOONHEFFINGSKORTING (Korting.gs v1.5) -->
+  <div class="tc" id="tab-loonheffingskorting">
+    <div class="stats" style="grid-template-columns:repeat(3,1fr)"><div class="card cg"><div class="si sig">📄</div><div><div class="sv" id="krt-tot">-</div><div class="sl">Dossiers</div></div></div><div class="card cw"><div class="si siw">⏳</div><div><div class="sv" id="krt-open">-</div><div class="sl">Formulier nog open</div></div></div><div class="card cd"><div class="si sid">✓</div><div><div class="sv" id="krt-sal">-</div><div class="sl">Naar salaris</div></div></div></div>
+    <div class="sec">
+      <div class="sh"><div class="st">Loonheffingskorting aan- / uitzetten <span class="pill" id="krt-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('krt-body',this.value)"><button class="btn bd bsm" onclick="laadKorting()">↻</button><button class="btn bp bsm" onclick="openKrtModal(null)">Nieuw verzoek</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Keuze</th><th>Ingangsdatum</th><th>Deadline</th><th>Mail verstuurd</th><th>Formulier retour</th><th>Herinneringen</th><th>Naar salaris</th><th>Actie</th></tr></thead><tbody id="krt-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Voor bestaande medewerkers</strong> die de loonheffingskorting willen aan- of uitzetten. De mail stuurt alleen het Belastingdienst-formulier + persoonlijke upload-link (geen indiensttredingsformulier). Uploads worden op tijdstempel gekoppeld (alleen uploads ná de verzenddatum tellen als "retour"); na 3 dagen zonder retour volgt automatisch een herinnering. <strong>→ Salaris</strong> mailt het retour ontvangen formulier naar de salarisadministratie.</div>
+  </div>
+  <div class="mo" id="krt-modal"><div class="modal">
+    <div class="mh"><div class="mti" id="krt-mti">Formulier loonheffingskorting versturen</div><button class="mc" onclick="closeKrtModal()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Zoek in Shiftbase <span style="color:#888;font-weight:400">(vult naam en e-mail in)</span></label><div class="zoeklijst" style="position:relative"><input type="text" id="krt-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="krt-zoek-res"></div></div></div>
+      <div class="fr"><div class="fg"><label>Naam</label><input type="text" id="krt-naam" placeholder="Voor- en achternaam"></div>
+        <div class="fg"><label>Email</label><input type="email" id="krt-email" placeholder="medewerker@email.com"></div></div>
+      <div class="fg"><label>Keuze</label><div class="tbar" id="krt-keuze"><button type="button" class="tb" data-keuze="Aanzetten">Korting AANzetten</button><button type="button" class="tb" data-keuze="Uitzetten">Korting UITzetten</button><button type="button" class="tb" data-keuze="Wijzigen">Medewerker kiest zelf</button></div>
+        <div id="krt-keuze-hint" class="alert groen" style="margin:10px 0 0;font-size:.8rem;display:none"></div></div>
+      <div class="fr"><div class="fg"><label>Gewenste ingangsdatum <span style="color:#888;font-weight:400">(optioneel)</span></label><input type="text" id="krt-ingang" placeholder="dd-mm-jjjj, bijv. 01-11-2026" oninput="krtDatumHint('krt-ingang','krt-ingang-hint')"><div id="krt-ingang-hint" style="margin-top:4px;font-size:.75rem"></div></div>
+        <div class="fg"><label>Aanleveren vóór <span style="color:#888;font-weight:400">(optioneel)</span></label><input type="text" id="krt-deadline" placeholder="dd-mm-jjjj, bijv. 25-10-2026" oninput="krtDatumHint('krt-deadline','krt-deadline-hint')"><div id="krt-deadline-hint" style="margin-top:4px;font-size:.75rem"></div></div></div>
+      <div class="fg"><label>Taal</label><div class="tbar" id="krt-taal"><button type="button" class="tb sel" data-taal="NL">Nederlands</button><button type="button" class="tb" data-taal="EN">English</button></div></div>
+    </div>
+    <div class="mf"><button class="btn bd" onclick="krtPreview()">Voorbeeld</button><button class="btn bp" id="krt-sbtn" onclick="krtVerstuur()"><span id="krt-slbl">Verstuur mail</span></button></div>
+  </div></div>
+
+  <!-- CONTRACTEN & STARTERS (Contract.gs v3.0) -->
+  <div class="tc" id="tab-contract">
+    <div class="sec">
+      <div class="sh"><div class="st">Nieuwe starters: contract &amp; formulieren <span class="pill" id="ctr-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('ctr-body',this.value)"><button class="btn bd bsm" onclick="laadContract(true)" title="Ververs (haalt live data uit Shiftbase)">↻</button></div></div>
+      <div id="ctr-info" class="lay-sub" style="padding:8px 24px 0"></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Startdatum</th><th>Contract (intern)</th><th>Loonheffing</th><th>Indienst</th><th>Naar salaris</th><th>Actie</th></tr></thead><tbody id="ctr-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Werkwijze:</strong> alle starters met een startdatum in de laatste 90 dagen (of in de toekomst) uit Shiftbase. <em>Contract</em> = het arbeidscontract dat in Shiftbase bij de medewerker staat — alleen voor interne controle/download, gaat <strong>niet</strong> mee naar de salarisadministratie (afspraak 07-04-2026). <em>Loonheffing</em> en <em>Indienst</em> zijn de geüploade formulieren uit het loonheffingsdossier (gematcht op e-mail, volledige naam of roepnaam+achternaam). <strong>→ Salaris</strong> gebruikt dezelfde flow als in de Loonheffing-tab.</div>
+  </div>
+
   <!-- SIGNALERINGEN (stap 4) -->
   <div class="tc" id="tab-signalering">
     <div class="sec">

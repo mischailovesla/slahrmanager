@@ -6,6 +6,7 @@ exports.handler = async () => ({
   body: JSON.stringify({
     supabaseUrl: process.env.SUPABASE_URL || '',
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY || '',
-    domein: process.env.TOEGANG_DOMEIN || 'ilovesla.com'
+    domein: process.env.TOEGANG_DOMEIN || 'ilovesla.com',
+    salarisEmail: require('./_lib/config').SALARIS_EMAIL
   })
 });

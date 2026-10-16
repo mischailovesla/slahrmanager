@@ -48,6 +48,17 @@ module.exports = {
   TAB_WAARSCHUWINGEN: 'Waarschuwingen',
   TAB_BESCHIKBAARHEID: 'Beschikbaarheid',
 
+  // Batch B
+  TAB_KORTING: 'Korting',          // tab in de loonheffing-sheet (Korting.gs v1.5)
+  KORT_HERINNER_DAGEN: 3,
+  KORT_LB_NL: 'https://download.belastingdienst.nl/belastingdienst/docs/model_opgaaf_gegevens_loonheffingen_lh0082z11fol.pdf',
+  KORT_LB_EN: 'https://download.belastingdienst.nl/belastingdienst/docs/stat-of-dat-payroll-taxes-lh0082z5foleng.pdf',
+  SALARIS_EMAIL: 'mafshari@hrmonline.nl',   // salarisadministratie (Mahdia / HRM Online)
+  SALARIS_LOON_KOL: 11,            // K in de loonheffing-sheet: tijdstempel 'naar salaris gestuurd'
+  SALARIS_ONTSLAG_KOL: 15,         // O in de ontslag-sheet
+  CONTRACT_DAGEN_TERUG: 90,        // Contract.gs v3.0: starters vanaf 90 dagen geleden (incl. toekomst)
+  CONTRACT_MAX_USERS: 40,
+
   // Mail / huisstijl (uit Code.gs)
   AFZENDER_TEAM: 'SLA HR Team',
   AFZENDER_NAAM: 'Jop van de Graaf',

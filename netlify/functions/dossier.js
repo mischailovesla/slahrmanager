@@ -23,13 +23,14 @@ exports.handler = beveiligd('dossier', async (event) => {
   const nn = normNaam(naam);
   const match = r => (email && String(r.email || '').toLowerCase() === email) || (nn && normNaam(r.naam) === nn);
 
-  const [loon, ontslag, som, opl, onb, extra, brieven, wrs, bsk] = await Promise.all([
+  const [loon, ontslag, som, opl, onb, extra, brieven, wrs, bsk, kort] = await Promise.all([
     S.getLoonheffing(), S.getOntslag(), S.getSommatie(), S.getOverplaatsing(), S.getOnboarding(), S.getExtraTabs(), S.getBrieven().catch(() => []),
-    S.getWaarschuwingen().catch(() => []), S.getBeschikbaarheid().catch(() => [])
+    S.getWaarschuwingen().catch(() => []), S.getBeschikbaarheid().catch(() => []), S.getKorting().catch(() => [])
   ]);
 
   const secties = [
     { key: 'loonheffing', label: 'Loonheffingsverklaring', rijen: loon.filter(match) },
+    { key: 'korting', label: 'Loonheffingskorting', rijen: kort.filter(match) },
     { key: 'onboarding', label: 'Onboarding (historie)', rijen: onb.filter(match) },
     { key: 'overplaatsing', label: 'Overplaatsing / standplaats', rijen: opl.filter(match) },
     { key: 'sommatie', label: 'Sommaties', rijen: som.filter(match) },

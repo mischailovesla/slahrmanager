@@ -3,14 +3,14 @@
 Herbouw van het SLA HR Dashboard (Google Apps Script) als Netlify-app.
 Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend tot een module volledig is overgezet.
 
-## Status: batch A — alle mails, brieven, automatische checks + Proeftijd, OoSV, Waarschuwingen, Beschikbaarheid in Netlify (checks in droogloop tot de cutover)
+## Status: batch B — alle mails, brieven, checks, Proeftijd/OoSV/Waarschuwingen/Beschikbaarheid, Loonheffingskorting, Documenten → salaris en Contracten in Netlify (checks in droogloop tot de cutover)
 
 | Werkt | Nog in Apps Script |
 |---|---|
 | Google-login (alleen @ilovesla.com + allowlist) | Vakantiepieken, data-hygiënerapport (losse modules) |
 | Toegangslog + actielog in Supabase (AVG) | Formulierstatus syncen (`syncFormulierStatus`) |
-| Overzicht: werklijst, stats, aanzeg-alerts, open dossiers | Documenten doorsturen naar salarisadministratie |
-| Medewerkersdossier: Shiftbase-zoekveld, contract(type), verlof, alle log-tabs (incl. Brieven, Waarschuwingen, Beschikbaarheid) | Korting, Contract, Vastloners, Vakantieplanner, Verloop, dossier-notities/-export, toegangslog-tab, hygiënerapport |
+| Overzicht: werklijst, stats, aanzeg-alerts, open dossiers | |
+| Medewerkersdossier: Shiftbase-zoekveld, contract(type), verlof, alle log-tabs (incl. Brieven, Waarschuwingen, Beschikbaarheid, Korting) | Vastloners, Vakantieplanner, Verloop, dossier-notities/-export, toegangslog-tab, hygiënerapport |
 | **Vinkjes**: Naar salaris (loonheffing + ontslag), Sommatie verwerkt, Overplaatsing ondertekend | |
 | **Archiveren**: rij naar tab "Archief" (loonheffing, ontslag, sommatie, onboarding) | |
 | **Loonheffing-tab** + mail: uitnodiging en herinnering (NL/EN) via Resend, SLA-huisstijl, persoonlijke upload-link, logging in de sheet (D/E resp. H/I) |  |
@@ -19,7 +19,8 @@ Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend 
 | **Sommaties-tab** + modal: oproepbrief, 1e/2e/finale sommatie, ontslag op staande voet — mail in huisstijl (kleur per type), aanvullende tekst (kolom J), printbare aangetekende brief, logging A–H met kleur per type | Drive-archief |
 | **Overplaatsing-tab** + modal: overplaatsing (art. 6:159 BW) of standplaatswijziging (art. 7:613 BW, automatisch bepaald op BV), NL/EN, PDF-brief uit `brieftemplates.js`, logging tab Overplaatsing A–L + P | |
 | **Batch A** (v0.8.0): **Proeftijd** — 4 extra templates in het ontslag-modal (werkgever/werknemer, NL/EN, einddatum verplicht, log als ontslag in de ontslag-sheet). **Ontslag op staande voet** — knop *OoSV + brief* in de Sommaties-kop: brief (art. 7:677/678 BW, optioneel hoor-en-wederhoor-blok) als PDF, mail aan medewerker **cc hr@**, log in de sommatie-sheet (`OoSV verstuurd op …`, `#f4cccc`). **Waarschuwingen-tab** — checklist met de 35 huisregels (woordelijk uit de contractbijlage, per categorie), brief NL/EN + PDF, tab `Waarschuwingen` A–K. **Beschikbaarheid-tab** — kennisgeving weekendbeschikbaarheid NL/EN + PDF; bij het kiezen van een medewerker wordt de **data-onderbouwing** (laatste 8 weekenden: dienst/verlof/doordeweeks) uit het Shiftbase-rooster berekend; tab `Beschikbaarheid` A–J. Beide tabs worden aangemaakt als ze ontbreken. | |
-| **Signaleringen-tab** + 7 scheduled functions: weekendbeschikbaarheid (ma 09:45: 3 weekenden geen dienst, wél doordeweeks), formulierstatus syncen (4-uurlijks), loonheffing- en ontslagherinneringen (09:00/09:15), nieuwe medewerkers (09:45), aanzegtermijnen (09:50), stille afwezigen (ma 10:00). **Droogloop** tot `SIGNALERINGEN_ACTIEF=1`; elke run gelogd in `hr_signaleringen` | |
+| **Batch B** (v0.9.0): **Loonheffingskorting-tab** (Korting.gs v1.5) — verzoek aan bestaande medewerkers om de korting aan/uit te zetten of zelf te kiezen, NL/EN, ingangsdatum + deadline, tab `Korting` A–M in de loonheffing-sheet; uploads worden op tijdstempel gekoppeld (alleen ná de verzenddatum); dagelijkse herinnering na 3 dagen (K/L). **Documenten → salarisadministratie** (stuurDocsNaarSalaris v29.3) — knop *→ Salaris* bij loonheffing (K), ontslag (O) en korting (M): haalt de geüploade formulieren uit Drive via het service account en mailt ze als bijlage naar `SALARIS_EMAIL`. **Contracten & starters-tab** (Contract.gs v3.0) — starters van de laatste 90 dagen uit Shiftbase, contract-PDF in Shiftbase (intern, download), loonheffing/indienst gematcht op e-mail → naam → roepnaam, *→ Salaris* via dezelfde flow. | |
+| **Signaleringen-tab** + 8 scheduled functions: korting-herinneringen (09:55), weekendbeschikbaarheid (ma 09:45: 3 weekenden geen dienst, wél doordeweeks), formulierstatus syncen (4-uurlijks), loonheffing- en ontslagherinneringen (09:00/09:15), nieuwe medewerkers (09:45), aanzegtermijnen (09:50), stille afwezigen (ma 10:00). **Droogloop** tot `SIGNALERINGEN_ACTIEF=1`; elke run gelogd in `hr_signaleringen` | |
 
 **De Google Sheets blijven de enige waarheid** zolang Apps Script draait. Vinkjes en archiveren schrijven in exact dezelfde cellen (en kleuren) als Code.gs, dus beide dashboards blijven consistent. Supabase bevat alleen toegang en het actielog (`hr_acties`), geen HR-data.
 
@@ -130,6 +131,7 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.6.0 | 16-10-2026 | Stap 3e: Sommaties-tab (mail, printbrief, aanvullende tekst) en Overplaatsing-tab (mail + PDF NL/EN, standplaats vs. overplaatsing) |
 | 0.7.0 | 16-10-2026 | Stap 4: 6 scheduled functions + Signaleringen-tab, droogloop-schakelaar `SIGNALERINGEN_ACTIEF`, log `hr_signaleringen` |
 | 0.7.1 | 16-10-2026 | Medewerkers-tab toont standaard de volledige Shiftbase-lijst per winkel (zoekveld filtert), knop "← Alle medewerkers" in het dossier |
+| 0.9.0 | 16-10-2026 | Batch B: Loonheffingskorting-tab + sync + herinnering (`sched-korting-herinneringen`), Documenten → salaris (`/api/salaris-mail`, `_lib/drive.js`, Drive-scope op het service account), Contracten & starters-tab (`/api/contract`, `/api/contract-download`) |
 | 0.8.0 | 16-10-2026 | Batch A: Proeftijd (4 brieven), Ontslag op staande voet (cc hr@), Waarschuwingen-tab (huisregels), Beschikbaarheid-tab (auto-onderbouwing) + scheduled function weekendbeschikbaarheid, `cc` in mail.js, `_lib/datum.js`, `_lib/weekend.js` |
 
 ## Mail (Resend)
@@ -151,9 +153,15 @@ De zes checks uit `instaleerTriggers()` plus `checkWeekendBeschikbaarheid` (eige
 **Droogloop**: zolang `SIGNALERINGEN_ACTIEF` niet `1` is, mailen en schrijven de checks niets — ze loggen alleen wat ze gedaan zouden hebben (tab Signaleringen → Laatste runs, en per check *Droogloop nu*). Zo kun je een week meekijken of Netlify hetzelfde vindt als Apps Script.
 
 **Cutover (één moment, ±5 min):**
-1. Apps Script-editor → Triggers → alle triggers van `syncFormulierStatus`, `checkLoonheffingHerinneringen`, `checkOntslagHerinneringen`, `checkNieuweMedewerkers`, `checkAanzegtermijnen`, `checkStilleAfwezigen`, `checkWeekendBeschikbaarheid` verwijderen (laat `checkVakantiepieken` en `stuurDataHygieneRapport` staan — die modules zijn nog niet over).
+1. Apps Script-editor → Triggers → alle triggers van `syncFormulierStatus`, `checkLoonheffingHerinneringen`, `checkOntslagHerinneringen`, `checkNieuweMedewerkers`, `checkAanzegtermijnen`, `checkStilleAfwezigen`, `checkWeekendBeschikbaarheid`, `checkKortingHerinneringen` verwijderen (laat `checkVakantiepieken` en `stuurDataHygieneRapport` staan — die modules zijn nog niet over).
 2. Netlify → Environment variables → `SIGNALERINGEN_ACTIEF` = `1` → redeploy.
 3. Tab Signaleringen toont "ACTIEF"; de eerstvolgende run om 09:00 mailt echt. Terugdraaien = env var weghalen + triggers opnieuw installeren.
+
+## Documenten → salarisadministratie (Drive-toegang)
+De knop *→ Salaris* haalt de formulier-uploads op uit Google Drive met het service account (scope `drive.readonly`, al in de code). Eenmalig instellen:
+1. Google Cloud → project `clear-rock-494308-s8` → APIs & Services → **Google Drive API** inschakelen.
+2. In Drive de upload-map van de formulieren (Google Forms maakt die aan naast de responses-sheet, bijv. "Loonheffingsverklaring (File responses)") en die van het ontslagformulier **delen met** `hr-dashboard-reader@clear-rock-494308-s8.iam.gserviceaccount.com` als *Lezer*.
+Zonder deze twee stappen geeft de knop een duidelijke foutmelding; er wordt dan niets gemaild of gelogd.
 
 ## Lokaal draaien
 ```bash

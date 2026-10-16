@@ -55,6 +55,9 @@ async function syncFormulieren(droog) {
     rap.gevonden.push({ bron: 'ontslag', naam: r.naam, rij: r.rij });
     if (!rap.droog) { try { await S.zetCel(C.SHEETS.ontslag.id, null, r.rij, 10, 'Ja', S.KLEUR.groen); } catch (e) { rap.fouten.push(r.naam + ': ' + e.message); } }
   }
+  // Korting-uploads (syncKortingUploads_ in Korting.gs: alleen uploads ná de verzenddatum)
+  try { for (const k of await S.syncKortingUploads(rap.droog)) rap.gevonden.push({ bron: 'korting', naam: k.naam, rij: k.rij }); }
+  catch (e) { rap.fouten.push('korting-sync: ' + e.message); }
   return rap;
 }
 
@@ -269,7 +272,28 @@ async function weekendBeschikbaarheid(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid };
+// ---- 8. Loonheffingskorting-herinneringen (checkKortingHerinneringen, Korting.gs v1.5; dagelijks 09:55) ----
+async function kortingHerinneringen(droog) {
+  const rap = { naam: 'korting-herinneringen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  try { await S.syncKortingUploads(rap.droog); } catch (e) { rap.fouten.push('sync: ' + e.message); }
+  const vandaag = vandaag0(), id = C.SHEETS.loonheffing.id;
+  for (const r of await S.getKorting()) {
+    if (!r.naam || !r.email || r.email.indexOf('@') === -1 || r.retour === 'Ja' || !r.verzenddatum) continue;
+    const sindsVerz = dagenSinds(r.verzenddatum, vandaag);
+    if (sindsVerz === null || sindsVerz < C.KORT_HERINNER_DAGEN) continue;
+    const sindsLaatste = dagenSinds(r.herinnering, vandaag);
+    if (r.herinnering && sindsLaatste !== null && sindsLaatste < C.KORT_HERINNER_DAGEN) continue;
+    const isEN = r.taal === 'EN', keuze = r.keuze || 'Wijzigen';
+    rap.gevonden.push({ naam: r.naam, email: r.email, keuze, rij: r.rij, taal: r.taal, eerder: r.aantalHer, verzonden: r.verzenddatum });
+    await mailOfDroog(rap, {
+      to: r.email, subject: T.kortSubject(keuze, isEN, true), text: T.kortingPlain(r.naam, keuze, r.ingangsdatum, r.deadline, isEN, true), html: T.kortingHtml(r.naam, keuze, r.ingangsdatum, r.deadline, isEN, true),
+      kort: { naam: r.naam, email: r.email, rij: r.rij, taal: r.taal }
+    }, async () => { await S.zetCel(id, C.TAB_KORTING, r.rij, 11, stempel()); await S.zetCel(id, C.TAB_KORTING, r.rij, 12, String((r.aantalHer || 0) + 1)); });
+  }
+  return rap;
+}
+
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 async function draai(naam, droog, bron) {
@@ -284,4 +308,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen };

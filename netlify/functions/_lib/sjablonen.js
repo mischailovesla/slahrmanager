@@ -427,6 +427,92 @@ function oosvHtml(naam, bv) {
   return slaWrap(slaHead('#333d3a', 'HR &middot; Offici&euml;le kennisgeving') + '<tr><td style="padding:32px 36px 28px"><p style="' + s + '">Geachte ' + esc(naam) + ',</p><p style="' + s + '">Hierbij ontvangt u de brief waarin <strong>' + esc(bv) + '</strong> de arbeidsovereenkomst met u <strong>met onmiddellijke ingang</strong> opzegt wegens een dringende reden (ontslag op staande voet). De volledige motivering leest u in de bijgevoegde brief.</p><p style="' + s + '">Deze brief wordt u tevens per aangetekende post toegezonden.</p><p style="' + s + '">Hoogachtend,<br><strong>' + esc(C.AFZENDER_NAAM) + '</strong><br>' + esc(bv) + '</p></td></tr>' + slaFoot());
 }
 
-module.exports = { slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
+// ============================================================
+// Loonheffingskorting (Korting.gs v1.5): mail per keuze (Aanzetten/Uitzetten/Wijzigen), NL/EN, eerste mail of herinnering
+// ============================================================
+const KORT_KEUZES = ['Aanzetten', 'Uitzetten', 'Wijzigen'];
+const kortStrip = s => String(s).replace(/<[^>]*>/g, '').replace(/&eacute;/g, 'e').replace(/&oacute;/g, 'o').replace(/&euml;/g, 'e').replace(/&mdash;/g, '-').replace(/&amp;/g, '&').replace(/&nbsp;/g, ' ');
+function kortSubject(keuze, isEN, isHer) {
+  if (isHer) return isEN ? 'Reminder: payroll tax credit form not yet received' : 'Herinnering: formulier loonheffingskorting nog niet ontvangen';
+  if (isEN) return keuze === 'Aanzetten' ? 'Action required: form to apply your payroll tax credit' : keuze === 'Uitzetten' ? 'Action required: form to stop your payroll tax credit' : 'Action required: form to change your payroll tax credit';
+  return keuze === 'Aanzetten' ? 'Actie vereist: formulier loonheffingskorting aanzetten' : keuze === 'Uitzetten' ? 'Actie vereist: formulier loonheffingskorting uitzetten' : 'Actie vereist: formulier loonheffingskorting wijzigen';
+}
+function kortIntro(keuze, isEN, isHer) {
+  if (isEN) {
+    if (isHer) {
+      if (keuze === 'Aanzetten') return 'We have not yet received your signed form to apply the payroll tax credit. As long as the form is missing, nothing changes and we do not apply the credit to your salary. Please complete the three steps below as soon as possible.';
+      if (keuze === 'Uitzetten') return 'We have not yet received your signed form to stop the payroll tax credit. As long as the form is missing, we keep applying the credit. Please complete the three steps below as soon as possible.';
+      return 'We have not yet received your signed form for the change of your payroll tax credit (loonheffingskorting). Please complete the three steps below as soon as possible.';
+    }
+    if (keuze === 'Aanzetten') return 'At the moment we do not apply the payroll tax credit (loonheffingskorting) to your salary. You have indicated that you would like us to apply it from now on. We are only allowed to change this on the basis of a newly signed form from the Dutch Tax Administration - a message by e-mail or in person is not enough.';
+    if (keuze === 'Uitzetten') return 'At the moment we apply the payroll tax credit (loonheffingskorting) to your salary. You have indicated that you would like us to stop applying it. We are only allowed to change this on the basis of a newly signed form from the Dutch Tax Administration.';
+    return 'You have indicated that you want to change whether we apply the payroll tax credit (loonheffingskorting) to your salary. We are only allowed to change this on the basis of a newly signed form from the Dutch Tax Administration.';
+  }
+  if (isHer) {
+    if (keuze === 'Aanzetten') return 'We hebben jouw ondertekende formulier om de loonheffingskorting aan te zetten nog niet ontvangen. Zolang het formulier ontbreekt verandert er niets en passen wij de korting niet toe op jouw salaris. Doorloop de drie stappen hieronder zo snel mogelijk.';
+    if (keuze === 'Uitzetten') return 'We hebben jouw ondertekende formulier om de loonheffingskorting stop te zetten nog niet ontvangen. Zolang het formulier ontbreekt blijven wij de korting toepassen. Doorloop de drie stappen hieronder zo snel mogelijk.';
+    return 'We hebben jouw ondertekende formulier voor het wijzigen van de loonheffingskorting nog niet ontvangen. Doorloop de drie stappen hieronder zo snel mogelijk.';
+  }
+  if (keuze === 'Aanzetten') return 'Op dit moment passen wij de loonheffingskorting niet toe op jouw salaris. Je hebt aangegeven dat je dit wilt wijzigen, zodat de korting vanaf nu w&eacute;l wordt toegepast. Wij mogen dit alleen doorvoeren op basis van een nieuw ondertekend formulier van de Belastingdienst - een mondelinge of losse schriftelijke melding is niet voldoende.';
+  if (keuze === 'Uitzetten') return 'Op dit moment passen wij de loonheffingskorting toe op jouw salaris. Je hebt aangegeven dat je dit wilt stopzetten. Wij mogen dit alleen doorvoeren op basis van een nieuw ondertekend formulier van de Belastingdienst.';
+  return 'Je hebt aangegeven dat je wilt wijzigen of wij de loonheffingskorting op jouw salaris toepassen. Wij mogen dit alleen doorvoeren op basis van een nieuw ondertekend formulier van de Belastingdienst.';
+}
+function kortWarn(keuze, isEN) {
+  if (isEN) {
+    if (keuze === 'Aanzetten') return '<strong>Please note:</strong> the payroll tax credit may only be applied by one employer at a time. Do you have another job where the credit is currently applied? Stop it there first - otherwise you will have to pay tax back later.';
+    if (keuze === 'Uitzetten') return '<strong>Please note:</strong> without the payroll tax credit we withhold more wage tax, so your net salary will be lower. You may only have the credit applied by one employer at a time.';
+    return '<strong>Please note:</strong> the payroll tax credit may only be applied by one employer at a time. If you have more than one job, choose the employer where you earn the most.';
+  }
+  if (keuze === 'Aanzetten') return '<strong>Let op:</strong> de loonheffingskorting mag maar bij &eacute;&eacute;n werkgever tegelijk worden toegepast. Heb je nog een andere baan waar de korting nu loopt? Zet die daar dan eerst stop - anders betaal je later belasting bij.';
+  if (keuze === 'Uitzetten') return '<strong>Let op:</strong> zonder loonheffingskorting houden wij meer loonbelasting in en wordt je nettoloon lager. De korting mag maar bij &eacute;&eacute;n werkgever tegelijk worden toegepast.';
+  return '<strong>Let op:</strong> de loonheffingskorting mag maar bij &eacute;&eacute;n werkgever tegelijk worden toegepast. Heb je meerdere banen? Kies dan de werkgever waar je het meeste verdient.';
+}
+function kortStep(label, tekst, link, linktekst) {
+  return '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:10px"><tr><td style="padding:14px;background:#f8f3f0;border-radius:8px;border-left:4px solid #009f4b"><p style="' + F + 'font-size:11px;font-weight:700;color:#009f4b;margin:0 0 4px;text-transform:uppercase;letter-spacing:.5px">' + label + '</p><p style="' + F + 'font-size:13px;color:#333d3a;margin:0' + (link ? ' 0 7px' : '') + '">' + tekst + '</p>' + (link ? '<a href="' + link + '" style="' + F + 'font-size:12px;color:#009f4b;text-decoration:none;font-weight:700">&rarr; ' + linktekst + '</a>' : '') + '</td></tr></table>';
+}
+function kortingHtml(naam, keuze, ingang, deadline, isEN, isHer) {
+  const kleur = isHer ? '#f5a623' : '#009f4b', n = esc(naam);
+  const vink = keuze === 'Aanzetten' ? (isEN ? '<strong>Yes</strong>' : '<strong>Ja</strong>') : keuze === 'Uitzetten' ? (isEN ? '<strong>No</strong>' : '<strong>Nee</strong>') : (isEN ? 'the option of your choice' : 'de door jou gewenste optie');
+  const L = isEN ? { head: isHer ? 'HR &middot; Reminder' : 'HR &middot; Payroll tax credit', greet: 'Dear ', s1t: 'Download the form "Model opgaaf gegevens voor de loonheffingen" from the Dutch Tax Administration.', s1l: 'Download form', s2t: 'Complete the form, tick ' + vink + ' at the question about the payroll tax credit, then sign and date it.', s3t: 'Upload the completed form (your name is already filled in).', s3l: 'Upload form', ingang: 'Requested start date: ', dl: 'Please submit before ', dlx: ' so we can process it in the next payroll run.', q: 'Questions?', sign: 'Kind regards,', st: 'Step' }
+    : { head: isHer ? 'HR &middot; Herinnering' : 'HR &middot; Loonheffingskorting', greet: 'Beste ', s1t: 'Download het formulier "Model opgaaf gegevens voor de loonheffingen" van de Belastingdienst.', s1l: 'Download formulier', s2t: 'Vul het formulier in, kruis bij de vraag over de loonheffingskorting ' + vink + ' aan, onderteken en zet de datum erbij.', s3t: 'Upload het ingevulde formulier (jouw naam staat al ingevuld).', s3l: 'Upload formulier', ingang: 'Gewenste ingangsdatum: ', dl: 'Lever het formulier aan v&oacute;&oacute;r ', dlx: ', dan verwerken we het in de eerstvolgende salarisrun.', q: 'Vragen?', sign: 'Met vriendelijke groet,', st: 'Stap' };
+  const titel = keuze === 'Aanzetten' ? (isEN ? 'Applying your payroll tax credit' : 'Loonheffingskorting aanzetten') : keuze === 'Uitzetten' ? (isEN ? 'Stopping your payroll tax credit' : 'Loonheffingskorting uitzetten') : (isEN ? 'Changing your payroll tax credit' : 'Loonheffingskorting wijzigen');
+  let box = '';
+  if (ingang) box += '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px"><tr><td style="padding:12px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #009f4b;' + F + 'font-size:13px;color:#333d3a">' + L.ingang + '<strong>' + esc(ingang) + '</strong></td></tr></table>';
+  if (deadline) box += '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px"><tr><td style="padding:12px 16px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + F + 'font-size:13px;color:#7a5c00">' + L.dl + '<strong>' + esc(deadline) + '</strong>' + L.dlx + '</td></tr></table>';
+  return slaWrap(slaHead(kleur, L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 6px">' + L.greet + n + ',</p><p style="' + F + 'font-size:12px;font-weight:700;color:#009f4b;margin:0 0 16px;text-transform:uppercase;letter-spacing:.5px">' + titel + '</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">' + kortIntro(keuze, isEN, isHer) + '</p>'
+    + kortStep(L.st + ' 1', L.s1t, isEN ? C.KORT_LB_EN : C.KORT_LB_NL, L.s1l) + kortStep(L.st + ' 2', L.s2t, '', '') + kortStep(L.st + ' 3', L.s3t, prefillLoonUrl(naam), L.s3l) + box
+    + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:14px 0 20px"><tr><td style="padding:12px 16px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + F + 'font-size:12px;color:#7a5c00;line-height:1.6">' + kortWarn(keuze, isEN) + '</td></tr></table>'
+    + '<p style="' + P14 + 'margin:0 0 20px">' + L.q + ' <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p><p style="' + P14 + 'margin:0">' + L.sign + '<br><strong>SLA HR Team</strong></p></td></tr>' + slaFoot());
+}
+function kortingPlain(naam, keuze, ingang, deadline, isEN, isHer) {
+  const vinkNL = keuze === 'Aanzetten' ? 'Ja' : keuze === 'Uitzetten' ? 'Nee' : 'de gewenste optie', vinkEN = keuze === 'Aanzetten' ? 'Yes' : keuze === 'Uitzetten' ? 'No' : 'the option of your choice';
+  if (isEN) return 'Dear ' + naam + ',\n\n' + kortStrip(kortIntro(keuze, true, isHer)) + '\n\nStep 1 - Download the form:\n' + C.KORT_LB_EN + '\n\nStep 2 - Complete it, tick "' + vinkEN + '" at the question about the payroll tax credit, sign and date.\n\nStep 3 - Upload the form:\n' + prefillLoonUrl(naam) + '\n\n' + (ingang ? 'Requested start date: ' + ingang + '\n' : '') + (deadline ? 'Please submit before ' + deadline + '.\n' : '') + '\n' + kortStrip(kortWarn(keuze, true)) + '\n\nQuestions? hr@ilovesla.com\n\nKind regards,\nSLA HR Team';
+  return 'Beste ' + naam + ',\n\n' + kortStrip(kortIntro(keuze, false, isHer)) + '\n\nStap 1 - Download het formulier:\n' + C.KORT_LB_NL + '\n\nStap 2 - Vul in, kruis bij de loonheffingskorting "' + vinkNL + '" aan, onderteken en zet de datum erbij.\n\nStap 3 - Upload het formulier:\n' + prefillLoonUrl(naam) + '\n\n' + (ingang ? 'Gewenste ingangsdatum: ' + ingang + '\n' : '') + (deadline ? 'Aanleveren voor ' + deadline + '.\n' : '') + '\n' + kortStrip(kortWarn(keuze, false)) + '\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team';
+}
+
+// ============================================================
+// Documenten → salarisadministratie (buildSalarisHtml / buildKortingSalarisHtml_)
+// ============================================================
+function salarisHtml(naam, labels, kortKeuze, kortIngang) {
+  const n = esc(naam);
+  let body;
+  if (kortKeuze !== undefined) {
+    const actie = kortKeuze === 'Aanzetten' ? 'de loonheffingskorting <strong>aanzetten</strong>' : kortKeuze === 'Uitzetten' ? 'de loonheffingskorting <strong>uitzetten</strong>' : 'een <strong>wijziging van de loonheffingskorting</strong>';
+    body = '<p style="' + P14 + 'line-height:1.7;margin:0 0 14px">In de bijlage het ondertekende formulier van <strong>' + n + '</strong> voor ' + actie + '.</p>' + (kortIngang ? '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:18px"><tr><td style="padding:12px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #2b6cb0;' + F + 'font-size:13px;color:#333d3a"><strong>Gewenste ingangsdatum:</strong> ' + esc(kortIngang) + '</td></tr></table>' : '');
+  } else {
+    body = '<p style="' + P14 + 'line-height:1.7;margin:0 0 14px">In de bijlage de documenten van <strong>' + n + '</strong>:</p><ul style="margin:0 0 20px;padding-left:20px">' + labels.map(l => '<li style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 4px">' + esc(l) + '</li>').join('') + '</ul>';
+  }
+  return slaWrap(slaHead('#2b6cb0', 'HR &middot; Salarisadministratie') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Beste,</p>' + body + '<p style="' + P14 + 'margin:0 0 20px">Vragen? <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p><p style="' + P14 + 'margin:0">Met vriendelijke groet,<br><strong>SLA HR Team</strong></p><p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0">Automatisch verstuurd vanuit het SLA HR Dashboard</p></td></tr>' + slaFoot());
+}
+function salarisPlain(naam, labels, kortKeuze, kortIngang) {
+  if (kortKeuze !== undefined) {
+    const actie = kortKeuze === 'Aanzetten' ? 'loonheffingskorting AANZETTEN' : kortKeuze === 'Uitzetten' ? 'loonheffingskorting UITZETTEN' : 'wijziging loonheffingskorting';
+    return 'Beste,\n\nIn de bijlage het ondertekende formulier van ' + naam + ' voor ' + actie + '.' + (kortIngang ? '\nGewenste ingangsdatum: ' + kortIngang : '') + '\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team\n\n(Automatisch verstuurd vanuit het SLA HR Dashboard)';
+  }
+  return 'Beste,\n\nIn de bijlage de documenten van ' + naam + ':\n- ' + labels.join('\n- ') + '\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team\n\n(Automatisch verstuurd vanuit het SLA HR Dashboard)';
+}
+
+module.exports = { KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
+  slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
   HUISREGELS, regelsById, wrsPlain, wrsHtml, beschikbPlain, beschikbHtml, oosvPlain, oosvHtml,
   SOM_TYPES, SOM_KLEUR, SOM_SHEETKLEUR, SOM_HINTS, sommatieSubject, sommatieHtml, sommatiePlain, overplaatsingSubject, overplaatsingPlain, overplaatsingHtml };
