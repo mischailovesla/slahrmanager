@@ -348,6 +348,7 @@
     g('lh-body').innerHTML = lhData.map(function (r) {
       return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen dossiers</td></tr>';
+    srtHerpas('lh-body');
   };
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('button[data-lm-rij]');
@@ -410,6 +411,7 @@
     g('om-body').innerHTML = omData.map(function (r) {
       return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="12" class="leeg grijs">Geen dossiers</td></tr>';
+    srtHerpas('om-body');
   };
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('button[data-om-rij]');
@@ -1173,24 +1175,59 @@
     toast(r.bericht, 'ok'); laadArchief(); ovData = null; lhData = null; omData = null; smData = null;
   });
 
-  // ---------- Sorteren op kolomkop (port van SorteerUI.gs, nu voor álle tabellen; datums dd-mm-jjjj, getallen, tekst) ----------
+  // ---------- Sorteren (port van SorteerUI.gs, uitgebreid) ----------
+  // 1) Klik op een kolomkop in elke tabel sorteert die kolom (datums dd-mm-jjjj, getallen, tekst).
+  // 2) Knop "⇅ Sorteer op datum" (loonheffing/ontslag) wisselt nieuw→oud / oud→nieuw / uit op de beste datumkolom
+  //    en blijft staan na verversen/zoeken (srtHerpas wordt na elke render aangeroepen).
   var SRT_RE = /(\d{1,2})-(\d{1,2})-(\d{4})(?:[ T](\d{1,2}):(\d{2}))?/;
+  var srtStaat = {}; // tbodyId -> { col, dir } (dir -1 = nieuw→oud, 1 = oud→nieuw)
   function srtWaarde(td) {
     var t = (td.textContent || '').trim(), m = t.match(SRT_RE);
     if (m) return { k: 'd', v: new Date(+m[3], +m[2] - 1, +m[1], +(m[4] || 0), +(m[5] || 0)).getTime() };
     var n = parseFloat(t.replace(',', '.')); if (t && !isNaN(n) && /^[-+]?[\d.,]+%?$/.test(t)) return { k: 'n', v: n };
     return { k: 't', v: t.toLowerCase() };
   }
+  function srtRows(tbody) { return Array.prototype.slice.call(tbody.querySelectorAll(':scope > tr')).filter(function (r) { return r.children.length > 1; }); }
+  function srtIsDatumKol(tbody, i) { var rows = srtRows(tbody), hit = 0, seen = 0; for (var r = 0; r < rows.length && seen < 12; r++) { var c = rows[r].children[i]; if (!c) continue; seen++; if (SRT_RE.test(c.textContent || '')) hit++; } return seen > 0 && hit >= Math.ceil(seen * 0.4); }
+  // Voorkeurskolom: verzend/verstuurd > datum > deadline/ingang (zoals srtDefaultCol in Apps Script)
+  function srtDefaultKol(table) {
+    var ths = table.querySelectorAll('thead th'), tbody = table.querySelector('tbody'), best = -1, bs = 0;
+    ths.forEach(function (th, i) { var t = (th.textContent || '').toLowerCase(), sc = 0; if (/verzend|verzonden|verstuurd/.test(t)) sc = 3; else if (t.indexOf('datum') > -1) sc = 2; else if (/deadline|ingang/.test(t)) sc = 1; if (sc > bs && srtIsDatumKol(tbody, i)) { bs = sc; best = i; } });
+    if (best < 0) for (var j = 0; j < ths.length; j++) if (srtIsDatumKol(tbody, j)) { best = j; break; }
+    return best;
+  }
+  function srtSorteer(table, idx, dir) {
+    var tbody = table.querySelector('tbody'); if (!tbody) return;
+    var rows = srtRows(tbody); if (rows.length < 2) return;
+    rows.map(function (r, i) { var c = r.children[idx]; return { r: r, i: i, w: c ? srtWaarde(c) : { k: 't', v: '' } }; })
+      .sort(function (a, b) {
+        var al = a.w.k === 't' && !a.w.v, bl = b.w.k === 't' && !b.w.v; if (al && bl) return a.i - b.i; if (al) return 1; if (bl) return -1; // leeg onderaan
+        if (a.w.k !== b.w.k) return a.w.k < b.w.k ? -1 : 1; var d = a.w.v < b.w.v ? -1 : a.w.v > b.w.v ? 1 : a.i - b.i; return dir === -1 ? -d : d; })
+      .forEach(function (x) { tbody.appendChild(x.r); });
+    table.querySelectorAll('thead th').forEach(function (x, i) { x.textContent = x.textContent.replace(/ [▲▼]$/, ''); x.removeAttribute('data-srt'); if (i === idx) { x.textContent += dir === -1 ? ' ▼' : ' ▲'; x.setAttribute('data-srt', dir === -1 ? 'desc' : 'asc'); } });
+  }
+  // Sortering opnieuw toepassen na een render (laadLoonheffing / laadOntslag roepen dit aan)
+  function srtHerpas(tbodyId) {
+    var st = srtStaat[tbodyId], tbody = g(tbodyId); if (!tbody) return;
+    var table = tbody.closest('table'), btn = document.querySelector('[data-srt-knop="' + tbodyId + '"]');
+    if (st && st.col >= 0) srtSorteer(table, st.col, st.dir);
+    if (btn) { btn.className = 'btn bsm ' + (st && st.col >= 0 ? 'bp' : 'bd'); btn.textContent = !st || st.col < 0 ? '⇅ Sorteer op datum' : st.dir === -1 ? '↓ Nieuw → oud' : '↑ Oud → nieuw'; }
+  }
+  window.srtKnop = function (tbodyId) {
+    var tbody = g(tbodyId), table = tbody.closest('table'), st = srtStaat[tbodyId];
+    if (!st || st.col < 0) { var col = srtDefaultKol(table); if (col < 0) { toast('Geen datumkolom gevonden', 'err'); return; } srtStaat[tbodyId] = { col: col, dir: -1 }; }
+    else if (st.dir === -1) st.dir = 1;
+    else { srtStaat[tbodyId] = { col: -1 }; table.querySelectorAll('thead th').forEach(function (x) { x.textContent = x.textContent.replace(/ [▲▼]$/, ''); x.removeAttribute('data-srt'); }); }
+    if (srtStaat[tbodyId].col < 0) { toast('Sortering uit — ververs (↻) voor de oorspronkelijke volgorde', 'ok'); }
+    srtHerpas(tbodyId);
+  };
   document.addEventListener('click', function (e) {
     var th = e.target.closest && e.target.closest('.tw table thead th'); if (!th || e.target.closest('button,input,a')) return;
     var table = th.closest('table'), tbody = table.querySelector('tbody'); if (!tbody) return;
-    var rows = Array.prototype.slice.call(tbody.querySelectorAll(':scope > tr')).filter(function (r) { return r.children.length > 1; }); if (rows.length < 2) return;
-    var idx = Array.prototype.indexOf.call(th.parentNode.children, th), richting = th.getAttribute('data-srt') === 'desc' ? 'asc' : 'desc';
-    table.querySelectorAll('thead th').forEach(function (x) { x.removeAttribute('data-srt'); x.textContent = x.textContent.replace(/ [▲▼]$/, ''); });
-    th.setAttribute('data-srt', richting); th.textContent += richting === 'desc' ? ' ▼' : ' ▲';
-    rows.map(function (r, i) { var c = r.children[idx]; return { r: r, i: i, w: c ? srtWaarde(c) : { k: 't', v: '' } }; })
-      .sort(function (a, b) { if (a.w.k !== b.w.k) return a.w.k < b.w.k ? -1 : 1; var d = a.w.v < b.w.v ? -1 : a.w.v > b.w.v ? 1 : a.i - b.i; return richting === 'desc' ? -d : d; })
-      .forEach(function (x) { tbody.appendChild(x.r); });
+    var idx = Array.prototype.indexOf.call(th.parentNode.children, th), dir = th.getAttribute('data-srt') === 'desc' ? 1 : -1;
+    if (tbody.id && srtStaat[tbody.id] !== undefined || document.querySelector('[data-srt-knop="' + tbody.id + '"]')) srtStaat[tbody.id] = { col: idx, dir: dir };
+    srtSorteer(table, idx, dir);
+    if (tbody.id) srtHerpas(tbody.id);
   });
 
   // ---------- Signaleringen (stap 4: scheduled functions + handmatig draaien) ----------
