@@ -7,6 +7,13 @@
 // Wijzigen van de brieftekst = dit bestand aanpassen (Mischa's keuze: volledig in code).
 // ============================================================
 const { AFZENDER_NAAM } = require('./config');
+const fs = require('fs');
+const path = require('path');
+// Handtekening (i.o. = in opdracht) voor de ontslagbevestiging; PNG met transparante achtergrond.
+// Ontbreekt het bestand, dan blijft alleen de stippellijn staan.
+function handtekening() {
+  try { return fs.readFileSync(path.join(__dirname, 'assets', 'handtekening_io_jop.png')); } catch (e) { return null; }
+}
 
 const ONTSLAG = `**BEVESTIGING OPZEGGING DIENSTVERBAND {{BV}}**
 
@@ -27,9 +34,9 @@ Met vriendelijke groet,
 
 
 **{{BV}}**
-${AFZENDER_NAAM}
-
+{{HANDTEKENING}}
 ................................................
+i.o. ${AFZENDER_NAAM}
 
 
 **De werknemer**
@@ -156,4 +163,4 @@ function vul(sjabloon, v) {
   return s.split('\n').filter(r => r.trim() !== '****').join('\n');
 }
 
-module.exports = { ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, vul };
+module.exports = { ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, vul, handtekening };

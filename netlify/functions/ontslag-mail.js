@@ -60,7 +60,7 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
   const maakPdf = async () => {
     const sjabloon = tpl.type === 'aanzegging' ? (isEN ? B.AANZEGGING_EN : B.AANZEGGING_NL) : B.ONTSLAG;
     const tekst = B.vul(sjabloon, { '{{Naam}}': naam, '{{Adres}}': adres, '{{DatumOpzegging}}': datumOpzegging, '{{Einddatum}}': einddatum, '{{BV}}': bv, '{{HuidigeDatum}}': briefDatum(isEN) });
-    return P.maakOpgemaakteBrief(tekst, { titel: (tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : 'Ontslagbevestiging') + ' - ' + naam });
+    return P.maakOpgemaakteBrief(tekst, { titel: (tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : 'Ontslagbevestiging') + ' - ' + naam, handtekening: tpl.type === 'ontslag' ? B.handtekening() : null });
   };
   const bestandsnaam = (tpl.type === 'aanzegging' ? (isEN ? 'Notice_non_renewal_' : 'Aanzegging_') : 'Ontslagbevestiging_') + veiligeNaam(naam) + '.pdf';
   if (p.alleenPdf) {

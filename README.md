@@ -116,6 +116,7 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.4.0 | 15-10-2026 | Stap 3c: Vrije brieven-tab, PDF-brief via pdf-lib, printbrief, tab Brieven, dossier-sectie Brieven |
 | 0.5.0 | 16-10-2026 | Stap 3d: Ontslag & aanzegging-tab, mail + PDF (ontslagbevestiging, aanzegging NL/EN) via pdf-lib, aanzeg-knop in het overzicht |
 | 0.5.1 | 16-10-2026 | Shiftbase-zoekveld in het ontslag- en loonheffingsmodal (vult naam, e-mail, BV, adres, einddatum) |
+| 0.5.2 | 16-10-2026 | Handtekening (i.o. Jop van de Graaf) in de ontslagbevestiging-PDF: `_lib/assets/handtekening_io_jop.png`, meegebundeld via `included_files` |
 
 ## Mail (Resend)
 Alle mail gaat via Resend vanaf `hr@ilovesla.com`. Eenmalig: Resend → **Domains → Add domain** → `ilovesla.com` → de DNS-records (DKIM/SPF) bij de domeinbeheerder zetten → *Verify*. Zonder verificatie weigert Resend de afzender (het dashboard geeft dan die hint). Elke verzonden mail staat in `hr_mails` (Supabase) en als actie in `hr_acties`.
@@ -124,7 +125,7 @@ Alle mail gaat via Resend vanaf `hr@ilovesla.com`. Eenmalig: Resend → **Domain
 De PDF wordt in de Netlify Function opgebouwd met `pdf-lib` (Helvetica ≈ Arial, A4, marges 56/56/64/64 pt): logo **SLA** groen, categorie in kapitalen, Datum/Aan/BV, *Betreft*, aanhef, alinea's en lijsten (regels met `- `), groet met `AFZENDER_NAAM` + BV, voettekst. Bestandsnaam `Brief_<Naam>.pdf`, gaat als Resend-bijlage mee (base64). Elke verzonden brief komt in tab **Brieven** van de HR-acties-sheet (kolommen A–I, exact als `vbLogBrief_`); de tab wordt aangemaakt als hij ontbreekt. De PDF wordt (nog) niet in Drive bewaard — "⬇ PDF" in het modal downloadt dezelfde PDF lokaal.
 
 ## Ontslag & aanzegging (brief-PDF's)
-De drie brieven (ontslagbevestiging, aanzegging NL, aanzegging EN) staan als tekst in `netlify/functions/_lib/brieftemplates.js`, letterlijk overgenomen uit de Google Docs-templates. Opmaak: `**vet**`, `*cursief*`, `• ` = opsomming, lege regel = alinea; placeholders `{{Naam}} {{Adres}} {{DatumOpzegging}} {{Einddatum}} {{BV}} {{HuidigeDatum}}`. Brieftekst aanpassen = dit bestand aanpassen en deployen. Bewust gekozen (16-10-2026) boven de Docs/Drive-route, omdat die domain-wide delegation door de Workspace-beheerder vereist. Gevolg: geen Drive-archief; de PDF zit in de mail en is via **⬇ PDF bekijken** altijd opnieuw te maken. Sheet-logging: H/I (+ nieuwe rij A–G), herinneringen K/L.
+De drie brieven (ontslagbevestiging, aanzegging NL, aanzegging EN) staan als tekst in `netlify/functions/_lib/brieftemplates.js`, letterlijk overgenomen uit de Google Docs-templates. Opmaak: `**vet**`, `*cursief*`, `• ` = opsomming, lege regel = alinea; placeholders `{{Naam}} {{Adres}} {{DatumOpzegging}} {{Einddatum}} {{BV}} {{HuidigeDatum}}`. Brieftekst aanpassen = dit bestand aanpassen en deployen. De ontslagbevestiging bevat de handtekening uit `_lib/assets/handtekening_io_jop.png` (PNG, transparant) op de regel `{{HANDTEKENING}}`, met "i.o. Jop van de Graaf" eronder; vervangen = het PNG-bestand vervangen. Bewust gekozen (16-10-2026) boven de Docs/Drive-route, omdat die domain-wide delegation door de Workspace-beheerder vereist. Gevolg: geen Drive-archief; de PDF zit in de mail en is via **⬇ PDF bekijken** altijd opnieuw te maken. Sheet-logging: H/I (+ nieuwe rij A–G), herinneringen K/L.
 
 ## Lokaal draaien
 ```bash

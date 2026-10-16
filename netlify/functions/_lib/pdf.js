@@ -193,9 +193,19 @@ async function maakOpgemaakteBrief(tekst, opties) {
     pagina.drawText('the good food bar', { x: MARGE.links, y: y - 8, size: 8, font: fonts.norm, color: KL.grijs }); y -= 24;
   }
   const size = 10.5, lh = size * 1.45;
+  // Handtekening-afbeelding (PNG met transparante achtergrond) via de regel {{HANDTEKENING}}
+  let handtekening = null;
+  if (o.handtekening) { try { handtekening = await doc.embedPng(o.handtekening); } catch (e) { console.warn('handtekening niet geladen:', e.message); } }
   const blokken = String(tekst || '').replace(/\r/g, '').split('\n');
   blokken.forEach(regel => {
     const r = regel.replace(/\s+$/, '');
+    if (r.trim() === '{{HANDTEKENING}}') {
+      if (!handtekening) return;
+      const h = 46, w = h * handtekening.width / handtekening.height;
+      ruimte(h + 4);
+      pagina.drawImage(handtekening, { x: MARGE.links, y: y - h, width: w, height: h });
+      y -= h + 2; return;
+    }
     if (!r.trim()) { y -= lh * 0.55; return; }
     const isBullet = /^\s*[•\-]\s+/.test(r);
     const inhoud = isBullet ? r.replace(/^\s*[•\-]\s+/, '') : r;
