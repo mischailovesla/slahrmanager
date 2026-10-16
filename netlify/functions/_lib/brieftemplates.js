@@ -163,4 +163,159 @@ function vul(sjabloon, v) {
   return s.split('\n').filter(r => r.trim() !== '****').join('\n');
 }
 
-module.exports = { ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, vul, handtekening };
+// --- Overplaatsing / standplaatswijziging (Docs-templates Overplaatsing_NL/EN, Standplaatswijziging_NL/EN) ---
+// Placeholders: {{Naam}} {{HuidigeBV}} {{NieuweBV}} {{DatumIndiensttreding}} {{IngangsdatumOverplaatsing}}
+//               {{Functie}} {{HuidigeStandplaats}} {{Standplaats}} {{HuidigeDatum}}
+const OVERPL_NL = `{{HuidigeBV}}
+{{HuidigeDatum}}
+
+**Betreft: bevestiging interne overplaatsing met behoud van dienstjaren**
+
+Beste {{Naam}},
+
+In navolging op onze gesprekken bevestigen wij hierbij jouw overplaatsing binnen de SLA-groep.
+
+Per {{IngangsdatumOverplaatsing}} word je formeel overgedragen van {{HuidigeBV}} naar {{NieuweBV}}. Dit gebeurt via contractsoverneming op grond van artikel 6:159 BW. Concreet betekent dit dat al jouw rechten en plichten uit de huidige arbeidsovereenkomst integraal overgaan naar {{NieuweBV}}, zonder onderbreking van je dienstverband.
+
+Concreet houdt dit het volgende in:
+
+- Jouw oorspronkelijke datum indiensttreding ({{DatumIndiensttreding}}) blijft leidend voor de berekening van dienstjaren, vakantiedagen, transitievergoeding en alle overige aanspraken op basis van anciënniteit.
+- Jouw functie blijft: {{Functie}}.
+- Jouw nieuwe standplaats wordt: {{Standplaats}}.
+- Jouw arbeidsvoorwaarden (salaris, contracturen, contracttype, opgebouwde vakantiedagen en overige toezeggingen) blijven ongewijzigd.
+- De ketenregeling en eventuele lopende termijnen lopen door alsof er geen werkgeverswissel heeft plaatsgevonden.
+
+Voor de goede orde merken wij op dat contractsoverneming alleen rechtsgeldig is wanneer alle drie de partijen - jij, {{HuidigeBV}} en {{NieuweBV}} - hiermee schriftelijk akkoord gaan. Wij vragen je daarom dit document te ondertekenen voor akkoord en te uploaden via de link in de begeleidende e-mail.
+
+Heb je vragen over deze overplaatsing of de gevolgen daarvan, neem dan gerust contact op via hr@ilovesla.com.
+
+Met vriendelijke groet,
+
+Namens {{HuidigeBV}} en {{NieuweBV}}
+SLA HR Team
+
+
+
+**Voor akkoord met de overplaatsing en de contractsoverneming zoals hierboven beschreven:**
+
+Naam: {{Naam}}
+
+Datum: _______________________
+
+Handtekening: _______________________`;
+
+const OVERPL_EN = `{{HuidigeBV}}
+{{HuidigeDatum}}
+
+**Subject: confirmation of internal transfer with retention of years of service**
+
+Dear {{Naam}},
+
+Following our conversations, we hereby confirm your transfer within the SLA group.
+
+As of {{IngangsdatumOverplaatsing}}, you will be formally transferred from {{HuidigeBV}} to {{NieuweBV}}. This takes place by way of contract assumption pursuant to article 6:159 of the Dutch Civil Code. In practice, this means that all rights and obligations under your current employment contract transfer in full to {{NieuweBV}}, without any interruption of your employment.
+
+Specifically, this means the following:
+
+- Your original start date ({{DatumIndiensttreding}}) remains the basis for calculating years of service, holiday entitlement, transition payment and any other entitlements based on seniority.
+- Your position remains: {{Functie}}.
+- Your new place of work will be: {{Standplaats}}.
+- Your employment conditions (salary, contracted hours, contract type, accrued holiday days and any other commitments) remain unchanged.
+- The chain rule and any ongoing terms continue as if no change of employer had taken place.
+
+For the sake of clarity, contract assumption is only legally valid when all three parties - you, {{HuidigeBV}} and {{NieuweBV}} - agree to it in writing. We therefore ask you to sign this document for approval and upload it via the link in the accompanying email.
+
+If you have any questions about this transfer or its implications, please feel free to contact us at hr@ilovesla.com.
+
+Kind regards,
+
+On behalf of {{HuidigeBV}} and {{NieuweBV}}
+SLA HR Team
+
+
+
+**I agree to the transfer and contract assumption as described above:**
+
+Name: {{Naam}}
+
+Date: _______________________
+
+Signature: _______________________`;
+
+const STANDPL_NL = `{{HuidigeBV}}
+{{HuidigeDatum}}
+
+**Betreft: bevestiging wijziging standplaats**
+
+Beste {{Naam}},
+
+In navolging op onze gesprekken bevestigen wij hierbij de wijziging van jouw standplaats binnen {{HuidigeBV}}.
+
+Per {{IngangsdatumOverplaatsing}} wijzigt jouw werklocatie van {{HuidigeStandplaats}} naar {{Standplaats}}. Je blijft in dienst bij {{HuidigeBV}}, jouw arbeidsovereenkomst loopt ongewijzigd door en er is dus geen sprake van een nieuwe werkgever of een nieuw dienstverband.
+
+Concreet houdt dit het volgende in:
+
+- Jouw datum indiensttreding ({{DatumIndiensttreding}}) en alle daaraan verbonden aanspraken (dienstjaren, vakantiedagen, anciënniteit, ketenregeling) blijven volledig in stand.
+- Jouw functie blijft: {{Functie}}.
+- Jouw nieuwe standplaats wordt: {{Standplaats}}.
+- Jouw arbeidsvoorwaarden (salaris, contracturen, contracttype, opgebouwde vakantiedagen en overige toezeggingen) blijven ongewijzigd.
+- De wijziging betreft uitsluitend de fysieke werkplek; alle overige afspraken uit jouw arbeidsovereenkomst blijven onverkort van kracht.
+
+Op grond van artikel 7:613 BW respectievelijk de wijzigingsclausule in jouw arbeidsovereenkomst vragen wij je deze standplaatswijziging schriftelijk te bevestigen. Wij verzoeken je dit document te ondertekenen voor akkoord en te uploaden via de link in de begeleidende e-mail.
+
+Heb je vragen over deze wijziging, neem dan gerust contact op via hr@ilovesla.com.
+
+Met vriendelijke groet,
+
+Namens {{HuidigeBV}}
+SLA HR Team
+
+
+
+**Voor akkoord met de wijziging van standplaats zoals hierboven beschreven:**
+
+Naam: {{Naam}}
+
+Datum: _______________________
+
+Handtekening: _______________________`;
+
+const STANDPL_EN = `{{HuidigeBV}}
+{{HuidigeDatum}}
+
+**Subject: confirmation of change of place of work**
+
+Dear {{Naam}},
+
+Following our conversations, we hereby confirm the change of your place of work within {{HuidigeBV}}.
+
+As of {{IngangsdatumOverplaatsing}}, your place of work will change from {{HuidigeStandplaats}} to {{Standplaats}}. You will remain employed by {{HuidigeBV}}, your employment contract continues unchanged, and there is no new employer or new employment relationship.
+
+Specifically, this means the following:
+
+- Your start date ({{DatumIndiensttreding}}) and all related entitlements (years of service, holiday entitlement, seniority, chain rule) remain fully in place.
+- Your position remains: {{Functie}}.
+- Your new place of work will be: {{Standplaats}}.
+- Your employment conditions (salary, contracted hours, contract type, accrued holiday days and any other commitments) remain unchanged.
+- This change concerns only the physical place of work; all other agreements in your employment contract remain fully in force.
+
+Pursuant to article 7:613 of the Dutch Civil Code and the modification clause in your employment contract, we ask you to confirm this change of workplace in writing. We kindly request that you sign this document for approval and upload it via the link in the accompanying email.
+
+If you have any questions about this change, please feel free to contact us at hr@ilovesla.com.
+
+Kind regards,
+
+On behalf of {{HuidigeBV}}
+SLA HR Team
+
+
+
+**I agree to the change of place of work as described above:**
+
+Name: {{Naam}}
+
+Date: _______________________
+
+Signature: _______________________`;
+
+module.exports = { ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, OVERPL_NL, OVERPL_EN, STANDPL_NL, STANDPL_EN, vul, handtekening };

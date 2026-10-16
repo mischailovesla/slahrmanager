@@ -42,19 +42,19 @@ module.exports = {
   LB_FORMULIER_EN: 'https://www.belastingdienst.nl/wps/wcm/connect/bldcontenten/themaoverstijgend/applications_and_forms/model-statement-data-payroll-taxes',
 
   WINKEL_BV_MAP: {
-    CB: { naam: 'Ceintuurbaan',     bv: 'SLA Ceintuur BV' },
-    WS: { naam: 'Westerstraat',     bv: 'SLA Ceintuur BV' },
-    MW: { naam: 'Middenweg',        bv: 'SLA Midden BV' },
-    HD: { naam: 'Haarlemmerdijk',   bv: 'SLA Midden BV' },
-    ZA: { naam: 'Zuidas',           bv: 'SLA Zuidas BV' },
-    US: { naam: 'Utrechtsestraat',  bv: 'SLA Utrechtse BV' },
-    AW: { naam: 'Amstelveenseweg',  bv: 'SLA ASW BV' },
-    AD: { naam: 'Admiraal',         bv: 'SLA Admiraal B.V.' },
-    HH: { naam: 'Hofhouse',         bv: 'SLA Hofhouse BV' },
-    VS: { naam: 'Voorstraat',       bv: 'SLA Utrecht BV' },
-    HC: { naam: 'Hoog Catharijne',  bv: 'SLA H.C. BV' },
-    KP: { naam: 'Kerkplein',        bv: 'SLA Den Haag BV' },
-    OB: { naam: 'Oude Binnenweg',   bv: 'SLA Rotterdam BV' }
+    CB: { naam: 'Ceintuurbaan',     adres: 'Ceintuurbaan 149, 1072 GB Amsterdam', bv: 'SLA Ceintuur BV' },
+    WS: { naam: 'Westerstraat',     adres: 'Westerstraat 34, 1015 MK Amsterdam', bv: 'SLA Ceintuur BV' },
+    MW: { naam: 'Middenweg',        adres: 'Middenweg 55b, 1098 AD Amsterdam', bv: 'SLA Midden BV' },
+    HD: { naam: 'Haarlemmerdijk',   adres: 'Haarlemmerdijk 50-h, 1013 JE Amsterdam', bv: 'SLA Midden BV' },
+    ZA: { naam: 'Zuidas',           adres: 'Claude Debussylaan 35, 1082 MC Amsterdam', bv: 'SLA Zuidas BV' },
+    US: { naam: 'Utrechtsestraat',  adres: 'Utrechtsestraat 10hs, 1017 VN Amsterdam', bv: 'SLA Utrechtse BV' },
+    AW: { naam: 'Amstelveenseweg',  adres: 'Amstelveenseweg 124, 1075 XL Amsterdam', bv: 'SLA ASW BV' },
+    AD: { naam: 'Admiraal',         adres: 'Admiraal de Ruijterweg 63, 1057 JX Amsterdam', bv: 'SLA Admiraal B.V.' },
+    HH: { naam: 'Hofhouse',         adres: 'Veemarkt 55, 1019 DA Amsterdam', bv: 'SLA Hofhouse BV' },
+    VS: { naam: 'Voorstraat',       adres: 'Voorstraat 52, 3512 AR Utrecht', bv: 'SLA Utrecht BV' },
+    HC: { naam: 'Hoog Catharijne',  adres: 'Catharijne Esplanade 45, 3511 WK Utrecht', bv: 'SLA H.C. BV' },
+    KP: { naam: 'Kerkplein',        adres: 'Kerkplein 4a, 2513 AZ Den Haag', bv: 'SLA Den Haag BV' },
+    OB: { naam: 'Oude Binnenweg',   adres: 'Oude Binnenweg 150A, 3012 JH Rotterdam', bv: 'SLA Rotterdam BV' }
   },
 
   // Shiftbase department_id -> winkelcode (uit Shiftbase.gs v9.4)

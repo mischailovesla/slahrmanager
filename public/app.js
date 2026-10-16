@@ -13,7 +13,7 @@
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -51,6 +51,8 @@
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
     if (tab === 'brief' && !vbData) laadBrieven();
     if (tab === 'ontslag' && !omData) laadOntslag();
+    if (tab === 'sommatie' && !smData) laadSommaties();
+    if (tab === 'overplaatsing' && !opData) laadOverplaatsingen();
   }
   window.swT = swT;
 
@@ -172,11 +174,11 @@
       rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bg">Loonheffing</span></td><td>' + esc(r.email) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('loonheffing', r.rij, r.naam) + '</td></tr>');
     });
     d.open.overplaatsing.forEach(function (r) {
-      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>-</td><td>' + dosBtn(r.naam, r.email) + '</td></tr>');
+      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>-</td><td>' + opBtn(r) + ' ' + dosBtn(r.naam, r.email) + '</td></tr>');
     });
     var somK = { '1e Sommatie': '#009f4b', '2e Sommatie': '#e8824a', 'Finale Sommatie': '#c0392b', 'Ontslag op Staande Voet': '#333d3a', 'Oproepbrief': '#2980b9' };
     d.open.sommatie.forEach(function (r) {
-      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge" style="background:' + (somK[r.type] || '#333d3a') + ';color:#fff">' + esc(r.type) + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.datumAfspraak || '-') + '</td><td>' + bSent(r.verzenddatum ? 'Verstuurd ' + r.verzenddatum : '') + '</td><td><span class="badge boat">' + esc(r.status || '-') + '</span></td><td>-</td><td>' + bTog('som-verwerkt', r.verwerkt, r.rij, r.naam) + '</td><td>' + dosBtn(r.naam, r.email) + ' ' + bArch('sommatie', r.rij, r.naam) + '</td></tr>');
+      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge" style="background:' + (somK[r.type] || '#333d3a') + ';color:#fff">' + esc(r.type) + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.datumAfspraak || '-') + '</td><td>' + bSent(r.verzenddatum ? 'Verstuurd ' + r.verzenddatum : '') + '</td><td><span class="badge boat">' + esc(r.status || '-') + '</span></td><td>-</td><td>' + bTog('som-verwerkt', r.verwerkt, r.rij, r.naam) + '</td><td>' + smBriefBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('sommatie', r.rij, r.naam) + '</td></tr>');
     });
     d.open.ontslag.forEach(function (r) {
       rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span> ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('ontslag', r.rij, r.naam) + '</td></tr>');
@@ -242,8 +244,8 @@
     switch (key) {
       case 'loonheffing': return kv('Deadline', esc(r.deadline || '-')) + kv('Mail', bSent(r.status)) + kv('Formulier', bOk(r.ontvangen)) + kv('Documenten', bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst')) + kv('Herinneringen', bH(r.herinnering, r.aantalHer)) + kv('Naar salaris', bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + (r.salaris ? '<div class="lay-sub">' + esc(r.salaris) + '</div>' : '')) + kv('', bArch('loonheffing', r.rij, r.naam));
       case 'onboarding': return kv('Locatie', esc(r.locatie || '-')) + kv('Taal', esc(r.taal)) + kv('Welkomstmail', bSent(r.status)) + kv('Datum', esc(r.verzenddatum || '-')) + kv('', bArch('onboarding', r.rij, r.naam));
-      case 'overplaatsing': return kv('Type', '<span class="badge bo">' + esc(r.type || '-') + '</span>') + kv('Van → naar', esc(r.huidigeBV) + ' → ' + esc(r.nieuweBV)) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ja', 'Aanvinken')) + kv('Brief', bDoc(r.briefUrl, '⬇ PDF'));
-      case 'sommatie': return kv('Type', '<span class="badge bdk">' + esc(r.type) + '</span>') + kv('BV', esc(r.bv || '-')) + kv('Afwezig', esc(r.datumAfwezig || '-')) + kv('Afspraak', esc(r.datumAfspraak || '-')) + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('Status', esc(r.status || '-')) + kv('Verwerkt', bTog('som-verwerkt', r.verwerkt, r.rij, r.naam)) + (r.aanvullend ? kv('Aanvullend', esc(r.aanvullend)) : '') + kv('', bArch('sommatie', r.rij, r.naam));
+      case 'overplaatsing': return kv('Type', '<span class="badge bo">' + esc(r.type || '-') + '</span>') + kv('Van → naar', esc(r.huidigeBV) + ' → ' + esc(r.nieuweBV)) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ja', 'Aanvinken')) + kv('Brief', bDoc(r.briefUrl, '⬇ PDF')) + kv('', opBtn(r));
+      case 'sommatie': return kv('Type', '<span class="badge bdk">' + esc(r.type) + '</span>') + kv('BV', esc(r.bv || '-')) + kv('Afwezig', esc(r.datumAfwezig || '-')) + kv('Afspraak', esc(r.datumAfspraak || '-')) + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('Status', esc(r.status || '-')) + kv('Verwerkt', bTog('som-verwerkt', r.verwerkt, r.rij, r.naam)) + (r.aanvullend ? kv('Aanvullend', esc(r.aanvullend)) : '') + kv('', smBriefBtn(r) + ' ' + bArch('sommatie', r.rij, r.naam));
       case 'brief': return kv('Categorie', '<span class="badge bdk">' + esc(r.categorie || '-') + '</span>') + kv('Onderwerp', esc(r.onderwerp || '-')) + kv('BV', esc(r.bv || '-')) + kv('PDF', r.pdf === 'Ja' ? '<span class="badge bg">Ja</span>' : '<span class="no-doc">-</span>') + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('', '<button class="btn bd bsm" data-vb-print="' + esc(r.rij) + '">Brief</button> <button class="btn bd bsm" data-vb-opnieuw="' + esc(r.rij) + '">Opnieuw</button>');
       case 'ontslag': return kv('Type', '<span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span>') + kv('BV', esc(r.bedrijf || '-')) + kv('Opzegging', esc(r.opzegging || '-')) + kv('Einddatum', esc(r.einddatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bOk(r.ondertekend, 'Ja', 'Nee')) + kv('Docs', bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief')) + kv('Naar salaris', bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam)) + kv('', omBtn(r) + ' ' + bArch('ontslag', r.rij, r.naam));
       default: return kv('Datum', esc(r.datum || '-')) + '<td>' + esc((r.raw || []).slice(0, 8).join(' · ')) + '</td>';
@@ -417,6 +419,193 @@
     setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
   }
 
+  // ---------- Sommaties (port van openSomM/verstuurSom/printSom + VrijeBrief-uitbreiding) ----------
+  var smData = null, smTypes = [], smKleur = {}, smHints = {}, smType = '1e Sommatie';
+  var smSheetKleur = { '1e Sommatie': '#009f4b', '2e Sommatie': '#e8824a', 'Finale Sommatie': '#c0392b', 'Ontslag op Staande Voet': '#333d3a', 'Oproepbrief': '#2980b9' };
+  function smBriefBtn(r) { return '<button class="btn bsm" style="background:#333d3a;color:#fff" data-sm-print="' + r.rij + '">Brief</button>'; }
+  window.laadSommaties = async function () {
+    var d = await api('/api/sommatie');
+    if (!d.success) { toast('Sommaties: ' + d.bericht, 'err'); return; }
+    smData = d.rijen; smTypes = d.types; smKleur = d.kleuren; smHints = d.hints;
+    g('sm-count').textContent = smData.length + ' verstuurd';
+    g('sm-body').innerHTML = smData.map(function (r) {
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge" style="background:' + (smSheetKleur[r.type] || '#333d3a') + ';color:#fff">' + esc(r.type) + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.datumAfwezig || '-') + '</td><td>' + esc(r.datumAfspraak || '-') + '</td><td>' + esc(r.verzenddatum || '-') + '</td><td><span class="badge boat">' + esc(r.status || '-') + '</span></td><td>' + bTog('som-verwerkt', r.verwerkt, r.rij, r.naam) + '</td><td><div class="vb-knoppen">' + smBriefBtn(r) + dosBtn(r.naam, r.email) + bArch('sommatie', r.rij, r.naam) + '</div></td></tr>';
+    }).join('') || '<tr><td colspan="10" class="leeg grijs">Nog geen sommaties verstuurd</td></tr>';
+  };
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-sm-print]');
+    if (!b) return;
+    if (!smData) await laadSommaties();
+    var rij = b.getAttribute('data-sm-print');
+    var r = (smData || []).concat((ovData && ovData.open.sommatie) || []).find(function (x) { return String(x.rij) === rij; });
+    if (r) smPrint(r, r.aanvullend || '');
+  });
+  window.openSomModal = async function (d) {
+    if (!smTypes.length) { var r = await api('/api/sommatie'); if (r.success) { smTypes = r.types; smKleur = r.kleuren; smHints = r.hints; smData = r.rijen; } }
+    ['sm-naam', 'sm-email', 'sm-bv', 'sm-mgr', 'sm-afwezig', 'sm-afspraak', 'sm-eigen', 'sm-zoek'].forEach(function (id) { g(id).value = ''; });
+    if (d) { g('sm-naam').value = d.naam || ''; g('sm-email').value = d.email || ''; g('sm-bv').value = d.bv || ''; }
+    g('sm-zoek-res').classList.remove('open');
+    smZetType(d && d.type && smTypes.indexOf(d.type) > -1 ? d.type : '1e Sommatie');
+    g('sm-modal').classList.add('open');
+    if (!d) setTimeout(function () { g('sm-zoek').focus(); }, 60);
+  };
+  window.closeSomModal = function () { g('sm-modal').classList.remove('open'); };
+  g('sm-modal').addEventListener('click', function (e) { if (e.target === this) closeSomModal(); });
+  function smZetType(t) {
+    smType = t;
+    g('sm-titel').textContent = 'Sommatie versturen — ' + t;
+    g('sm-tbar').innerHTML = smTypes.map(function (x) { return '<button type="button" class="tb' + (x === t ? ' sel' : '') + '" data-smtype="' + esc(x) + '" style="' + (x === t ? 'background:' + (smSheetKleur[x] || '#333d3a') + ';border-color:' + (smSheetKleur[x] || '#333d3a') + ';color:#fff' : '') + '">' + esc(x) + '</button>'; }).join('');
+    g('sm-tbar').querySelectorAll('[data-smtype]').forEach(function (b) { b.onclick = function () { smZetType(b.getAttribute('data-smtype')); }; });
+    var h = g('sm-hint'); if (smHints[t]) { h.innerHTML = smHints[t]; h.style.display = ''; h.style.borderLeftColor = smSheetKleur[t] || '#333d3a'; } else h.style.display = 'none';
+    g('sm-mgr-wrap').style.display = t === 'Oproepbrief' ? '' : 'none';
+    g('sm-afspraak-hint').style.display = t === 'Finale Sommatie' ? '' : 'none';
+    g('sm-modal').querySelector('.mh').style.background = smSheetKleur[t] || '#333d3a';
+  }
+  function smDatumAfwezig() { var v = g('sm-afwezig').value; return v ? new Date(v + 'T12:00:00').toLocaleDateString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) : ''; }
+  function smDatumAfspraak() { var v = g('sm-afspraak').value; return v ? new Date(v).toLocaleString('nl-NL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''; }
+  function smLees() {
+    return { type: smType, naam: g('sm-naam').value.trim(), email: g('sm-email').value.trim(), bv: g('sm-bv').value.trim(), storeManager: g('sm-mgr').value.trim(), datumAfwezig: smDatumAfwezig(), datumAfspraak: smDatumAfspraak(), eigenTekst: g('sm-eigen').value.trim() };
+  }
+  window.smVerstuur = async function () {
+    var p = smLees();
+    if (!p.naam || !p.email) { toast('Vul naam en e-mail in', 'err'); return; }
+    if ((p.type === 'Finale Sommatie' || p.type === 'Ontslag op Staande Voet') && !confirm(p.type + ' versturen naar ' + p.email + '?\n\nControleer dat het dossier compleet is.')) return;
+    var b = g('sm-sbtn'); b.disabled = true; g('sm-slbl').textContent = 'Versturen…';
+    var r = await api('/api/sommatie-mail', p);
+    b.disabled = false; g('sm-slbl').textContent = 'Verstuur e-mail';
+    if (r.success) { toast(r.bericht, 'ok'); closeSomModal(); smData = null; laadSommaties(); laadOverzicht(); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  window.smPrintNu = function () { var p = smLees(); if (!p.naam) { toast('Vul eerst de naam in', 'err'); return; } smPrint(p, p.eigenTekst); };
+  koppelSbZoek('sm-zoek', 'sm-zoek-res', function (m) {
+    if (!m) return;
+    g('sm-naam').value = m.naam || ''; g('sm-email').value = m.email || '';
+    if (m.winkelBv) g('sm-bv').value = m.winkelBv;
+    if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+  });
+  // Printbare aangetekende brief (vbPrintSommatie)
+  function smPrint(d, eigenTekst) {
+    var kleur = smSheetKleur[d.type] || '#333d3a', body = '', bv = esc(d.bv || 'SLA'), da = esc(d.datumAfwezig), dap = esc(d.datumAfspraak);
+    if (d.type === 'Oproepbrief') {
+      body += '<p>Wij constateren dat u al geruime tijd niet op uw werkplek bent verschenen en wij geen contact met u hebben kunnen krijgen.</p><p>Wij zien dat u nog altijd in dienst bent bij <strong>' + bv + '</strong> en hechten waarde aan uw situatie en welzijn.</p>';
+      body += '<p>Wij verzoeken u vriendelijk om' + (dap ? ' uiterlijk op <strong>' + dap + '</strong>' : ' zo spoedig mogelijk') + ' telefonisch contact op te nemen met' + (d.storeManager ? ' <strong>' + esc(d.storeManager) + '</strong>' : ' uw Store Manager') + ', om uw situatie te bespreken.</p><p>Deze brief is niet bedoeld als formele maatregel. Wij hopen spoedig iets van u te horen.</p>';
+    } else if (d.type === '1e Sommatie') {
+      body += '<p>Wij constateren dat u ' + (da ? 'op <strong>' + da + '</strong> ' : 'op de afgesproken datum ') + 'niet bent verschenen op uw werkplek en/of niet bereikbaar was. Dit betreft ongeoorloofd verzuim.</p>';
+      body += '<p>Wij sommeren u hierbij om <strong>binnen 24 tot 48 uur</strong> na ontvangst van deze brief contact op te nemen met uw leidinggevende of aanwezig te zijn op uw werklocatie.' + (dap ? ' Wij verzoeken u uiterlijk op <strong>' + dap + '</strong> aanwezig te zijn of contact op te nemen.' : '') + '</p>';
+      body += '<p><strong>Loonopschorting:</strong> Zolang u uw werk niet hervat en geen contact opneemt, zijn wij genoodzaakt uw loon op te schorten. Dit betreft nadrukkelijk een <em>opschorting</em> en geen definitieve stopzetting van uw loon.</p><p>Indien u niet reageert op deze sommatie, zullen wij verdere maatregelen treffen. Dit kan leiden tot <strong>loonstopzetting en ontslag</strong>.</p>';
+    } else if (d.type === '2e Sommatie') {
+      body += '<p>Wij constateren dat u ' + (da ? 'op <strong>' + da + '</strong> ' : 'wederom ') + 'niet bent verschenen op uw werkplek en/of niet bereikbaar was, ondanks onze eerdere sommatie.</p>';
+      body += '<p>Dit is uw <strong>tweede en laatste officiële waarschuwing</strong>. Wij sommeren u om ' + (dap ? 'uiterlijk op <strong>' + dap + '</strong> ' : 'per direct ') + 'contact op te nemen of aanwezig te zijn op uw werklocatie.</p>';
+      body += '<p><strong>Loonstopzetting:</strong> Omdat u geen gehoor heeft gegeven aan onze eerdere sommatie, gaan wij over tot loonstopzetting. Met onmiddellijke ingang wordt geen loon meer uitbetaald totdat u uw werkzaamheden hervat.</p><p>Indien u ook op deze sommatie niet reageert, zijn wij genoodzaakt over te gaan tot <strong>ontslag</strong>.</p>';
+    } else if (d.type === 'Finale Sommatie') {
+      body += '<p>Wij constateren dat u, ondanks twee eerdere officiële sommaties, nog steeds niet bent verschenen op uw werkplek en/of geen contact heeft opgenomen.</p>' + (da ? '<p>Op <strong>' + da + '</strong> bent u wederom niet verschenen.</p>' : '') + '<p><strong>Dit is uw FINALE sommatie.</strong></p>';
+      body += '<p>' + (dap ? 'U dient uiterlijk op <strong>' + dap + '</strong> aanwezig te zijn of contact op te nemen. ' : 'U dient per direct contact op te nemen. ') + 'Bij het uitblijven van een reactie gaan wij met onmiddellijke ingang over tot <strong>ontslag op staande voet</strong>.</p><p>Uw volledige dossier, inclusief alle eerdere contactpogingen en sommaties, is gereed voor dit besluit.</p>';
+      body += '<p style="font-size:10pt;color:#888;font-style:italic">Wij hebben u heden tevens een e-mail gestuurd. De reactietermijn geldt vanaf ontvangst van dit schrijven.</p>';
+    } else {
+      body += '<p>Tot onze spijt delen wij u hierbij mede dat uw dienstverband bij <strong>' + bv + '</strong> per direct en met onmiddellijke ingang wordt beëindigd wegens <strong>ontslag op staande voet</strong>.</p><p>Dit besluit is genomen na herhaaldelijk ongeoorloofd verzuim en het niet reageren op meerdere officiële sommaties, hetgeen een dringende reden vormt in de zin van artikel 7:677 BW.</p>';
+      body += (da ? '<p>Uw meest recente ongeoorloofde afwezigheid betrof <strong>' + da + '</strong>.</p>' : '') + (dap ? '<p>Wij verzoeken u om op <strong>' + dap + '</strong> aanwezig te zijn voor de administratieve afwikkeling en het ophalen van uw persoonlijke eigendommen.</p>' : '') + '<p>Een schriftelijke bevestiging van dit ontslag ontvangt u per aangetekende post. Wij adviseren u zo nodig juridisch advies in te winnen.</p>';
+    }
+    if (eigenTekst && eigenTekst.trim()) body += vbAlineas(eigenTekst);
+    vbOpenPrintBrief({ titel: d.type, onderwerp: d.type, naam: d.naam, bv: d.bv, bodyHtml: body, aangetekend: true, kleur: kleur });
+  }
+
+  // ---------- Overplaatsing / standplaatswijziging (port van getOverplaatsingUI) ----------
+  var opData = null, opWinkels = [], opRij = null;
+  function opBtn(r) { return '<button class="btn bp bsm" data-op-rij="' + r.rij + '">Mail</button>'; }
+  window.laadOverplaatsingen = async function () {
+    var d = await api('/api/overplaatsing');
+    if (!d.success) { toast('Overplaatsing: ' + d.bericht, 'err'); return; }
+    opData = d.rijen; opWinkels = d.winkels;
+    g('op-count').textContent = opData.length + ' dossiers';
+    g('op-body').innerHTML = opData.map(function (r) {
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.standplaats || '-') + '</td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td><div class="vb-knoppen">' + opBtn(r) + bDoc(r.briefUrl, '⬇ Brief') + dosBtn(r.naam, r.email) + '</div></td></tr>';
+    }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen overplaatsingen</td></tr>';
+  };
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-op-rij]');
+    if (!b) return;
+    var rij = parseInt(b.getAttribute('data-op-rij'), 10);
+    var r = (opData || []).concat((ovData && ovData.open.overplaatsing) || []).find(function (x) { return x.rij === rij; });
+    openOpModal(r || null);
+  });
+  window.openOpModal = async function (d) {
+    if (!opWinkels.length) { var w = await api('/api/overplaatsing'); if (w.success) { opWinkels = w.winkels; opData = w.rijen; } }
+    var opts = '<option value="">-- selecteer --</option>' + opWinkels.map(function (w) { return '<option value="' + esc(w.code) + '">' + esc(w.naam) + ' (' + esc(w.code) + ') - ' + esc(w.bv) + '</option>'; }).join('');
+    g('op-van').innerHTML = opts; g('op-naar').innerHTML = opts;
+    opRij = d && d.rij ? d.rij : null;
+    g('op-naam').value = d ? d.naam || '' : ''; g('op-to').value = d ? d.email || '' : ''; g('op-adres').value = d ? d.adres || '' : '';
+    g('op-functie').value = d ? d.functie || '' : ''; g('op-indienst').value = d ? d.datumIndienst || '' : ''; g('op-ingang').value = d ? d.ingangsdatum || '' : '';
+    g('op-taal').value = d && d.taal === 'EN' ? 'EN' : 'NL';
+    g('op-van').value = d ? opCodeBijBv(d.huidigeBV, null) : ''; g('op-naar').value = d ? opCodeBijBv(d.nieuweBV, d.standplaats) : '';
+    g('op-zoek').value = ''; g('op-zoek-res').classList.remove('open');
+    opCheckType(); opCheckIngang();
+    g('op-modal').classList.add('open');
+    if (!d) setTimeout(function () { g('op-zoek').focus(); }, 60);
+  };
+  function opCodeBijBv(bv, winkelNaam) {
+    var w = winkelNaam ? opWinkels.find(function (x) { return x.naam === winkelNaam; }) : null;
+    if (!w && bv) w = opWinkels.find(function (x) { return x.bv === bv; });
+    return w ? w.code : '';
+  }
+  window.closeOpModal = function () { g('op-modal').classList.remove('open'); };
+  g('op-modal').addEventListener('click', function (e) { if (e.target === this) closeOpModal(); });
+  window.opCheckType = function () {
+    var van = g('op-van').value, naar = g('op-naar').value, info = g('op-type-info');
+    if (!van || !naar) { info.style.display = 'none'; return; }
+    var wv = opWinkels.find(function (w) { return w.code === van; }), wn = opWinkels.find(function (w) { return w.code === naar; });
+    info.style.display = '';
+    if (van === naar) { info.className = 'alert rood'; info.innerHTML = '⚠ Van en naar zijn dezelfde winkel — selecteer een andere bestemming.'; return; }
+    if (wv.bv === wn.bv) { info.className = 'alert grijs'; info.innerHTML = '☰ <strong>Standplaatswijziging</strong> — ' + esc(wv.naam) + ' en ' + esc(wn.naam) + ' vallen beide onder <strong>' + esc(wv.bv) + '</strong>. Geen werkgeverswissel, alleen de werkplek verandert. Brief: standplaatswijziging op grond van art. 7:613 BW.'; }
+    else { info.className = 'alert groen'; info.innerHTML = '✓ <strong>Overplaatsing tussen BV\'s</strong> — van <strong>' + esc(wv.bv) + '</strong> naar <strong>' + esc(wn.bv) + '</strong>. Contractsoverneming met behoud van dienstjaren op grond van art. 6:159 BW.'; }
+    g('op-pn').textContent = (wv.bv === wn.bv ? 'Standplaatswijziging' : 'Overplaatsing') + (g('op-taal').value === 'EN' ? ' (EN)' : '') + ' — PDF-brief gaat als bijlage mee; de medewerker ondertekent en uploadt via de link in de mail.';
+  };
+  window.opCheckIngang = function () {
+    var v = g('op-ingang').value.trim(), info = g('op-ingang-info');
+    if (!v) { info.innerHTML = ''; return; }
+    var m = v.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);
+    if (!m) { info.innerHTML = '<span style="color:#888">Datum niet herkend (verwacht: dd-mm-jjjj)</span>'; return; }
+    var d = new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10)), nu = new Date(); nu.setHours(0, 0, 0, 0);
+    var dgn = Math.round((d - nu) / 864e5);
+    info.innerHTML = dgn < 0 ? '<span style="color:#c0392b">⚠ Datum ligt in het verleden</span>' : dgn < 14 ? '<span style="color:#e8824a">⚠ Korte termijn: ' + dgn + ' dagen vooruit (let op redelijke termijn)</span>' : '<span style="color:#006b30">✓ ' + dgn + ' dagen vooruit</span>';
+  };
+  function opLees() {
+    return { naam: g('op-naam').value.trim(), to: g('op-to').value.trim(), adres: g('op-adres').value.trim(), huidigeWinkel: g('op-van').value, nieuweWinkel: g('op-naar').value, datumIndienst: g('op-indienst').value.trim(), ingangsdatum: g('op-ingang').value.trim(), functie: g('op-functie').value.trim(), taal: g('op-taal').value, rij: opRij };
+  }
+  function opCheck(p) {
+    if (!p.naam || !p.to) { toast('Vul naam en e-mail in', 'err'); return false; }
+    if (!p.huidigeWinkel || !p.nieuweWinkel) { toast('Selecteer huidige en nieuwe winkel', 'err'); return false; }
+    if (p.huidigeWinkel === p.nieuweWinkel) { toast('Van en naar zijn dezelfde winkel', 'err'); return false; }
+    if (!p.ingangsdatum) { toast('Vul de ingangsdatum in', 'err'); return false; }
+    return true;
+  }
+  window.opPdf = async function () {
+    var p = opLees(); p.to = p.to || 'x@x';
+    if (!p.naam || !p.huidigeWinkel || !p.nieuweWinkel) { toast('Vul naam en beide winkels in', 'err'); return; }
+    var b = g('op-pdfbtn'); b.disabled = true; toast('PDF maken…', 'ok');
+    var r = await api('/api/overplaatsing-mail', Object.assign(p, { alleenPdf: true }));
+    b.disabled = false;
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam || 'Brief.pdf');
+  };
+  window.opVerstuur = async function () {
+    var p = opLees(); if (!opCheck(p)) return;
+    var b = g('op-sbtn'); b.disabled = true; g('op-slbl').textContent = 'PDF maken en versturen…';
+    var r = await api('/api/overplaatsing-mail', p);
+    b.disabled = false; g('op-slbl').textContent = 'Verstuur + PDF';
+    if (r.success) { toast(r.bericht, 'ok'); closeOpModal(); opData = null; laadOverplaatsingen(); laadOverzicht(); if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  koppelSbZoek('op-zoek', 'op-zoek-res', function (m) {
+    if (!m) return;
+    g('op-naam').value = m.naam || ''; g('op-to').value = m.email || '';
+    if (m.adres) g('op-adres').value = m.adres;
+    if (m.functie) g('op-functie').value = m.functie;
+    if (m.indienst) g('op-indienst').value = m.indienst;
+    if (m.winkelCode && opWinkels.some(function (w) { return w.code === m.winkelCode; })) g('op-van').value = m.winkelCode;
+    opCheckType();
+    if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+  });
+
   // ---------- Vrije brieven (port van getVrijeBriefUI, VrijeBrief.gs v1.2) ----------
   var vbData = null, vbTpl = [], vbBvs = [], vbWinkelBv = {}, vbTplKey = 'leeg', vbAfzender = 'SLA HR Team';
   window.laadBrieven = async function () {
@@ -571,10 +760,11 @@
       '.footer{margin-top:40px;padding-top:16px;border-top:1px solid #ddd;font-size:9pt;color:#888}.sign{margin-top:32px}.print-btn{position:fixed;bottom:24px;right:24px;background:#009f4b;color:#fff;border:none;padding:12px 24px;border-radius:8px;font-size:12pt;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.2)}' +
       '</style></head><body><button class="print-btn no-print" onclick="window.print()">🖨 Afdrukken</button>' +
       '<div class="header"><div class="logo">SLA</div><div class="adres">SLA HR Team<br>hr@ilovesla.com</div></div><hr>' +
+      (o.aangetekend ? '<div style="background:#fff8e6;border:1px solid #f5a623;border-radius:6px;padding:10px 14px;font-size:10pt;color:#7a5c00;margin:16px 0">📧 <strong>Aangetekend te verzenden</strong> — Bewaar de bezorgbevestiging in het dossier</div>' : '') +
       '<div class="meta"><p><strong>Datum:</strong> ' + datum + '</p><p><strong>Aan:</strong> ' + esc(o.naam) + '</p>' + (o.bv ? '<p><strong>BV:</strong> ' + esc(o.bv) + '</p>' : '') + '</div>' +
       '<div class="badge">' + esc(o.titel) + '</div><p><strong>Betreft: ' + esc(o.onderwerp || o.titel) + '</strong></p><p>Beste ' + esc(o.naam) + ',</p>' + o.bodyHtml +
       '<div class="sign"><p>Met vriendelijke groet,</p><p><strong>' + esc(vbAfzender) + '</strong><br>' + esc(o.bv || 'SLA') + '</p></div>' +
-      '<div class="footer"><p>Kopie van deze brief bewaren in het personeelsdossier.</p></div></body></html>';
+      '<div class="footer"><p>' + (o.aangetekend ? 'ⓘ Dit schrijven is aangetekend verzonden op ' + datum + '. Bewaar de bezorgbevestiging en een kopie van deze brief in het personeelsdossier.' : 'Kopie van deze brief bewaren in het personeelsdossier.') + '</p></div></body></html>';
     var win = window.open('', '_blank', 'width=820,height=1000,scrollbars=yes');
     if (!win) { toast('Pop-up geblokkeerd — sta pop-ups toe voor deze site', 'err'); return; }
     win.document.write(html); win.document.close(); win.focus();

@@ -382,4 +382,47 @@ async function logBrief(b, stempelTekst) {
   return rij;
 }
 
-module.exports = { getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };
+// --- Sommatie loggen (logSommatie + vbLogSommatie_: eerste lege rij na de laatste naam, kolom J eigen tekst) ---
+async function logSommatie(p, stempelTekst, kleurHex) {
+  const id = SHEETS.sommatie.id;
+  const tab = (await tabNamen(id))[0];
+  vergeetCache(id);
+  const data = await lees(id, q(tab.title), 1);
+  let rij = 2;
+  for (let j = data.length - 1; j >= 0; j--) if (cel(data[j], 0)) { rij = j + 2; break; }
+  const range = q(tab.title) + '!A' + rij + ':J' + rij;
+  await gapi(encodeURIComponent(id) + '/values/' + encodeURIComponent(range) + '?valueInputOption=USER_ENTERED', 'PUT',
+    { range, majorDimension: 'ROWS', values: [[p.naam, p.email, p.bv || '', p.type, p.datumAfwezig || '', p.datumAfspraak || '', stempelTekst, 'Verstuurd', '', String(p.eigenTekst || '').trim()]] });
+  await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{
+    repeatCell: { range: { sheetId: tab.sheetId, startRowIndex: rij - 1, endRowIndex: rij, startColumnIndex: 7, endColumnIndex: 8 },
+      cell: { userEnteredFormat: { backgroundColor: hexNaarRgb(kleurHex || KLEUR.groen) } }, fields: 'userEnteredFormat.backgroundColor' } }] });
+  vergeetCache(id);
+  return rij;
+}
+// --- Overplaatsing loggen (logOverplaatsing: tab 'Overplaatsing', A..L + P type; bestaande rij -> alleen K/L) ---
+async function logOverplaatsing(p, huidig, nieuw, isStandpl, stempelTekst) {
+  const { id, tab: tabNaam } = SHEETS.overplaatsing;
+  const tab = (await tabNamen(id)).find(s => s.title === tabNaam);
+  if (!tab) throw new Error('Tab "' + tabNaam + '" ontbreekt in de HR-acties-sheet (run initOverplaatsingSheet in Apps Script).');
+  const w = 'Verstuurd op ' + stempelTekst;
+  let rij = parseInt(p.rij, 10) || 0;
+  if (!rij) {
+    vergeetCache(id);
+    const data = await lees(id, q(tabNaam), 1);
+    rij = 2;
+    for (let j = data.length - 1; j >= 0; j--) if (cel(data[j], 0)) { rij = j + 2; break; }
+    const range = q(tabNaam) + '!A' + rij + ':P' + rij;
+    await gapi(encodeURIComponent(id) + '/values/' + encodeURIComponent(range) + '?valueInputOption=USER_ENTERED', 'PUT',
+      { range, majorDimension: 'ROWS', values: [[p.naam, p.to, p.adres || '', huidig.bv, nieuw.bv, p.datumIndienst || '', p.ingangsdatum || '', p.functie || '', nieuw.naam, p.taal || 'NL', w, stempelTekst, '', '', '', isStandpl ? 'Standplaatswijziging' : 'Overplaatsing']] });
+  } else {
+    await zetCel(id, tabNaam, rij, 11, w);
+    await zetCel(id, tabNaam, rij, 12, stempelTekst);
+  }
+  await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{
+    repeatCell: { range: { sheetId: tab.sheetId, startRowIndex: rij - 1, endRowIndex: rij, startColumnIndex: 10, endColumnIndex: 11 },
+      cell: { userEnteredFormat: { backgroundColor: hexNaarRgb(KLEUR.groen) } }, fields: 'userEnteredFormat.backgroundColor' } }] });
+  vergeetCache(id);
+  return rij;
+}
+
+module.exports = { logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };

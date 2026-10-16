@@ -64,7 +64,7 @@
       <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV / Info</th><th>Einddatum</th><th>Mail verstuurd</th><th>Status</th><th>Herinneringen</th><th>Naar salaris</th><th>Dossier</th></tr></thead><tbody id="ov-body"></tbody></table></div>
     </div>
 
-    <div class="alert grijs"><strong>Afvinken en archiveren</strong> kan hier (Naar salaris, Verwerkt, Ondertekend, 🗑) — dat schrijft in dezelfde Google Sheets als het Apps Script-dashboard, dus beide blijven gelijk. Loonheffing, ontslag/aanzegging (met PDF-brief) en vrije brieven verstuur je hier; sommatie en overplaatsing nog in het bestaande dashboard.</div>
+    <div class="alert grijs"><strong>Afvinken en archiveren</strong> kan hier (Naar salaris, Verwerkt, Ondertekend, 🗑) — dat schrijft in dezelfde Google Sheets als het Apps Script-dashboard, dus beide blijven gelijk. Alle mails en brieven (loonheffing, ontslag/aanzegging, sommatie, overplaatsing, vrije brieven) verstuur je nu hier. Alleen de automatische herinneringen draaien nog in Apps Script.</div>
   </div>
 
   <!-- DOSSIER -->
@@ -134,6 +134,64 @@
       <div class="lay-sub">De upload-link wordt bij versturen automatisch persoonlijk gemaakt (naam voor-ingevuld).</div>
     </div>
     <div class="mf"><button class="btn bd" onclick="omKopieer()">Kopieer</button><button class="btn bd" id="om-pdfbtn" onclick="omPdf()">⬇ PDF bekijken</button><button class="btn bp" id="om-sbtn" onclick="omVerstuur()"><span id="om-slbl">Verstuur mail</span></button></div>
+  </div></div>
+
+  <!-- SOMMATIES -->
+  <div class="tc" id="tab-sommatie">
+    <div class="sec">
+      <div class="sh"><div class="st">Sommaties <span class="pill" id="sm-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('sm-body',this.value)"><button class="btn bd bsm" onclick="laadSommaties()">↻</button><button class="btn bsm" style="background:#c0392b;color:#fff" onclick="openSomModal(null)">Sommatie versturen</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV</th><th>Afwezig</th><th>Afspraak</th><th>Verstuurd</th><th>Status</th><th>Verwerkt</th><th>Actie</th></tr></thead><tbody id="sm-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Werkwijze:</strong> e-mail + aangetekende brief op dezelfde dag (knop "Brief" opent de printversie). Oproepbrief → 1e sommatie (loonopschorting, 24–48 u) → 2e sommatie (loonstopzetting) → finale sommatie (2–3 werkdagen) → ontslag op staande voet (art. 7:677 BW).</div>
+  </div>
+
+  <!-- Modal sommatie -->
+  <div class="mo" id="sm-modal"><div class="modal">
+    <div class="mh" style="background:#c0392b"><div class="mti" id="sm-titel">Sommatie versturen</div><button class="mc" onclick="closeSomModal()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Zoek in Shiftbase <span style="color:#888;font-weight:400">(vult de velden hieronder in)</span></label><div class="zoeklijst" style="position:relative"><input type="text" id="sm-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="sm-zoek-res"></div></div></div>
+      <div class="fg"><label>Type sommatie</label><div class="tbar" id="sm-tbar"></div></div>
+      <div class="alert grijs" id="sm-hint" style="display:none;margin:0 0 14px;font-size:.8rem"></div>
+      <div class="fr"><div class="fg"><label>Naam</label><input type="text" id="sm-naam" placeholder="Voor- en achternaam"></div>
+        <div class="fg"><label>Email</label><input type="email" id="sm-email" placeholder="medewerker@email.com"></div></div>
+      <div class="fr"><div class="fg"><label>BV / Bedrijf</label><input type="text" id="sm-bv" list="om-bv-list" placeholder="bijv. SLA Ceintuur BV"></div>
+        <div class="fg" id="sm-mgr-wrap" style="display:none"><label>Naam Store Manager</label><input type="text" id="sm-mgr" placeholder="bijv. Lisa van den Berg"></div></div>
+      <div class="fr"><div class="fg"><label>Datum afwezigheid <span style="color:#888;font-weight:400">(optioneel)</span></label><input type="date" id="sm-afwezig"></div>
+        <div class="fg"><label>Datum &amp; tijd afspraak / contactmoment</label><input type="datetime-local" id="sm-afspraak"></div></div>
+      <div class="alert geel" id="sm-afspraak-hint" style="display:none;margin:0 0 14px;font-size:.8rem">⚠ <strong>Tip voor Finale Sommatie:</strong> stel de datum minimaal <strong>2–3 werkdagen</strong> in de toekomst in. De aangetekende brief wordt bezorgd in 1–2 werkdagen — de reactietermijn start pas na ontvangst.</div>
+      <div class="fg"><label>Aanvullende tekst <span style="color:#888;font-weight:400">(optioneel — komt als extra alinea in de e-mail en de printbrief, en in het dossier)</span></label><textarea id="sm-eigen" rows="4" style="min-height:90px" placeholder="bijv. context van deze specifieke situatie, eerdere contactpogingen, telefoonnummer van de Store Manager..."></textarea></div>
+    </div>
+    <div class="mf"><button class="btn bd" onclick="smPrintNu()">🖨 Printbrief</button><button class="btn bp" id="sm-sbtn" onclick="smVerstuur()"><span id="sm-slbl">Verstuur e-mail</span></button></div>
+  </div></div>
+
+  <!-- OVERPLAATSING -->
+  <div class="tc" id="tab-overplaatsing">
+    <div class="sec">
+      <div class="sh"><div class="st">Overplaatsing &amp; standplaats <span class="pill" id="op-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('op-body',this.value)"><button class="btn bd bsm" onclick="laadOverplaatsingen()">↻</button><button class="btn bp bsm" onclick="openOpModal(null)">Nieuwe overplaatsing</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>Van → naar</th><th>Standplaats</th><th>Ingangsdatum</th><th>Mail</th><th>Ondertekend</th><th>Herinneringen</th><th>Actie</th></tr></thead><tbody id="op-body"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- Modal overplaatsing -->
+  <div class="mo" id="op-modal"><div class="modal">
+    <div class="mh"><div class="mti">Overplaatsing / standplaatswijziging + PDF</div><button class="mc" onclick="closeOpModal()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Zoek in Shiftbase <span style="color:#888;font-weight:400">(vult de velden hieronder in)</span></label><div class="zoeklijst" style="position:relative"><input type="text" id="op-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="op-zoek-res"></div></div></div>
+      <div class="fr"><div class="fg"><label>Naam medewerker</label><input type="text" id="op-naam" placeholder="Voornaam Achternaam"></div>
+        <div class="fg"><label>Email</label><input type="email" id="op-to" placeholder="medewerker@email.com"></div></div>
+      <div class="fr"><div class="fg"><label>Huidige winkel</label><select id="op-van" onchange="opCheckType()"></select></div>
+        <div class="fg"><label>Nieuwe winkel</label><select id="op-naar" onchange="opCheckType()"></select></div></div>
+      <div class="alert grijs" id="op-type-info" style="display:none;margin:0 0 14px;font-size:.8rem"></div>
+      <div class="fr"><div class="fg"><label>Datum oorspronkelijke indiensttreding</label><input type="text" id="op-indienst" placeholder="bijv. 15-03-2022"></div>
+        <div class="fg"><label>Ingangsdatum overplaatsing</label><input type="text" id="op-ingang" placeholder="bijv. 01-06-2026" oninput="opCheckIngang()"><div id="op-ingang-info" class="lay-sub" style="margin-top:4px"></div></div></div>
+      <div class="fr"><div class="fg"><label>Functie (blijft hetzelfde)</label><input type="text" id="op-functie" placeholder="bijv. Allround medewerker"></div>
+        <div class="fg"><label>Taal</label><select id="op-taal" onchange="opCheckType()"><option value="NL">NL - Nederlands</option><option value="EN">EN - English</option></select></div></div>
+      <div class="fg"><label>Privéadres medewerker</label><input type="text" id="op-adres" placeholder="Straat 1, 1234AB Amsterdam"></div>
+      <div class="lay-sub" id="op-pn">PDF-brief gaat als bijlage mee; de medewerker ondertekent en uploadt via de link in de mail.</div>
+    </div>
+    <div class="mf"><button class="btn bd" id="op-pdfbtn" onclick="opPdf()">⬇ PDF bekijken</button><button class="btn bp" id="op-sbtn" onclick="opVerstuur()"><span id="op-slbl">Verstuur + PDF</span></button></div>
   </div></div>
 
   <!-- VRIJE BRIEVEN -->

@@ -188,4 +188,127 @@ function ontslagMailHtml(tpl, naam, bv, einddatum) {
   return ontslagHtml(naam, bv);
 }
 
-module.exports = { slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml };
+// --- Sommatie (buildSommatieHtml / buildSommatiePlain + eigen tekst uit VrijeBrief.gs) ---
+const SOM_TYPES = ['Oproepbrief', '1e Sommatie', '2e Sommatie', 'Finale Sommatie', 'Ontslag op Staande Voet'];
+const SOM_KLEUR = { 'Oproepbrief': '#2980b9', '1e Sommatie': '#e8824a', '2e Sommatie': '#d35400', 'Finale Sommatie': '#c0392b', 'Ontslag op Staande Voet': '#333d3a' };
+const SOM_SHEETKLEUR = { 'Ontslag op Staande Voet': '#f4cccc', 'Finale Sommatie': '#fce5cd', '2e Sommatie': '#fff2cc' }; // rest groen
+const SOM_HINTS = {
+  'Oproepbrief': '📋 <strong>Fase 0 — Vóór de sommatie</strong> — Vriendelijke oproep voor iemand die lang niet is komen werken. Geen formele maatregel — maar wel <strong>aangetekend verzenden</strong> voor het dossier. Vul de naam van de Store Manager in en stel een concrete contactdatum/tijd in.',
+  '1e Sommatie': '🔵 <strong>Dag 1–2</strong> — Verstuur e-mail + aangetekende brief op dezelfde dag. Vermeld: loonopschorting • deadline 24–48 uur na ontvangst • concrete datum/tijd afspraak.',
+  '2e Sommatie': '🟠 <strong>Dag 3–5</strong> — Verstuur e-mail + aangetekende brief. Vermeld: tweede én laatste waarschuwing • loonstopzetting per direct • gevolg is ontslag.',
+  'Finale Sommatie': '🔴 <strong>Dag 5–7</strong> — Verstuur e-mail + aangetekende brief. Stel de datum/tijd afspraak minimaal 2–3 werkdagen vooruit in (bezorgtijd post + reactietijd).',
+  'Ontslag op Staande Voet': '⚫ <strong>Na Finale Sommatie</strong> — Zorg dat het dossier compleet is. Stuur e-mail + aangetekende brief. Overweeg juridisch advies (KHN of HR-jurist).'
+};
+function sommatieSubject(p) { return p.type === 'Oproepbrief' ? 'Oproep: wij horen graag iets van u - ' + p.naam : p.type + ' - ' + p.naam; }
+function sommatieHtml(p) {
+  const type = p.type, naam = esc(p.naam), bv = esc(p.bv || C.BEDRIJFSNAAM), da = esc(p.datumAfwezig), dap = esc(p.datumAfspraak);
+  const kleur = SOM_KLEUR[type] || '#333d3a';
+  const s = F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 14px', sB = F + 'font-size:15px;color:#333d3a;margin:0 0 16px';
+  const sR = F + 'font-size:14px;color:#c0392b;line-height:1.7;margin:0 0 14px;font-weight:700';
+  const bxR = 'padding:14px 16px;background:#fdecea;border-radius:8px;border-left:4px solid #c0392b;margin-bottom:16px;' + F + 'font-size:13px;color:#7b241c;line-height:1.6';
+  const bxO = 'padding:14px 16px;background:#fef9e7;border-radius:8px;border-left:4px solid #e8824a;margin-bottom:16px;' + F + 'font-size:13px;color:#7d5a00;line-height:1.6';
+  let body = '<p style="' + sB + '">Beste ' + naam + ',</p>';
+  if (type === 'Oproepbrief') {
+    const mgr = esc(p.storeManager || 'de Store Manager');
+    body += '<p style="' + s + '">We zien dat je al geruime tijd niet op jouw werkplek bent verschenen en we geen contact met je hebben kunnen krijgen. We hopen dat alles goed met je gaat.</p>';
+    body += '<p style="' + s + '">We zien dat je nog altijd in dienst bent bij <strong>' + bv + '</strong> en hechten waarde aan jouw welzijn en situatie. We begrijpen dat er omstandigheden kunnen zijn die je belemmeren, en horen graag wat er speelt.</p>';
+    body += '<p style="' + s + '">We vragen je vriendelijk om' + (dap ? ' uiterlijk op <strong>' + dap + '</strong>' : ' zo spoedig mogelijk') + ' telefonisch contact op te nemen met <strong>' + mgr + '</strong>, zodat we samen naar een oplossing kunnen kijken.</p>';
+    body += '<div style="' + bxO + '">&#128222; <strong>Contactpersoon:</strong> ' + mgr + (dap ? ' &bull; <strong>Uiterlijk:</strong> ' + dap : '') + '</div>';
+    body += '<p style="' + s + '">We hopen snel iets van je te horen. Heb je vragen, aarzel dan niet om contact op te nemen.</p>';
+  } else if (type === '1e Sommatie') {
+    body += '<p style="' + s + '">We zien dat je ' + (da ? 'op <strong>' + da + '</strong> ' : 'op de afgesproken datum ') + 'niet bent verschenen op jouw werkplek en/of niet bereikbaar was. Dit betreft ongeoorloofd verzuim.</p>';
+    body += '<p style="' + s + '">We sommeren je hierbij om <strong>binnen 24 tot 48 uur</strong> na ontvangst van deze brief contact op te nemen.' + (dap ? ' We vragen je uiterlijk op <strong>' + dap + '</strong> aanwezig te zijn of contact op te nemen.' : '') + '</p>';
+    body += '<div style="' + bxO + '"><strong>&#9888; Loonopschorting</strong><br>Zolang je het werk niet hervat en geen contact opneemt, zijn we genoodzaakt jouw loon op te schorten. Dit betreft nadrukkelijk een opschorting en geen definitieve stopzetting.</div>';
+    body += '<p style="' + s + '">Als je niet reageert op deze sommatie, zullen we verdere maatregelen treffen. Dit kan leiden tot loonstopzetting en ontslag.</p>';
+  } else if (type === '2e Sommatie') {
+    body += '<p style="' + s + '">We zien dat je ' + (da ? 'op <strong>' + da + '</strong> ' : 'wederom ') + 'niet bent verschenen op jouw werkplek en/of niet bereikbaar was, ondanks onze eerdere sommatie.</p>';
+    body += '<p style="' + s + '">Dit is jouw <strong>tweede en laatste officiele waarschuwing</strong>. We sommeren je om ' + (dap ? 'uiterlijk op <strong>' + dap + '</strong> ' : 'per direct ') + 'contact op te nemen of aanwezig te zijn op jouw werklocatie.</p>';
+    body += '<div style="' + bxO + '"><strong>&#9888; Loonstopzetting</strong><br>Omdat je geen gehoor hebt gegeven aan onze eerdere sommatie, gaan we over tot loonstopzetting. Met onmiddellijke ingang wordt geen loon meer uitbetaald totdat je het werk hervat.</div>';
+    body += '<div style="' + bxR + '"><strong>Gevolgen bij uitblijven reactie</strong><br>Als je ook op deze sommatie niet reageert, zijn we genoodzaakt over te gaan tot ontslag.</div>';
+  } else if (type === 'Finale Sommatie') {
+    body += '<p style="' + s + '">We zien dat je, ondanks twee eerdere officiele sommaties, nog steeds niet bent verschenen op jouw werkplek en/of geen contact heeft opgenomen.</p>';
+    if (da) body += '<p style="' + s + '">Op <strong>' + da + '</strong> ben je wederom niet verschenen.</p>';
+    body += '<p style="' + sR + '">Dit is jouw FINALE sommatie.</p>';
+    body += '<p style="' + s + '">' + (dap ? 'Je dient uiterlijk op <strong>' + dap + '</strong> aanwezig te zijn op jouw werklocatie of contact op te nemen met jouw leidinggevende. ' : 'Je dient zo spoedig mogelijk na ontvangst van dit schrijven contact op te nemen. ') + 'Bij uitblijven gaan we over tot ontslag op staande voet.</p>';
+    body += '<div style="' + bxR + '"><strong>&#9940; Uitdrukkelijke waarschuwing</strong><br>Bij het uitblijven van een reactie gaan we over tot ontslag op staande voet wegens herhaaldelijk ongeoorloofd verzuim. Uw volledige dossier is gereed voor dit besluit.</div>';
+    body += '<p style="' + F + 'font-size:12px;color:#888;margin:8px 0 0;font-style:italic">We hebben je vandaag ook een e-mail gestuurd. De uiterste reactietermijn geldt vanaf ontvangst van dit schrijven.</p>';
+  } else {
+    body += '<p style="' + s + '">Tot onze spijt laten we je weten dat jouw dienstverband bij <strong>' + bv + '</strong> per direct en met onmiddellijke ingang wordt be&euml;indigd wegens ontslag op staande voet.</p>';
+    body += '<p style="' + s + '">Dit besluit is genomen na herhaaldelijk ongeoorloofd verzuim en het niet reageren op meerdere officiele sommaties. Dit vormt een dringende reden in de zin van artikel 7:677 BW.</p>';
+    if (da) body += '<p style="' + s + '">Uw meest recente ongeoorloofde afwezigheid betrof <strong>' + da + '</strong>.</p>';
+    body += '<div style="' + bxR + '"><strong>Reden van ontslag op staande voet</strong><br>Herhaaldelijk ongeoorloofd verzuim ondanks meerdere officiele sommaties (artikel 7:677 BW).</div>';
+    if (dap) body += '<p style="' + s + '">We vragen je om op <strong>' + dap + '</strong> aanwezig te zijn voor de administratieve afwikkeling en het ophalen van jouw persoonlijke eigendommen.</p>';
+    body += '<p style="' + s + '">Een schriftelijke bevestiging van dit ontslag ontvangt je per aangetekende post. We adviseren je om zo nodig juridisch advies in te winnen.</p>';
+  }
+  if (p.eigenTekst && String(p.eigenTekst).trim()) body += tekstNaarHtml(p.eigenTekst);   // extra alinea's vlak voor de groet
+  body += '<p style="' + F + 'font-size:14px;color:#333d3a;margin:24px 0 6px">Met vriendelijke groet,<br><strong>' + esc(C.AFZENDER_NAAM) + '</strong><br>' + bv + '</p>';
+  return slaWrap(slaHead(kleur, 'SLA HR &middot; ' + esc(type)) + '<tr><td style="padding:32px 36px 28px">' + body + '</td></tr>' + slaFoot());
+}
+function sommatiePlain(p) {
+  const type = p.type, naam = p.naam, bv = p.bv || C.BEDRIJFSNAAM, da = p.datumAfwezig, dap = p.datumAfspraak, mgr = p.storeManager || 'de Store Manager';
+  let txt = 'Beste ' + naam + ',\n\n';
+  if (type === 'Oproepbrief') {
+    txt += 'We zien dat je al geruime tijd niet op jouw werkplek bent verschenen en we geen contact met je hebben kunnen krijgen. We hopen dat alles goed met je gaat.\n\n';
+    txt += 'We zien dat je nog altijd in dienst bent bij ' + bv + ' en hechten waarde aan jouw welzijn en situatie.\n\n';
+    txt += 'We vragen je vriendelijk om' + (dap ? ' uiterlijk op ' + dap + ' ' : ' zo spoedig mogelijk ') + 'telefonisch contact op te nemen met ' + mgr + '.\n\n';
+    txt += 'We hopen snel iets van je te horen.\n\n';
+  } else if (type === '1e Sommatie') {
+    txt += (da ? 'Op ' + da + ' ben je niet verschenen op jouw werkplek en/of was je niet bereikbaar. Dit betreft ongeoorloofd verzuim.\n\n' : 'Je bent niet verschenen en/of niet bereikbaar geweest. Dit betreft ongeoorloofd verzuim.\n\n');
+    txt += 'We sommeren je om binnen 24 tot 48 uur contact op te nemen of aanwezig te zijn.' + (dap ? ' Uiterlijk op ' + dap + '.' : '') + ' LOONOPSCHORTING: Zolang je niet reageert, schorten we jouw loonbetaling op. Bij uitblijven van reactie volgen verdere maatregelen waaronder loonstopzetting en ontslag.\n\n';
+  } else if (type === '2e Sommatie') {
+    txt += (da ? 'Op ' + da + ' ben je wederom niet verschenen, ondanks onze eerdere sommatie.\n\n' : 'Je bent wederom niet verschenen, ondanks onze eerdere sommatie.\n\n');
+    txt += 'Dit is jouw tweede en laatste officiele waarschuwing. We sommeren je om ' + (dap ? 'uiterlijk op ' + dap + ' ' : 'per direct ') + 'contact op te nemen of aanwezig te zijn. LOONSTOPZETTING: Met onmiddellijke ingang wordt geen loon meer uitbetaald. Bij uitblijven van reactie gaan we over tot ontslag.\n\n';
+  } else if (type === 'Finale Sommatie') {
+    txt += 'Ondanks twee eerdere sommaties ben je nog steeds niet verschenen en heb je geen contact opgenomen.\n\n';
+    txt += (da ? 'Op ' + da + ' ben je wederom niet verschenen.\n\n' : '');
+    txt += 'FINALE SOMMATIE. ' + (dap ? 'Je dient uiterlijk op ' + dap + ' aanwezig te zijn of contact op te nemen. ' : 'Je dient per direct contact op te nemen. ') + 'Bij uitblijven gaan we over tot ontslag op staande voet.\n\nWe hebben je vandaag ook een e-mail gestuurd. De uiterste reactietermijn geldt vanaf ontvangst van dit schrijven.\n\n';
+  } else {
+    txt += 'Tot onze spijt laten we je weten dat jouw dienstverband bij ' + bv + ' per direct wordt beëindigd wegens ontslag op staande voet.\n\n';
+    txt += 'Reden: Herhaaldelijk ongeoorloofd verzuim ondanks meerdere officiele sommaties (artikel 7:677 BW).\n\n';
+    txt += (da ? 'Meest recente afwezigheid: ' + da + '.\n\n' : '');
+    txt += (dap ? 'We vragen je aanwezig te zijn op ' + dap + ' voor afwikkeling en persoonlijke eigendommen.\n\n' : '');
+    txt += 'Een schriftelijke bevestiging ontvangt je per aangetekende post.\n\n';
+  }
+  if (p.eigenTekst && String(p.eigenTekst).trim()) txt += String(p.eigenTekst).trim() + '\n\n';
+  return txt + 'Met vriendelijke groet,\n' + C.AFZENDER_NAAM + '\n' + bv;
+}
+
+// --- Overplaatsing / standplaatswijziging (buildOverplaatsing* uit Code.gs) ---
+function overplaatsingSubject(naam, isStandpl, isEN) {
+  if (isStandpl) return (isEN ? 'Confirmation of change of place of work - ' : 'Bevestiging wijziging standplaats - ') + naam;
+  return (isEN ? 'Confirmation of internal transfer - ' : 'Bevestiging interne overplaatsing - ') + naam;
+}
+function overplaatsingPlain(naam, huidig, nieuw, ingangsdatum, isStandpl, isEN) {
+  const u = C.UPLOAD_ONTSLAG;
+  if (isEN) {
+    if (isStandpl) return 'Dear ' + naam + ',\n\nAttached you will find the confirmation of the change of your place of work within ' + huidig.bv + '.\n\nAs of ' + (ingangsdatum || 'the agreed date') + ', your workplace changes from ' + huidig.naam + ' to ' + nieuw.naam + '.\n\nPlease sign for approval and upload via:\n' + u + '\n\nQuestions? hr@ilovesla.com\n\nKind regards,\nSLA HR Team';
+    return 'Dear ' + naam + ',\n\nAttached you will find the official confirmation of your internal transfer from ' + huidig.bv + ' to ' + nieuw.bv + '.\n\nAs of ' + (ingangsdatum || 'the agreed date') + ', your employment formally transfers, with retention of your years of service.\n\nPlease sign for approval and upload via:\n' + u + '\n\nQuestions? hr@ilovesla.com\n\nKind regards,\nSLA HR Team';
+  }
+  if (isStandpl) return 'Beste ' + naam + ',\n\nIn de bijlage vind je de bevestiging van de wijziging van jouw standplaats binnen ' + huidig.bv + '.\n\nPer ' + (ingangsdatum || 'de afgesproken datum') + ' wijzigt jouw werkplek van ' + huidig.naam + ' naar ' + nieuw.naam + '.\n\nOnderteken voor akkoord en upload via:\n' + u + '\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team';
+  return 'Beste ' + naam + ',\n\nIn de bijlage vind je de officiele bevestiging van jouw interne overplaatsing van ' + huidig.bv + ' naar ' + nieuw.bv + '.\n\nPer ' + (ingangsdatum || 'de afgesproken datum') + ' word je formeel overgedragen, met behoud van dienstjaren.\n\nOnderteken voor akkoord en upload via:\n' + u + '\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team';
+}
+function overplaatsingHtml(naam, huidig, nieuw, ingangsdatum, isStandpl, isEN) {
+  const hb = esc(huidig.bv), nb = esc(nieuw.bv), hn = esc(huidig.naam), nn = esc(nieuw.naam), ing = ingangsdatum ? '<strong>' + esc(ingangsdatum) + '</strong>' : '<strong>' + (isEN ? 'the agreed date' : 'de afgesproken datum') + '</strong>';
+  const L = isEN ? (isStandpl ? {
+    head: 'HR &middot; Change of workplace', greet: 'Dear ', intro: 'Attached you will find the confirmation of the change of your place of work within <strong>' + hb + '</strong>.',
+    detail: 'As of ' + ing + ', your workplace changes from <strong>' + hn + '</strong> to <strong>' + nn + '</strong>. Your employment, salary, hours and accrued holidays remain unchanged.',
+    cta: 'Please sign for approval and upload via:', btn: '&rarr; Upload signed document', q: 'Questions?', sign: 'Kind regards,'
+  } : {
+    head: 'HR &middot; Internal transfer', greet: 'Dear ', intro: 'Attached you will find the official confirmation of your internal transfer from <strong>' + hb + '</strong> to <strong>' + nb + '</strong>.',
+    detail: 'As of ' + ing + ', your employment formally transfers, <strong>with retention of your years of service</strong> and all related entitlements (holiday, seniority, chain rule).',
+    cta: 'Please sign for approval and upload via:', btn: '&rarr; Upload signed document', q: 'Questions?', sign: 'Kind regards,'
+  }) : (isStandpl ? {
+    head: 'HR &middot; Wijziging standplaats', greet: 'Beste ', intro: 'In de bijlage vind je de bevestiging van de wijziging van jouw standplaats binnen <strong>' + hb + '</strong>.',
+    detail: 'Per ' + ing + ' wijzigt jouw werkplek van <strong>' + hn + '</strong> naar <strong>' + nn + '</strong>. Jouw dienstverband, salaris, uren en opgebouwde vakantiedagen blijven ongewijzigd.',
+    cta: 'Onderteken voor akkoord en upload via:', btn: '&rarr; Upload ondertekend document', q: 'Vragen?', sign: 'Met vriendelijke groet,'
+  } : {
+    head: 'HR &middot; Interne overplaatsing', greet: 'Beste ', intro: 'In de bijlage vind je de officiele bevestiging van jouw interne overplaatsing van <strong>' + hb + '</strong> naar <strong>' + nb + '</strong>.',
+    detail: 'Per ' + ing + ' word je formeel overgedragen, <strong>met behoud van dienstjaren</strong> en alle daaraan verbonden aanspraken (vakantiedagen, anci&euml;nniteit, ketenregeling).',
+    cta: 'Onderteken voor akkoord en upload via:', btn: '&rarr; Upload ondertekend document', q: 'Vragen?', sign: 'Met vriendelijke groet,'
+  });
+  const afzender = isStandpl ? hb : hb + ' &amp; ' + nb;
+  return slaWrap(slaHead('#009f4b', L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">' + L.greet + esc(naam) + ',</p><p style="' + P14 + 'line-height:1.7;margin:0 0 16px">' + L.intro + '</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">' + L.detail + '</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding:16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #009f4b"><p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 12px">' + L.cta + '</p>' + knop(prefillOntslagUrl(naam), L.btn) + '</td></tr></table><p style="' + P14 + 'margin:0 0 20px">' + L.q + ' <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p><p style="' + P14 + 'margin:0">' + L.sign + '<br><br><strong>SLA HR Team</strong><br>' + afzender + '</p></td></tr>' + slaFoot());
+}
+
+module.exports = { slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml,
+  SOM_TYPES, SOM_KLEUR, SOM_SHEETKLEUR, SOM_HINTS, sommatieSubject, sommatieHtml, sommatiePlain, overplaatsingSubject, overplaatsingPlain, overplaatsingHtml };
