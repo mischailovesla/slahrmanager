@@ -2,7 +2,7 @@
 // Automatische checks (stap 4) — port van de Apps Script-triggers:
 //   syncFormulierStatus (4-uurlijks), checkLoonheffingHerinneringen (09:00),
 //   checkOntslagHerinneringen (09:15), checkNieuweMedewerkers (09:45),
-//   checkAanzegtermijnen (09:50), checkStilleAfwezigen (ma 10:00).
+//   checkAanzegtermijnen (09:50), checkStilleAfwezigen (ma 10:00), checkWeekendBeschikbaarheid (ma 09:45).
 // Elke check geeft een rapport terug: { naam, gevonden:[...], verstuurd:[...], droog, fouten:[] }.
 // DROOGLOOP: zolang env SIGNALERINGEN_ACTIEF niet '1' is wordt er niets gemaild
 // en niets in de sheets geschreven — alleen gerapporteerd. Zo kun je de Netlify-
@@ -16,6 +16,7 @@ const M = require('./mail');
 const C = require('./config');
 const { normNaam, parseNLDatum, dagenTot } = require('./util');
 const { admin } = require('./auth');
+const W = require('./weekend');
 
 const actief = () => String(process.env.SIGNALERINGEN_ACTIEF || '').trim() === '1';
 function stempel() {
@@ -237,7 +238,38 @@ async function stilleAfwezigen(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen };
+// ---- 7. Weekendbeschikbaarheid (checkWeekendBeschikbaarheid, Shiftbase.gs v9.4; maandag 09:45) ----
+function weekendHtml(lijst, weken) {
+  let blokken = '', vorige = '', open = false;
+  lijst.forEach(p => {
+    if (p.winkel !== vorige) { if (open) blokken += '</td></tr></table>'; blokken += '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px"><tr><td style="padding:14px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #e8824a"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 8px">' + esc(p.winkel) + '</p>'; vorige = p.winkel; open = true; }
+    blokken += '<p style="' + F + 'font-size:12px;color:#666;margin:0 0 2px">&bull; <strong>' + esc(p.naam) + '</strong> &mdash; <strong style="color:#c0392b">' + p.doordeweeks + ' doordeweekse dienst(en)</strong> in dezelfde periode &middot; laatste weekenddienst: ' + (p.laatsteWeekendDienst ? esc(p.laatsteWeekendDienst) : '<em>niet gevonden</em>') + '</p><p style="' + F + 'font-size:11px;color:#888078;margin:0 0 8px;padding-left:12px;border-left:2px solid #e8e2de">Onderbouwing: &ldquo;' + esc(p.onderbouwing) + '&rdquo;</p>';
+  });
+  if (open) blokken += '</td></tr></table>';
+  return T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Weekendbeschikbaarheid') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">Deze medewerkers hadden de afgelopen <strong>' + weken + ' volledige weekenden</strong> (vr t/m zo) geen enkele weekenddienst, terwijl ze in dezelfde periode <strong>w&eacute;l doordeweeks werkten</strong>. Goedgekeurd verlof en net gestarte medewerkers zijn uitgefilterd. Huisregel: <em>&ldquo;Je bent minimaal 2 diensten op vrijdag, zaterdag of zondag beschikbaar.&rdquo;</em></p>' + blokken
+    + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0"><tr><td style="padding:12px 16px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + F + 'font-size:12px;color:#7a5c00;line-height:1.6">&#9888; Dit signaal is gebaseerd op het <strong>rooster</strong> (ingeroosterd), niet op opgegeven beschikbaarheid. Check bij twijfel eerst de beschikbaarheid in Shiftbase &mdash; iemand kan beschikbaar zijn geweest maar niet ingepland.</td></tr></table>'
+    + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:12px 0 0"><tr><td style="padding:12px 16px;background:#e6f7ee;border-radius:8px;border-left:4px solid #009f4b;' + F + 'font-size:12px;color:#006b30;line-height:1.6">&#10003; Klopt het beeld? Verstuur de kennisgeving via <strong>HR Dashboard &rarr; Beschikbaarheid</strong> en plak de onderbouwing hierboven in het onderbouwingsveld.</td></tr></table>'
+    + '<p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch wekelijks bericht &mdash; weekendbeschikbaarheid-check</p></td></tr>' + T.slaFoot());
+}
+async function weekendBeschikbaarheid(droog) {
+  const rap = { naam: 'weekend-beschikbaarheid', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const vandaag = vandaag0(), weken = C.WEEKEND_SIGNAAL_WEKEN;
+  const [med, ros, abs] = await Promise.all([
+    SB.getMedewerkers(true),
+    SB.sbGet('rosters?min_date=' + isoDag(plusDagen(vandaag, -(weken * 7 + 56))) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || []),
+    SB.sbGet('absentees?min_date=' + isoDag(plusDagen(vandaag, -(weken * 7 + 7))) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || [])
+  ]);
+  const lijst = W.bepaalWeekendOntwijkers(med, ros, abs, vandaag, weken, C.WEEKEND_UITGESLOTEN_WINKELS);
+  rap.gevonden = lijst;
+  if (!lijst.length) return rap;
+  let plain = 'Hallo,\n\nDeze medewerkers hadden de afgelopen ' + weken + ' volledige weekenden (vr t/m zo) geen enkele weekenddienst, terwijl ze in dezelfde periode wel doordeweeks werkten. Goedgekeurd verlof en net gestarte medewerkers zijn uitgefilterd:\n', vorige = '';
+  lijst.forEach(p => { if (p.winkel !== vorige) { plain += '\n' + p.winkel + ':\n'; vorige = p.winkel; } plain += '- ' + p.naam + ' - ' + p.doordeweeks + ' doordeweekse dienst(en), laatste weekenddienst: ' + (p.laatsteWeekendDienst || 'niet gevonden in de laatste ' + Math.round((weken * 7 + 56) / 7) + ' weken') + '\n  Onderbouwing voor de brief: "' + p.onderbouwing + '"\n'; });
+  plain += '\nLET OP: dit is gebaseerd op het rooster (ingeroosterd), niet op opgegeven beschikbaarheid. Check bij twijfel de beschikbaarheid in Shiftbase.\nVerstuur de kennisgeving via HR Dashboard -> Beschikbaarheid (de onderbouwing kun je zo overnemen).\n\n(Automatisch wekelijks bericht van het SLA HR systeem)';
+  await mailOfDroog(rap, { to: ontvangers('weekendBeschikbaarheid'), subject: 'Weekendbeschikbaarheid: ' + lijst.length + ' medewerker(s) ' + weken + ' weekenden zonder dienst (wel doordeweeks actief)', text: plain, html: weekendHtml(lijst, weken), kort: { naam: 'HR-team', aantal: lijst.length } });
+  return rap;
+}
+
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 async function draai(naam, droog, bron) {
@@ -252,4 +284,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid };

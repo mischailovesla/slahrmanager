@@ -23,8 +23,9 @@ exports.handler = beveiligd('dossier', async (event) => {
   const nn = normNaam(naam);
   const match = r => (email && String(r.email || '').toLowerCase() === email) || (nn && normNaam(r.naam) === nn);
 
-  const [loon, ontslag, som, opl, onb, extra, brieven] = await Promise.all([
-    S.getLoonheffing(), S.getOntslag(), S.getSommatie(), S.getOverplaatsing(), S.getOnboarding(), S.getExtraTabs(), S.getBrieven().catch(() => [])
+  const [loon, ontslag, som, opl, onb, extra, brieven, wrs, bsk] = await Promise.all([
+    S.getLoonheffing(), S.getOntslag(), S.getSommatie(), S.getOverplaatsing(), S.getOnboarding(), S.getExtraTabs(), S.getBrieven().catch(() => []),
+    S.getWaarschuwingen().catch(() => []), S.getBeschikbaarheid().catch(() => [])
   ]);
 
   const secties = [
@@ -33,7 +34,9 @@ exports.handler = beveiligd('dossier', async (event) => {
     { key: 'overplaatsing', label: 'Overplaatsing / standplaats', rijen: opl.filter(match) },
     { key: 'sommatie', label: 'Sommaties', rijen: som.filter(match) },
     { key: 'ontslag', label: 'Ontslag & aanzegging', rijen: ontslag.filter(match) },
-    { key: 'brief', label: 'Vrije brieven', rijen: brieven.filter(match) }
+    { key: 'brief', label: 'Vrije brieven', rijen: brieven.filter(match) },
+    { key: 'waarschuwing', label: 'Officiële waarschuwingen', rijen: wrs.filter(match) },
+    { key: 'beschikbaarheid', label: 'Weekendbeschikbaarheid', rijen: bsk.filter(match) }
   ].concat(extra.map(t => ({ key: 'extra', label: t.label, rijen: t.rijen.filter(match), fout: t.fout })));
 
   // Contractstatus + aanzeg-alert (42 dagen) uit Shiftbase

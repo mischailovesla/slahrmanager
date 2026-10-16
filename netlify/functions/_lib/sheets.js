@@ -7,7 +7,7 @@
 // (het volledige googleapis-pakket is te zwaar voor Netlify Functions).
 // ============================================================
 const { JWT } = require('google-auth-library');
-const { SHEETS } = require('./config');
+const { SHEETS, TAB_WAARSCHUWINGEN, TAB_BESCHIKBAARHEID } = require('./config');
 const { normNaam, toDownloadUrl, vindKolommen } = require('./util');
 
 const API = 'https://sheets.googleapis.com/v4/spreadsheets/';
@@ -383,7 +383,7 @@ async function logBrief(b, stempelTekst) {
 }
 
 // --- Sommatie loggen (logSommatie + vbLogSommatie_: eerste lege rij na de laatste naam, kolom J eigen tekst) ---
-async function logSommatie(p, stempelTekst, kleurHex) {
+async function logSommatie(p, stempelTekst, kleurHex, statusTekst) {
   const id = SHEETS.sommatie.id;
   const tab = (await tabNamen(id))[0];
   vergeetCache(id);
@@ -392,7 +392,7 @@ async function logSommatie(p, stempelTekst, kleurHex) {
   for (let j = data.length - 1; j >= 0; j--) if (cel(data[j], 0)) { rij = j + 2; break; }
   const range = q(tab.title) + '!A' + rij + ':J' + rij;
   await gapi(encodeURIComponent(id) + '/values/' + encodeURIComponent(range) + '?valueInputOption=USER_ENTERED', 'PUT',
-    { range, majorDimension: 'ROWS', values: [[p.naam, p.email, p.bv || '', p.type, p.datumAfwezig || '', p.datumAfspraak || '', stempelTekst, 'Verstuurd', '', String(p.eigenTekst || '').trim()]] });
+    { range, majorDimension: 'ROWS', values: [[p.naam, p.email, p.bv || '', p.type, p.datumAfwezig || '', p.datumAfspraak || '', stempelTekst, statusTekst || 'Verstuurd', '', String(p.eigenTekst || '').trim()]] });
   await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{
     repeatCell: { range: { sheetId: tab.sheetId, startRowIndex: rij - 1, endRowIndex: rij, startColumnIndex: 7, endColumnIndex: 8 },
       cell: { userEnteredFormat: { backgroundColor: hexNaarRgb(kleurHex || KLEUR.groen) } }, fields: 'userEnteredFormat.backgroundColor' } }] });
@@ -425,4 +425,75 @@ async function logOverplaatsing(p, huidig, nieuw, isStandpl, stempelTekst) {
   return rij;
 }
 
-module.exports = { logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };
+// ============================================================
+// Generieke log-tab helpers (batch A): tab aanmaken met kop, lijst lezen, rij loggen
+// ============================================================
+async function zorgTab(id, tabNaam, kop) {
+  let tab = (await tabNamen(id)).find(s => s.title === tabNaam);
+  if (tab) return tab;
+  const r = await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{ addSheet: { properties: { title: tabNaam, gridProperties: { frozenRowCount: 1 } } } }] });
+  tab = r.replies[0].addSheet.properties;
+  _meta.delete(id);
+  await gapi(encodeURIComponent(id) + '/values/' + encodeURIComponent(q(tabNaam) + '!A1') + '?valueInputOption=USER_ENTERED', 'PUT',
+    { range: q(tabNaam) + '!A1', majorDimension: 'ROWS', values: [kop] });
+  await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{
+    repeatCell: { range: { sheetId: tab.sheetId, startRowIndex: 0, endRowIndex: 1, startColumnIndex: 0, endColumnIndex: kop.length },
+      cell: { userEnteredFormat: { backgroundColor: hexNaarRgb('#333d3a'), textFormat: { bold: true, foregroundColor: { red: 1, green: 1, blue: 1 } } } },
+      fields: 'userEnteredFormat(backgroundColor,textFormat)' } }] });
+  return tab;
+}
+// Rijen lezen van een tab; mapper(r, rij) -> object. Ontbrekende tab -> []
+async function leesTab(id, tabNaam, mapper) {
+  let data;
+  try { data = await lees(id, q(tabNaam)); } catch (e) { if (/tabnaam onbekend|Unable to parse range/i.test(e.message)) return []; throw e; }
+  const out = [];
+  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push(mapper(r, i + 1)); }
+  return out.reverse();
+}
+// Rij schrijven: nieuwe rij na laatste gevulde naam, of (bij p.rij) alleen status+verzenddatum. statusKol 1-based.
+async function logRij(id, tabNaam, kop, waarden, bestaandeRij, statusKol, statusTekst, stempelTekst, kleurHex) {
+  const tab = await zorgTab(id, tabNaam, kop);
+  let rij = parseInt(bestaandeRij, 10) || 0;
+  vergeetCache(id);
+  if (!rij) {
+    const data = await lees(id, q(tabNaam), 1);
+    rij = 2;
+    for (let j = data.length - 1; j >= 0; j--) if (cel(data[j], 0)) { rij = j + 2; break; }
+    const range = q(tabNaam) + '!A' + rij;
+    await gapi(encodeURIComponent(id) + '/values/' + encodeURIComponent(range) + '?valueInputOption=USER_ENTERED', 'PUT',
+      { range, majorDimension: 'ROWS', values: [waarden] });
+  } else {
+    await zetCel(id, tabNaam, rij, statusKol, statusTekst);
+    await zetCel(id, tabNaam, rij, statusKol + 1, stempelTekst);
+  }
+  await gapi(encodeURIComponent(id) + ':batchUpdate', 'POST', { requests: [{
+    repeatCell: { range: { sheetId: tab.sheetId, startRowIndex: rij - 1, endRowIndex: rij, startColumnIndex: statusKol - 1, endColumnIndex: statusKol },
+      cell: { userEnteredFormat: { backgroundColor: hexNaarRgb(kleurHex) } }, fields: 'userEnteredFormat.backgroundColor' } }] });
+  vergeetCache(id);
+  return rij;
+}
+
+// --- Waarschuwingen (waarschuwing.gs): A Naam B Email C Adres D Winkel E BV F Datum overtreding G Regels H Toelichting I Taal J Status K Verzenddatum ---
+const WRS_KOP = ['Naam', 'Email', 'Adres', 'Winkel', 'BV', 'Datum overtreding', 'Overtreden regels', 'Toelichting', 'Taal', 'Status', 'Verzenddatum'];
+async function getWaarschuwingen() {
+  return leesTab(SHEETS.ontslag.id, TAB_WAARSCHUWINGEN, (r, rij) => ({ rij, naam: cel(r, 0), email: cel(r, 1), adres: cel(r, 2), winkel: cel(r, 3), bv: cel(r, 4), datumOvertreding: cel(r, 5), regels: cel(r, 6), toelichting: cel(r, 7), taal: cel(r, 8) || 'NL', status: cel(r, 9), verzenddatum: cel(r, 10) }));
+}
+async function logWaarschuwing(p, w, regelTeksten, stempelTekst) {
+  const status = 'Verstuurd op ' + stempelTekst;
+  return logRij(SHEETS.ontslag.id, TAB_WAARSCHUWINGEN, WRS_KOP,
+    [p.naam, p.to, p.adres || '', w.naam, w.bv, p.datumOvertreding || '', regelTeksten.join(' | '), p.toelichting || '', p.taal || 'NL', status, stempelTekst],
+    p.rij, 10, status, stempelTekst, '#f4cccc');
+}
+// --- Beschikbaarheid (Beschikbaarheid.gs): A Naam B Email C Adres D Winkel E BV F Ingangsdatum G Taal H Onderbouwing I Status J Verzenddatum ---
+const BSK_KOP = ['Naam', 'Email', 'Adres', 'Winkel', 'BV', 'Ingangsdatum', 'Taal', 'Data-onderbouwing', 'Status', 'Verzenddatum'];
+async function getBeschikbaarheid() {
+  return leesTab(SHEETS.ontslag.id, TAB_BESCHIKBAARHEID, (r, rij) => ({ rij, naam: cel(r, 0), email: cel(r, 1), adres: cel(r, 2), winkel: cel(r, 3), bv: cel(r, 4), ingangsdatum: cel(r, 5), taal: cel(r, 6) || 'NL', onderbouwing: cel(r, 7), status: cel(r, 8), verzenddatum: cel(r, 9) }));
+}
+async function logBeschikbaarheid(p, w, stempelTekst) {
+  const status = 'Verstuurd op ' + stempelTekst;
+  return logRij(SHEETS.ontslag.id, TAB_BESCHIKBAARHEID, BSK_KOP,
+    [p.naam, p.to, p.adres || '', w.naam, w.bv, p.ingangsdatum || '', p.taal || 'NL', p.onderbouwing || '', status, stempelTekst],
+    p.rij, 9, status, stempelTekst, '#d9ead3');
+}
+
+module.exports = { zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };

@@ -318,4 +318,368 @@ Date: _______________________
 
 Signature: _______________________`;
 
-module.exports = { ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, OVERPL_NL, OVERPL_EN, STANDPL_NL, STANDPL_EN, vul, handtekening };
+// --- Proeftijd (Docs-templates PROEFTIJD_WG_NL/EN, PROEFTIJD_WN_NL/EN; Proeftijd.gs v1) ---
+// Placeholders: {{Naam}} {{Adres}} {{DatumOpzegging}} {{Einddatum}} {{BV}} {{HuidigeDatum}}
+const PROEFTIJD_WG_NL = `{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Betreft: Beëindiging arbeidsovereenkomst tijdens de proeftijd**
+
+Beste {{Naam}},
+
+Hierbij bevestigen wij dat {{BV}} de arbeidsovereenkomst met jou op {{DatumOpzegging}} tijdens de proeftijd heeft beëindigd, op grond van het proeftijdbeding in jouw arbeidsovereenkomst (artikel 7:652 juncto 7:676 van het Burgerlijk Wetboek).
+
+Jouw dienstverband eindigt per {{Einddatum}}. Op grond van artikel 7:676 BW geldt tijdens de proeftijd geen opzegtermijn.
+
+**Reden van beëindiging**
+Op jouw verzoek geven wij de reden van de beëindiging schriftelijk op (artikel 7:676 lid 2 BW). Je kunt hiervoor contact opnemen via hr@ilovesla.com.
+
+**Eindafrekening**
+Bij de eerstvolgende salarisverwerking ontvang je de eindafrekening, waarin het resterende salaris, opgebouwd vakantiegeld en eventuele niet-genoten vakantiedagen worden verrekend.
+
+**Bedrijfseigendommen**
+Wij verzoeken je uiterlijk op jouw laatste werkdag alle bedrijfseigendommen (waaronder kleding, sleutels en pasjes) in te leveren bij jouw Store Manager.
+
+Wij verzoeken je deze brief voor ontvangst te ondertekenen en te uploaden via de link in de begeleidende e-mail.
+
+Met vriendelijke groet,
+
+${AFZENDER_NAAM}
+{{BV}}
+
+
+
+**Voor ontvangst ondertekend:**
+
+Naam: {{Naam}}
+
+Datum: _______________________
+
+Handtekening: _______________________`;
+
+const PROEFTIJD_WG_EN = `{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Subject: Termination of employment agreement during the probationary period**
+
+Dear {{Naam}},
+
+We hereby confirm that {{BV}} terminated your employment agreement on {{DatumOpzegging}} during the probationary period, based on the probationary clause in your employment agreement (Article 7:652 in conjunction with Article 7:676 of the Dutch Civil Code).
+
+Your employment ends on {{Einddatum}}. Pursuant to Article 7:676 of the Dutch Civil Code, no notice period applies during the probationary period.
+
+**Reason for termination**
+Upon your request, we will provide the reason for the termination in writing (Article 7:676 paragraph 2 of the Dutch Civil Code). You can contact us at hr@ilovesla.com.
+
+**Final settlement**
+With the next payroll run you will receive the final settlement, in which your remaining salary, accrued holiday allowance and any untaken holiday days will be settled.
+
+**Company property**
+We kindly request that you return all company property (including clothing, keys and passes) to your Store Manager no later than your last working day.
+
+Please sign this letter for receipt and upload it via the link in the accompanying email.
+
+Kind regards,
+
+${AFZENDER_NAAM}
+{{BV}}
+
+
+
+**Signed for receipt:**
+
+Name: {{Naam}}
+
+Date: _______________________
+
+Signature: _______________________`;
+
+const PROEFTIJD_WN_NL = `{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Betreft: Bevestiging van jouw opzegging tijdens de proeftijd**
+
+Beste {{Naam}},
+
+Hierbij bevestigen wij de ontvangst van jouw opzegging op {{DatumOpzegging}}, waarmee je de arbeidsovereenkomst met {{BV}} tijdens de proeftijd hebt beëindigd (artikel 7:652 juncto 7:676 van het Burgerlijk Wetboek).
+
+Jouw dienstverband eindigt daarmee per {{Einddatum}}. Op grond van artikel 7:676 BW geldt tijdens de proeftijd geen opzegtermijn.
+
+**Eindafrekening**
+Bij de eerstvolgende salarisverwerking ontvang je de eindafrekening, waarin het resterende salaris, opgebouwd vakantiegeld en eventuele niet-genoten vakantiedagen worden verrekend.
+
+**Bedrijfseigendommen**
+Wij verzoeken je uiterlijk op jouw laatste werkdag alle bedrijfseigendommen (waaronder kleding, sleutels en pasjes) in te leveren bij jouw Store Manager.
+
+Met het ondertekenen van deze brief bevestig je dat je zelf, uit vrije wil en ondubbelzinnig, de arbeidsovereenkomst tijdens de proeftijd hebt opgezegd.
+
+Wij verzoeken je deze brief voor akkoord te ondertekenen en te uploaden via de link in de begeleidende e-mail. Wij danken je voor jouw inzet en wensen je veel succes.
+
+Met vriendelijke groet,
+
+${AFZENDER_NAAM}
+{{BV}}
+
+
+
+**Voor akkoord ondertekend:**
+
+Naam: {{Naam}}
+
+Datum: _______________________
+
+Handtekening: _______________________`;
+
+const PROEFTIJD_WN_EN = `{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Subject: Confirmation of your resignation during the probationary period**
+
+Dear {{Naam}},
+
+We hereby confirm receipt of your resignation on {{DatumOpzegging}}, by which you terminated your employment agreement with {{BV}} during the probationary period (Article 7:652 in conjunction with Article 7:676 of the Dutch Civil Code).
+
+Your employment therefore ends on {{Einddatum}}. Pursuant to Article 7:676 of the Dutch Civil Code, no notice period applies during the probationary period.
+
+**Final settlement**
+With the next payroll run you will receive the final settlement, in which your remaining salary, accrued holiday allowance and any untaken holiday days will be settled.
+
+**Company property**
+We kindly request that you return all company property (including clothing, keys and passes) to your Store Manager no later than your last working day.
+
+By signing this letter you confirm that you yourself, voluntarily and unambiguously, terminated the employment agreement during the probationary period.
+
+Please sign this letter for approval and upload it via the link in the accompanying email. We thank you for your efforts and wish you all the best.
+
+Kind regards,
+
+${AFZENDER_NAAM}
+{{BV}}
+
+
+
+**Signed for approval:**
+
+Name: {{Naam}}
+
+Date: _______________________
+
+Signature: _______________________`;
+
+// --- Officiële waarschuwing (Template_Waarschuwing_NL/EN; waarschuwing.gs v1.2) ---
+// Placeholders: {{Naam}} {{Adres}} {{BV}} {{Winkel}} {{DatumOvertreding}} {{Overtredingen}} {{Toelichting}} {{HuidigeDatum}}
+const WRS_NL = `{{BV}}
+{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Betreft: Officiële schriftelijke waarschuwing**
+
+Beste {{Naam}},
+
+Met deze brief geven wij je een officiële schriftelijke waarschuwing. Deze waarschuwing wordt opgenomen in jouw personeelsdossier bij {{BV}}, winkel {{Winkel}}.
+
+**Aanleiding**
+
+Op of rond {{DatumOvertreding}} hebben wij het volgende geconstateerd:
+
+{{Toelichting}}
+
+**Overtreden regel(s)**
+
+De volgende regel(s) en/of instructie(s) zijn overtreden:
+
+{{Overtredingen}}
+
+**Juridische basis**
+
+De huisregels van SLA zijn bij het aangaan van jouw arbeidsovereenkomst als bijlage aan de overeenkomst gehecht; zij maken daarvan deel uit en je hebt door ondertekening verklaard de bepalingen na te komen. Voor zover het bovenstaande betrekking heeft op HACCP- en voedselveiligheidsvoorschriften, volgt de plicht deze na te leven bovendien uit de Warenwet, de CAO Horeca die op jouw arbeidsovereenkomst van toepassing is, en het instructierecht van de werkgever (art. 7:660 BW) in samenhang met goed werknemerschap (art. 7:611 BW).
+
+**Wat wij van je verwachten**
+
+Wij verwachten dat je de betreffende regels vanaf heden volledig naleeft. Deze waarschuwing is een formele stap: bij herhaling of bij het overtreden van andere regels of instructies kunnen verdergaande maatregelen volgen, waaronder gevolgen voor de urentoedeling, het al dan niet verlengen van jouw arbeidsovereenkomst of - in ernstige gevallen - beëindiging van het dienstverband.
+
+Wij hechten eraan te benadrukken dat deze waarschuwing bedoeld is om helderheid te geven en herhaling te voorkomen. Wil je hierover in gesprek, of is er iets waardoor het naleven voor jou lastig is? Neem dan contact op met jouw Store Manager of met HR via hr@ilovesla.com. We denken graag mee.
+
+Een kopie van deze brief wordt bewaard in jouw personeelsdossier.
+
+Met vriendelijke groet,
+
+${AFZENDER_NAAM}
+HR - {{BV}}
+hr@ilovesla.com`;
+
+const WRS_EN = `{{BV}}
+{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Re: Official written warning**
+
+Dear {{Naam}},
+
+With this letter we are issuing you an official written warning. This warning will be added to your personnel file at {{BV}}, store {{Winkel}}.
+
+**Reason**
+
+On or around {{DatumOvertreding}} we established the following:
+
+{{Toelichting}}
+
+**Rule(s) violated**
+
+The following rule(s) and/or instruction(s) have been violated (quoted in Dutch as legally agreed):
+
+{{Overtredingen}}
+
+**Legal basis**
+
+When you entered into your employment agreement, the SLA house rules were attached to the agreement as an annex; they form part of the agreement, and by signing you declared that you would comply with them. Where the above concerns HACCP and food safety instructions, the obligation to comply additionally follows from the Dutch Commodities Act (Warenwet), the CAO Horeca collective labour agreement applicable to your contract, and the employer's right of instruction (art. 7:660 Dutch Civil Code) in combination with good employee conduct (art. 7:611).
+
+**What we expect from you**
+
+We expect you to fully comply with the relevant rules from now on. This warning is a formal step: in the event of repetition, or violation of other rules or instructions, further measures may follow, including consequences for the allocation of hours, the renewal of your employment contract or - in serious cases - termination of employment.
+
+We want to emphasise that this warning is intended to provide clarity and prevent repetition. If you would like to discuss this, or if something is making compliance difficult for you, please contact your Store Manager or HR at hr@ilovesla.com. We are happy to help.
+
+A copy of this letter will be kept in your personnel file.
+
+Kind regards,
+
+${AFZENDER_NAAM}
+HR - {{BV}}
+hr@ilovesla.com`;
+
+// --- Weekendbeschikbaarheid, eerste kennisgeving (Template_Beschikbaarheid_NL/EN; Beschikbaarheid.gs v1.2) ---
+// Placeholders: {{Naam}} {{Adres}} {{BV}} {{Winkel}} {{DataOnderbouwing}} {{Ingangsdatum}} {{HuidigeDatum}}
+const BESCHIKB_NL = `{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Betreft: Beschikbaarheid weekenddiensten - eerste schriftelijke kennisgeving**
+
+Beste {{Naam}},
+
+Bij jouw indiensttreding bij {{BV}} heb je kennisgenomen van en ingestemd met de huisregels van SLA. Hierin is onder meer het volgende vastgelegd:
+
+*"Je bent minimaal 2 diensten op vrijdag, zaterdag of zondag beschikbaar."*
+
+Deze afspraak bestaat omdat weekenddiensten het lastigst in te vullen zijn. Wanneer een deel van het team structureel niet beschikbaar is in het weekend, komt deze last onevenredig terecht bij collega's die dat wél zijn. Alleen als iedereen zich aan deze afspraak houdt, kunnen we de roosters van {{Winkel}} eerlijk en werkbaar verdelen over het hele team.
+
+Uit onze beschikbaarheids- en roostergegevens blijkt dat jouw opgegeven beschikbaarheid hier de afgelopen periode structureel niet aan voldoet:
+
+{{DataOnderbouwing}}
+
+**Wat we van je verwachten**
+
+Wij vragen je om per direct, en uiterlijk per {{Ingangsdatum}}, jouw beschikbaarheid in Shiftbase aan te passen zodat deze voldoet aan de huisregels: minimaal 2 beschikbare diensten op vrijdag, zaterdag of zondag.
+
+De huisregels maken onderdeel uit van de afspraken bij jouw dienstverband. Als werkgever mogen wij op grond van artikel 7:660 BW redelijke voorschriften stellen over de wijze waarop het werk wordt georganiseerd; van jou als werknemer mag op grond van artikel 7:611 BW (goed werknemerschap) worden verwacht dat je hieraan meewerkt.
+
+**Wat er gebeurt als je beschikbaarheid niet wijzigt**
+
+Wanneer jouw beschikbaarheid na {{Ingangsdatum}} nog steeds niet voldoet aan de huisregels: (1) volgt een gesprek met jouw Store Manager; (2) kan een officiële schriftelijke waarschuwing worden opgenomen in jouw personeelsdossier; (3) wegen wij jouw beschikbaarheid mee bij de toedeling van uren en diensten; en (4) weegt dit mee in de beslissing over het al dan niet verlengen van jouw arbeidsovereenkomst voor bepaalde tijd.
+
+Is er een persoonlijke omstandigheid (studie, zorgtaken, tweede baan) waardoor je structureel niet aan deze afspraak kunt voldoen? Neem dan vóór {{Ingangsdatum}} contact op met jouw Store Manager of met HR via hr@ilovesla.com, zodat we samen kunnen kijken wat er mogelijk is.
+
+We vertrouwen erop dat we hiermee samen tot een goede oplossing komen.
+
+Met vriendelijke groet,
+
+${AFZENDER_NAAM}
+HR - SLA Hoofdkantoor
+{{BV}}`;
+
+const BESCHIKB_EN = `{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Subject: Weekend shift availability - first written notice**
+
+Dear {{Naam}},
+
+When you joined {{BV}}, you read and agreed to the SLA house rules. These include the following rule:
+
+*"You are available for a minimum of 2 shifts on Friday, Saturday or Sunday."* (original Dutch: "Je bent minimaal 2 diensten op vrijdag, zaterdag of zondag beschikbaar.")
+
+This rule exists because weekend shifts are the hardest to fill. When part of the team is structurally unavailable at weekends, this burden falls disproportionately on colleagues who are available. Only when everyone honours this agreement can we distribute the schedules of {{Winkel}} fairly and workably across the whole team.
+
+Our availability and scheduling records show that your stated availability has structurally not met this rule over the recent period:
+
+{{DataOnderbouwing}}
+
+**What we expect from you**
+
+We ask you to update your availability in Shiftbase immediately, and no later than {{Ingangsdatum}}, so that it complies with the house rules: a minimum of 2 available shifts on Friday, Saturday or Sunday.
+
+The house rules form part of the agreements under your employment. As an employer, we are entitled under Article 7:660 of the Dutch Civil Code (BW) to issue reasonable instructions regarding the organisation of work; as an employee, you are expected under Article 7:611 BW (acting as a good employee) to cooperate with these.
+
+**What happens if your availability does not change**
+
+If your availability still does not comply with the house rules after {{Ingangsdatum}}: (1) a meeting with your Store Manager will follow; (2) an official written warning may be added to your personnel file; (3) your availability will be taken into account when allocating hours and shifts; and (4) this will be taken into account in the decision on whether or not to renew your fixed-term employment contract.
+
+Is there a personal circumstance (studies, care responsibilities, a second job) that structurally prevents you from meeting this rule? Please contact your Store Manager or HR at hr@ilovesla.com before {{Ingangsdatum}}, so we can look at what is possible together.
+
+We trust that we will find a good solution together.
+
+Kind regards,
+
+${AFZENDER_NAAM}
+HR - SLA Head Office
+{{BV}}`;
+
+// --- Ontslag op staande voet (OoSV.gs v1.0, programmatisch opgebouwd; aangetekend + e-mail) ---
+// Placeholders: {{Naam}} {{Adres}} {{BV}} {{Aanhef}} {{Datum}} {{DatumConstatering}} {{Gronden}} {{Wederhoor}} (blok)
+const OOSV = `{{BV}}
+
+**AANGETEKEND EN PER E-MAIL**
+
+{{Naam}}
+{{Adres}}
+
+Datum: {{Datum}}
+**Betreft: Ontslag op staande voet**
+
+Geachte {{Aanhef}} {{Naam}},
+
+Hierbij delen wij u mede dat {{BV}} de arbeidsovereenkomst met u met onmiddellijke ingang opzegt wegens een dringende reden, als bedoeld in artikel 7:677 juncto artikel 7:678 van het Burgerlijk Wetboek. Uw dienstverband eindigt derhalve per heden, {{Datum}}.
+
+**Dringende reden(en)**
+Op {{DatumConstatering}} is het volgende geconstateerd:
+
+*{{Gronden}}*
+
+Deze gedraging(en) vormen, zowel afzonderlijk als in onderlinge samenhang bezien, een dringende reden die het ontslag op staande voet rechtvaardigt.
+{{Wederhoor}}
+**Gevolgen**
+Per de datum van dit ontslag wordt de loonbetaling stopgezet. U ontvangt binnen de wettelijke termijn een eindafrekening van het u nog toekomende salaris, opgebouwde vakantiedagen en vakantietoeslag tot en met heden. Wij verzoeken u alle bedrijfseigendommen (waaronder sleutels, kleding en pasjes) per omgaande in te leveren bij uw vestiging.
+
+**Bezwaar**
+Indien u zich niet met dit ontslag kunt verenigen, kunt u binnen twee maanden na heden de kantonrechter verzoeken het ontslag te vernietigen dan wel om toekenning van een vergoeding (artikel 7:681 BW).
+
+Deze brief wordt u zowel per e-mail als per aangetekende post toegezonden.
+
+Hoogachtend,
+
+**${AFZENDER_NAAM}**
+{{BV}}
+hr@ilovesla.com`;
+const OOSV_WEDERHOOR = `
+**Hoor en wederhoor**
+Op {{Wederhoor}} bent u in de gelegenheid gesteld uw zienswijze op het geconstateerde te geven. Hetgeen u naar voren heeft gebracht leidt niet tot een ander oordeel.
+`;
+
+module.exports = { ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, OVERPL_NL, OVERPL_EN, STANDPL_NL, STANDPL_EN,
+  PROEFTIJD_WG_NL, PROEFTIJD_WG_EN, PROEFTIJD_WN_NL, PROEFTIJD_WN_EN, WRS_NL, WRS_EN, BESCHIKB_NL, BESCHIKB_EN, OOSV, OOSV_WEDERHOOR, vul, handtekening };

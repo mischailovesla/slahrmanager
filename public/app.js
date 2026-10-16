@@ -13,7 +13,7 @@
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -54,6 +54,8 @@
     if (tab === 'sommatie' && !smData) laadSommaties();
     if (tab === 'overplaatsing' && !opData) laadOverplaatsingen();
     if (tab === 'signalering' && !sgData) laadSignaleringen();
+    if (tab === 'waarschuwing' && !wrData) laadWaarschuwingen();
+    if (tab === 'beschikbaarheid' && !bkData) laadBeschikbaarheid();
   }
   window.swT = swT;
 
@@ -268,6 +270,8 @@
       case 'sommatie': return kv('Type', '<span class="badge bdk">' + esc(r.type) + '</span>') + kv('BV', esc(r.bv || '-')) + kv('Afwezig', esc(r.datumAfwezig || '-')) + kv('Afspraak', esc(r.datumAfspraak || '-')) + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('Status', esc(r.status || '-')) + kv('Verwerkt', bTog('som-verwerkt', r.verwerkt, r.rij, r.naam)) + (r.aanvullend ? kv('Aanvullend', esc(r.aanvullend)) : '') + kv('', smBriefBtn(r) + ' ' + bArch('sommatie', r.rij, r.naam));
       case 'brief': return kv('Categorie', '<span class="badge bdk">' + esc(r.categorie || '-') + '</span>') + kv('Onderwerp', esc(r.onderwerp || '-')) + kv('BV', esc(r.bv || '-')) + kv('PDF', r.pdf === 'Ja' ? '<span class="badge bg">Ja</span>' : '<span class="no-doc">-</span>') + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('', '<button class="btn bd bsm" data-vb-print="' + esc(r.rij) + '">Brief</button> <button class="btn bd bsm" data-vb-opnieuw="' + esc(r.rij) + '">Opnieuw</button>');
       case 'ontslag': return kv('Type', '<span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span>') + kv('BV', esc(r.bedrijf || '-')) + kv('Opzegging', esc(r.opzegging || '-')) + kv('Einddatum', esc(r.einddatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bOk(r.ondertekend, 'Ja', 'Nee')) + kv('Docs', bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief')) + kv('Naar salaris', bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam)) + kv('', omBtn(r) + ' ' + bArch('ontslag', r.rij, r.naam));
+      case 'waarschuwing': return kv('Winkel', esc(r.winkel || '-')) + kv('Datum overtreding', esc(r.datumOvertreding || '-')) + kv('Regels', '<span title="' + esc(r.regels || '') + '">' + esc((r.regels || '-').length > 90 ? r.regels.substring(0, 90) + '…' : (r.regels || '-')) + '</span>') + kv('Taal', esc(r.taal || 'NL')) + kv('Status', esc(r.status || '-')) + kv('', '<button class="btn bd bsm" data-wr-rij="' + esc(r.rij) + '">Opnieuw</button>');
+      case 'beschikbaarheid': return kv('Winkel', esc(r.winkel || '-')) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Onderbouwing', '<span title="' + esc(r.onderbouwing || '') + '">' + esc((r.onderbouwing || '-').length > 90 ? r.onderbouwing.substring(0, 90) + '…' : (r.onderbouwing || '-')) + '</span>') + kv('Taal', esc(r.taal || 'NL')) + kv('Status', esc(r.status || '-')) + kv('', '<button class="btn bd bsm" data-bk-rij="' + esc(r.rij) + '">Opnieuw</button>');
       default: return kv('Datum', esc(r.datum || '-')) + '<td>' + esc((r.raw || []).slice(0, 8).join(' · ')) + '</td>';
     }
   }
@@ -380,11 +384,12 @@
   function omBouwTbar() {
     g('om-tbar').innerHTML = omTpl.map(function (t) { return '<button type="button" class="tb' + (t.key === omKey ? ' sel' : '') + '" data-omtpl="' + t.key + '">' + esc(t.label) + '</button>'; }).join('');
     g('om-tbar').querySelectorAll('[data-omtpl]').forEach(function (b) { b.onclick = function () { omKey = b.getAttribute('data-omtpl'); omBouwTbar(); omHerbouw(); }; });
-    var t = omT(), isA = t.type === 'aanzegging';
-    g('om-titel').textContent = isA ? t.label : (t.pdf ? 'Mail + PDF — Ontslag' : 'Mail — Herinnering ondertekening');
+    var t = omT(), isA = t.type === 'aanzegging', isP = t.type === 'proeftijd';
+    g('om-titel').textContent = (isA || isP) ? t.label : (t.pdf ? 'Mail + PDF — Ontslag' : 'Mail — Herinnering ondertekening');
     g('om-pn').style.display = t.pdf ? '' : 'none';
     g('om-aanzeg').style.display = isA ? '' : 'none';
     g('om-fg-opz').style.display = isA ? 'none' : '';
+    g('om-opz-lbl').textContent = t.opzLabel || 'Datum opzegging';
     g('om-pdfbtn').style.display = t.pdf ? '' : 'none';
     omAanzegDagen();
   }
@@ -424,7 +429,9 @@
     if (!p.to || !p.naam) { toast('Vul e-mail en naam in', 'err'); return; }
     var t = omT();
     if (t.type === 'aanzegging' && !p.einddatum) { toast('Vul de einddatum in (staat in de aanzegging)', 'err'); return; }
+    if (t.type === 'proeftijd' && !p.einddatum) { toast('Vul de einddatum in', 'err'); return; }
     if (t.key === 'ontslag-pdf' && !confirm('Ontslagbevestiging + PDF versturen naar ' + p.to + '?')) return;
+    if (t.type === 'proeftijd' && !confirm(t.label + ' versturen naar ' + p.to + '?')) return;
     var b = g('om-sbtn'); b.disabled = true; g('om-slbl').textContent = t.pdf ? 'PDF maken en versturen…' : 'Versturen…';
     var r = await api('/api/ontslag-mail', p);
     b.disabled = false; g('om-slbl').textContent = 'Verstuur mail';
@@ -623,6 +630,203 @@
     if (m.indienst) g('op-indienst').value = m.indienst;
     if (m.winkelCode && opWinkels.some(function (w) { return w.code === m.winkelCode; })) g('op-van').value = m.winkelCode;
     opCheckType();
+    if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+  });
+
+  // ---------- Gedeeld voor batch A: winkel-select + taalknoppen ----------
+  function vulWinkelSelect(id, winkels, code) {
+    g(id).innerHTML = '<option value="">-- selecteer --</option>' + winkels.map(function (w) { return '<option value="' + esc(w.code) + '">' + esc(w.naam) + ' (' + esc(w.code) + ') - ' + esc(w.bv) + '</option>'; }).join('');
+    if (code) g(id).value = code;
+  }
+  function koppelTaal(id, onWissel) {
+    g(id).querySelectorAll('[data-taal]').forEach(function (b) { b.onclick = function () { g(id).querySelectorAll('.tb').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); if (onWissel) onWissel(b.getAttribute('data-taal')); }; });
+  }
+  function leesTaal(id) { var b = g(id).querySelector('.tb.sel'); return b ? b.getAttribute('data-taal') : 'NL'; }
+  function zetTaal(id, taal) { g(id).querySelectorAll('.tb').forEach(function (x) { x.classList.toggle('sel', x.getAttribute('data-taal') === (taal || 'NL')); }); }
+  function nlDatum(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? m[3] + '-' + m[2] + '-' + m[1] : (iso || ''); }
+
+  // ---------- Waarschuwingen (port van waarschuwing.gs v1.2) ----------
+  var wrData = null, wrRegels = [], wrWinkels = [], wrRij = null;
+  window.laadWaarschuwingen = async function () {
+    var d = await api('/api/waarschuwing');
+    if (!d.success) { toast('Waarschuwingen: ' + d.bericht, 'err'); return; }
+    wrData = d.rijen; wrRegels = d.huisregels; wrWinkels = d.winkels;
+    g('wr-count').textContent = wrData.length + ' verstuurd';
+    g('wr-body').innerHTML = wrData.map(function (r) {
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.winkel || '-') + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.datumOvertreding || '-') + '</td><td title="' + esc(r.regels) + '" style="max-width:320px;white-space:normal;font-size:.78rem">' + esc(r.regels || '-') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bSent(r.status) + '</td><td><div class="vb-knoppen"><button class="btn bd bsm" data-wr-rij="' + r.rij + '">Opnieuw</button>' + dosBtn(r.naam, r.email) + '</div></td></tr>';
+    }).join('') || '<tr><td colspan="9" class="leeg grijs">Nog geen waarschuwingen verstuurd</td></tr>';
+  };
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-wr-rij]'); if (!b) return;
+    if (!wrData) await laadWaarschuwingen();
+    var rij = b.getAttribute('data-wr-rij');
+    openWrModal((wrData || []).find(function (x) { return String(x.rij) === rij; }) || null);
+  });
+  function wrBouwLijst(geselecteerd) {
+    var sel = {}; (geselecteerd || []).forEach(function (t) { sel[t] = true; });
+    var h = '', cat = '';
+    wrRegels.forEach(function (r) {
+      if (r.cat !== cat) { cat = r.cat; h += '<div style="position:sticky;top:0;background:#f8f3f0;padding:7px 12px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#888078;border-bottom:1px solid #e8e2de">' + esc(cat) + '</div>'; }
+      h += '<label class="chk" style="align-items:flex-start;padding:7px 12px;border-bottom:1px solid #f1ece8;font-size:.82rem;line-height:1.45;margin:0"><input type="checkbox" value="' + esc(r.id) + '"' + (sel[r.tekst] ? ' checked' : '') + ' style="margin-top:3px"><span><span style="color:#aaa;font-size:.7rem">' + esc(r.id) + '</span> ' + esc(r.tekst) + '</span></label>';
+    });
+    g('wr-lijst').innerHTML = h;
+    g('wr-lijst').querySelectorAll('input').forEach(function (c) { c.onchange = wrTel; });
+    wrTel();
+  }
+  function wrTel() { var n = wrGekozen().length; g('wr-teller').textContent = n ? '(' + n + ' aangevinkt)' : '(nog niets aangevinkt)'; }
+  function wrGekozen() { return Array.prototype.map.call(g('wr-lijst').querySelectorAll('input:checked'), function (c) { return c.value; }); }
+  window.openWrModal = async function (r) {
+    if (!wrRegels.length) { var d = await api('/api/waarschuwing'); if (d.success) { wrRegels = d.huisregels; wrWinkels = d.winkels; wrData = d.rijen; } }
+    wrRij = r && r.rij ? r.rij : null;
+    ['wr-naam', 'wr-email', 'wr-adres', 'wr-datum', 'wr-toel', 'wr-zoek'].forEach(function (id) { g(id).value = ''; });
+    var code = r && r.winkel ? (wrWinkels.find(function (w) { return w.naam === r.winkel; }) || {}).code : '';
+    vulWinkelSelect('wr-winkel', wrWinkels, code);
+    if (r) { g('wr-naam').value = r.naam || ''; g('wr-email').value = r.email || ''; g('wr-adres').value = r.adres || ''; g('wr-datum').value = r.datumOvertreding || ''; g('wr-toel').value = r.toelichting || ''; }
+    zetTaal('wr-taal', r ? r.taal : 'NL');
+    wrBouwLijst(r && r.regels ? r.regels.split(' | ') : []);
+    g('wr-zoek-res').classList.remove('open');
+    g('wr-modal').classList.add('open');
+    if (!r) setTimeout(function () { g('wr-zoek').focus(); }, 60);
+  };
+  window.closeWrModal = function () { g('wr-modal').classList.remove('open'); };
+  g('wr-modal').addEventListener('click', function (e) { if (e.target === this) closeWrModal(); });
+  koppelTaal('wr-taal');
+  function wrLees() { return { to: g('wr-email').value.trim(), naam: g('wr-naam').value.trim(), adres: g('wr-adres').value.trim(), winkel: g('wr-winkel').value, datumOvertreding: g('wr-datum').value.trim(), regelIds: wrGekozen(), toelichting: g('wr-toel').value.trim(), taal: leesTaal('wr-taal'), rij: wrRij }; }
+  function wrCheck(p) {
+    if (!p.naam) return 'Vul de naam in';
+    if (!p.winkel) return 'Selecteer een winkel';
+    if (!p.regelIds.length) return 'Vink minimaal 1 overtreden regel aan';
+    return '';
+  }
+  window.wrPdf = async function () {
+    var p = wrLees(), f = wrCheck(p); if (f) { toast(f, 'err'); return; }
+    var b = g('wr-pdfbtn'); b.disabled = true; toast('PDF maken…', 'ok');
+    var r = await api('/api/waarschuwing-mail', Object.assign(p, { alleenPdf: true }));
+    b.disabled = false;
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam || 'Waarschuwing.pdf');
+  };
+  window.wrVerstuur = async function () {
+    var p = wrLees(), f = wrCheck(p); if (f) { toast(f, 'err'); return; }
+    if (!p.to || p.to.indexOf('@') === -1) { toast('Ongeldig e-mailadres', 'err'); return; }
+    if (!confirm('Officiële waarschuwing (' + p.regelIds.length + ' regel(s)) + PDF versturen naar ' + p.to + '?')) return;
+    var b = g('wr-sbtn'); b.disabled = true; g('wr-slbl').textContent = 'PDF maken en versturen…';
+    var r = await api('/api/waarschuwing-mail', p);
+    b.disabled = false; g('wr-slbl').textContent = 'Verstuur waarschuwing + PDF';
+    if (r.success) { toast(r.bericht, 'ok'); closeWrModal(); laadWaarschuwingen(); if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  koppelSbZoek('wr-zoek', 'wr-zoek-res', function (m) {
+    if (!m) return;
+    g('wr-naam').value = m.naam || ''; g('wr-email').value = m.email || '';
+    if (m.adres) g('wr-adres').value = m.adres;
+    if (m.winkelCode && wrWinkels.some(function (w) { return w.code === m.winkelCode; })) g('wr-winkel').value = m.winkelCode;
+    if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+  });
+
+  // ---------- Beschikbaarheid (port van Beschikbaarheid.gs v1 + getWeekendOnderbouwing v9.2) ----------
+  var bkData = null, bkWinkels = [], bkRij = null;
+  window.laadBeschikbaarheid = async function () {
+    var d = await api('/api/beschikbaarheid');
+    if (!d.success) { toast('Beschikbaarheid: ' + d.bericht, 'err'); return; }
+    bkData = d.rijen; bkWinkels = d.winkels;
+    g('bk-count').textContent = bkData.length + ' verstuurd';
+    g('bk-body').innerHTML = bkData.map(function (r) {
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.winkel || '-') + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.ingangsdatum || '-') + '</td><td title="' + esc(r.onderbouwing) + '" style="max-width:320px;white-space:normal;font-size:.78rem">' + esc(r.onderbouwing || '-') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bSent(r.status) + '</td><td><div class="vb-knoppen"><button class="btn bd bsm" data-bk-rij="' + r.rij + '">Opnieuw</button>' + dosBtn(r.naam, r.email) + '</div></td></tr>';
+    }).join('') || '<tr><td colspan="9" class="leeg grijs">Nog geen kennisgevingen verstuurd</td></tr>';
+  };
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-bk-rij]'); if (!b) return;
+    if (!bkData) await laadBeschikbaarheid();
+    var rij = b.getAttribute('data-bk-rij');
+    openBkModal((bkData || []).find(function (x) { return String(x.rij) === rij; }) || null);
+  });
+  window.openBkModal = async function (r) {
+    if (!bkWinkels.length) { var d = await api('/api/beschikbaarheid'); if (d.success) { bkWinkels = d.winkels; bkData = d.rijen; } }
+    bkRij = r && r.rij ? r.rij : null;
+    ['bk-naam', 'bk-email', 'bk-adres', 'bk-ingang', 'bk-ond', 'bk-zoek'].forEach(function (id) { g(id).value = ''; });
+    g('bk-ond-status').textContent = '';
+    var code = r && r.winkel ? (bkWinkels.find(function (w) { return w.naam === r.winkel; }) || {}).code : '';
+    vulWinkelSelect('bk-winkel', bkWinkels, code);
+    if (r) { g('bk-naam').value = r.naam || ''; g('bk-email').value = r.email || ''; g('bk-adres').value = r.adres || ''; g('bk-ingang').value = r.ingangsdatum || ''; g('bk-ond').value = r.onderbouwing || ''; }
+    else { var d14 = new Date(); d14.setDate(d14.getDate() + 14); g('bk-ingang').value = nlDatum(d14.toISOString().substring(0, 10)); }
+    zetTaal('bk-taal', r ? r.taal : 'NL');
+    g('bk-zoek-res').classList.remove('open');
+    g('bk-modal').classList.add('open');
+    if (!r) setTimeout(function () { g('bk-zoek').focus(); }, 60);
+  };
+  window.closeBkModal = function () { g('bk-modal').classList.remove('open'); };
+  g('bk-modal').addEventListener('click', function (e) { if (e.target === this) closeBkModal(); });
+  koppelTaal('bk-taal');
+  function bkLees() { return { to: g('bk-email').value.trim(), naam: g('bk-naam').value.trim(), adres: g('bk-adres').value.trim(), winkel: g('bk-winkel').value, ingangsdatum: g('bk-ingang').value.trim(), onderbouwing: g('bk-ond').value.trim(), taal: leesTaal('bk-taal'), rij: bkRij }; }
+  function bkCheck(p) { if (!p.naam) return 'Vul de naam in'; if (!p.winkel) return 'Selecteer een winkel'; if (!p.ingangsdatum) return 'Vul de ingangsdatum in'; return ''; }
+  window.bkPdf = async function () {
+    var p = bkLees(), f = bkCheck(p); if (f) { toast(f, 'err'); return; }
+    var b = g('bk-pdfbtn'); b.disabled = true; toast('PDF maken…', 'ok');
+    var r = await api('/api/beschikbaarheid-mail', Object.assign(p, { alleenPdf: true }));
+    b.disabled = false;
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam || 'Kennisgeving.pdf');
+  };
+  window.bkVerstuur = async function () {
+    var p = bkLees(), f = bkCheck(p); if (f) { toast(f, 'err'); return; }
+    if (!p.to || p.to.indexOf('@') === -1) { toast('Ongeldig e-mailadres', 'err'); return; }
+    if (!p.onderbouwing && !confirm('Er staat geen data-onderbouwing in de brief. Toch versturen?')) return;
+    var b = g('bk-sbtn'); b.disabled = true; g('bk-slbl').textContent = 'PDF maken en versturen…';
+    var r = await api('/api/beschikbaarheid-mail', p);
+    b.disabled = false; g('bk-slbl').textContent = 'Verstuur kennisgeving + PDF';
+    if (r.success) { toast(r.bericht, 'ok'); closeBkModal(); laadBeschikbaarheid(); if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  koppelSbZoek('bk-zoek', 'bk-zoek-res', async function (m) {
+    if (!m) return;
+    g('bk-naam').value = m.naam || ''; g('bk-email').value = m.email || '';
+    if (m.adres) g('bk-adres').value = m.adres;
+    if (m.winkelCode && bkWinkels.some(function (w) { return w.code === m.winkelCode; })) g('bk-winkel').value = m.winkelCode;
+    if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+    g('bk-ond-status').textContent = '⏳ onderbouwing berekenen uit het rooster…'; g('bk-ond').value = '';
+    var r = await api('/api/beschikbaarheid-onderbouwing?id=' + encodeURIComponent(m.id));
+    if (r.success) { g('bk-ond').value = r.tekst; g('bk-ond-status').innerHTML = '✓ ' + r.metDienst + ' weekend(en) met dienst, ' + r.metVerlof + ' met verlof, ' + r.doordeweeks + ' doordeweekse diensten (' + esc(r.periode) + ')'; }
+    else g('bk-ond-status').textContent = '⚠ ' + r.bericht;
+  });
+
+  // ---------- Ontslag op staande voet (port van OoSV.gs v1.0; knop in de Sommaties-kop) ----------
+  window.openOoModal = function (d) {
+    ['oo-naam', 'oo-email', 'oo-bv', 'oo-adres', 'oo-const', 'oo-wederhoor', 'oo-gronden', 'oo-zoek'].forEach(function (id) { g(id).value = ''; });
+    g('oo-aanhef').value = 'heer/mevrouw';
+    g('oo-const').value = nlDatum(new Date().toISOString().substring(0, 10));
+    if (d) { g('oo-naam').value = d.naam || ''; g('oo-email').value = d.email || ''; g('oo-bv').value = d.bv || ''; }
+    g('oo-zoek-res').classList.remove('open');
+    g('oo-modal').classList.add('open');
+    if (!d) setTimeout(function () { g('oo-zoek').focus(); }, 60);
+  };
+  window.closeOoModal = function () { g('oo-modal').classList.remove('open'); };
+  g('oo-modal').addEventListener('click', function (e) { if (e.target === this) closeOoModal(); });
+  function ooLees() { return { naam: g('oo-naam').value.trim(), email: g('oo-email').value.trim(), aanhef: g('oo-aanhef').value, bv: g('oo-bv').value.trim(), adres: g('oo-adres').value.trim(), datumConstatering: g('oo-const').value.trim(), wederhoor: g('oo-wederhoor').value.trim(), gronden: g('oo-gronden').value.trim() }; }
+  function ooCheck(p) { if (!p.naam) return 'Vul de naam in'; if (p.gronden.length < 20) return 'Omschrijf de dringende reden(en) concreet — dit is de juridische kern van de brief'; return ''; }
+  window.ooPdf = async function () {
+    var p = ooLees(), f = ooCheck(p); if (f) { toast(f, 'err'); return; }
+    var b = g('oo-pdfbtn'); b.disabled = true; toast('PDF maken…', 'ok');
+    var r = await api('/api/oosv-mail', Object.assign(p, { alleenPdf: true }));
+    b.disabled = false;
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam || 'OoSV.pdf');
+  };
+  window.ooVerstuur = async function () {
+    var p = ooLees(), f = ooCheck(p); if (f) { toast(f, 'err'); return; }
+    if (!p.email || p.email.indexOf('@') === -1) { toast('Ongeldig e-mailadres', 'err'); return; }
+    if (!confirm('ONTSLAG OP STAANDE VOET versturen naar ' + p.naam + ' (' + p.email + ', cc hr@ilovesla.com)?\n\nDit is onomkeerbaar. Zorg dat de brief vandaag ook aangetekend op de post gaat.')) return;
+    var b = g('oo-sbtn'); b.disabled = true; g('oo-slbl').textContent = 'PDF maken en versturen…';
+    var r = await api('/api/oosv-mail', p);
+    b.disabled = false; g('oo-slbl').textContent = 'Verstuur OoSV + brief';
+    if (r.success) { toast(r.bericht, 'ok'); closeOoModal(); smData = null; laadSommaties(); laadOverzicht(); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  koppelSbZoek('oo-zoek', 'oo-zoek-res', function (m) {
+    if (!m) return;
+    g('oo-naam').value = m.naam || ''; g('oo-email').value = m.email || '';
+    if (m.winkelBv) g('oo-bv').value = m.winkelBv;
+    if (m.adres) g('oo-adres').value = m.adres;
     if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
   });
 

@@ -3,14 +3,14 @@
 Herbouw van het SLA HR Dashboard (Google Apps Script) als Netlify-app.
 Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend tot een module volledig is overgezet.
 
-## Status: stap 4 — alle mails, brieven én automatische checks in Netlify (checks in droogloop tot de cutover)
+## Status: batch A — alle mails, brieven, automatische checks + Proeftijd, OoSV, Waarschuwingen, Beschikbaarheid in Netlify (checks in droogloop tot de cutover)
 
 | Werkt | Nog in Apps Script |
 |---|---|
-| Google-login (alleen @ilovesla.com + allowlist) | Vakantiepieken, weekendbeschikbaarheid, data-hygiënerapport (losse modules) |
+| Google-login (alleen @ilovesla.com + allowlist) | Vakantiepieken, data-hygiënerapport (losse modules) |
 | Toegangslog + actielog in Supabase (AVG) | Formulierstatus syncen (`syncFormulierStatus`) |
 | Overzicht: werklijst, stats, aanzeg-alerts, open dossiers | Documenten doorsturen naar salarisadministratie |
-| Medewerkersdossier: Shiftbase-zoekveld, contract(type), verlof, alle log-tabs (incl. Brieven) | Waarschuwing, Proeftijd, Korting, Beschikbaarheid, Vastloners, Vakantieplanner, Verloop |
+| Medewerkersdossier: Shiftbase-zoekveld, contract(type), verlof, alle log-tabs (incl. Brieven, Waarschuwingen, Beschikbaarheid) | Korting, Contract, Vastloners, Vakantieplanner, Verloop, dossier-notities/-export, toegangslog-tab, hygiënerapport |
 | **Vinkjes**: Naar salaris (loonheffing + ontslag), Sommatie verwerkt, Overplaatsing ondertekend | |
 | **Archiveren**: rij naar tab "Archief" (loonheffing, ontslag, sommatie, onboarding) | |
 | **Loonheffing-tab** + mail: uitnodiging en herinnering (NL/EN) via Resend, SLA-huisstijl, persoonlijke upload-link, logging in de sheet (D/E resp. H/I) |  |
@@ -18,7 +18,8 @@ Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend 
 | **Ontslag & aanzegging-tab** + mail: ontslagbevestiging + PDF, herinnering ondertekening, aanzegging NL/EN + PDF. De brieftekst staat in `_lib/brieftemplates.js` (1-op-1 uit de Docs-templates overgenomen) en wordt met pdf-lib als PDF opgebouwd. Aanzeg-knop in de 42-dagen-alert, aanzegplicht-check (30 dagen) in het modal | Drive-archief van brieven |
 | **Sommaties-tab** + modal: oproepbrief, 1e/2e/finale sommatie, ontslag op staande voet — mail in huisstijl (kleur per type), aanvullende tekst (kolom J), printbare aangetekende brief, logging A–H met kleur per type | Drive-archief |
 | **Overplaatsing-tab** + modal: overplaatsing (art. 6:159 BW) of standplaatswijziging (art. 7:613 BW, automatisch bepaald op BV), NL/EN, PDF-brief uit `brieftemplates.js`, logging tab Overplaatsing A–L + P | |
-| **Signaleringen-tab** + 6 scheduled functions: formulierstatus syncen (4-uurlijks), loonheffing- en ontslagherinneringen (09:00/09:15), nieuwe medewerkers (09:45), aanzegtermijnen (09:50), stille afwezigen (ma 10:00). **Droogloop** tot `SIGNALERINGEN_ACTIEF=1`; elke run gelogd in `hr_signaleringen` | |
+| **Batch A** (v0.8.0): **Proeftijd** — 4 extra templates in het ontslag-modal (werkgever/werknemer, NL/EN, einddatum verplicht, log als ontslag in de ontslag-sheet). **Ontslag op staande voet** — knop *OoSV + brief* in de Sommaties-kop: brief (art. 7:677/678 BW, optioneel hoor-en-wederhoor-blok) als PDF, mail aan medewerker **cc hr@**, log in de sommatie-sheet (`OoSV verstuurd op …`, `#f4cccc`). **Waarschuwingen-tab** — checklist met de 35 huisregels (woordelijk uit de contractbijlage, per categorie), brief NL/EN + PDF, tab `Waarschuwingen` A–K. **Beschikbaarheid-tab** — kennisgeving weekendbeschikbaarheid NL/EN + PDF; bij het kiezen van een medewerker wordt de **data-onderbouwing** (laatste 8 weekenden: dienst/verlof/doordeweeks) uit het Shiftbase-rooster berekend; tab `Beschikbaarheid` A–J. Beide tabs worden aangemaakt als ze ontbreken. | |
+| **Signaleringen-tab** + 7 scheduled functions: weekendbeschikbaarheid (ma 09:45: 3 weekenden geen dienst, wél doordeweeks), formulierstatus syncen (4-uurlijks), loonheffing- en ontslagherinneringen (09:00/09:15), nieuwe medewerkers (09:45), aanzegtermijnen (09:50), stille afwezigen (ma 10:00). **Droogloop** tot `SIGNALERINGEN_ACTIEF=1`; elke run gelogd in `hr_signaleringen` | |
 
 **De Google Sheets blijven de enige waarheid** zolang Apps Script draait. Vinkjes en archiveren schrijven in exact dezelfde cellen (en kleuren) als Code.gs, dus beide dashboards blijven consistent. Supabase bevat alleen toegang en het actielog (`hr_acties`), geen HR-data.
 
@@ -129,6 +130,7 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.6.0 | 16-10-2026 | Stap 3e: Sommaties-tab (mail, printbrief, aanvullende tekst) en Overplaatsing-tab (mail + PDF NL/EN, standplaats vs. overplaatsing) |
 | 0.7.0 | 16-10-2026 | Stap 4: 6 scheduled functions + Signaleringen-tab, droogloop-schakelaar `SIGNALERINGEN_ACTIEF`, log `hr_signaleringen` |
 | 0.7.1 | 16-10-2026 | Medewerkers-tab toont standaard de volledige Shiftbase-lijst per winkel (zoekveld filtert), knop "← Alle medewerkers" in het dossier |
+| 0.8.0 | 16-10-2026 | Batch A: Proeftijd (4 brieven), Ontslag op staande voet (cc hr@), Waarschuwingen-tab (huisregels), Beschikbaarheid-tab (auto-onderbouwing) + scheduled function weekendbeschikbaarheid, `cc` in mail.js, `_lib/datum.js`, `_lib/weekend.js` |
 
 ## Mail (Resend)
 Alle mail gaat via Resend vanaf `hr@ilovesla.com`. Eenmalig: Resend → **Domains → Add domain** → `ilovesla.com` → de DNS-records (DKIM/SPF) bij de domeinbeheerder zetten → *Verify*. Zonder verificatie weigert Resend de afzender (het dashboard geeft dan die hint). Elke verzonden mail staat in `hr_mails` (Supabase) en als actie in `hr_acties`.
@@ -137,19 +139,19 @@ Alle mail gaat via Resend vanaf `hr@ilovesla.com`. Eenmalig: Resend → **Domain
 De PDF wordt in de Netlify Function opgebouwd met `pdf-lib` (Helvetica ≈ Arial, A4, marges 56/56/64/64 pt): logo **SLA** groen, categorie in kapitalen, Datum/Aan/BV, *Betreft*, aanhef, alinea's en lijsten (regels met `- `), groet met `AFZENDER_NAAM` + BV, voettekst. Bestandsnaam `Brief_<Naam>.pdf`, gaat als Resend-bijlage mee (base64). Elke verzonden brief komt in tab **Brieven** van de HR-acties-sheet (kolommen A–I, exact als `vbLogBrief_`); de tab wordt aangemaakt als hij ontbreekt. De PDF wordt (nog) niet in Drive bewaard — "⬇ PDF" in het modal downloadt dezelfde PDF lokaal.
 
 ## Ontslag & aanzegging (brief-PDF's)
-De drie brieven (ontslagbevestiging, aanzegging NL, aanzegging EN) staan als tekst in `netlify/functions/_lib/brieftemplates.js`, letterlijk overgenomen uit de Google Docs-templates. Opmaak: `**vet**`, `*cursief*`, `• ` = opsomming, lege regel = alinea; placeholders `{{Naam}} {{Adres}} {{DatumOpzegging}} {{Einddatum}} {{BV}} {{HuidigeDatum}}`. Brieftekst aanpassen = dit bestand aanpassen en deployen. De ontslagbevestiging bevat de handtekening uit `_lib/assets/handtekening_io_jop.png` (PNG, transparant) op de regel `{{HANDTEKENING}}`, met "i.o. Jop van de Graaf" eronder; vervangen = het PNG-bestand vervangen. Bewust gekozen (16-10-2026) boven de Docs/Drive-route, omdat die domain-wide delegation door de Workspace-beheerder vereist. Gevolg: geen Drive-archief; de PDF zit in de mail en is via **⬇ PDF bekijken** altijd opnieuw te maken. Sheet-logging: H/I (+ nieuwe rij A–G), herinneringen K/L.
+De brieven (ontslagbevestiging, aanzegging NL/EN, proeftijd ×4, waarschuwing NL/EN, beschikbaarheid NL/EN, OoSV, overplaatsing/standplaats) staan als tekst in `netlify/functions/_lib/brieftemplates.js`, letterlijk overgenomen uit de Google Docs-templates. Opmaak: `**vet**`, `*cursief*`, `• ` = opsomming, lege regel = alinea; placeholders `{{Naam}} {{Adres}} {{DatumOpzegging}} {{Einddatum}} {{BV}} {{HuidigeDatum}}`. Brieftekst aanpassen = dit bestand aanpassen en deployen. De ontslagbevestiging bevat de handtekening uit `_lib/assets/handtekening_io_jop.png` (PNG, transparant) op de regel `{{HANDTEKENING}}`, met "i.o. Jop van de Graaf" eronder; vervangen = het PNG-bestand vervangen. Bewust gekozen (16-10-2026) boven de Docs/Drive-route, omdat die domain-wide delegation door de Workspace-beheerder vereist. Gevolg: geen Drive-archief; de PDF zit in de mail en is via **⬇ PDF bekijken** altijd opnieuw te maken. Sheet-logging: H/I (+ nieuwe rij A–G), herinneringen K/L.
 
 ## Sommaties & overplaatsing
 **Sommatie**: mailtekst per type in `sjablonen.js` (`sommatieHtml/Plain`, 1-op-1 uit Code.gs); de aanvullende tekst komt als extra alinea vóór de groet en in kolom J. De aangetekende printbrief wordt in de browser opgebouwd (knop *Brief* / *Printbrief*). Sheet: nieuwe rij A–H, status 'Verstuurd' met kleur per type (groen / `#fff2cc` 2e / `#fce5cd` finale / `#f4cccc` OoSV).
 **Overplaatsing**: zelfde BV voor beide winkels → standplaatswijziging, anders overplaatsing; de vier brieven staan in `brieftemplates.js` (`OVERPL_NL/EN`, `STANDPL_NL/EN`, uit de Docs-templates); winkeladressen in `WINKEL_BV_MAP`. Sheet: tab Overplaatsing A–L + P (type); bij een bestaande rij alleen K/L.
 
 ## Automatische checks (stap 4) en de cutover
-De zes checks uit `instaleerTriggers()` draaien als Netlify Scheduled Functions (`netlify/functions/sched-*.js`, cron in **UTC**: 07:00 UTC = 09:00 zomertijd / 08:00 wintertijd). Logica staat in `_lib/signaleringen.js`, 1-op-1 uit Code.gs/Shiftbase.gs v9.4 (incl. cooldown 3 dagen, `SIGNALERING_NEGEREN_NAMEN`, indiensttredingsregel bij stille afwezigen).
+De zes checks uit `instaleerTriggers()` plus `checkWeekendBeschikbaarheid` (eigen trigger, `instaleerWeekendSignalering`) draaien als Netlify Scheduled Functions (`netlify/functions/sched-*.js`, cron in **UTC**: 07:00 UTC = 09:00 zomertijd / 08:00 wintertijd). Logica staat in `_lib/signaleringen.js`, 1-op-1 uit Code.gs/Shiftbase.gs v9.4 (incl. cooldown 3 dagen, `SIGNALERING_NEGEREN_NAMEN`, indiensttredingsregel bij stille afwezigen).
 
 **Droogloop**: zolang `SIGNALERINGEN_ACTIEF` niet `1` is, mailen en schrijven de checks niets — ze loggen alleen wat ze gedaan zouden hebben (tab Signaleringen → Laatste runs, en per check *Droogloop nu*). Zo kun je een week meekijken of Netlify hetzelfde vindt als Apps Script.
 
 **Cutover (één moment, ±5 min):**
-1. Apps Script-editor → Triggers → alle triggers van `syncFormulierStatus`, `checkLoonheffingHerinneringen`, `checkOntslagHerinneringen`, `checkNieuweMedewerkers`, `checkAanzegtermijnen`, `checkStilleAfwezigen` verwijderen (laat `checkVakantiepieken`, `checkWeekendBeschikbaarheid`, `stuurDataHygieneRapport` staan — die modules zijn nog niet over).
+1. Apps Script-editor → Triggers → alle triggers van `syncFormulierStatus`, `checkLoonheffingHerinneringen`, `checkOntslagHerinneringen`, `checkNieuweMedewerkers`, `checkAanzegtermijnen`, `checkStilleAfwezigen`, `checkWeekendBeschikbaarheid` verwijderen (laat `checkVakantiepieken` en `stuurDataHygieneRapport` staan — die modules zijn nog niet over).
 2. Netlify → Environment variables → `SIGNALERINGEN_ACTIEF` = `1` → redeploy.
 3. Tab Signaleringen toont "ACTIEF"; de eerstvolgende run om 09:00 mailt echt. Terugdraaien = env var weghalen + triggers opnieuw installeren.
 

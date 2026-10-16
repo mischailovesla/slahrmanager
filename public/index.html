@@ -129,7 +129,7 @@
         <div class="fg"><label>Naam medewerker</label><input type="text" id="om-naam" placeholder="Voornaam Achternaam" oninput="omHerbouw()"></div></div>
       <div class="fr"><div class="fg"><label>BV naam</label><input type="text" id="om-bv" list="om-bv-list" placeholder="SLA Ceintuur BV" oninput="omHerbouw()"><datalist id="om-bv-list"></datalist></div>
         <div class="fg"><label>Privéadres</label><input type="text" id="om-adres" placeholder="Straat 1, 1234AB Amsterdam"></div></div>
-      <div class="fr"><div class="fg" id="om-fg-opz"><label>Datum opzegging</label><input type="text" id="om-opz" placeholder="01-04-2026"></div>
+      <div class="fr"><div class="fg" id="om-fg-opz"><label id="om-opz-lbl">Datum opzegging</label><input type="text" id="om-opz" placeholder="01-04-2026"></div>
         <div class="fg"><label>Einddatum</label><input type="text" id="om-eind" placeholder="30-04-2026" oninput="omAanzegDagen()"></div></div>
       <div class="fg"><label>Onderwerp</label><input type="text" id="om-subj"></div>
       <div class="fg"><label>Begeleidende mail (platte tekst — de medewerker krijgt daarnaast de opgemaakte SLA-versie)</label><textarea id="om-tekst" rows="10"></textarea></div>
@@ -142,7 +142,7 @@
   <div class="tc" id="tab-sommatie">
     <div class="sec">
       <div class="sh"><div class="st">Sommaties <span class="pill" id="sm-count">-</span></div>
-        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('sm-body',this.value)"><button class="btn bd bsm" onclick="laadSommaties()">↻</button><button class="btn bsm" style="background:#c0392b;color:#fff" onclick="openSomModal(null)">Sommatie versturen</button></div></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('sm-body',this.value)"><button class="btn bd bsm" onclick="laadSommaties()">↻</button><button class="btn bsm" style="background:#c0392b;color:#fff" onclick="openSomModal(null)">Sommatie versturen</button><button class="btn bsm" style="background:#333d3a;color:#fff" onclick="openOoModal(null)" title="Ontslag op staande voet + brief (PDF)">OoSV + brief</button></div></div>
       <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV</th><th>Afwezig</th><th>Afspraak</th><th>Verstuurd</th><th>Status</th><th>Verwerkt</th><th>Actie</th></tr></thead><tbody id="sm-body"></tbody></table></div>
     </div>
     <div class="alert grijs"><strong>Werkwijze:</strong> e-mail + aangetekende brief op dezelfde dag (knop "Brief" opent de printversie). Oproepbrief → 1e sommatie (loonopschorting, 24–48 u) → 2e sommatie (loonstopzetting) → finale sommatie (2–3 werkdagen) → ontslag op staande voet (art. 7:677 BW).</div>
@@ -224,6 +224,74 @@
       <div class="fg"><label class="chk"><input type="checkbox" id="vb-pdf" checked> PDF-brief als bijlage meesturen</label></div>
     </div>
     <div class="mf"><button class="btn bd" onclick="vbKopieer()">Kopieer tekst</button><button class="btn bd" onclick="vbPdf()">⬇ PDF</button><button class="btn bd" onclick="vbPrint()">🖨 Printbrief</button><button class="btn bp" id="vb-sbtn" onclick="vbVerstuur()"><span id="vb-slbl">Verstuur brief</span></button></div>
+  </div></div>
+
+  <!-- OoSV-modal (OoSV.gs v1.0) -->
+  <div class="mo" id="oo-modal"><div class="modal">
+    <div class="mh" style="background:#1f2624"><div class="mti">⚖ Ontslag op staande voet + brief (PDF)</div><button class="mc" onclick="closeOoModal()">×</button></div>
+    <div class="mb2">
+      <div class="alert rood" style="margin:0 0 14px;font-size:.8rem"><strong>Juridisch zwaarste middel.</strong> Alleen bij een dringende reden (art. 7:678 BW), onverwijld na constatering, met concrete feiten. Bij twijfel: eerst overleggen met de jurist. De brief gaat per e-mail (cc hr@) én moet dezelfde dag aangetekend op de post.</div>
+      <div class="fg"><label>Zoek in Shiftbase <span style="color:#888;font-weight:400">(vult de velden hieronder in)</span></label><div class="zoeklijst" style="position:relative"><input type="text" id="oo-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="oo-zoek-res"></div></div></div>
+      <div class="fr"><div class="fg"><label>Naam</label><input type="text" id="oo-naam" placeholder="Voor- en achternaam"></div>
+        <div class="fg"><label>Email</label><input type="email" id="oo-email" placeholder="medewerker@email.com"></div></div>
+      <div class="fr"><div class="fg"><label>Aanhef</label><select id="oo-aanhef"><option value="heer/mevrouw">heer/mevrouw</option><option value="heer">heer</option><option value="mevrouw">mevrouw</option></select></div>
+        <div class="fg"><label>BV</label><input type="text" id="oo-bv" list="om-bv-list" placeholder="bijv. SLA Ceintuur BV"></div></div>
+      <div class="fr"><div class="fg"><label>Privéadres</label><input type="text" id="oo-adres" placeholder="Straat 1, 1234AB Amsterdam"></div>
+        <div class="fg"><label>Datum constatering</label><input type="text" id="oo-const" placeholder="dd-mm-jjjj"></div></div>
+      <div class="fg"><label>Hoor en wederhoor op <span style="color:#888;font-weight:400">(optioneel — datum/moment waarop de medewerker zijn kant kon toelichten)</span></label><input type="text" id="oo-wederhoor" placeholder="bijv. 14-10-2026 in een gesprek met de Store Manager"></div>
+      <div class="fg"><label>Dringende reden(en) — concreet, feitelijk, met datum/tijd/plaats <span style="color:#888;font-weight:400">(minimaal 20 tekens; dit is de juridische kern)</span></label><textarea id="oo-gronden" rows="6" style="min-height:130px" placeholder="bijv. Op 12-10-2026 om 22:15 is geconstateerd dat u €85,- uit de kassa van winkel Ceintuurbaan heeft weggenomen; dit is vastgelegd op camerabeelden en door u in het gesprek van 13-10-2026 erkend."></textarea></div>
+    </div>
+    <div class="mf"><button class="btn bd" id="oo-pdfbtn" onclick="ooPdf()">⬇ PDF bekijken</button><button class="btn" style="background:#1f2624;color:#fff" id="oo-sbtn" onclick="ooVerstuur()"><span id="oo-slbl">Verstuur OoSV + brief</span></button></div>
+  </div></div>
+
+  <!-- WAARSCHUWINGEN (waarschuwing.gs v1.2) -->
+  <div class="tc" id="tab-waarschuwing">
+    <div class="sec">
+      <div class="sh"><div class="st">Officiële waarschuwingen <span class="pill" id="wr-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('wr-body',this.value)"><button class="btn bd bsm" onclick="laadWaarschuwingen()">↻</button><button class="btn bsm" style="background:#c0392b;color:#fff" onclick="openWrModal(null)">Nieuwe waarschuwing + PDF</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Winkel</th><th>BV</th><th>Datum overtreding</th><th>Overtreden regels</th><th>Taal</th><th>Status</th><th>Actie</th></tr></thead><tbody id="wr-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Werkwijze:</strong> vink de overtreden huisregel(s) aan (woordelijk uit de contractbijlage), beschrijf feitelijk wat is geconstateerd en verstuur. De waarschuwing wordt als PDF in SLA-briefopmaak meegestuurd en komt in het dossier. Dossieropbouw: waarschuwing → (herhaling) tweede waarschuwing → sommatie/ontslagtraject.</div>
+  </div>
+  <div class="mo" id="wr-modal"><div class="modal" style="width:820px">
+    <div class="mh" style="background:#c0392b"><div class="mti">⚠ Officiële schriftelijke waarschuwing + PDF</div><button class="mc" onclick="closeWrModal()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Zoek in Shiftbase <span style="color:#888;font-weight:400">(vult naam, e-mail, adres en winkel in)</span></label><div class="zoeklijst" style="position:relative"><input type="text" id="wr-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="wr-zoek-res"></div></div></div>
+      <div class="fr"><div class="fg"><label>Naam</label><input type="text" id="wr-naam" placeholder="Voor- en achternaam"></div>
+        <div class="fg"><label>Email</label><input type="email" id="wr-email" placeholder="medewerker@email.com"></div></div>
+      <div class="fr"><div class="fg"><label>Privéadres</label><input type="text" id="wr-adres" placeholder="Straat 1, 1234AB Amsterdam"></div>
+        <div class="fg"><label>Winkel</label><select id="wr-winkel"></select></div></div>
+      <div class="fr"><div class="fg"><label>Datum overtreding</label><input type="text" id="wr-datum" placeholder="dd-mm-jjjj"></div>
+        <div class="fg"><label>Taal</label><div class="tbar" id="wr-taal"><button type="button" class="tb sel" data-taal="NL">Nederlands</button><button type="button" class="tb" data-taal="EN">English</button></div></div></div>
+      <div class="fg"><label>Overtreden huisregel(s) <span id="wr-teller" style="color:#c0392b;font-weight:700"></span></label>
+        <div id="wr-lijst" style="border:1.5px solid #e8e2de;border-radius:8px;max-height:260px;overflow-y:auto;background:#fff"></div></div>
+      <div class="fg"><label>Toelichting — wat is feitelijk geconstateerd? <span style="color:#888;font-weight:400">(komt in de brief onder "Aanleiding")</span></label><textarea id="wr-toel" rows="4" style="min-height:90px" placeholder="bijv. Op 12-10-2026 ben je zonder afmelding niet verschenen op je dienst van 16:00; de Store Manager heeft je tweemaal gebeld zonder gehoor."></textarea></div>
+    </div>
+    <div class="mf"><button class="btn bd" id="wr-pdfbtn" onclick="wrPdf()">⬇ PDF bekijken</button><button class="btn" style="background:#c0392b;color:#fff" id="wr-sbtn" onclick="wrVerstuur()"><span id="wr-slbl">Verstuur waarschuwing + PDF</span></button></div>
+  </div></div>
+
+  <!-- BESCHIKBAARHEID (Beschikbaarheid.gs v1 + onderbouwing v9.2) -->
+  <div class="tc" id="tab-beschikbaarheid">
+    <div class="sec">
+      <div class="sh"><div class="st">Weekendbeschikbaarheid <span class="pill" id="bk-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('bk-body',this.value)"><button class="btn bd bsm" onclick="laadBeschikbaarheid()">↻</button><button class="btn bp bsm" onclick="openBkModal(null)">Nieuwe kennisgeving + PDF</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Winkel</th><th>BV</th><th>Ingangsdatum</th><th>Onderbouwing</th><th>Taal</th><th>Status</th><th>Actie</th></tr></thead><tbody id="bk-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Huisregel:</strong> "Je bent minimaal 2 diensten op vrijdag, zaterdag of zondag beschikbaar." Kies een medewerker uit Shiftbase: de onderbouwing (laatste 8 weekenden, ingeroosterd vs. verlof vs. doordeweeks) wordt automatisch uit het rooster berekend. De wekelijkse signalering (maandag 09:45) mailt HR wie 3 weekenden op rij geen weekenddienst had maar wél doordeweeks werkte.</div>
+  </div>
+  <div class="mo" id="bk-modal"><div class="modal">
+    <div class="mh"><div class="mti">📅 Kennisgeving weekendbeschikbaarheid + PDF</div><button class="mc" onclick="closeBkModal()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Zoek in Shiftbase <span style="color:#888;font-weight:400">(vult de velden in en berekent de onderbouwing)</span></label><div class="zoeklijst" style="position:relative"><input type="text" id="bk-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="bk-zoek-res"></div></div></div>
+      <div class="fr"><div class="fg"><label>Naam</label><input type="text" id="bk-naam" placeholder="Voor- en achternaam"></div>
+        <div class="fg"><label>Email</label><input type="email" id="bk-email" placeholder="medewerker@email.com"></div></div>
+      <div class="fr"><div class="fg"><label>Privéadres</label><input type="text" id="bk-adres" placeholder="Straat 1, 1234AB Amsterdam"></div>
+        <div class="fg"><label>Winkel</label><select id="bk-winkel"></select></div></div>
+      <div class="fr"><div class="fg"><label>Ingangsdatum <span style="color:#888;font-weight:400">(vanaf wanneer de beschikbaarheid moet kloppen)</span></label><input type="text" id="bk-ingang" placeholder="dd-mm-jjjj"></div>
+        <div class="fg"><label>Taal</label><div class="tbar" id="bk-taal"><button type="button" class="tb sel" data-taal="NL">Nederlands</button><button type="button" class="tb" data-taal="EN">English</button></div></div></div>
+      <div class="fg"><label>Data-onderbouwing <span style="color:#888;font-weight:400">(automatisch uit Shiftbase; aanpasbaar)</span> <span id="bk-ond-status" style="font-weight:400;text-transform:none"></span></label><textarea id="bk-ond" rows="4" style="min-height:90px" placeholder="Wordt berekend zodra je een medewerker kiest…"></textarea></div>
+    </div>
+    <div class="mf"><button class="btn bd" id="bk-pdfbtn" onclick="bkPdf()">⬇ PDF bekijken</button><button class="btn bp" id="bk-sbtn" onclick="bkVerstuur()"><span id="bk-slbl">Verstuur kennisgeving + PDF</span></button></div>
   </div></div>
 
   <!-- SIGNALERINGEN (stap 4) -->

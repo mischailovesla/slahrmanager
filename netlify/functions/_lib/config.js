@@ -29,7 +29,8 @@ module.exports = {
   SIGNALERING_ONTVANGERS: {
     nieuweMedewerkers: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     aanzegtermijn: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
-    stilleAfwezigen: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
+    stilleAfwezigen: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    weekendBeschikbaarheid: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
   },
   SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
   SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam
@@ -39,6 +40,13 @@ module.exports = {
   STIL_LOOKBACK_DAGEN: 84,         // hoever terugkijken voor "laatste dienst"
   STIL_TOEKOMST_DAGEN: 14,         // wie binnenkort is ingeroosterd, is niet stil
   STIL_UITGESLOTEN_WINKELS: ['HQ'],
+  WEEKEND_SIGNAAL_WEKEN: 3,        // weekendontwijker = 3 opeenvolgende weekenden zonder dienst (wel doordeweeks)
+  WEEKEND_UITGESLOTEN_WINKELS: ['HQ'],
+  BSK_ONDERBOUWING_WEKEN: 8,       // data-onderbouwing in de beschikbaarheidsbrief: laatste 8 weken
+
+  // Log-tabs batch A (HR-acties-sheet)
+  TAB_WAARSCHUWINGEN: 'Waarschuwingen',
+  TAB_BESCHIKBAARHEID: 'Beschikbaarheid',
 
   // Mail / huisstijl (uit Code.gs)
   AFZENDER_TEAM: 'SLA HR Team',

@@ -10,15 +10,17 @@ function afzender() {
   return process.env.MAIL_FROM || (AFZENDER_TEAM + ' <' + HR_EMAIL + '>');
 }
 
-// opts: { to, subject, text, html, replyTo?, attachments?: [{filename, content(base64)}], tags? }
+// opts: { to, cc?, subject, text, html, replyTo?, attachments?: [{filename, content(base64)}], tags? }
 async function verstuur(opts) {
   const key = process.env.RESEND_API_KEY;
   if (!key) throw new Error('RESEND_API_KEY ontbreekt (Netlify env var)');
   const naar = (Array.isArray(opts.to) ? opts.to : String(opts.to || '').split(',')).map(s => String(s).trim()).filter(Boolean);
   if (!naar.length || naar.some(s => s.indexOf('@') === -1)) throw new Error('Ongeldig e-mailadres.');
+  const cc = (Array.isArray(opts.cc) ? opts.cc : String(opts.cc || '').split(',')).map(s => String(s).trim()).filter(s => s.indexOf('@') > 0);
   const payload = {
     from: afzender(),
     to: naar,
+    cc: cc.length ? cc : undefined,
     reply_to: opts.replyTo || HR_EMAIL,
     subject: opts.subject,
     text: opts.text || '',

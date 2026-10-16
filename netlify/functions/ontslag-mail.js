@@ -1,7 +1,8 @@
 // ============================================================
 // POST /api/ontslag-mail  (port van stuurMail → stuurOntslagMetPDF /
 // stuurAanzeggingMetPDF / stuurTekstMail + logVerzonden uit Code.gs v29.7)
-// { template:'ontslag-pdf'|'ontslag-herinnering'|'aanzegging-nl'|'aanzegging-en',
+// { template:'ontslag-pdf'|'ontslag-herinnering'|'aanzegging-nl'|'aanzegging-en'
+//           |'proeftijd-wg-nl'|'proeftijd-wg-en'|'proeftijd-wn-nl'|'proeftijd-wn-en' (Proeftijd.gs; log als type ontslag),
 //   to, naam, bv, adres, datumOpzegging, einddatum, rij?, subject?, body? }
 //  - PDF-templates: brieftekst uit _lib/brieftemplates.js (1-op-1 uit de Docs-templates),
 //    placeholders {{Naam}} {{Adres}} {{DatumOpzegging}} {{Einddatum}} {{BV}} {{HuidigeDatum}}
@@ -57,12 +58,21 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
   if (!naam) throw new Error('Naam ontbreekt.');
 
   // --- PDF uit de code-template ---
+  const isProef = tpl.type === 'proeftijd', isWG = tpl.variant === 'wg';
+  if (isProef && !einddatum) throw new Error('Vul de einddatum in.');
+  const proefLabel = isWG ? (isEN ? 'Probation termination (EN)' : 'Proeftijdontslag') : (isEN ? 'Confirmation resignation probation (EN)' : 'Bevestiging ontslagname proeftijd');
   const maakPdf = async () => {
-    const sjabloon = tpl.type === 'aanzegging' ? (isEN ? B.AANZEGGING_EN : B.AANZEGGING_NL) : B.ONTSLAG;
+    const sjabloon = tpl.type === 'aanzegging' ? (isEN ? B.AANZEGGING_EN : B.AANZEGGING_NL)
+      : isProef ? (isWG ? (isEN ? B.PROEFTIJD_WG_EN : B.PROEFTIJD_WG_NL) : (isEN ? B.PROEFTIJD_WN_EN : B.PROEFTIJD_WN_NL))
+      : B.ONTSLAG;
     const tekst = B.vul(sjabloon, { '{{Naam}}': naam, '{{Adres}}': adres, '{{DatumOpzegging}}': datumOpzegging, '{{Einddatum}}': einddatum, '{{BV}}': bv, '{{HuidigeDatum}}': briefDatum(isEN) });
-    return P.maakOpgemaakteBrief(tekst, { titel: (tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : 'Ontslagbevestiging') + ' - ' + naam, handtekening: tpl.type === 'ontslag' ? B.handtekening() : null });
+    const titel = tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : isProef ? proefLabel : 'Ontslagbevestiging';
+    return P.maakOpgemaakteBrief(tekst, { titel: titel + ' - ' + naam, handtekening: tpl.type === 'ontslag' ? B.handtekening() : null });
   };
-  const bestandsnaam = (tpl.type === 'aanzegging' ? (isEN ? 'Notice_non_renewal_' : 'Aanzegging_') : 'Ontslagbevestiging_') + veiligeNaam(naam) + '.pdf';
+  const prefix = tpl.type === 'aanzegging' ? (isEN ? 'Notice_non_renewal_' : 'Aanzegging_')
+    : isProef ? (isWG ? (isEN ? 'Probation_termination_' : 'Proeftijdontslag_') : (isEN ? 'Confirmation_resignation_probation_' : 'Bevestiging_ontslagname_proeftijd_'))
+    : 'Ontslagbevestiging_';
+  const bestandsnaam = prefix + veiligeNaam(naam) + '.pdf';
   if (p.alleenPdf) {
     if (!tpl.pdf) throw new Error('Dit template heeft geen PDF.');
     return { pdf: (await maakPdf()).toString('base64'), bestandsnaam };
@@ -101,12 +111,12 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
     await S.zetCel(id, null, rij, 9, nu);
     if (!nieuweRij) {
       if (einddatum) await S.zetCel(id, null, rij, 4, einddatum);
-      if (datumOpzegging && tpl.type === 'ontslag') await S.zetCel(id, null, rij, 3, datumOpzegging);
+      if (datumOpzegging && (tpl.type === 'ontslag' || isProef)) await S.zetCel(id, null, rij, 3, datumOpzegging);
       if (adres) await S.zetCel(id, null, rij, 7, adres);
     }
   }
   await M.logMail({ door: g.email, bron: 'ontslag', type: tpl.type + (pdf ? '-pdf' : ''), naar: to, naam, onderwerp: subject, taal: tpl.taal, rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'ontslag', veld: tpl.type, rij, naam, nieuw: to, details: subject + (pdf ? ' (+PDF)' : '') });
-  const wat = tpl.type === 'aanzegging' ? 'Aanzegging' + (isEN ? ' (EN)' : '') : tpl.type === 'herinnering' ? 'Herinnering' : 'Ontslagbevestiging';
+  const wat = tpl.type === 'aanzegging' ? 'Aanzegging' + (isEN ? ' (EN)' : '') : tpl.type === 'herinnering' ? 'Herinnering' : isProef ? proefLabel : 'Ontslagbevestiging';
   return { bericht: wat + (pdf ? ' + PDF' : '') + ' verstuurd naar ' + to + (nieuweRij ? ' (nieuwe rij ' + rij + ')' : ''), rij, resendId };
 });
