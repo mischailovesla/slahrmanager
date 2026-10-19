@@ -10,11 +10,11 @@
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters']] },
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners']] },
     { label: 'Dossier', items: [['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
-    { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] },
+    { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -61,6 +61,7 @@
     if (tab === 'contract' && !ctrData) laadContract(false);
     if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
+    if (tab === 'exit' && !exData) laadExit(12);
     if (tab === 'toegang' && !tgData) laadToegang();
     if (tab === 'archief' && !arData) laadArchief();
     if (tab === 'gegevens' && !gvData) laadGegevens();
@@ -943,6 +944,66 @@
     if (k) { g('opr-sinds').value = k.sinds; g('opr-periode').value = k.periode; g('opr-gem').value = String(k.gemPerWeek).replace('.', ','); g('opr-aang').value = String(Math.ceil(k.gemPerWeek)); }
     else toast('Niet in de kandidatenlijst: vul het gemiddelde zelf in (of klik eerst ↻ Verse stand)', 'err');
   });
+
+  // ---------- Exit-surveys (fase 2f): reacties inzien, handmatig versturen ----------
+  var exData = null, exMaanden = 12;
+  var exScore = function (v) { if (v == null) return '<span class="no-doc">-</span>'; var cls = v >= 4 ? 'bg' : v >= 3 ? 'bo' : 'br'; return '<span class="badge ' + cls + '">' + v + '</span>'; };
+  window.laadExit = async function (mnd) {
+    if (mnd) exMaanden = mnd;
+    g('ex-b12').className = 'btn bsm ' + (exMaanden === 12 ? 'bp' : 'bd'); g('ex-b36').className = 'btn bsm ' + (exMaanden === 36 ? 'bp' : 'bd');
+    g('ex-body').innerHTML = '<tr><td colspan="11" class="leeg grijs">Laden…</td></tr>';
+    var d = await api('/api/exit-admin?maanden=' + exMaanden);
+    if (!d.success) { g('ex-body').innerHTML = '<tr><td colspan="11" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    exData = d;
+    g('ex-count').textContent = d.rijen.length;
+    g('ex-body').innerHTML = d.rijen.length ? d.rijen.map(function (r) { var a = r.antwoorden || {}; return '<tr><td>' + esc(r.op) + '</td><td>' + (r.anoniem ? '<span class="badge boat">anoniem</span>' : '<strong>' + esc(r.naam) + '</strong>' + (r.email ? '<div class="lay-sub">' + esc(r.email) + '</div>' : '')) + '</td><td>' + esc(r.winkel || '-') + '</td><td>' + esc(r.reden || '-') + '</td><td>' + exScore(a.sfeer) + '</td><td>' + exScore(a.leiding) + '</td><td>' + exScore(a.onboarding) + '</td><td>' + exScore(a.rooster) + '</td><td>' + (r.nps == null ? '<span class="no-doc">-</span>' : '<span class="badge ' + (r.nps >= 9 ? 'bg' : r.nps >= 7 ? 'bo' : 'br') + '">' + r.nps + '/10</span>') + '</td><td>' + esc(r.terug || '-') + '</td><td style="max-width:320px;white-space:normal;font-size:.82rem">' + esc(r.opmerking || '') + '</td></tr>'; }).join('') : '<tr><td colspan="11" class="leeg grijs">Nog geen reacties in deze periode.</td></tr>';
+    g('ex-vcount').textContent = d.vertrokken.length;
+    g('ex-vbody').innerHTML = d.vertrokken.length ? d.vertrokken.map(function (v) { var st = v.ingevuld ? '<span class="badge bg">ingevuld</span>' : v.uitgenodigd ? '<span class="badge bo">uitgenodigd</span>' : '<span class="badge boat">nog niet</span>'; return '<tr><td><strong>' + esc(v.naam) + '</strong></td><td>' + esc(v.email || '-') + '</td><td>' + esc(v.winkelNaam || '-') + '</td><td>' + esc(v.einddatum) + '</td><td>' + st + '</td><td>' + (v.ingevuld ? '' : '<button class="btn bp bsm" data-ex-stuur=\'' + esc(JSON.stringify({ naam: v.naam, email: v.email })) + '\'>' + (v.uitgenodigd ? 'Opnieuw' : 'Verstuur') + '</button>') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="leeg grijs">Geen uitdiensttredingen in deze periode (of Shiftbase niet bereikbaar).</td></tr>';
+    g('ex-ucount').textContent = d.uitnodigingen.length;
+    g('ex-ubody').innerHTML = d.uitnodigingen.length ? d.uitnodigingen.map(function (u) { return '<tr><td>' + esc(u.op) + '</td><td><strong>' + esc(u.naam) + '</strong></td><td>' + esc(u.naar) + '</td><td>' + esc(u.taal || 'NL') + '</td><td>' + esc(u.door || '') + '</td></tr>'; }).join('') : '<tr><td colspan="5" class="leeg grijs">Nog geen handmatige uitnodigingen.</td></tr>';
+  };
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('button[data-ex-stuur]'); if (b) openExModal(JSON.parse(b.getAttribute('data-ex-stuur'))); });
+  window.exExport = function () {
+    if (!exData || !exData.rijen.length) { toast('Geen reacties om te exporteren', 'err'); return; }
+    var kop = ['Ingevuld', 'Naam', 'Email', 'Winkel', 'BV', 'Bron', 'Taal', 'Reden', 'Team', 'Manager', 'Onboarding', 'Rooster', 'Aanbeveling', 'Terug', 'Opmerking'];
+    var cel = function (v) { v = v == null ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
+    var regels = [kop.join(';')].concat(exData.rijen.map(function (r) { var a = r.antwoorden || {}; return [r.op, r.anoniem ? 'anoniem' : r.naam, r.email, r.winkel, r.bv, r.bron, r.taal, r.reden, a.sfeer, a.leiding, a.onboarding, a.rooster, r.nps, r.terug, r.opmerking].map(cel).join(';'); }));
+    var blob = new Blob(['\ufeff' + regels.join('\r\n')], { type: 'text/csv;charset=utf-8' }); var url = URL.createObjectURL(blob);
+    var a = document.createElement('a'); a.href = url; a.download = 'exit-surveys_' + exMaanden + 'mnd.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  };
+  window.openExModal = function (v) {
+    g('ex-naam').value = v ? v.naam || '' : ''; g('ex-email').value = v ? v.email || '' : ''; g('ex-zoek').value = ''; g('ex-zoek-res').classList.remove('open');
+    zetTaal('ex-taal', 'NL'); g('ex-modal').classList.add('open');
+    if (!v) setTimeout(function () { g('ex-zoek').focus(); }, 60);
+  };
+  window.closeExModal = function () { g('ex-modal').classList.remove('open'); };
+  g('ex-modal').addEventListener('click', function (e) { if (e.target === this) closeExModal(); });
+  koppelTaal('ex-taal');
+  // zoeken in de vertrokken-lijst (niet in de actieve medewerkers)
+  g('ex-zoek').addEventListener('input', function () {
+    var q = this.value.trim().toLowerCase(), res = g('ex-zoek-res');
+    if (q.length < 2 || !exData) { res.classList.remove('open'); return; }
+    var hits = exData.vertrokken.filter(function (v) { return v.naam.toLowerCase().indexOf(q) > -1; }).slice(0, 8);
+    res.innerHTML = hits.length ? hits.map(function (v) { return '<button type="button" data-naam="' + esc(v.naam) + '" data-email="' + esc(v.email || '') + '"><strong>' + esc(v.naam) + '</strong> <span class="lay-sub">' + esc(v.winkelNaam || '') + ' · uit dienst ' + esc(v.einddatum) + '</span></button>'; }).join('') : '<button type="button" class="lay-sub">Niet gevonden in de laatste 36 maanden — vul naam en e-mail handmatig in</button>';
+    res.classList.add('open');
+    res.querySelectorAll('button[data-naam]').forEach(function (z) { z.onclick = function () { g('ex-naam').value = z.getAttribute('data-naam'); g('ex-email').value = z.getAttribute('data-email'); res.classList.remove('open'); }; });
+  });
+  function exLees() { return { naam: g('ex-naam').value.trim(), to: g('ex-email').value.trim(), taal: leesTaal('ex-taal') }; }
+  window.exPreview = async function () {
+    var p = exLees(); if (!p.naam) { toast('Vul de naam in', 'err'); return; }
+    var r = await api('/api/exit-admin', Object.assign(p, { preview: true }));
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    window.open('', '_blank').document.write(r.html);
+  };
+  window.exVerstuur = async function () {
+    var p = exLees();
+    if (!p.naam) { toast('Vul de naam in', 'err'); return; }
+    if (!p.to || p.to.indexOf('@') === -1) { toast('Vul een geldig e-mailadres in', 'err'); return; }
+    var b = g('ex-sbtn'); b.disabled = true; g('ex-slbl').textContent = 'Versturen…';
+    var r = await api('/api/exit-admin', p);
+    b.disabled = false; g('ex-slbl').textContent = 'Verstuur uitnodiging';
+    if (r.success) { toast(r.bericht, 'ok'); closeExModal(); laadExit(); } else toast('Fout: ' + r.bericht, 'err');
+  };
 
   // ---------- Ontslag op staande voet (port van OoSV.gs v1.0; knop in de Sommaties-kop) ----------
   window.openOoModal = function (d) {

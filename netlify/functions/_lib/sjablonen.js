@@ -155,6 +155,16 @@ function exitBlok(isEN) {
     : { kop: 'Hoe was het bij SLA?', tekst: 'In plaats van een exitgesprek vragen we je een korte vragenlijst in te vullen: 8 vragen, ongeveer 2 minuten, desgewenst anoniem. Daar worden we beter van.', knop: '&rarr; Exit-survey invullen' };
   return '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding:16px;background:#e6f7ee;border-radius:8px;border-left:4px solid #009f4b"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 4px">' + L.kop + '</p><p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 12px">' + L.tekst + '</p>' + knop('{{EXITLINK}}', L.knop) + '</td></tr></table>';
 }
+// Losse uitnodiging exit-survey (handmatig, ook voor medewerkers die al uit dienst zijn)
+function exitUitnodigingPlain(naam, isEN) {
+  return isEN ? 'Dear ' + naam + ',\n\nYou recently left SLA. We would love to hear how you experienced your time with us: 8 short questions, about 2 minutes, anonymously if you prefer. It helps us keep improving SLA as an employer.\n\nFill in the exit survey: {{EXITLINK}}\n\nThank you and all the best,\nSLA HR Team'
+    : 'Beste ' + naam + ',\n\nJe bent onlangs bij SLA uit dienst gegaan. We horen graag hoe jij je tijd bij ons hebt ervaren: 8 korte vragen, ongeveer 2 minuten, desgewenst anoniem. Daarmee maken we SLA als werkgever beter.\n\nVul de exit-survey in: {{EXITLINK}}\n\nBedankt en veel succes,\nSLA HR Team';
+}
+function exitUitnodigingHtml(naam, isEN) {
+  const L = isEN ? { head: 'HR &middot; Exit survey', greet: 'Dear ', intro: 'You recently left SLA. We would love to hear how you experienced your time with us. It helps us keep improving SLA as an employer.', sign: 'Thank you and all the best,' }
+    : { head: 'HR &middot; Exit-survey', greet: 'Beste ', intro: 'Je bent onlangs bij SLA uit dienst gegaan. We horen graag hoe jij je tijd bij ons hebt ervaren. Daarmee maken we SLA als werkgever beter.', sign: 'Bedankt en veel succes,' };
+  return slaWrap(slaHead('#009f4b', L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">' + L.greet + esc(naam) + ',</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">' + L.intro + '</p>' + exitBlok(isEN) + '<p style="' + P14 + 'margin:0">' + L.sign + '<br><br><strong>SLA HR Team</strong></p></td></tr>' + slaFoot());
+}
 function ontslagHtml(naam, bv) {
   return slaWrap(slaHead('#333d3a', 'HR &middot; Uitdiensttreding') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Beste ' + esc(naam) + ',</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">Naar aanleiding van jouw opzegging sturen wij je hierbij de offici&euml;le bevestiging als PDF bijlage.</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding:16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #333d3a"><p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 12px">Onderteken de bijlage en upload via:</p>' + knop(prefillOntslagUrl(naam), '&rarr; Upload ondertekend document') + '</td></tr></table>' + exitBlok(false) + '<p style="' + P14 + 'margin:0 0 20px">Vragen? <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p>' + groet('Met vriendelijke groet,', bv) + '</td></tr>' + slaFoot());
 }
@@ -532,6 +542,6 @@ function oproepHtml(naam, bv, uren, reactiedatum, isEN) {
 }
 
 module.exports = { oproepPlain, oproepHtml, KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
-  slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, indienstLink, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, exitBlok, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
+  slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, indienstLink, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, exitBlok, exitUitnodigingPlain, exitUitnodigingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
   HUISREGELS, regelsById, wrsPlain, wrsHtml, beschikbPlain, beschikbHtml, oosvPlain, oosvHtml,
   SOM_TYPES, SOM_KLEUR, SOM_SHEETKLEUR, SOM_HINTS, sommatieSubject, sommatieHtml, sommatiePlain, overplaatsingSubject, overplaatsingPlain, overplaatsingHtml };

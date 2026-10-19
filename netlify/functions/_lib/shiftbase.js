@@ -151,4 +151,22 @@ async function getContractenPerUser(forceer) {
   return per;
 }
 
-module.exports = { getMedewerkers, getVerlof, verwerk, sbGet, getContractenPerUser, isoVandaag };
+// Uit dienst getreden medewerkers (einddatum in de laatste `maanden` maanden, niet geanonimiseerd) — voor het handmatig versturen van de exit-survey
+async function getVertrokken(maanden) {
+  const users = await module.exports.sbGet('users'); // via exports: mockbaar in tests
+  const vandaag = isoVandaag(), grens = new Date(); grens.setMonth(grens.getMonth() - (Number(maanden) || 12));
+  const grensIso = grens.toLocaleDateString('sv-SE');
+  const uit = [];
+  for (const rec of users || []) {
+    const u = (rec && rec.User) || rec || {};
+    if (u.anonymized === true || u.anonymized === '1' || u.anonymized === 1) continue;
+    const e = String(u.enddate || '').trim();
+    if (!e || e === '0000-00-00' || e >= vandaag || e < grensIso) continue;
+    const naam = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
+    if (!naam || UITGESLOTEN.has(normNaam(naam))) continue;
+    const t = (rec.Team || []).find(x => x && x.name) || {};
+    uit.push({ id: String(u.id), naam, email: String(u.email || '').trim().toLowerCase(), einddatum: ddmm(e), einddatumIso: e, winkelNaam: String(t.name || '').replace(/^SLA\s*/i, '').trim() });
+  }
+  return uit.sort((a, b) => a.einddatumIso < b.einddatumIso ? 1 : -1);
+}
+module.exports = { getMedewerkers, getVerlof, verwerk, sbGet, getContractenPerUser, getVertrokken, isoVandaag };

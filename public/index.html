@@ -396,6 +396,35 @@
   </div>
 
   <!-- VERLOOPANALYSE (Verloop.gs v1.3) -->
+  <!-- EXIT-SURVEYS (fase 2f) -->
+  <div class="tc" id="tab-exit">
+    <div class="sec">
+      <div class="sh"><div class="st">Exit-surveys: reacties <span class="pill" id="ex-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam, winkel, opmerking..." oninput="flt('ex-body',this.value)"><button class="btn bd bsm" id="ex-b12" onclick="laadExit(12)">12 mnd</button><button class="btn bd bsm" id="ex-b36" onclick="laadExit(36)">36 mnd</button><button class="btn bd bsm" onclick="exExport()">⬇ CSV</button><button class="btn bp bsm" onclick="openExModal(null)">Survey versturen</button></div></div>
+      <div class="tw"><table><thead><tr><th>Ingevuld</th><th>Naam</th><th>Winkel</th><th>Reden</th><th>Team</th><th>Manager</th><th>Onboarding</th><th>Rooster</th><th>Aanbeveling</th><th>Terug?</th><th>Opmerking</th></tr></thead><tbody id="ex-body"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Uit dienst (Shiftbase) — survey handmatig versturen <span class="pill" id="ex-vcount">-</span></div><div class="lay-sub" style="color:rgba(255,255,255,.6)">Iedereen met een einddatum in de gekozen periode. Bij een ontslagbevestiging, aanzegging of proeftijdbrief via het dashboard zit de link al in brief + mail.</div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Winkel</th><th>Uit dienst</th><th>Status</th><th>Actie</th></tr></thead><tbody id="ex-vbody"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Handmatig verstuurde uitnodigingen <span class="pill" id="ex-ucount">-</span></div></div>
+      <div class="tw"><table><thead><tr><th>Verstuurd</th><th>Naam</th><th>Naar</th><th>Taal</th><th>Door</th></tr></thead><tbody id="ex-ubody"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Privacy:</strong> wie "anoniem" aanvinkt, staat hier zonder naam en e-mail; die reacties tellen wel mee in de Verloopanalyse. Een link is 90 dagen geldig en één keer te gebruiken.</div>
+  </div>
+  <div class="mo" id="ex-modal"><div class="modal">
+    <div class="mh" style="background:#009f4b"><div class="mti">Exit-survey versturen</div><button class="mc" onclick="closeExModal()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Zoek (uit dienst, laatste 36 maanden)</label><div class="zoeklijst" style="position:relative"><input type="text" id="ex-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="ex-zoek-res"></div></div></div>
+      <div class="fr"><div class="fg"><label>Naam</label><input type="text" id="ex-naam" placeholder="Voor- en achternaam"></div>
+        <div class="fg"><label>Email (privé-adres)</label><input type="email" id="ex-email" placeholder="naam@gmail.com"></div></div>
+      <div class="fg"><label>Taal</label><div class="tbar" id="ex-taal"><button type="button" class="tb sel" data-taal="NL">Nederlands</button><button type="button" class="tb" data-taal="EN">English</button></div></div>
+      <div class="alert grijs" style="margin:0;font-size:.8rem">De mail bevat een persoonlijke link (90 dagen geldig). Let op: het Shiftbase-e-mailadres is vaak een werkadres — gebruik bij voorkeur een privé-adres.</div>
+    </div>
+    <div class="mf"><button class="btn bd" onclick="exPreview()">Voorbeeld</button><button class="btn bp" id="ex-sbtn" onclick="exVerstuur()"><span id="ex-slbl">Verstuur uitnodiging</span></button></div>
+  </div></div>
+
   <div class="tc" id="tab-verloopanalyse">
     <div class="sec">
       <div class="sh"><div class="st">Verloopanalyse</div>
