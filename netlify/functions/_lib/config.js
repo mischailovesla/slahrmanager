@@ -74,6 +74,20 @@ module.exports = {
   VERZUIM_FREQUENT_AANTAL: 3,        // ≥ 3 ziekmeldingen in 12 maanden → frequent-verzuimgesprek
   VERZUIM_TERUGKIJK_DAGEN: 730,
   // Uitstroomredenen (verplicht bij ontslagbevestiging/aanzegging; zichtbaar in Verloopanalyse)
+  // Exit-survey (fase 2f): korte vragenlijst in de aanzeggings-/ontslagbrief en -mail i.p.v. een exitgesprek (SLA doet geen exitgesprekken).
+  // schaal = 1–5 (1 = helemaal oneens, 5 = helemaal eens), nps = 0–10, keuze = één uit opties, tekst = open.
+  EXIT_VRAGEN: [
+    { key: 'reden', type: 'keuze', nl: 'Wat is de belangrijkste reden dat je bij SLA weggaat?', en: 'What is the main reason you are leaving SLA?',
+      opties: [['andere-baan', 'Andere baan / carrière', 'Another job / career'], ['studie-verhuizing', 'Studie of verhuizing', 'Study or moving'], ['rooster', 'Rooster of uren pasten niet', 'Schedule or hours did not fit'], ['werkdruk', 'Werkdruk of sfeer', 'Workload or atmosphere'], ['leiding', 'Leidinggevende of team', 'Manager or team'], ['salaris', 'Salaris of arbeidsvoorwaarden', 'Pay or conditions'], ['contract', 'Contract niet verlengd', 'Contract not renewed'], ['anders', 'Anders', 'Other']] },
+    { key: 'sfeer', type: 'schaal', nl: 'Ik voelde me welkom en gewaardeerd in het team.', en: 'I felt welcome and valued in the team.' },
+    { key: 'leiding', type: 'schaal', nl: 'Mijn Store Manager gaf duidelijke sturing en feedback.', en: 'My Store Manager gave clear direction and feedback.' },
+    { key: 'onboarding', type: 'schaal', nl: 'Mijn inwerkperiode en trainingen (SLA Academy) hebben me goed voorbereid.', en: 'My onboarding and training (SLA Academy) prepared me well.' },
+    { key: 'rooster', type: 'schaal', nl: 'Het rooster en de uren pasten bij mijn situatie.', en: 'The schedule and hours fitted my situation.' },
+    { key: 'nps', type: 'nps', nl: 'Hoe waarschijnlijk is het dat je SLA als werkgever aanbeveelt aan een vriend(in)?', en: 'How likely are you to recommend SLA as an employer to a friend?' },
+    { key: 'terug', type: 'keuze', nl: 'Zou je in de toekomst weer bij SLA willen werken?', en: 'Would you consider working at SLA again in the future?', opties: [['ja', 'Ja', 'Yes'], ['misschien', 'Misschien', 'Maybe'], ['nee', 'Nee', 'No']] },
+    { key: 'opmerking', type: 'tekst', nl: 'Wat had SLA anders kunnen doen om je te behouden, of wat wil je ons nog meegeven?', en: 'What could SLA have done differently to keep you, or what else would you like to tell us?' }
+  ],
+  EXIT_GELDIG_DAGEN: 90,             // link werkt tot 90 dagen na versturen
   UITSTROOMREDENEN: ['Eigen keuze: andere baan', 'Eigen keuze: studie/verhuizing', 'Eigen keuze: werk/privé of rooster', 'Einde tijdelijk contract (niet verlengd door SLA)', 'Proeftijd', 'Functioneren', 'Gedrag/huisregels', 'Ontslag op staande voet', 'Wederzijds goedvinden', 'Langdurig ziek', 'Overig/onbekend'],
   SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
   SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam

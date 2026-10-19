@@ -97,6 +97,8 @@ async function getVerloopData(maanden, ververs) {
   r.cohorten = C.VRL_COHORTEN; r.vroegDagen = C.VRL_VROEG_DAGEN; r.bijgewerkt = D.stempel();
   // Fase 2e: uitstroomredenen uit de ontslagdossiers (HR-registratie) met einddatum in de periode
   r.redenen = await uitstroomredenen(r.maanden[0].vanIso, r.maanden[r.maanden.length - 1].totIso);
+  // Fase 2f: exit-survey-resultaten (respons t.o.v. de uitstroom in de periode)
+  try { r.exit = await require('./exit').samenvatting(r.maanden[0].vanIso, r.maanden[r.maanden.length - 1].totIso, r.totaal.uitstroom); } catch (e) { console.warn('exit samenvatting:', e.message); r.exit = { aantal: 0, fout: e.message }; }
   r.periode = r.maanden[0].label + ' t/m ' + r.maanden[r.maanden.length - 1].label + (r.maanden[r.maanden.length - 1].totIso > iso(nu) ? ' (lopende maand t/m vandaag)' : '');
   return r;
 }

@@ -28,6 +28,8 @@ Hierbij bevestigen wij dat je op {{DatumOpzegging}} jouw arbeidsovereenkomst heb
 
 De laatste dag van je arbeidsovereenkomst is dus {{Einddatum}}. Uiterlijk deze dag lever je jouw eventuele sleutels in. De eindafrekening van salaris, eventueel niet genoten vrije dagen en vakantiegeld zal na afloop van jouw laatste maand plaatsvinden.
 
+We horen graag hoe jij je tijd bij SLA hebt ervaren. Wil je daarvoor deze korte vragenlijst invullen (8 vragen, ongeveer 2 minuten, desgewenst anoniem)? {{EXITLINK}}
+
 Wij wensen je veel succes met je verdere toekomstplannen!
 
 Met vriendelijke groet,
@@ -80,9 +82,9 @@ Wij verzoeken je om uiterlijk op jouw laatste werkdag alle bedrijfseigendommen i
 
 Voor informatie over een eventuele WW-uitkering verwijzen wij je naar het UWV. Het advies is om uiterlijk één week na jouw laatste werkdag een uitkering aan te vragen via werk.nl. Een afschrift van deze brief kun je gebruiken als bewijsstuk.
 
-**Exitgesprek**
+**Exit-survey**
 
-We waarderen jouw eerlijke feedback. Voor het einde van jouw dienstverband nodigen we je graag uit voor een kort exitgesprek waarin we jouw ervaringen bespreken. Jouw leidinggevende neemt hierover contact met je op.
+We waarderen jouw eerlijke feedback. In plaats van een exitgesprek vragen we je een korte online vragenlijst in te vullen (8 vragen, ongeveer 2 minuten, desgewenst anoniem). Zo kunnen we SLA als werkgever blijven verbeteren: {{EXITLINK}}
 
 Mocht je vragen hebben over deze brief of de afhandeling van het dienstverband, neem dan gerust contact op via hr@ilovesla.com.
 
@@ -136,9 +138,9 @@ We kindly request that you return all company property to your Store Manager no 
 
 For information about a possible unemployment benefit (WW-uitkering) we refer you to the UWV. We recommend applying for the benefit no later than one week after your last working day via werk.nl. A copy of this letter can be used as supporting evidence. Please note that UWV communication is primarily in Dutch.
 
-**Exit interview**
+**Exit survey**
 
-We value your honest feedback. Before the end of your employment we would like to invite you for a brief exit interview to discuss your experiences. Your Operations manager will contact you about this.
+We value your honest feedback. Instead of an exit interview we ask you to fill in a short online questionnaire (8 questions, about 2 minutes, anonymously if you prefer). It helps us keep improving SLA as an employer: {{EXITLINK}}
 
 Should you have any questions about this letter or the handling of your employment, please feel free to contact us at hr@ilovesla.com.
 

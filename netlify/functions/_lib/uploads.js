@@ -30,17 +30,21 @@ function sleutel() {
   return crypto.createHash('sha256').update('hr-upload|' + basis).digest();
 }
 const hmac = p => b64u(crypto.createHmac('sha256', sleutel()).update(p).digest()).slice(0, 32);
+// Generiek getekend token (ook gebruikt door de exit-survey, _lib/exit.js)
+function tekenToken(obj) { const p = b64u(JSON.stringify(obj)); return p + '.' + hmac(p); }
+function leesGetekend(t, foutmelding) {
+  const [p, sig] = String(t || '').split('.');
+  if (!p || !sig || sig.length !== 32) throw new Error(foutmelding);
+  const goed = hmac(p);
+  if (goed.length !== sig.length || !crypto.timingSafeEqual(Buffer.from(goed), Buffer.from(sig))) throw new Error(foutmelding);
+  return JSON.parse(unb64u(p).toString('utf8'));
+}
 function maakToken(soort, naam) {
   if (!SOORTEN[soort]) throw new Error('Onbekende upload-soort: ' + soort);
-  const p = b64u(JSON.stringify({ s: soort, n: String(naam || '').trim(), d: new Date().toISOString().slice(0, 10) }));
-  return p + '.' + hmac(p);
+  return tekenToken({ s: soort, n: String(naam || '').trim(), d: new Date().toISOString().slice(0, 10) });
 }
 function leesToken(t) {
-  const [p, sig] = String(t || '').split('.');
-  if (!p || !sig || sig.length !== 32) throw new Error('Ongeldige upload-link.');
-  const goed = hmac(p);
-  if (goed.length !== sig.length || !crypto.timingSafeEqual(Buffer.from(goed), Buffer.from(sig))) throw new Error('Ongeldige upload-link.');
-  const d = JSON.parse(unb64u(p).toString('utf8'));
+  const d = leesGetekend(t, 'Ongeldige upload-link.');
   if (!SOORTEN[d.s]) throw new Error('Ongeldige upload-link.');
   return d;
 }
@@ -118,4 +122,4 @@ async function bestandMetLabel(ref, label, naam) {
   const ext = (b.naam_orig && b.naam_orig.lastIndexOf('.') > -1 ? b.naam_orig.substring(b.naam_orig.lastIndexOf('.')) : TOEGESTAAN[b.mime]) || '';
   return { filename: label + '_' + String(naam || '').trim().replace(/\s+/g, '_') + ext.toLowerCase(), content: buf.toString('base64'), bytes: buf.length };
 }
-module.exports = { site, SOORTEN, BUCKET, maakToken, leesToken, uploadLink, startUpload, registreer, vindUploads, isRef, zoekBestand, signedUrl, bestandMetLabel };
+module.exports = { site, SOORTEN, BUCKET, tekenToken, leesGetekend, maakToken, leesToken, uploadLink, startUpload, registreer, vindUploads, isRef, zoekBestand, signedUrl, bestandMetLabel };

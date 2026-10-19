@@ -52,8 +52,11 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
   const datumOpzegging = String(p.datumOpzegging || '').trim();
   const einddatum = String(p.einddatum || '').trim();
   const subject = String(p.subject || tpl.subject.replace('[BV]', bv)).trim();
-  const text = T.personaliseerUploadLinks(String(p.body || tpl.body(naam, bv)), naam);
-  const html = T.ontslagMailHtml(tpl, naam, bv, einddatum);
+  // Exit-survey (fase 2f): persoonlijke link in mail + brief bij ontslag/aanzegging/proeftijd (niet bij herinnering)
+  const exitLink = tpl.type === 'herinnering' ? '' : require('./_lib/exit').exitLink(naam || 'medewerker', tpl.taal, tpl.type);
+  const metExit = s => String(s || '').split('{{EXITLINK}}').join(exitLink);
+  const text = metExit(T.personaliseerUploadLinks(String(p.body || tpl.body(naam, bv)), naam));
+  const html = metExit(T.ontslagMailHtml(tpl, naam, bv, einddatum));
   if (p.preview) return { subject, text, html };
   if (!naam) throw new Error('Naam ontbreekt.');
 
@@ -65,7 +68,7 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
     const sjabloon = tpl.type === 'aanzegging' ? (isEN ? B.AANZEGGING_EN : B.AANZEGGING_NL)
       : isProef ? (isWG ? (isEN ? B.PROEFTIJD_WG_EN : B.PROEFTIJD_WG_NL) : (isEN ? B.PROEFTIJD_WN_EN : B.PROEFTIJD_WN_NL))
       : B.ONTSLAG;
-    const tekst = B.vul(sjabloon, { '{{Naam}}': naam, '{{Adres}}': adres, '{{DatumOpzegging}}': datumOpzegging, '{{Einddatum}}': einddatum, '{{BV}}': bv, '{{HuidigeDatum}}': briefDatum(isEN) });
+    const tekst = B.vul(sjabloon, { '{{Naam}}': naam, '{{Adres}}': adres, '{{DatumOpzegging}}': datumOpzegging, '{{Einddatum}}': einddatum, '{{BV}}': bv, '{{HuidigeDatum}}': briefDatum(isEN), '{{EXITLINK}}': exitLink });
     const titel = tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : isProef ? proefLabel : 'Ontslagbevestiging';
     return P.maakOpgemaakteBrief(tekst, { titel: titel + ' - ' + naam, handtekening: tpl.type === 'ontslag' ? B.handtekening() : null });
   };

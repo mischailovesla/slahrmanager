@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>SLA · Exit-survey</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--groen:#009f4b;--donker:#333d3a;--grijs:#888078;--zand:#f8f3f0;--lijn:#e8e2de;--rood:#c0392b}
+  *{box-sizing:border-box}body{margin:0;font-family:'DM Sans',Arial,sans-serif;background:var(--zand);color:var(--donker);line-height:1.5}
+  .wrap{max-width:600px;margin:0 auto;padding:28px 16px 48px}
+  .logo{font-size:30px;font-weight:700;color:var(--groen);letter-spacing:1px}.logo small{display:block;font-size:11px;color:var(--grijs);font-weight:500;letter-spacing:0}
+  .card{background:#fff;border-radius:14px;padding:26px 24px;margin-top:20px;box-shadow:0 6px 24px rgba(51,61,58,.08)}
+  h1{font-size:1.15rem;margin:0 0 6px}.sub{color:var(--grijs);font-size:.9rem;margin:0 0 22px}
+  .vr{margin:0 0 24px;padding-bottom:20px;border-bottom:1px solid var(--lijn)}.vr:last-of-type{border:0}
+  .vr .q{font-weight:600;font-size:.97rem;margin:0 0 10px}.vr .q b{color:var(--groen);margin-right:6px}
+  .opties{display:flex;flex-wrap:wrap;gap:8px}
+  .opt{border:1.5px solid var(--lijn);border-radius:999px;padding:8px 14px;font-size:.88rem;cursor:pointer;background:#fff;user-select:none}.opt.sel{border-color:var(--groen);background:#e6f7ee;color:#006b30;font-weight:600}
+  .schaal{display:flex;gap:6px}.schaal .opt{flex:1;text-align:center;padding:10px 0;border-radius:8px}
+  .schaal-lbl{display:flex;justify-content:space-between;font-size:.72rem;color:var(--grijs);margin-top:6px}
+  .nps{display:grid;grid-template-columns:repeat(11,1fr);gap:4px}.nps .opt{text-align:center;padding:9px 0;border-radius:6px;font-size:.85rem}
+  textarea{width:100%;min-height:96px;padding:11px 14px;border:1.5px solid var(--lijn);border-radius:8px;font:inherit;font-size:.93rem;resize:vertical}
+  .chk{display:flex;gap:10px;align-items:flex-start;font-size:.85rem;color:var(--grijs);margin:0 0 18px}.chk input{margin-top:4px}
+  .btn{width:100%;padding:14px;border:0;border-radius:10px;background:var(--groen);color:#fff;font:inherit;font-size:1rem;font-weight:700;cursor:pointer}.btn:disabled{opacity:.5;cursor:default}
+  .melding{border-radius:8px;padding:12px 14px;font-size:.88rem;margin:0 0 16px;border-left:4px solid}.melding.rood{background:#fdecea;color:#8a1c12;border-color:var(--rood)}.melding.groen{background:#e6f7ee;color:#006b30;border-color:var(--groen)}
+  .voet{margin-top:22px;font-size:.75rem;color:var(--grijs);text-align:center}
+  .taal{float:right;font-size:.8rem}.taal a{color:var(--grijs);text-decoration:none;margin-left:8px}.taal a.sel{color:var(--groen);font-weight:700}
+  .klaar{text-align:center;padding:20px 0}.klaar .ic{font-size:46px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="taal"><a href="#" data-taal="nl">NL</a><a href="#" data-taal="en">EN</a></div>
+  <div class="logo">SLA<small>the good food bar · HR</small></div>
+  <div class="card" id="card"><p class="sub" id="laden">Even geduld…</p></div>
+  <div class="voet" id="voet"></div>
+</div>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('t') || '', info = null, taal = 'nl', antw = {};
+  var TX = {
+    nl: { titel: 'Hoe was het bij SLA?', hallo: 'Hallo {n}, bedankt dat je dit wilt invullen. Acht korte vragen, ongeveer 2 minuten. Je antwoorden gaan alleen naar het HR-team en helpen ons om SLA als werkgever beter te maken.', oneens: 'helemaal oneens', eens: 'helemaal eens', npsL: 'zeker niet', npsR: 'zeker wel', anoniem: 'Verwerk mijn antwoorden anoniem (zonder mijn naam).', verstuur: 'Versturen', bezig: 'Versturen…', klaar: 'Bedankt!', klaarSub: 'Je antwoorden zijn ontvangen. We wensen je veel succes.', leeg: 'Beantwoord minimaal één vraag.', voet: 'Je antwoorden worden opgeslagen in de beveiligde HR-omgeving van SLA en zijn alleen zichtbaar voor HR. Vragen?', optioneel: 'optioneel' },
+    en: { titel: 'How was it at SLA?', hallo: 'Hi {n}, thank you for filling this in. Eight short questions, about 2 minutes. Your answers go to the HR team only and help us make SLA a better employer.', oneens: 'strongly disagree', eens: 'strongly agree', npsL: 'not at all', npsR: 'definitely', anoniem: 'Process my answers anonymously (without my name).', verstuur: 'Send', bezig: 'Sending…', klaar: 'Thank you!', klaarSub: 'Your answers have been received. We wish you all the best.', leeg: 'Please answer at least one question.', voet: 'Your answers are stored in SLA’s secure HR environment and are visible to HR only. Questions?', optioneel: 'optional' }
+  };
+  var g = function (id) { return document.getElementById(id); }, tx = function (k) { return TX[taal][k]; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  function zetTaal(tl) { taal = tl; document.querySelectorAll('[data-taal]').forEach(function (x) { x.classList.toggle('sel', x.getAttribute('data-taal') === tl); }); g('voet').innerHTML = esc(tx('voet')) + ' <a href="mailto:hr@ilovesla.com" style="color:var(--groen)">hr@ilovesla.com</a>'; }
+  document.querySelectorAll('[data-taal]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); zetTaal(a.getAttribute('data-taal')); laad(); }; });
+  async function post(b) { var r = await fetch('/api/exit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ t: t }, b)) }); return r.json(); }
+  function fout(m) { g('card').innerHTML = '<div class="melding rood">' + esc(m) + '</div>'; }
+  function render() {
+    var h = '<h1>' + esc(tx('titel')) + '</h1><p class="sub">' + esc(tx('hallo').replace('{n}', info.naam || '')) + '</p>';
+    info.vragen.forEach(function (v, i) {
+      h += '<div class="vr"><div class="q"><b>' + (i + 1) + '.</b>' + esc(v.vraag) + (v.type === 'tekst' ? ' <span style="color:var(--grijs);font-weight:400">(' + esc(tx('optioneel')) + ')</span>' : '') + '</div>';
+      if (v.type === 'keuze') h += '<div class="opties">' + v.opties.map(function (o) { return '<span class="opt' + (antw[v.key] === o.key ? ' sel' : '') + '" data-k="' + v.key + '" data-v="' + esc(o.key) + '">' + esc(o.label) + '</span>'; }).join('') + '</div>';
+      else if (v.type === 'schaal') h += '<div class="schaal">' + [1, 2, 3, 4, 5].map(function (n) { return '<span class="opt' + (antw[v.key] === n ? ' sel' : '') + '" data-k="' + v.key + '" data-v="' + n + '">' + n + '</span>'; }).join('') + '</div><div class="schaal-lbl"><span>' + esc(tx('oneens')) + '</span><span>' + esc(tx('eens')) + '</span></div>';
+      else if (v.type === 'nps') h += '<div class="nps">' + [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return '<span class="opt' + (antw[v.key] === n ? ' sel' : '') + '" data-k="' + v.key + '" data-v="' + n + '">' + n + '</span>'; }).join('') + '</div><div class="schaal-lbl"><span>' + esc(tx('npsL')) + '</span><span>' + esc(tx('npsR')) + '</span></div>';
+      else h += '<textarea data-tk="' + v.key + '">' + esc(antw[v.key] || '') + '</textarea>';
+      h += '</div>';
+    });
+    h += '<label class="chk"><input type="checkbox" id="anoniem"> <span>' + esc(tx('anoniem')) + '</span></label><div id="melding"></div><button class="btn" id="btn">' + esc(tx('verstuur')) + '</button>';
+    g('card').innerHTML = h;
+    g('card').querySelectorAll('.opt').forEach(function (o) { o.onclick = function () { var k = o.getAttribute('data-k'), v = o.getAttribute('data-v'); antw[k] = isNaN(+v) || o.parentNode.classList.contains('opties') ? v : +v; o.parentNode.querySelectorAll('.opt').forEach(function (x) { x.classList.toggle('sel', x === o); }); }; });
+    g('card').querySelectorAll('textarea').forEach(function (ta) { ta.oninput = function () { antw[ta.getAttribute('data-tk')] = ta.value; }; });
+    g('btn').onclick = verstuur;
+  }
+  async function verstuur() {
+    var ingevuld = Object.keys(antw).filter(function (k) { return antw[k] !== '' && antw[k] != null; });
+    if (!ingevuld.length) { g('melding').innerHTML = '<div class="melding rood">' + esc(tx('leeg')) + '</div>'; return; }
+    var b = g('btn'); b.disabled = true; b.textContent = tx('bezig');
+    var r = await post({ antwoorden: antw, anoniem: g('anoniem').checked });
+    if (!r.success) { b.disabled = false; b.textContent = tx('verstuur'); g('melding').innerHTML = '<div class="melding rood">' + esc(r.bericht) + '</div>'; return; }
+    g('card').innerHTML = '<div class="klaar"><div class="ic">💚</div><h1>' + esc(tx('klaar')) + '</h1><p class="sub">' + esc(tx('klaarSub')) + '</p></div>';
+  }
+  async function laad() {
+    try {
+      var r = await post({ taal: taal.toUpperCase() });
+      if (!r.success) return fout(r.bericht);
+      info = r; render();
+    } catch (e) { fout('Er ging iets mis: ' + e.message); }
+  }
+  // token bepaalt de starttaal; de knoppen NL/EN laden de vragen opnieuw in de andere taal
+  try { var pl = JSON.parse(atob(t.split('.')[0].replace(/-/g, '+').replace(/_/g, '/'))); if (pl && pl.t === 'EN') taal = 'en'; } catch (e) { /* laat nl */ }
+  zetTaal(taal);
+  if (!t) fout('Geen geldige link.'); else laad();
+})();
+</script>
+</body>
+</html>

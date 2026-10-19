@@ -8,7 +8,7 @@
 // Marges 56/56/64/64 pt, A4. Helvetica = metrisch gelijk aan Arial.
 // Geen Chromium nodig: pure JS, werkt in een Netlify Function.
 // ============================================================
-const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
+const { PDFDocument, StandardFonts, rgb, PDFName, PDFString } = require('pdf-lib');
 const { AFZENDER_NAAM, HR_EMAIL } = require('./config');
 
 const A4 = [595.28, 841.89];
@@ -160,7 +160,19 @@ function wrapRuns(fonts, size, runs, breedte) {
   });
   const f = w => (w.b ? fonts.vet : w.i ? fonts.cursief : fonts.norm);
   const regels = []; let huidig = [], w = 0;
+  // Te lange 'woorden' (URL's, zoals de exit-survey-link) op tekenniveau afbreken zodat ze niet buiten de pagina lopen
+  const stukken = [];
   woorden.forEach(wd => {
+    const isUrl = /^https?:\/\//.test(wd.t); if (isUrl) wd.url = wd.t;
+    if (wd.sp || f(wd).widthOfTextAtSize(wd.t, size) <= breedte) { stukken.push(wd); return; }
+    let rest = wd.t;
+    while (rest.length) {
+      let n = rest.length;
+      while (n > 1 && f(wd).widthOfTextAtSize(rest.slice(0, n), size) > breedte) n--;
+      stukken.push(Object.assign({}, wd, { t: rest.slice(0, n) })); rest = rest.slice(n);
+    }
+  });
+  stukken.forEach(wd => {
     const bw = f(wd).widthOfTextAtSize(wd.t, size);
     if (w + bw > breedte && huidig.length && !wd.sp) { regels.push(huidig); huidig = []; w = 0; }
     if (!huidig.length && wd.sp) return;
@@ -183,8 +195,14 @@ async function maakOpgemaakteBrief(tekst, opties) {
     let cx = MARGE.links + (x || 0);
     runsRegel.forEach(w => {
       const f = w.b ? fonts.vet : w.i ? fonts.cursief : fonts.norm;
-      pagina.drawText(w.t, { x: cx, y: y - size, size, font: f, color: kleur || KL.tekst });
-      cx += f.widthOfTextAtSize(w.t, size);
+      pagina.drawText(w.t, { x: cx, y: y - size, size, font: f, color: w.url ? KL.groen : (kleur || KL.tekst) });
+      const bw = f.widthOfTextAtSize(w.t, size);
+      if (w.url) { // klikbare link (URL's, o.a. de exit-survey)
+        const annot = doc.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [cx, y - size - 2, cx + bw, y + 2], Border: [0, 0, 0], A: { Type: 'Action', S: 'URI', URI: PDFString.of(w.url) } });
+        const bestaand = pagina.node.lookup(PDFName.of('Annots'));
+        if (bestaand) bestaand.push(annot); else pagina.node.set(PDFName.of('Annots'), doc.context.obj([annot]));
+      }
+      cx += bw;
     });
   };
   if (o.kop !== false) {

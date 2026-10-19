@@ -1192,7 +1192,7 @@
     g('vrl-kpi').textContent = 'Verloopdata berekenen uit Shiftbase…'; g('vrl-body').innerHTML = '<tr><td colspan="8" class="leeg grijs">Rekenen…</td></tr>';
     var r = await api('/api/verloop?maanden=' + vrlMaanden + (vers ? '&ververs=1' : ''));
     if (!r.success) { g('vrl-kpi').textContent = 'Fout: ' + r.bericht; return; }
-    vrlData = r; vrlKpi(); vrlGrafiek(); vrlTabel(); vrlCohort(); vrlRedenen(); vrlVroeg();
+    vrlData = r; vrlKpi(); vrlGrafiek(); vrlTabel(); vrlCohort(); vrlRedenen(); vrlExit(); vrlVroeg();
   };
   function vrlKpi() {
     var t = vrlData.totaal, sep = '<span style="color:#e8e2de;margin:0 6px">|</span>';
@@ -1231,6 +1231,21 @@
     var mx = Math.max.apply(null, d.lijst.map(function (x) { return x.aantal; }).concat([d.zonder, 1]));
     var rij = function (label, n, kleur) { return '<div style="display:flex;gap:12px;align-items:center;padding:5px 0;font-size:.85rem"><span style="min-width:300px">' + esc(label) + '</span><div style="flex:1;background:#f3eeea;border-radius:3px;height:14px"><div style="width:' + Math.round(n / mx * 100) + '%;background:' + kleur + ';height:14px;border-radius:3px"></div></div><strong style="min-width:70px;text-align:right">' + n + ' <span style="color:#888078;font-weight:400">(' + Math.round(n / d.totaal * 100) + '%)</span></strong></div>'; };
     g('vrl-redenen').innerHTML = d.lijst.map(function (x) { return rij(x.reden, x.aantal, /^eigen keuze/i.test(x.reden) ? '#009f4b' : /proeftijd|functioneren|gedrag|staande voet/i.test(x.reden) ? '#c0392b' : '#e8824a'); }).join('') + (d.zonder ? rij('Niet geregistreerd', d.zonder, '#c9c2bc') : '');
+  }
+  function vrlExit() {
+    var d = vrlData.exit || { aantal: 0 };
+    if (!d.aantal) { g('vrl-exit-sub').textContent = ''; g('vrl-exit').innerHTML = '<div class="lay-sub">' + (d.fout ? esc(d.fout) + ' (migratie 0009 gedraaid?)' : 'Nog geen ingevulde exit-surveys in deze periode. De link staat in elke ontslagbevestiging, aanzegging en proeftijdbrief (brief + mail).') + '</div>'; return; }
+    g('vrl-exit-sub').textContent = d.aantal + ' ingevuld' + (d.respons != null ? ' · respons ' + d.respons + '% van ' + d.uitstroom + ' vertrekkers' : '');
+    var kleurNps = d.enps == null ? '#888078' : d.enps >= 20 ? '#006b30' : d.enps >= 0 ? '#9a4a1a' : '#9b1c1c';
+    var h = '<div class="stats" style="padding:0 0 12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))">'
+      + '<div class="card cg"><div class="si sig">★</div><div><div class="sv" style="color:' + kleurNps + '">' + (d.enps == null ? '-' : (d.enps > 0 ? '+' : '') + d.enps) + '</div><div class="sl">eNPS (promotors − criticasters, n=' + d.npsN + ')</div></div></div>'
+      + '<div class="card cd"><div class="si sid">∅</div><div><div class="sv">' + (d.npsGem == null ? '-' : d.npsGem) + '</div><div class="sl">Gem. aanbeveling (0–10)</div></div></div></div>';
+    var sk = Object.keys(d.schaal || {});
+    if (sk.length) h += sk.map(function (k) { var x = d.schaal[k]; var pct = x.gem == null ? 0 : Math.round((x.gem - 1) / 4 * 100); var kl = x.gem == null ? '#c9c2bc' : x.gem >= 4 ? '#009f4b' : x.gem >= 3 ? '#e8824a' : '#c0392b'; return '<div style="display:flex;gap:12px;align-items:center;padding:5px 0;font-size:.85rem"><span style="min-width:300px">' + esc(x.vraag) + '</span><div style="flex:1;background:#f3eeea;border-radius:3px;height:14px"><div style="width:' + pct + '%;background:' + kl + ';height:14px;border-radius:3px"></div></div><strong style="min-width:110px;text-align:right">' + (x.gem == null ? '-' : x.gem + ' / 5') + ' <span style="color:#888078;font-weight:400">(' + x.n + (x.laag ? ', ' + x.laag + ' laag' : '') + ')</span></strong></div>'; }).join('');
+    var kz = d.keuze || {};
+    ['reden', 'terug'].forEach(function (k) { if (kz[k] && kz[k].length) h += '<div style="margin-top:10px;font-size:.85rem"><span class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px">' + (k === 'reden' ? 'Belangrijkste reden (zelf opgegeven)' : 'Zou weer bij SLA werken') + '</span><div style="margin-top:4px">' + kz[k].map(function (o) { return '<span class="badge boat" style="margin:0 6px 6px 0">' + esc(o.label) + ' · ' + o.aantal + '</span>'; }).join('') + '</div></div>'; });
+    if (d.opmerkingen && d.opmerkingen.length) h += '<div style="margin-top:12px"><span class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px">Opmerkingen</span>' + d.opmerkingen.map(function (o) { return '<div style="padding:8px 0;border-bottom:1px solid #f0ebe7;font-size:.85rem"><span style="color:#888078">' + esc(o.op) + ' · ' + esc(o.winkel || '-') + (o.naam ? ' · ' + esc(o.naam) : ' · anoniem') + (o.nps != null ? ' · ' + o.nps + '/10' : '') + '</span><br>' + esc(o.tekst) + '</div>'; }).join('') + '</div>';
+    g('vrl-exit').innerHTML = h;
   }
   function vrlVroeg() {
     var sec = g('vrl-vroeg-sec');
