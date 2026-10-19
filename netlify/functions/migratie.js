@@ -16,7 +16,8 @@ const cel = (r, i) => String((r && r[i]) || '').trim();
 const q = t => "'" + String(t).replace(/'/g, "''") + "'";
 
 async function tabelBestaat(naam) {
-  const { error } = await admin().from(naam).select('rij', { count: 'exact', head: true }).limit(1);
+  // '*' en niet 'rij': hr_migratie_log en hr_formulier_reacties hebben 'id' als sleutel
+  const { error } = await admin().from(naam).select('*', { count: 'exact', head: true }).limit(1);
   return !error;
 }
 async function telRijen(naam, kolom) {
