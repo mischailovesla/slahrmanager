@@ -303,6 +303,44 @@
   </div></div>
 
   <!-- OPROEPAANBOD (fase 2d, art. 7:628a lid 5 BW) -->
+  <!-- CHECK-IN 30/60 (fase 3a) -->
+  <div class="tc" id="tab-checkin">
+    <div class="alert geel" id="ci-pauze" style="display:none"><strong>⏸ Check-in staat op pauze.</strong> Er gaan geen uitnodigingen uit en de check-in-pagina is gesloten. Hieronder zie je wie er vandaag en de komende 14 dagen een uitnodiging zou krijgen. Zet hem aan bij <em>Instellingen</em> onderaan zodra de vragen zijn doorgenomen.</div>
+    <div class="stats" id="ci-kpi"></div>
+    <div class="sec">
+      <div class="sh"><div class="st">Check-ins <span class="pill" id="ci-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam, winkel..." oninput="flt('ci-body',this.value)"><div class="tbar" id="ci-filter"><button type="button" class="tb sel" data-ci="alle">Alle</button><button type="button" class="tb" data-ci="laag">Laag, open</button><button type="button" class="tb" data-ci="wacht">Wacht op antwoord</button></div><button class="btn bd bsm" id="ci-b6" onclick="laadCheckin(6)">6 mnd</button><button class="btn bd bsm" id="ci-b24" onclick="laadCheckin(24)">24 mnd</button><button class="btn bd bsm" onclick="ciExport()">⬇ CSV</button><button class="btn bp bsm" onclick="openCiModal(null)">Handmatig versturen</button></div></div>
+      <div class="tw"><table><thead id="ci-head"><tr><th>Verstuurd</th><th>Naam</th></tr></thead><tbody id="ci-body"></tbody></table></div>
+    </div>
+    <div class="fr" style="gap:24px;align-items:flex-start">
+      <div class="sec" style="flex:1"><div class="sh"><div class="st">Gemiddeld per vraag</div></div><div id="ci-pervraag" style="padding:10px 24px 14px"></div></div>
+      <div class="sec" style="flex:1"><div class="sh"><div class="st">Gemiddeld per winkel</div></div><div id="ci-perwinkel" style="padding:10px 24px 14px"></div></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Vandaag en komende 14 dagen <span class="pill" id="ci-kcount">-</span></div><div class="lay-sub" style="color:rgba(255,255,255,.6)">Op basis van de eerste werkdag (eerste contract in Shiftbase). Uitnodigen gebeurt automatisch rond 10:40.</div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Winkel</th><th>In dienst</th><th>Moment</th><th>Wanneer</th><th>Email</th></tr></thead><tbody id="ci-kbody"></tbody></table></div>
+    </div>
+    <div class="sec" id="ci-instel">
+      <div class="sh"><div class="st">Instellingen: aan/uit en vragen</div>
+        <div class="hr2"><span id="ci-status" class="badge boat">-</span><button class="btn bsm bp" id="ci-toggle" onclick="ciToggle()">Aanzetten</button><button class="btn bd bsm" onclick="ciVoorbeeld('NL')">Voorbeeld NL</button><button class="btn bd bsm" onclick="ciVoorbeeld('EN')">Voorbeeld EN</button></div></div>
+      <div style="padding:14px 24px 6px" class="lay-sub">Pas de vragen aan (volgorde, tekst NL/EN, type, opties). Een check-in is <strong>laag</strong> als een schaalvraag met <strong id="ci-grens">2</strong> of lager is beantwoord, of als iemand een antwoord kiest dat met <code>| !</code> is gemarkeerd. Dan krijgen jullie direct een mail en staat er een taak op het Overzicht. Eerder ingevulde check-ins houden hun eigen antwoorden.</div>
+      <div id="ci-vragen" style="padding:0 24px 8px"></div>
+      <div style="padding:6px 24px 18px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn bd bsm" onclick="ciEditor.toe()">+ Vraag toevoegen</button><button class="btn bp bsm" onclick="ciVragenOpslaan()">Vragen opslaan</button><button class="btn bd bsm" onclick="ciVragenHerstel()">Standaardlijst terugzetten</button><span class="lay-sub" id="ci-vragen-sub" style="align-self:center"></span></div>
+    </div>
+    <div class="alert grijs"><strong>Zo werkt het:</strong> op dag 30 en dag 60 na de eerste werkdag krijgt een nieuwe medewerker automatisch een tweetalige mail (NL/EN) met een persoonlijke link, en na 5 dagen één herinnering. De check-in is niet anoniem, maar de Store Manager ziet de antwoorden niet. Wie op het moment van aanzetten al voorbij dag 37 of dag 67 is, krijgt er geen; die kun je handmatig versturen.</div>
+  </div>
+  <div class="mo" id="ci-modal"><div class="modal">
+    <div class="mh" style="background:#009f4b"><div class="mti">Check-in handmatig versturen</div><button class="mc" onclick="closeCiModal()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Zoek medewerker (Shiftbase)</label><div class="zoeklijst" style="position:relative"><input type="text" id="ci-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="ci-zoek-res"></div></div></div>
+      <div class="fr"><div class="fg"><label>Naam</label><input type="text" id="ci-naam"></div><div class="fg"><label>Email</label><input type="email" id="ci-email"></div></div>
+      <div class="fg"><label>Moment</label><div class="tbar" id="ci-moment"><button type="button" class="tb sel" data-m="30">Dag 30</button><button type="button" class="tb" data-m="60">Dag 60</button></div></div>
+      <input type="hidden" id="ci-mid">
+      <div class="alert grijs" style="margin:0;font-size:.8rem">De mail is tweetalig (NL/EN) en bevat een persoonlijke link (30 dagen geldig, één keer te gebruiken).</div>
+    </div>
+    <div class="mf"><button class="btn bp" id="ci-sbtn" onclick="ciVerstuur()"><span id="ci-slbl">Verstuur check-in</span></button></div>
+  </div></div>
+
   <div class="tc" id="tab-oproepaanbod">
     <div class="sec">
       <div class="sh"><div class="st">Kandidaten: 12-maandsgrens <span class="pill" id="opr-kand-count">-</span></div>

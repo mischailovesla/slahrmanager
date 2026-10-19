@@ -484,7 +484,37 @@ async function oproepaanbod(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod };
+// ---- 16. Check-in na 30/60 dagen (fase 3a, dagelijks) ----
+// Uitnodigen wie vandaag binnen het venster valt + één herinnering na CHECKIN_HERINNERING_DAGEN. Geen samenvattingsmail aan HR:
+// alleen een lage check-in levert direct een mail op (bij het invullen, _lib/checkin.meldLaag). Echt versturen alleen als
+// SIGNALERINGEN_ACTIEF=1 én de check-in aan staat (Instroom → Check-in 30/60); anders droog: alleen rapporteren wie het zou zijn.
+async function checkin(droog) {
+  const CI = require('./checkin');
+  const aan = await CI.actief();
+  const rap = { naam: 'checkin', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() || !aan, gepauzeerd: !aan };
+  const vandaag = vandaag0();
+  const [med, set] = await Promise.all([SB.getMedewerkers(true), CI.bestaande()]);
+  for (const k of CI.kandidaten(med, set, vandaag)) {
+    rap.gevonden.push(Object.assign({ soort: 'uitnodiging' }, k));
+    if (k.zonderEmail) { rap.fouten.push(k.naam + ': geen e-mailadres in Shiftbase'); continue; }
+    if (rap.droog) { rap.verstuurd.push({ droog: true, naam: k.naam, moment: k.moment }); continue; }
+    try { const r = await CI.uitnodigen(k, 'signalering', 'schedule'); rap.verstuurd.push({ naam: k.naam, moment: k.moment, id: r.id }); }
+    catch (e) { rap.fouten.push(k.naam + ': ' + e.message); }
+  }
+  // herinneringen: één keer, na X dagen, zolang de link geldig is
+  const grens = new Date(Date.now() - C.CHECKIN_HERINNERING_DAGEN * 864e5).toISOString(), oud = new Date(Date.now() - C.CHECKIN_GELDIG_DAGEN * 864e5).toISOString();
+  const { data: open, error } = await admin().from('hr_checkin').select('*').is('ingevuld_op', null).is('herinnerd_op', null).lt('verstuurd_op', grens).gt('verstuurd_op', oud);
+  if (error) rap.fouten.push('herinneringen: ' + error.message);
+  for (const r of open || []) {
+    rap.gevonden.push({ soort: 'herinnering', naam: r.naam, winkel: r.winkel, moment: r.moment });
+    if (rap.droog) { rap.verstuurd.push({ droog: true, naam: r.naam, herinnering: true }); continue; }
+    try { await CI.herinneren(r, 'signalering'); rap.verstuurd.push({ naam: r.naam, herinnering: true }); }
+    catch (e) { rap.fouten.push(r.naam + ' (herinnering): ' + e.message); }
+  }
+  return rap;
+}
+
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 async function draai(naam, droog, bron) {
@@ -499,4 +529,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin };

@@ -37,7 +37,8 @@ module.exports = {
     contractketen: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     verzuim: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     jeugd: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
-    oproepaanbod: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
+    oproepaanbod: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    checkin: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
   },
 
   // ---- Fase 2: juridische checks (wettelijke defaults; CAO Horeca-afwijkingen hier aanpassen) ----
@@ -87,7 +88,22 @@ module.exports = {
     { key: 'terug', type: 'keuze', nl: 'Zou je in de toekomst weer bij SLA willen werken?', en: 'Would you consider working at SLA again in the future?', opties: [['ja', 'Ja', 'Yes'], ['misschien', 'Misschien', 'Maybe'], ['nee', 'Nee', 'No']] },
     { key: 'opmerking', type: 'tekst', nl: 'Wat had SLA anders kunnen doen om je te behouden, of wat wil je ons nog meegeven?', en: 'What could SLA have done differently to keep you, or what else would you like to tell us?' }
   ],
-  EXIT_GELDIG_DAGEN: 90,             // link werkt tot 90 dagen na versturen
+  EXIT_GELDIG_DAGEN: 90,
+  // Fase 3a: check-in na 30 en 60 dagen in dienst (vroege uitstroom voor zijn). Vragen + aan/uit in hr_instellingen
+  // ('checkin_vragen', 'checkin_actief'); dit is de standaardlijst. Een keuze-optie met alarm=true (4e element) maakt de check-in 'laag'.
+  CHECKIN_VRAGEN: [
+    { key: 'naar-zin', type: 'schaal', nl: 'Ik heb het naar mijn zin bij SLA.', en: 'I enjoy working at SLA.' },
+    { key: 'ingewerkt', type: 'schaal', nl: 'Ik ben goed ingewerkt en weet wat er van me verwacht wordt.', en: 'I was trained well and know what is expected of me.' },
+    { key: 'hulp', type: 'schaal', nl: 'Mijn Store Manager en collega\'s helpen me als ik iets niet weet.', en: 'My Store Manager and colleagues help me when I am unsure.' },
+    { key: 'rooster', type: 'schaal', nl: 'Mijn rooster en uren passen bij wat we hebben afgesproken.', en: 'My schedule and hours match what we agreed.' },
+    { key: 'blijven', type: 'keuze', nl: 'Zie je jezelf over een halfjaar nog bij SLA werken?', en: 'Do you see yourself still working at SLA in six months?', opties: [['ja', 'Ja', 'Yes'], ['misschien', 'Misschien', 'Maybe'], ['nee', 'Nee', 'No', true]] },
+    { key: 'hulpvraag', type: 'tekst', nl: 'Is er iets waar we je mee kunnen helpen?', en: 'Is there anything we can help you with?' }
+  ],
+  CHECKIN_MOMENTEN: [30, 60],          // dagen na de eerste werkdag (eerste contract in Shiftbase)
+  CHECKIN_VENSTER_DAGEN: 7,            // uitnodigen tot zoveel dagen na het moment (vangt gemiste dagen op; oudere medewerkers krijgen er geen)
+  CHECKIN_HERINNERING_DAGEN: 5,        // één herinnering als er na zoveel dagen nog niets is ingevuld
+  CHECKIN_GELDIG_DAGEN: 30,            // link geldig na versturen
+  CHECKIN_LAAG_SCHAAL: 2,              // een schaalantwoord ≤ dit getal (of een alarm-optie) = lage check-in → mail + taak voor HR             // link werkt tot 90 dagen na versturen
   UITSTROOMREDENEN: ['Eigen keuze: andere baan', 'Eigen keuze: studie/verhuizing', 'Eigen keuze: werk/privé of rooster', 'Einde tijdelijk contract (niet verlengd door SLA)', 'Proeftijd', 'Functioneren', 'Gedrag/huisregels', 'Ontslag op staande voet', 'Wederzijds goedvinden', 'Langdurig ziek', 'Overig/onbekend'],
   SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
   SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam

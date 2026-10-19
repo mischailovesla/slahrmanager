@@ -12,42 +12,20 @@
 const C = require('./config');
 const U = require('./uploads');
 const I = require('./instellingen');
+const V = require('./vragenlijst');
 const { admin } = require('./auth');
 
 const vandaagIso = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
 const dag = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
-const TYPES = ['keuze', 'schaal', 'nps', 'tekst'];
+const TYPES = V.TYPES;
 
 async function actief() { return (await I.lees('exit_actief', false)) === true; }
 async function vragenConfig() {
   const v = await I.lees('exit_vragen', null);
   return Array.isArray(v) && v.length ? v : C.EXIT_VRAGEN;
 }
-// Vragenlijst uit de editor controleren en normaliseren → opslaanbare vorm (zelfde vorm als config.EXIT_VRAGEN)
-function normaliseerVragen(lijst) {
-  if (!Array.isArray(lijst) || !lijst.length) throw new Error('Minimaal één vraag.');
-  if (lijst.length > 20) throw new Error('Maximaal 20 vragen.');
-  const keys = new Set(), uit = [];
-  lijst.forEach((v, i) => {
-    const nl = String(v.nl || '').trim(), en = String(v.en || '').trim() || nl;
-    if (!nl) throw new Error('Vraag ' + (i + 1) + ': Nederlandse tekst ontbreekt.');
-    const type = TYPES.includes(v.type) ? v.type : 'schaal';
-    let key = String(v.key || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-    if (!key) key = nl.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'vraag' + (i + 1);
-    if (keys.has(key)) throw new Error('Vraag ' + (i + 1) + ': sleutel "' + key + '" komt dubbel voor.');
-    keys.add(key);
-    const q = { key, type, nl, en };
-    if (type === 'keuze') {
-      const opties = (v.opties || []).map(o => Array.isArray(o) ? o : [o.key, o.nl, o.en]).map(o => [String(o[0] || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''), String(o[1] || '').trim(), String(o[2] || '').trim() || String(o[1] || '').trim()]).filter(o => o[1]);
-      opties.forEach(o => { if (!o[0]) o[0] = o[1].toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24); });
-      if (opties.length < 2) throw new Error('Vraag ' + (i + 1) + ' (keuze): minimaal twee opties.');
-      if (new Set(opties.map(o => o[0])).size !== opties.length) throw new Error('Vraag ' + (i + 1) + ': optiesleutels komen dubbel voor.');
-      q.opties = opties;
-    }
-    uit.push(q);
-  });
-  return uit;
-}
+// Vragenlijst uit de editor controleren en normaliseren → opslaanbare vorm (gedeeld met de check-in, _lib/vragenlijst.js)
+const normaliseerVragen = V.normaliseer;
 
 function exitLink(naam, taal, bron) {
   return U.site() + '/exit.html?t=' + U.tekenToken({ s: 'exit', n: String(naam || '').trim(), t: String(taal || 'NL').toUpperCase() === 'EN' ? 'EN' : 'NL', b: String(bron || ''), d: vandaagIso() });
@@ -59,23 +37,8 @@ function leesExitToken(t) {
   if ((Date.now() - verstuurd.getTime()) / 864e5 > C.EXIT_GELDIG_DAGEN) throw new Error(d.t === 'EN' ? 'This link has expired.' : 'Deze link is verlopen.');
   return d;
 }
-async function vragen(taal) {
-  const en = String(taal || '').toUpperCase() === 'EN';
-  return (await vragenConfig()).map(v => ({ key: v.key, type: v.type, vraag: en ? v.en : v.nl, opties: v.opties ? v.opties.map(o => ({ key: o[0], label: en ? o[2] : o[1] })) : undefined }));
-}
-function valideer(antwoorden, lijst) {
-  const uit = {}; let nps = null, opmerking = '';
-  for (const v of lijst) {
-    const a = antwoorden ? antwoorden[v.key] : undefined;
-    if (a === undefined || a === null || a === '') continue;
-    if (v.type === 'schaal') { const n = +a; if (!(n >= 1 && n <= 5)) throw new Error('Ongeldig antwoord bij ' + v.key); uit[v.key] = n; }
-    else if (v.type === 'nps') { const n = +a; if (!(n >= 0 && n <= 10)) throw new Error('Ongeldig antwoord bij ' + v.key); uit[v.key] = n; if (nps === null) nps = n; }
-    else if (v.type === 'keuze') { if (!v.opties.some(o => o[0] === a)) throw new Error('Ongeldig antwoord bij ' + v.key); uit[v.key] = String(a); }
-    else { const t = String(a).trim().slice(0, 2000); uit[v.key] = t; if (!opmerking) opmerking = t; }
-  }
-  if (!Object.keys(uit).length) throw new Error('Vul minimaal één vraag in.');
-  return { uit, nps, opmerking };
-}
+async function vragen(taal) { return V.vertaal(await vragenConfig(), taal); }
+const valideer = (antwoorden, lijst) => V.valideer(antwoorden, lijst);
 async function opslaan(tok, antwoorden, meta) {
   const { uit, nps, opmerking } = valideer(antwoorden, await vragenConfig());
   const anoniem = !!(meta && meta.anoniem);

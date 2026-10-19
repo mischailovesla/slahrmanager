@@ -22,7 +22,8 @@ const OMSCHRIJVING = {
   'contractketen': { label: 'Contractketen & proeftijd', wanneer: 'dagelijks 10:00', wat: 'Mail aan HR: contracten die binnen 60 dagen aflopen terwijl de ketenregeling (3 contracten / 36 maanden, art. 7:668a BW) vol is of bijna vol; en proeftijden die binnen 10 dagen eindigen (art. 7:652 BW).' },
   'verzuim': { label: 'Verzuim & Poortwachter', wanneer: 'dagelijks 10:20', wat: 'Mail aan HR: lopende ziekteperiodes (Shiftbase) met een Poortwachter-mijlpaal binnen 7 dagen (week 6/8/42/52), en frequent verzuim (≥3 meldingen in 12 maanden).' },
   'jeugd': { label: 'Jeugd: ATW-rooster & jeugdloon', wanneer: 'maandag 10:15', wat: 'Mail aan HR: roosterdiensten van <18-jarigen die niet passen bij de Arbeidstijdenwet (eindtijd, uren per dienst/week), en verjaardagen t/m 20 jaar in de komende 21 dagen (minimumjeugdloon stijgt).' },
-  'oproepaanbod': { label: 'Oproepaanbod na 12 maanden', wanneer: 'maandag 10:30', wat: 'Mail aan HR: oproepkrachten die binnen 30 dagen 12 maanden in dienst zijn zonder aanbod vaste arbeidsomvang (art. 7:628a lid 5 BW), met het gemiddelde aantal uren uit de roosters.' }
+  'oproepaanbod': { label: 'Oproepaanbod na 12 maanden', wanneer: 'maandag 10:30', wat: 'Mail aan HR: oproepkrachten die binnen 30 dagen 12 maanden in dienst zijn zonder aanbod vaste arbeidsomvang (art. 7:628a lid 5 BW), met het gemiddelde aantal uren uit de roosters.' },
+  'checkin': { label: 'Check-in 30/60 dagen', wanneer: 'dagelijks 10:40', wat: 'Mail aan nieuwe medewerkers op dag 30 en 60 met een korte check-in (NL/EN) + één herinnering na 5 dagen. Alleen als de check-in aan staat (Instroom → Check-in 30/60). Lage score = direct mail aan HR + taak.' },
 };
 
 exports.handler = beveiligd('signalering', async (event, g) => {

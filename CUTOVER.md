@@ -63,3 +63,10 @@ Daarna: Beheer → Gegevens → **Export** vervangt "even in de sheet kijken". E
 2. Commit + push in GitHub Desktop → Netlify bouwt v0.14.3 (badge in de header).
 3. De vier nieuwe schedules (`sched-contractketen` 08:00, `sched-verzuim` 08:20 dagelijks; `sched-jeugd` ma 08:15, `sched-oproepaanbod` ma 08:30, UTC = +1/+2 u NL) staan direct **aan** omdat `SIGNALERINGEN_ACTIEF=1` al staat. Wil je ze eerst zien: Signaleringen → "Nu draaien (droog)" per check, of op het Overzicht "↻ Live" bij de takenlijst.
 4. Controle eerste week: Shiftbase-contracttypes (keten/proeftijd/oproep herkenning via `OPROEP_TREFWOORDEN` en "onbepaald/vast" in de contractnaam), geboortedatums ingevuld (jeugdcheck meldt hoeveel er ontbreken), ziekmeldingen op status *goedgekeurd* (alleen die tellen mee voor Poortwachter).
+
+## H. Fase 3a (v0.15.0): check-in 30/60 dagen — ±5 min
+
+1. **Migratie 0011** in de Supabase SQL-editor (project *SLA HR Manager*): `supabase/migrations/0011_checkin.sql` maakt `hr_checkin` en zet de check-in op **pauze**. Vereist 0010 (`hr_instellingen`).
+2. Commit + push → Netlify bouwt v0.15.0.
+3. **Instroom → Check-in 30/60**: vragen doornemen (Voorbeeld NL/EN), eventueel aanpassen en opslaan, dan *Aanzetten*. Zolang hij op pauze staat zie je wie er vandaag en de komende 14 dagen een uitnodiging zou krijgen.
+4. Na aanzetten: de dagelijkse run (±10:40) nodigt iedereen uit die op dag 30–36 of 60–66 zit (eerste contract in Shiftbase). Wie al verder is, krijgt er geen — handmatig versturen kan via de knop. Medewerkers zonder e-mailadres in Shiftbase verschijnen als fout op Signaleringen.

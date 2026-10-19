@@ -7,14 +7,14 @@
 
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
-    { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters']] },
+    { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['checkin', 'Check-in 30/60']] },
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners']] },
     { label: 'Dossier', items: [['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -62,6 +62,7 @@
     if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
     if (tab === 'exit' && !exData) laadExit(12);
+    if (tab === 'checkin' && !ciData) laadCheckin(6);
     if (tab === 'toegang' && !tgData) laadToegang();
     if (tab === 'archief' && !arData) laadArchief();
     if (tab === 'gegevens' && !gvData) laadGegevens();
@@ -307,6 +308,14 @@
     if (d.keten) {
       h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Contractketen (art. 7:668a BW)</label>';
       h += '<div class="kv">' + (d.keten.onbepaald ? '<div><b>Onbepaalde tijd</b></div>' : '<div>' + d.keten.aantal + ' tijdelijk(e) contract(en) · ' + d.keten.maanden + ' maanden' + (d.keten.vol ? ' · <b style="color:#c0392b">keten vol: volgende = vast</b>' : d.keten.aantal >= 2 ? ' · <b>volgende is het laatste tijdelijke</b>' : '') + '</div>') + d.keten.contracten.slice(-4).map(function (c) { return '<div class="lay-sub">' + esc(c.start) + (c.eind ? ' – ' + esc(c.eind) : ' – heden') + ' · ' + esc(c.type || '-') + (c.functie ? ' · ' + esc(c.functie) : '') + '</div>'; }).join('') + '</div>';
+    }
+    // Fase 3a: check-ins dag 30/60
+    if (d.checkins && d.checkins.length) {
+      h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Check-in 30/60 dagen</label><div class="kv">';
+      h += d.checkins.map(function (c) {
+        var st = !c.ingevuld ? '<span class="badge boat">wacht · verstuurd ' + esc(c.verstuurd) + '</span>' : c.laag ? (c.opgevolgd ? '<span class="badge bo">laag · opgevolgd ' + esc(c.opgevolgd) + '</span>' : '<span class="badge br">laag · nog opvolgen</span>') : '<span class="badge bg">ingevuld</span>';
+        return '<div style="margin-bottom:6px"><b>Dag ' + c.moment + '</b> ' + st + (c.score != null ? ' · gem. ' + String(c.score).replace('.', ',') + '/5' : '') + (c.reden ? '<div class="lay-sub">' + esc(c.reden) + '</div>' : '') + (c.opmerking ? '<div class="lay-sub"><i>"' + esc(c.opmerking) + '"</i></div>' : '') + (c.notitie ? '<div class="lay-sub">Opvolging: ' + esc(c.notitie) + ' (' + esc(c.opgevolgdDoor || '') + ')</div>' : '') + '</div>';
+      }).join('') + '</div>';
     }
     h += '</div></div>';
     // Checklists (fase 1) vóór de dossierregels: dat is wat er nú moet gebeuren
@@ -990,31 +999,53 @@
     toast(r.bericht, 'ok'); laadExit();
   };
   window.exVoorbeeld = async function (taal) { var r = await api('/api/exit-admin', { actie: 'voorbeeld', taal: taal }); if (!r.success) { toast(r.bericht, 'err'); return; } window.open(r.link, '_blank'); };
-  var exVragen = [];
-  function exVragenRender(lijst) {
-    exVragen = JSON.parse(JSON.stringify(lijst));
-    var types = (exData && exData.types) || ['keuze', 'schaal', 'nps', 'tekst'];
-    g('ex-vragen').innerHTML = exVragen.map(function (v, i) {
-      var opt = v.type === 'keuze' ? '<div class="fg" style="margin:8px 0 0"><label>Opties (één per regel: Nederlands | English)</label><textarea data-exv="opties" data-i="' + i + '" rows="' + Math.max(3, (v.opties || []).length) + '" style="font-size:.85rem;min-height:0;height:auto">' + esc((v.opties || []).map(function (o) { return o[1] + (o[2] && o[2] !== o[1] ? ' | ' + o[2] : ''); }).join('\n')) + '</textarea></div>' : '';
-      return '<div class="ex-vraag" style="border:1px solid #e8e2de;border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><strong style="color:#009f4b">' + (i + 1) + '.</strong><select data-exv="type" data-i="' + i + '" style="width:auto">' + types.map(function (t) { return '<option value="' + t + '"' + (t === v.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select><span class="lay-sub" style="flex:1">sleutel: ' + esc(v.key || '(automatisch)') + '</span><button class="btn bd bsm" title="Omhoog" onclick="exVraagMove(' + i + ',-1)">↑</button><button class="btn bd bsm" title="Omlaag" onclick="exVraagMove(' + i + ',1)">↓</button><button class="btn bd bsm" style="color:#c0392b" onclick="exVraagWeg(' + i + ')">✕</button></div>'
-        + '<div class="fr"><div class="fg" style="margin:0"><label>Nederlands</label><input type="text" data-exv="nl" data-i="' + i + '" value="' + esc(v.nl || '') + '"></div><div class="fg" style="margin:0"><label>English</label><input type="text" data-exv="en" data-i="' + i + '" value="' + esc(v.en || '') + '"></div></div>' + opt + '</div>';
-    }).join('') || '<div class="lay-sub">Geen vragen.</div>';
-    g('ex-vragen').querySelectorAll('[data-exv]').forEach(function (el) { el.addEventListener('change', function () { exVragenLees(); if (el.getAttribute('data-exv') === 'type') exVragenRender(exVragen); }); });
-  }
-  function exVragenLees() {
-    g('ex-vragen').querySelectorAll('[data-exv]').forEach(function (el) {
-      var i = +el.getAttribute('data-i'), k = el.getAttribute('data-exv'), v = exVragen[i]; if (!v) return;
-      if (k === 'opties') v.opties = el.value.split('\n').map(function (r) { var p = r.split('|').map(function (x) { return x.trim(); }); return p[0] ? ['', p[0], p[1] || p[0]] : null; }).filter(Boolean);
-      else v[k] = el.value;
-      if (k === 'type' && el.value === 'keuze' && !(v.opties && v.opties.length)) v.opties = [['', 'Ja', 'Yes'], ['', 'Nee', 'No']];
+  // ---------- Gedeelde vragen-editor (exit-survey + check-in) ----------
+  // metAlarm: keuze-opties kunnen als alarm gemarkeerd worden ("Nee | No | !") → zo'n antwoord maakt de check-in 'laag'.
+  function maakVragenEditor(elId, metAlarm) {
+    var ed = { lijst: [], types: ['keuze', 'schaal', 'nps', 'tekst'] };
+    var optTekst = function (o) { var alarm = metAlarm && o[3] === true; return o[1] + ((o[2] && o[2] !== o[1]) || alarm ? ' | ' + (o[2] || o[1]) : '') + (alarm ? ' | !' : ''); };
+    ed.render = function () {
+      var el = g(elId); if (!el) return;
+      el.innerHTML = ed.lijst.map(function (v, i) {
+        var opt = v.type === 'keuze' ? '<div class="fg" style="margin:8px 0 0"><label>Opties (één per regel: Nederlands | English' + (metAlarm ? ' — zet <b>| !</b> achter een antwoord dat een seintje aan HR moet geven, bijv. Nee | No | !' : '') + ')</label><textarea data-ve="opties" data-i="' + i + '" rows="' + Math.max(3, (v.opties || []).length) + '" style="font-size:.85rem;min-height:0;height:auto">' + esc((v.opties || []).map(optTekst).join('\n')) + '</textarea></div>' : '';
+        return '<div class="ve-vraag" style="border:1px solid #e8e2de;border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><strong style="color:#009f4b">' + (i + 1) + '.</strong><select data-ve="type" data-i="' + i + '" style="width:auto">' + ed.types.map(function (t) { return '<option value="' + t + '"' + (t === v.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select><span class="lay-sub" style="flex:1">sleutel: ' + esc(v.key || '(automatisch)') + '</span><button type="button" class="btn bd bsm" title="Omhoog" data-ve-act="op" data-i="' + i + '">↑</button><button type="button" class="btn bd bsm" title="Omlaag" data-ve-act="neer" data-i="' + i + '">↓</button><button type="button" class="btn bd bsm" style="color:#c0392b" title="Verwijderen" data-ve-act="weg" data-i="' + i + '">✕</button></div>'
+          + '<div class="fr"><div class="fg" style="margin:0"><label>Nederlands</label><input type="text" data-ve="nl" data-i="' + i + '" value="' + esc(v.nl || '') + '"></div><div class="fg" style="margin:0"><label>English</label><input type="text" data-ve="en" data-i="' + i + '" value="' + esc(v.en || '') + '"></div></div>' + opt + '</div>';
+      }).join('') || '<div class="lay-sub">Geen vragen.</div>';
+      el.querySelectorAll('[data-ve]').forEach(function (x) { x.addEventListener('change', function () { ed.lees(); if (x.getAttribute('data-ve') === 'type') ed.render(); }); });
+    };
+    ed.lees = function () {
+      var el = g(elId); if (!el) return ed.lijst;
+      el.querySelectorAll('[data-ve]').forEach(function (x) {
+        var i = +x.getAttribute('data-i'), k = x.getAttribute('data-ve'), v = ed.lijst[i]; if (!v) return;
+        if (k === 'opties') {
+          var oud = v.opties || [];
+          v.opties = x.value.split('\n').map(function (r) {
+            var p = r.split('|').map(function (y) { return y.trim(); }); if (!p[0]) return null;
+            var alarm = metAlarm && p.slice(1).indexOf('!') > -1, en = p[1] && p[1] !== '!' ? p[1] : p[0];
+            var bestaand = oud.find(function (o) { return o[1] === p[0]; }); // sleutel behouden als de NL-tekst gelijk blijft
+            var o = [bestaand ? bestaand[0] : '', p[0], en]; if (alarm) o.push(true); return o;
+          }).filter(Boolean);
+        } else v[k] = x.value;
+        if (k === 'type' && x.value === 'keuze' && !(v.opties && v.opties.length)) v.opties = [['', 'Ja', 'Yes'], ['', 'Nee', 'No']];
+      });
+      return ed.lijst;
+    };
+    ed.zet = function (lijst, types) { ed.lijst = JSON.parse(JSON.stringify(lijst || [])); if (types) ed.types = types; ed.render(); };
+    ed.toe = function () { ed.lees(); ed.lijst.push({ key: '', type: 'schaal', nl: '', en: '' }); ed.render(); };
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('#' + elId + ' [data-ve-act]'); if (!b) return;
+      ed.lees(); var i = +b.getAttribute('data-i'), act = b.getAttribute('data-ve-act');
+      if (act === 'weg') ed.lijst.splice(i, 1);
+      else { var j = i + (act === 'op' ? -1 : 1); if (j < 0 || j >= ed.lijst.length) return; var t = ed.lijst[i]; ed.lijst[i] = ed.lijst[j]; ed.lijst[j] = t; }
+      ed.render();
     });
+    return ed;
   }
-  window.exVraagToe = function () { exVragenLees(); exVragen.push({ key: '', type: 'schaal', nl: '', en: '' }); exVragenRender(exVragen); };
-  window.exVraagWeg = function (i) { exVragenLees(); exVragen.splice(i, 1); exVragenRender(exVragen); };
-  window.exVraagMove = function (i, d) { exVragenLees(); var j = i + d; if (j < 0 || j >= exVragen.length) return; var t = exVragen[i]; exVragen[i] = exVragen[j]; exVragen[j] = t; exVragenRender(exVragen); };
+  var exEditor = maakVragenEditor('ex-vragen', false);
+  function exVragenRender(lijst) { exEditor.zet(lijst, exData && exData.types); }
+  window.exVraagToe = function () { exEditor.toe(); };
   window.exVragenOpslaan = async function () {
-    exVragenLees();
-    var r = await api('/api/exit-admin', { actie: 'vragen', vragen: exVragen });
+    var r = await api('/api/exit-admin', { actie: 'vragen', vragen: exEditor.lees() });
     if (!r.success) { toast(r.bericht, 'err'); return; }
     toast(r.bericht, 'ok'); laadExit();
   };
@@ -1056,6 +1087,101 @@
     var r = await api('/api/exit-admin', p);
     b.disabled = false; g('ex-slbl').textContent = 'Verstuur uitnodiging';
     if (r.success) { toast(r.bericht, 'ok'); closeExModal(); laadExit(); } else toast('Fout: ' + r.bericht, 'err');
+  };
+
+  // ---------- Check-in 30/60 dagen (fase 3a) ----------
+  var ciData = null, ciMaanden = 6, ciFilter = 'alle';
+  window.ciEditor = maakVragenEditor('ci-vragen', true);
+  var ciStatus = { wacht: '<span class="badge boat">wacht</span>', ingevuld: '<span class="badge bg">ingevuld</span>', laag: '<span class="badge br">laag · opvolgen</span>', opgevolgd: '<span class="badge bo">laag · opgevolgd</span>' };
+  window.laadCheckin = async function (mnd) {
+    if (mnd) ciMaanden = mnd;
+    g('ci-b6').className = 'btn bsm ' + (ciMaanden === 6 ? 'bp' : 'bd'); g('ci-b24').className = 'btn bsm ' + (ciMaanden === 24 ? 'bp' : 'bd');
+    g('ci-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">Laden…</td></tr>';
+    var d = await api('/api/checkin-admin?maanden=' + ciMaanden);
+    if (!d.success) { g('ci-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    ciData = d;
+    g('ci-pauze').style.display = d.actief ? 'none' : '';
+    g('ci-status').className = 'badge ' + (d.actief ? 'bg' : 'bo'); g('ci-status').textContent = d.actief ? 'ACTIEF — uitnodigingen gaan automatisch' : 'GEPAUZEERD — er gaat niets uit';
+    g('ci-toggle').textContent = d.actief ? 'Pauzeren' : 'Aanzetten'; g('ci-toggle').className = 'btn bsm ' + (d.actief ? 'bd' : 'bp');
+    g('ci-grens').textContent = d.laagGrens;
+    var k = d.kpi;
+    g('ci-kpi').innerHTML = '<div class="card cg"><div class="si sig">✉</div><div><div class="sv">' + k.verstuurd + '</div><div class="sl">Verstuurd (' + ciMaanden + ' mnd)</div></div></div>'
+      + '<div class="card cd"><div class="si sid">%</div><div><div class="sv">' + (k.respons == null ? '-' : k.respons + '%') + '</div><div class="sl">Respons (' + k.ingevuld + ' ingevuld)</div></div></div>'
+      + '<div class="card ' + (k.gemScore == null ? 'cd' : k.gemScore >= 4 ? 'cg' : k.gemScore >= 3 ? 'cw' : 'cr') + '"><div class="si sid">★</div><div><div class="sv">' + (k.gemScore == null ? '-' : String(k.gemScore).replace('.', ',')) + '</div><div class="sl">Gemiddelde score (1–5)</div></div></div>'
+      + '<div class="card ' + (k.laagOpen ? 'cr' : 'cd') + '"><div class="si ' + (k.laagOpen ? 'siw' : 'sid') + '">!</div><div><div class="sv">' + k.laagOpen + '</div><div class="sl">Laag, nog opvolgen (' + k.laag + ' totaal)</div></div></div>';
+    ciRender();
+    var bar = function (label, n, gem) { var pct = gem == null ? 0 : Math.round((gem - 1) / 4 * 100), kl = gem == null ? '#c9c2bc' : gem >= 4 ? '#009f4b' : gem >= 3 ? '#e8824a' : '#c0392b'; return '<div style="display:flex;gap:12px;align-items:center;padding:5px 0;font-size:.85rem"><span style="min-width:200px;flex:1.2">' + esc(label) + '</span><div style="flex:1;background:#f3eeea;border-radius:3px;height:12px"><div style="width:' + pct + '%;background:' + kl + ';height:12px;border-radius:3px"></div></div><strong style="min-width:76px;text-align:right">' + (gem == null ? '-' : String(gem).replace('.', ',')) + ' <span style="color:#888078;font-weight:400">(' + n + ')</span></strong></div>'; };
+    g('ci-pervraag').innerHTML = k.perVraag.length && k.ingevuld ? k.perVraag.map(function (v) { return bar(v.vraag, v.n, v.gem); }).join('') : '<div class="lay-sub">Nog geen ingevulde check-ins.</div>';
+    g('ci-perwinkel').innerHTML = k.perWinkel.length ? k.perWinkel.map(function (w) { return bar(w.winkel, w.n, w.gem); }).join('') : '<div class="lay-sub">Nog geen ingevulde check-ins.</div>';
+    var kom = d.nu.map(function (x) { return Object.assign({ wanneer: 'vandaag' + (x.zonderEmail ? ' — geen e-mail in Shiftbase' : '') }, x); }).concat(d.komende.map(function (x) { return Object.assign({ wanneer: x.op + ' (over ' + x.over + ' d)' }, x); }));
+    g('ci-kcount').textContent = kom.length;
+    g('ci-kbody').innerHTML = kom.length ? kom.map(function (x) { return '<tr><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td>' + esc(x.indienst || '') + '</td><td>Dag ' + x.moment + '</td><td>' + esc(x.wanneer) + '</td><td>' + esc(x.email || '-') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="leeg grijs">Niemand in de komende 14 dagen.</td></tr>';
+    ciEditor.zet(d.vragenConfig, d.types); g('ci-vragen-sub').textContent = d.standaard ? 'Standaardlijst (config.js)' : 'Eigen lijst (opgeslagen in het dashboard)';
+  };
+  function ciRender() {
+    var d = ciData; if (!d) return;
+    document.querySelectorAll('#ci-filter .tb').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-ci') === ciFilter); });
+    var kol = (d.vragenConfig || []).filter(function (v) { return v.type !== 'tekst'; });
+    g('ci-head').innerHTML = '<tr><th>Verstuurd</th><th>Naam</th><th>Winkel</th><th>Dag</th><th>Status</th><th>Score</th>' + kol.map(function (v) { return '<th title="' + esc(v.nl) + '">' + esc(v.nl.length > 18 ? v.nl.slice(0, 16) + '…' : v.nl) + '</th>'; }).join('') + '<th>Opmerking / opvolging</th><th>Actie</th></tr>';
+    var rijen = d.rijen.filter(function (r) { return ciFilter === 'alle' || r.status === ciFilter; });
+    g('ci-count').textContent = rijen.length;
+    g('ci-body').innerHTML = rijen.length ? rijen.map(function (r) {
+      var a = r.antwoorden || {}, lb = r.labels || {};
+      var cellen = kol.map(function (v) { var x = a[v.key]; if (x == null || x === '') return '<td><span class="no-doc">-</span></td>'; if (v.type === 'schaal') return '<td>' + exScore(x) + '</td>'; if (v.type === 'nps') return '<td><span class="badge ' + (x >= 9 ? 'bg' : x >= 7 ? 'bo' : 'br') + '">' + x + '/10</span></td>'; var alarm = (v.opties || []).some(function (o) { return o[0] === x && o[3] === true; }); return '<td>' + (alarm ? '<span class="badge br">' + esc(lb[v.key] || x) + '</span>' : esc(lb[v.key] || x)) + '</td>'; }).join('');
+      var opm = (r.opmerking ? '<div>' + esc(r.opmerking) + '</div>' : '') + (r.opvolgNotitie || r.opgevolgd ? '<div class="lay-sub">Opgevolgd ' + esc(r.opgevolgd) + (r.opgevolgdDoor ? ' door ' + esc(r.opgevolgdDoor) : '') + (r.opvolgNotitie ? ': ' + esc(r.opvolgNotitie) : '') + '</div>' : '') + (!r.ingevuld && r.herinnerd ? '<div class="lay-sub">Herinnering ' + esc(r.herinnerd) + '</div>' : '');
+      return '<tr><td>' + esc(r.verstuurd) + '</td><td><strong>' + esc(r.naam) + '</strong><div class="lay-sub">' + esc(r.email || '') + '</div></td><td>' + esc(r.winkel || '-') + '</td><td>' + r.moment + '</td><td>' + (ciStatus[r.status] || '') + (r.ingevuld ? '<div class="lay-sub">' + esc(r.ingevuld) + '</div>' : '') + '</td><td>' + (r.score == null ? '<span class="no-doc">-</span>' : exScore(Math.round(r.score))) + '</td>' + cellen + '<td style="max-width:300px;white-space:normal;font-size:.82rem">' + opm + '</td><td>' + (r.status === 'laag' ? '<button class="btn bp bsm" data-ci-op="' + esc(r.id) + '">✓ Opgevolgd</button> ' : '') + dosBtn(r.naam, r.email) + '</td></tr>';
+    }).join('') : '<tr><td colspan="' + (8 + kol.length) + '" class="leeg grijs">' + (d.rijen.length ? 'Niets in deze selectie.' : 'Nog geen check-ins verstuurd' + (d.actief ? '.' : ' (gepauzeerd).')) + '</td></tr>';
+  }
+  document.addEventListener('click', async function (e) {
+    var f = e.target.closest && e.target.closest('#ci-filter .tb'); if (f) { ciFilter = f.getAttribute('data-ci'); ciRender(); return; }
+    var m = e.target.closest && e.target.closest('#ci-moment .tb'); if (m) { document.querySelectorAll('#ci-moment .tb').forEach(function (x) { x.classList.toggle('sel', x === m); }); return; }
+    var b = e.target.closest && e.target.closest('button[data-ci-op]'); if (!b) return;
+    var notitie = prompt('Wat is er afgesproken of gedaan? (optioneel)', ''); if (notitie === null) return;
+    b.disabled = true;
+    var r = await api('/api/checkin-admin', { actie: 'opgevolgd', id: b.getAttribute('data-ci-op'), notitie: notitie });
+    if (!r.success) { b.disabled = false; toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); laadCheckin(); if (tkData) laadTaken(false);
+  });
+  window.ciToggle = async function () {
+    if (!ciData) return; var aan = !ciData.actief;
+    if (!confirm(aan ? 'Check-in aanzetten? Vanaf de volgende dagelijkse run krijgen nieuwe medewerkers op dag 30 en 60 automatisch een uitnodiging' + (ciData.nu.length ? ' (vandaag: ' + ciData.nu.length + ')' : '') + '.' : 'Check-in pauzeren? Er gaan dan geen uitnodigingen meer uit en de pagina sluit.')) return;
+    var r = await api('/api/checkin-admin', { actie: 'actief', actief: aan });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); laadCheckin();
+  };
+  window.ciVoorbeeld = async function (taal) { var r = await api('/api/checkin-admin', { actie: 'voorbeeld', taal: taal }); if (!r.success) { toast(r.bericht, 'err'); return; } window.open(r.link, '_blank'); };
+  window.ciVragenOpslaan = async function () { var r = await api('/api/checkin-admin', { actie: 'vragen', vragen: ciEditor.lees() }); if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadCheckin(); };
+  window.ciVragenHerstel = async function () { if (!confirm('Eigen vragenlijst weggooien en de standaardlijst terugzetten?')) return; var r = await api('/api/checkin-admin', { actie: 'vragen', herstel: true }); if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadCheckin(); };
+  window.ciExport = function () {
+    if (!ciData || !ciData.rijen.length) { toast('Geen check-ins om te exporteren', 'err'); return; }
+    var vr = ciData.vragenConfig || [], cel = function (v) { v = v == null ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
+    var kop = ['Verstuurd', 'Naam', 'Email', 'Winkel', 'Dag', 'Status', 'Ingevuld', 'Score'].concat(vr.map(function (v) { return v.nl; })).concat(['Opgevolgd', 'Opvolging']);
+    var regels = [kop.join(';')].concat(ciData.rijen.map(function (r) { var a = r.antwoorden || {}, lb = r.labels || {}; return [r.verstuurd, r.naam, r.email, r.winkel, r.moment, r.status, r.ingevuld, r.score == null ? '' : String(r.score).replace('.', ',')].concat(vr.map(function (v) { return lb[v.key] || a[v.key]; })).concat([r.opgevolgd, r.opvolgNotitie]).map(cel).join(';'); }));
+    var url = URL.createObjectURL(new Blob(['﻿' + regels.join('\r\n')], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a'); a.href = url; a.download = 'checkins_' + ciMaanden + 'mnd.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  };
+  window.openCiModal = function (v) {
+    g('ci-naam').value = v ? v.naam || '' : ''; g('ci-email').value = v ? v.email || '' : ''; g('ci-mid').value = v ? v.id || '' : ''; g('ci-zoek').value = ''; g('ci-zoek-res').classList.remove('open');
+    document.querySelectorAll('#ci-moment .tb').forEach(function (x) { x.classList.toggle('sel', x.getAttribute('data-m') === '30'); });
+    g('ci-modal').classList.add('open'); if (!v) setTimeout(function () { g('ci-zoek').focus(); }, 60);
+  };
+  window.closeCiModal = function () { g('ci-modal').classList.remove('open'); };
+  g('ci-modal').addEventListener('click', function (e) { if (e.target === this) closeCiModal(); });
+  g('ci-zoek').addEventListener('input', function () {
+    var q = this.value.trim().toLowerCase(), res = g('ci-zoek-res');
+    if (q.length < 2 || !ciData) { res.classList.remove('open'); return; }
+    var hits = (ciData.medewerkers || []).filter(function (m) { return m.naam.toLowerCase().indexOf(q) > -1; }).slice(0, 8);
+    res.innerHTML = hits.length ? hits.map(function (m) { return '<button type="button" data-id="' + esc(m.id) + '" data-naam="' + esc(m.naam) + '" data-email="' + esc(m.email) + '"><strong>' + esc(m.naam) + '</strong> <span class="lay-sub">' + esc(m.winkel) + ' · in dienst ' + esc(m.indienst) + '</span></button>'; }).join('') : '<button type="button" class="lay-sub">Niet gevonden — vul naam en e-mail handmatig in</button>';
+    res.classList.add('open');
+    res.querySelectorAll('button[data-id]').forEach(function (z) { z.onclick = function () { g('ci-naam').value = z.getAttribute('data-naam'); g('ci-email').value = z.getAttribute('data-email'); g('ci-mid').value = z.getAttribute('data-id'); res.classList.remove('open'); }; });
+  });
+  window.ciVerstuur = async function () {
+    var p = { actie: 'versturen', naam: g('ci-naam').value.trim(), email: g('ci-email').value.trim(), medewerker_id: g('ci-mid').value, moment: (document.querySelector('#ci-moment .tb.sel') || {}).getAttribute ? document.querySelector('#ci-moment .tb.sel').getAttribute('data-m') : '30' };
+    if (!p.naam) { toast('Vul de naam in', 'err'); return; }
+    if (!p.email || p.email.indexOf('@') === -1) { toast('Vul een geldig e-mailadres in', 'err'); return; }
+    var b = g('ci-sbtn'); b.disabled = true; g('ci-slbl').textContent = 'Versturen…';
+    var r = await api('/api/checkin-admin', p);
+    b.disabled = false; g('ci-slbl').textContent = 'Verstuur check-in';
+    if (r.success) { toast(r.bericht, 'ok'); closeCiModal(); laadCheckin(); } else toast('Fout: ' + r.bericht, 'err');
   };
 
   // ---------- Ontslag op staande voet (port van OoSV.gs v1.0; knop in de Sommaties-kop) ----------
@@ -1478,6 +1604,11 @@
     if (a.tab) attrs += ' data-tk-tab="' + esc(a.tab) + '"'; if (a.zoek) attrs += ' data-tk-zoek="' + esc(a.zoek) + '"'; if (a.id) attrs += ' data-tk-id="' + esc(a.id) + '"'; if (a.url) attrs += ' data-tk-url="' + esc(a.url) + '"';
     return '<button class="btn ' + (a === t.actie ? 'bp' : 'bd') + ' bsm"' + attrs + '>' + esc(a.label) + '</button>';
   }
+  // Taak ter plekke weghalen (geen herlaad = geen springend beeld); tellers bijwerken
+  function tkWeg(rij, sleutel, verborgen) {
+    if (tkData) { var idx = tkData.taken.findIndex(function (x) { return x.sleutel === sleutel; }); if (idx > -1) { tkData.aantallen[tkData.taken[idx].urgentie]--; tkData.taken.splice(idx, 1); if (verborgen) tkData.verborgen = (tkData.verborgen || 0) + 1; } }
+      if (rij) { rij.style.transition = 'opacity .25s, max-height .3s'; rij.style.overflow = 'hidden'; rij.style.maxHeight = rij.offsetHeight + 'px'; requestAnimationFrame(function () { rij.style.opacity = '0'; rij.style.maxHeight = '0'; rij.style.paddingTop = '0'; rij.style.paddingBottom = '0'; }); setTimeout(function () { renderTaken(); }, 320); }
+  }
   function renderTaken() {
     var d = tkData, el = g('tk-lijst'); if (!d || !el) return;
     var w = winkelFilter();
@@ -1498,9 +1629,18 @@
       var r = await api('/api/taken', { sleutel: sleutel, dagen: parseInt(af.getAttribute('data-tk-dagen'), 10) || 7, opmerking: af.getAttribute('data-tk-opm') || '' });
       if (!r.success) { af.disabled = false; toast(r.bericht, 'err'); return; }
       toast(r.bericht, 'ok');
-      // Ter plekke weghalen (geen herlaad = geen springend beeld); tellers bijwerken
-      if (tkData) { var idx = tkData.taken.findIndex(function (x) { return x.sleutel === sleutel; }); if (idx > -1) { tkData.aantallen[tkData.taken[idx].urgentie]--; tkData.taken.splice(idx, 1); tkData.verborgen = (tkData.verborgen || 0) + 1; } }
-      if (rij) { rij.style.transition = 'opacity .25s, max-height .3s'; rij.style.overflow = 'hidden'; rij.style.maxHeight = rij.offsetHeight + 'px'; requestAnimationFrame(function () { rij.style.opacity = '0'; rij.style.maxHeight = '0'; rij.style.paddingTop = '0'; rij.style.paddingBottom = '0'; }); setTimeout(function () { renderTaken(); }, 320); }
+      tkWeg(rij, sleutel, true);
+      return;
+    }
+    var cio = e.target.closest && e.target.closest('button[data-tk-actie="checkin-opvolgen"]');
+    if (cio) {
+      var notitie = prompt('Wat is er afgesproken of gedaan? (optioneel)', '');
+      if (notitie === null) return;
+      cio.disabled = true;
+      var rc = await api('/api/checkin-admin', { actie: 'opgevolgd', id: cio.getAttribute('data-tk-id'), notitie: notitie });
+      if (!rc.success) { cio.disabled = false; toast(rc.bericht, 'err'); return; }
+      toast(rc.bericht, 'ok'); tkWeg(cio.closest('.tk'), 'checkin|' + cio.getAttribute('data-tk-id'), false);
+      if (ciData) laadCheckin();
       return;
     }
     var b = e.target.closest && e.target.closest('button[data-tk-actie]'); if (!b) return;

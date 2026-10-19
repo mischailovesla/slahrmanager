@@ -74,6 +74,22 @@ async function uitDatabase() {
   return t;
 }
 
+// Fase 3a: lage check-ins (dag 30/60) die nog niet opgevolgd zijn
+async function uitCheckins() {
+  const t = [];
+  try {
+    const { data } = await admin().from('hr_checkin').select('id,naam,email,winkel,moment,score,laag_reden,opmerking,ingevuld_op').eq('laag', true).is('opgevolgd_op', null).not('ingevuld_op', 'is', null).limit(200);
+    for (const r of data || []) {
+      const delen = String(r.laag_reden || '').split(' · ').filter(Boolean), alarm = delen.some(x => !/\d\/5$/.test(x));
+      const dagen = Math.round((Date.now() - new Date(r.ingevuld_op).getTime()) / 864e5);
+      t.push({ bron: 'checkin', urgentie: alarm || (r.score != null && Number(r.score) <= 2.5) || dagen >= 3 ? 'rood' : 'oranje', sleutel: 'checkin|' + r.id,
+        titel: 'Check-in dag ' + r.moment + ': lage score — even bellen', sub: r.naam + ' · ' + (r.winkel || '-') + (r.score != null ? ' · gem. ' + String(r.score).replace('.', ',') + '/5' : '') + (delen.length ? ' · ' + delen.slice(0, 2).join(' · ') : '') + (r.opmerking ? ' · "' + String(r.opmerking).slice(0, 80) + '"' : '') + (dagen ? ' · ' + dagen + ' dagen geleden' : ''),
+        naam: r.naam, email: r.email || '', winkel: r.winkel || '', actie: { soort: 'checkin-opvolgen', id: r.id, label: '✓ Opgevolgd' }, extra: { soort: 'tab', tab: 'checkin', zoek: r.naam, label: 'Antwoorden' } });
+    }
+  } catch (e) { /* tabel ontbreekt nog (migratie 0011) */ }
+  return t;
+}
+
 async function uitChecklists() {
   const t = [];
   try {
@@ -111,6 +127,7 @@ exports.handler = beveiligd('taken', async (event, g) => {
   for (const naam of ALLE_CHECKS) if (runs[naam]) taken.push(...uitCheck(naam, runs[naam].gevonden, runs[naam].tijd));
   taken.push(...await uitDatabase());
   taken.push(...await uitChecklists());
+  taken.push(...await uitCheckins());
   // afgehandelde items verbergen
   let verborgen = 0;
   try {

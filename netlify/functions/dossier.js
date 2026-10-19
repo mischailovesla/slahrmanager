@@ -72,8 +72,18 @@ async function laad(qs) {
       if (k) keten = { onbepaald: k.onbepaald, aantal: k.aantal, maanden: k.maanden, vol: k.vol, reden: k.reden || '', contracten: (per[String(persoon.id)] || []).map(c => ({ start: c.start.split('-').reverse().join('-'), eind: c.eind ? c.eind.split('-').reverse().join('-') : '', type: c.type, functie: c.functie })) };
     } catch (e) { keten = null; }
   }
+  // Fase 3a: check-ins (dag 30/60) — op medewerker-id, anders op naam
+  let checkins = [];
+  try {
+    const { admin } = require('./_lib/auth'); const { normNaam } = require('./_lib/util');
+    const { data } = await admin().from('hr_checkin').select('id,medewerker_id,naam,moment,verstuurd_op,ingevuld_op,score,laag,laag_reden,opmerking,opgevolgd_op,opgevolgd_door,opvolg_notitie').order('verstuurd_op', { ascending: true }).limit(2000);
+    const nn = normNaam(naam || (persoon && persoon.naam) || '');
+    const fmt = x => x ? new Date(x).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+    checkins = (data || []).filter(r => (persoon && r.medewerker_id && String(r.medewerker_id) === String(persoon.id)) || (nn && normNaam(r.naam) === nn))
+      .map(r => ({ id: r.id, moment: r.moment, verstuurd: fmt(r.verstuurd_op), ingevuld: fmt(r.ingevuld_op), score: r.score == null ? null : Number(r.score), laag: !!r.laag, reden: r.laag_reden, opmerking: r.opmerking, opgevolgd: fmt(r.opgevolgd_op), opgevolgdDoor: r.opgevolgd_door, notitie: r.opvolg_notitie }));
+  } catch (e) { checkins = []; }
 
-  return { persoon, naam, email, contract, verlof, verzuim, keten, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
+  return { persoon, naam, email, contract, verlof, verzuim, keten, checkins, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
 }
 exports.laad = laad;
 exports.handler = beveiligd('dossier', async (event) => laad(event.queryStringParameters || {}));
