@@ -1401,7 +1401,9 @@
     var r = await api('/api/koppel', {});
     b.disabled = false; b.textContent = '⇄ Medewerkers koppelen';
     if (!r.success) { toast(r.bericht, 'err'); return; }
-    toast(r.gekoppeld + ' rijen gekoppeld aan ' + r.medewerkers + ' medewerkers', 'ok');
+    var fouten = Object.keys(r.perTabel || {}).filter(function (k) { return typeof r.perTabel[k] === 'string'; });
+    if (fouten.length) { toast('Koppelen mislukt: ' + r.perTabel[fouten[0]] + (/medewerker_id/.test(r.perTabel[fouten[0]]) ? ' — migratie 0007 nog niet gedraaid?' : ''), 'err'); return; }
+    toast(r.gekoppeld + ' rijen gekoppeld aan ' + r.medewerkers + ' medewerkers' + (r.gekoppeld === 0 ? ' (alle rijen waren al gekoppeld of matchen niet op e-mail/naam)' : ''), 'ok');
   };
 
   // ---------- Sorteren (port van SorteerUI.gs, uitgebreid) ----------
