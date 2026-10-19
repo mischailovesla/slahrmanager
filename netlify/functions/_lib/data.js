@@ -59,9 +59,12 @@ function naarArr(tabel, rec) {
 async function sheetWeergave(tabel, metArchief) {
   const rijen = await alles(tabel, metArchief);
   const data = [T.koppen(tabel)];
-  for (const r of rijen) { while (data.length < r.rij - 1) data.push([]); data[r.rij - 1] = naarArr(tabel, r); }
+  data.mid = {}; // rij -> medewerker_id (Shiftbase), fase 1: medewerker als kern
+  for (const r of rijen) { while (data.length < r.rij - 1) data.push([]); data[r.rij - 1] = naarArr(tabel, r); if (r.medewerker_id) data.mid[r.rij] = String(r.medewerker_id); }
   return data;
 }
+// mid aan een gemapte rij hangen (alle getters): frontend gebruikt het voor winkel-filter en dossier
+const metMid = (data, obj) => { if (data.mid && data.mid[obj.rij]) obj.mid = data.mid[obj.rij]; return obj; };
 async function upsert(tabel, rec) {
   const { error } = await db().from(tabel).upsert(rec, { onConflict: 'rij' });
   if (error) fout(error, tabel + ' opslaan');
@@ -186,7 +189,7 @@ async function getLoonheffing() {
   for (let i = 1; i < data.length; i++) {
     const r = data[i]; if (!cel(r, 0)) continue;
     const d = zoekDoc(dl, cel(r, 0), cel(r, 1)) || {};
-    out.push({ rij: i + 1, naam: cel(r, 0), email: cel(r, 1), deadline: cel(r, 2), status: cel(r, 3), verzenddatum: cel(r, 4), ontvangen: isJa(r[5]) ? 'Ja' : 'Nee', taal: cel(r, 6).toUpperCase() || 'NL', herinnering: cel(r, 7), aantalHer: parseInt(cel(r, 8), 10) || 0, mahdia: isJa(r[9]) ? 'Ja' : 'Nee', salaris: cel(r, 10), docUrl: d.loon || '', docUrl2: d.indienst || '' });
+    out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), deadline: cel(r, 2), status: cel(r, 3), verzenddatum: cel(r, 4), ontvangen: isJa(r[5]) ? 'Ja' : 'Nee', taal: cel(r, 6).toUpperCase() || 'NL', herinnering: cel(r, 7), aantalHer: parseInt(cel(r, 8), 10) || 0, mahdia: isJa(r[9]) ? 'Ja' : 'Nee', salaris: cel(r, 10), docUrl: d.loon || '', docUrl2: d.indienst || '' }));
   }
   return out;
 }
@@ -194,35 +197,35 @@ async function getOntslag() {
   const data = await sheetWeergave('hr_ontslag'); const dl = await ontslagDocLinks(); const out = [];
   for (let i = 1; i < data.length; i++) {
     const r = data[i]; if (!cel(r, 0)) continue;
-    out.push({ rij: i + 1, naam: cel(r, 0), email: cel(r, 1), opzegging: cel(r, 2), einddatum: cel(r, 3), bedrijf: cel(r, 5), adres: cel(r, 6), status: cel(r, 7), verzenddatum: cel(r, 8), ondertekend: isJa(r[9]) ? 'Ja' : 'Nee', herinnering: cel(r, 10), aantalHer: parseInt(cel(r, 11), 10) || 0, mahdia: isJa(r[13]) ? 'Ja' : 'Nee', salaris: cel(r, 14), docUrl: zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', briefUrl: cel(r, 15), type: (!cel(r, 2) && cel(r, 3)) ? 'aanzegging' : 'ontslag' });
+    out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), opzegging: cel(r, 2), einddatum: cel(r, 3), bedrijf: cel(r, 5), adres: cel(r, 6), status: cel(r, 7), verzenddatum: cel(r, 8), ondertekend: isJa(r[9]) ? 'Ja' : 'Nee', herinnering: cel(r, 10), aantalHer: parseInt(cel(r, 11), 10) || 0, mahdia: isJa(r[13]) ? 'Ja' : 'Nee', salaris: cel(r, 14), docUrl: zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', briefUrl: cel(r, 15), type: (!cel(r, 2) && cel(r, 3)) ? 'aanzegging' : 'ontslag' }));
   }
   return out;
 }
 async function getSommatie() {
   const data = await sheetWeergave('hr_sommatie'); const out = [];
-  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push({ rij: i + 1, naam: cel(r, 0), email: cel(r, 1), bv: cel(r, 2), type: cel(r, 3), datumAfwezig: cel(r, 4), datumAfspraak: cel(r, 5), verzenddatum: cel(r, 6), status: cel(r, 7), verwerkt: cel(r, 8), aanvullend: cel(r, 9) }); }
+  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), bv: cel(r, 2), type: cel(r, 3), datumAfwezig: cel(r, 4), datumAfspraak: cel(r, 5), verzenddatum: cel(r, 6), status: cel(r, 7), verwerkt: cel(r, 8), aanvullend: cel(r, 9)  })); }
   return out;
 }
 async function getOverplaatsing() {
   const data = await sheetWeergave('hr_overplaatsing'); const out = [];
-  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push({ rij: i + 1, naam: cel(r, 0), email: cel(r, 1), adres: cel(r, 2), huidigeBV: cel(r, 3), nieuweBV: cel(r, 4), datumIndienst: cel(r, 5), ingangsdatum: cel(r, 6), functie: cel(r, 7), standplaats: cel(r, 8), taal: cel(r, 9).toUpperCase() || 'NL', status: cel(r, 10), verzenddatum: cel(r, 11), ondertekend: isJa(r[12]) ? 'Ja' : 'Nee', herinnering: cel(r, 13), aantalHer: parseInt(cel(r, 14), 10) || 0, type: cel(r, 15), briefUrl: cel(r, 16) }); }
+  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), adres: cel(r, 2), huidigeBV: cel(r, 3), nieuweBV: cel(r, 4), datumIndienst: cel(r, 5), ingangsdatum: cel(r, 6), functie: cel(r, 7), standplaats: cel(r, 8), taal: cel(r, 9).toUpperCase() || 'NL', status: cel(r, 10), verzenddatum: cel(r, 11), ondertekend: isJa(r[12]) ? 'Ja' : 'Nee', herinnering: cel(r, 13), aantalHer: parseInt(cel(r, 14), 10) || 0, type: cel(r, 15), briefUrl: cel(r, 16)  })); }
   return out;
 }
 async function getOnboarding() {
   const data = await sheetWeergave('hr_onboarding'); const out = [];
-  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1) && !cel(r, 2)) continue; out.push({ rij: i + 1, naam: (cel(r, 0) + ' ' + cel(r, 1)).trim(), email: cel(r, 2), taal: cel(r, 3).toUpperCase() || 'NL', status: cel(r, 4), verzenddatum: cel(r, 5), locatie: cel(r, 8) }); }
+  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1) && !cel(r, 2)) continue; out.push(metMid(data, { rij: i + 1, naam: (cel(r, 0) + ' ' + cel(r, 1)).trim(), email: cel(r, 2), taal: cel(r, 3).toUpperCase() || 'NL', status: cel(r, 4), verzenddatum: cel(r, 5), locatie: cel(r, 8)  })); }
   return out;
 }
 async function getExtraTabs() { return []; }
 async function getBrieven() {
   const data = await sheetWeergave('hr_brieven'); const out = [];
-  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push({ rij: i + 1, naam: cel(r, 0), email: cel(r, 1), bv: cel(r, 2), categorie: cel(r, 3), onderwerp: cel(r, 4), tekst: String((r && r[5]) || ''), pdf: cel(r, 6) === 'Ja' ? 'Ja' : 'Nee', verzenddatum: cel(r, 7), status: cel(r, 8) }); }
+  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), bv: cel(r, 2), categorie: cel(r, 3), onderwerp: cel(r, 4), tekst: String((r && r[5]) || ''), pdf: cel(r, 6) === 'Ja' ? 'Ja' : 'Nee', verzenddatum: cel(r, 7), status: cel(r, 8)  })); }
   return out.reverse();
 }
 async function leesTab(id, tabNaam, mapper) {
   const t = T.tabelVoor(id, tabNaam); if (!t) return [];
   const data = await sheetWeergave(t); const out = [];
-  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push(mapper(r, i + 1)); }
+  for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push(metMid(data, mapper(r, i + 1))); }
   return out.reverse();
 }
 // Rij schrijven (logRij in sheets.js): nieuwe rij, of bij bestaandeRij alleen status + verzenddatum (statusKol 1-based)
@@ -306,6 +309,30 @@ async function voegNotitieToe(naam, email, auteur, tekst, stempelTekst) {
   return nieuweRij('hr_notities', [naam, email || '', stempelTekst, auteur, tekst]);
 }
 
-module.exports = { jwt, eersteTabNaam, getNotities, voegNotitieToe, getArchief, herstelUitArchief, leesRuw, getKorting, logKorting, syncKortingUploads, zetSalarisStempel, zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij,
+// ---- Fase 1: medewerker_id koppelen (backfill) -------------------------------
+// Alle rijen zonder medewerker_id in alle tabellen matchen op e-mail, daarna op genormaliseerde naam,
+// tegen de Shiftbase-lijst. Idempotent; geeft per tabel het aantal gekoppelde rijen terug.
+async function koppelMedewerkers(medewerkers) {
+  const byEmail = {}, byNaam = {};
+  for (const m of medewerkers || []) { const e = String(m.email || '').trim().toLowerCase(); if (e && !byEmail[e]) byEmail[e] = m.id; const n = normNaam(m.naam); if (n && !byNaam[n]) byNaam[n] = m.id; }
+  const uit = {};
+  for (const tabel of Object.keys(T.TABELLEN)) {
+    const { data, error } = await db().from(tabel).select('rij,naam,email,voornaam,achternaam').is('medewerker_id', null).limit(5000);
+    if (error) { uit[tabel] = 'fout: ' + error.message; continue; }
+    let n = 0;
+    for (const r of data || []) {
+      const e = String(r.email || '').trim().toLowerCase();
+      const naam = r.naam != null ? r.naam : ((r.voornaam || '') + ' ' + (r.achternaam || '')).trim();
+      const id = (e && byEmail[e]) || byNaam[normNaam(naam)] || null;
+      if (!id) continue;
+      const { error: e2 } = await db().from(tabel).update({ medewerker_id: String(id) }).eq('rij', r.rij);
+      if (!e2) n++;
+    }
+    uit[tabel] = n;
+  }
+  return uit;
+}
+
+module.exports = { koppelMedewerkers, jwt, eersteTabNaam, getNotities, voegNotitieToe, getArchief, herstelUitArchief, leesRuw, getKorting, logKorting, syncKortingUploads, zetSalarisStempel, zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij,
   // intern, voor import/export
   _intern: { alles, upsert, naarRecord, naarArr, sheetWeergave, volgendeRij } };

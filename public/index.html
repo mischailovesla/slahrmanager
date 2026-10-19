@@ -26,7 +26,7 @@
 
 <div class="top">
   <div class="l"><div class="sla">SLA</div><div class="tdiv"></div><div class="tlbl">HR Dashboard</div><span class="tnieuw" id="top-versie">NETLIFY</span></div>
-  <div class="r"><span id="top-dt"></span><span id="top-wie"></span><button class="bg2" id="btn-uit" style="display:none">Uitloggen</button></div>
+  <div class="r"><select id="winkel-filter" class="wf" title="Alle tabellen en de takenlijst filteren op winkel" style="display:none"><option value="">Alle winkels</option></select><span id="top-dt"></span><span id="top-wie"></span><button class="bg2" id="btn-uit" style="display:none">Uitloggen</button></div>
 </div>
 
 <div class="nav" id="nav">
@@ -41,6 +41,13 @@
 
   <!-- OVERZICHT -->
   <div class="tc active" id="tab-overview">
+    <div class="sec" id="tk-sec">
+      <div class="sh"><div class="st">Vandaag te doen <span class="pill" id="tk-count">-</span></div>
+        <div class="hr2"><div class="tbar" id="tk-filter"><button type="button" class="tb sel" data-tk="alle">Alles</button><button type="button" class="tb" data-tk="rood">Nu</button><button type="button" class="tb" data-tk="oranje">Deze week</button><button type="button" class="tb" data-tk="grijs">Ter info</button></div><button class="btn bd bsm" onclick="laadTaken(true)" title="Draait de dagelijkse checks opnieuw (Shiftbase) in plaats van de laatste stand te tonen">↻ Verse stand</button></div></div>
+      <div id="tk-lijst" class="tk-lijst"><div class="leeg grijs">Taken laden…</div></div>
+      <div id="tk-voet" class="lay-sub" style="padding:8px 24px 14px"></div>
+    </div>
+
     <div class="lay-wl" id="lay-wl">
       <span class="lay-wl-titel">Openstaande acties</span>
       <button class="lay-chip" data-chip="instroom" data-doel="loonheffing">Instroom <span class="lay-tel">-</span></button>
@@ -65,7 +72,7 @@
       <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV / Info</th><th>Einddatum</th><th>Mail verstuurd</th><th>Status</th><th>Herinneringen</th><th>Naar salaris</th><th>Dossier</th></tr></thead><tbody id="ov-body"></tbody></table></div>
     </div>
 
-    <div class="alert grijs"><strong>Afvinken en archiveren</strong> kan hier (Naar salaris, Verwerkt, Ondertekend, 🗑) — dat schrijft in dezelfde Google Sheets als het Apps Script-dashboard, dus beide blijven gelijk. Alle mails en brieven (loonheffing, ontslag/aanzegging, sommatie, overplaatsing, vrije brieven) verstuur je nu hier. Alleen de automatische herinneringen draaien nog in Apps Script.</div>
+    <div class="alert grijs"><strong>Zo werkt het:</strong> <em>Vandaag te doen</em> bovenaan is je werklijst — elke regel heeft één knop die direct het juiste scherm opent. Hieronder staan alle open dossiers; afvinken (Naar salaris, Verwerkt, Ondertekend) en archiveren (🗑, via ⋯) kan daar direct. Met de winkelkeuze rechtsboven filter je alles op één winkel.</div>
   </div>
 
   <!-- DOSSIER -->
@@ -417,6 +424,7 @@
       <div style="padding:0 24px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <button class="btn bd" id="gv-droog" onclick="migratieRun(true)">Droogloop (vergelijken, schrijft niets)</button>
         <button class="btn bp" id="gv-echt" onclick="migratieRun(false)">Importeer uit de sheets</button>
+        <button class="btn bd" id="gv-koppel" onclick="koppelMedewerkers()" title="Vult medewerker_id (Shiftbase) op alle rijen zonder koppeling; draait ook automatisch na elke sync">⇄ Medewerkers koppelen</button>
         <span class="lay-sub" id="gv-hint"></span>
       </div>
       <div class="tw"><table><thead><tr><th>Tabel</th><th>Bron (sheet / tab)</th><th>Rijen in sheet</th><th>Archief</th><th>In database</th><th>Opmerkingen</th></tr></thead><tbody id="gv-body"><tr><td colspan="6" class="leeg grijs">Nog niet geladen</td></tr></tbody></table></div>

@@ -104,6 +104,29 @@ module.exports = {
   BHR_JAREN_DOSSIER: 2,            // AVG-bewaartermijn personeelsdossier (ontslag, sommaties, waarschuwingen) na einde dienstverband
   BHR_JAREN_LOON: 5,               // loonheffingsverklaring-administratie (fiscaal; kopie in de sheets)
 
+  // ---- Fase 1: on-/offboarding-checklists (sjablonen; aanpassen = hier) ----
+  CHECKLIST_ONBOARDING: [
+    { key: 'contract', label: 'Arbeidsovereenkomst getekend retour (Shiftbase)' },
+    { key: 'id', label: 'Identiteit gecontroleerd + kopie ID in dossier (WID, 5 jaar na uitdiensttreding bewaren)' },
+    { key: 'loonheffing', label: 'Loonheffingsverklaring ontvangen (anders anoniementarief 52%)' },
+    { key: 'bankgegevens', label: 'IBAN + BSN bij salarisadministratie (eerste loonrun)' },
+    { key: 'shiftbase', label: 'Shiftbase-account actief, rooster ingepland' },
+    { key: 'academy', label: 'SLAcademy: introductie + allergenen/HACCP-instructie afgerond' },
+    { key: 'huisregels', label: 'Huisregels + weekendbeschikbaarheid besproken en bevestigd' },
+    { key: 'buddy', label: 'Buddy/mentor eerste twee weken aangewezen' },
+    { key: 'proeftijd', label: 'Proeftijdgesprek ingepland (uiterlijk week 3)' }
+  ],
+  CHECKLIST_OFFBOARDING: [
+    { key: 'bevestiging', label: 'Ontslagbevestiging / aanzegging verstuurd en ondertekend retour' },
+    { key: 'laatstedag', label: 'Laatste werkdag + einddatum in Shiftbase gezet' },
+    { key: 'verlof', label: 'Openstaand verlof / plus-min-uren doorgegeven voor de eindafrekening' },
+    { key: 'salaris', label: 'Documenten naar salarisadministratie (eindafrekening, transitievergoeding gecheckt)' },
+    { key: 'spullen', label: 'Sleutels, kleding, pasjes ingeleverd' },
+    { key: 'toegang', label: 'Toegang ingetrokken: Shiftbase, SLAcademy, mail, kassa' },
+    { key: 'getuigschrift', label: 'Getuigschrift aangeboden (art. 7:656 BW)' },
+    { key: 'exit', label: 'Exitgesprek gevoerd + uitstroomreden vastgelegd' }
+  ],
+
   // Mail / huisstijl (uit Code.gs)
   AFZENDER_TEAM: 'SLA HR Team',
   AFZENDER_NAAM: 'Jop van de Graaf',

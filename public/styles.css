@@ -170,3 +170,28 @@ tbody tr:hover td{background:#fdfaf8}
 
 /* Sorteerbare kolomkoppen (batch D) */
 .tw table thead th{cursor:pointer;user-select:none}.tw table thead th:hover{color:var(--groen)}
+
+/* ---- Fase 1: takenlijst, checklists, winkel-filter, compacte rijacties ---- */
+.wf{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 10px;font:inherit;font-size:.78rem;font-weight:600;max-width:200px}
+.wf option{color:#333}
+.wf.actief{background:var(--groen);border-color:var(--groen)}
+.tk-lijst{display:flex;flex-direction:column}
+.tk{display:flex;align-items:center;gap:14px;padding:12px 24px;border-bottom:1px solid var(--lijn2);border-left:4px solid transparent}
+.tk:last-child{border-bottom:none}
+.tk.rood{border-left-color:var(--rood);background:#fff7f6}.tk.oranje{border-left-color:var(--oranje)}.tk.grijs{border-left-color:#d8d2cc}
+.tk .tk-t{flex:1;min-width:0}.tk .tk-t strong{display:block;font-size:.88rem;color:var(--donker)}.tk .tk-t span{display:block;font-size:.78rem;color:#7a6f68;margin-top:2px}
+.tk .tk-a{display:flex;gap:6px;flex-shrink:0;align-items:center}
+.tk .tk-bron{font-size:.66rem;color:#aaa;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+.tk-lijst .leeg{padding:22px 24px}
+.chk-lijst{padding:6px 24px 14px}
+.chk-item{display:flex;gap:10px;align-items:flex-start;padding:7px 0;border-bottom:1px dashed var(--lijn2);font-size:.85rem}
+.chk-item:last-child{border-bottom:none}
+.chk-item input{margin-top:3px}.chk-item.klaar label{text-decoration:line-through;color:#9a918b}
+.chk-item .chk-wie{font-size:.72rem;color:#aaa;margin-left:auto;white-space:nowrap}
+.chk-balk{height:6px;background:var(--lijn2);border-radius:3px;overflow:hidden;margin:6px 0 2px}.chk-balk i{display:block;height:100%;background:var(--groen)}
+.meer{position:relative;display:inline-block}
+.meer > button{min-width:32px;padding:6px 8px}
+.meer-menu{display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid var(--lijn);border-radius:10px;box-shadow:0 8px 24px rgba(51,61,58,.16);padding:6px;z-index:50;min-width:150px}
+.meer.open .meer-menu{display:flex;flex-direction:column;gap:4px}
+.meer-menu .btn{width:100%;justify-content:flex-start}
+.wf-verborgen{display:none !important}

@@ -196,6 +196,7 @@
   });
 
   window.laadOverzicht = async function () {
+    laadTaken(false);
     g('lo').classList.add('show'); g('lo-txt').textContent = 'Overzicht laden...';
     var d = await api('/api/overzicht');
     g('lo').classList.remove('show');
@@ -244,7 +245,7 @@
   async function laadMedewerkers(forceer) {
     g('dos-lijst').innerHTML = '<tr><td colspan="8" class="leeg grijs">Shiftbase-lijst laden…</td></tr>';
     var d = await api('/api/medewerkers' + (forceer ? '?ververs=1' : ''));
-    if (d.success) { medewerkers = d.medewerkers || []; medewerkersFout = ''; if (forceer) toast(medewerkers.length + ' medewerkers opgehaald uit Shiftbase', 'ok'); }
+    if (d.success) { medewerkers = d.medewerkers || []; medewerkersFout = ''; if (forceer) toast(medewerkers.length + ' medewerkers opgehaald uit Shiftbase', 'ok'); vulWinkelFilter(); }
     else { medewerkersFout = d.bericht || 'onbekende fout'; toast('Shiftbase: ' + medewerkersFout, 'err'); }
     renderMedewerkersLijst();
   }
@@ -296,6 +297,8 @@
     h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Verlof (Shiftbase, 12 mnd terug / 6 vooruit)</label>';
     h += d.verlof && d.verlof.length ? '<div class="kv">' + d.verlof.slice(0, 8).map(function (v) { return '<div>' + esc(v.start) + (v.eind && v.eind !== v.start ? ' – ' + esc(v.eind) : '') + ' · <b>' + esc(v.type || '-') + '</b> · ' + esc(v.status) + (v.uren ? ' · ' + esc(v.uren) + ' u' : '') + '</div>'; }).join('') + (d.verlof.length > 8 ? '<div class="lay-sub">+' + (d.verlof.length - 8) + ' meer</div>' : '') + '</div>' : '<div class="lay-sub">Geen afwezigheden gevonden</div>';
     h += '</div></div>';
+    // Checklists (fase 1) vóór de dossierregels: dat is wat er nú moet gebeuren
+    h += '<div class="sec"><div class="sh"><div class="st">Checklists</div></div><div id="dos-checklists"><div class="leeg grijs" style="padding:14px 24px">Laden…</div></div></div>';
     // Secties
     h += '<div class="sec"><div class="sh"><div class="st">Dossierregels <span class="pill">' + d.totaal + '</span></div></div>';
     d.secties.forEach(function (s) {
@@ -306,6 +309,7 @@
     h += '</div>';
     h += '<div class="sec"><div class="sh"><div class="st">Notitie toevoegen</div></div><div style="padding:14px 24px"><textarea id="dos-notitie" rows="3" style="width:100%;padding:10px 14px;border:1.5px solid #e8e2de;border-radius:8px;font:inherit;font-size:.88rem;min-height:70px" placeholder="Interne notitie (gesprek, afspraak, observatie). Wordt opgeslagen met jouw naam en datum en komt in het dossier en de PDF-export."></textarea><div style="margin-top:8px;text-align:right"><button class="btn bp bsm" id="dos-notitie-btn" onclick="dossierNotitie()">Notitie opslaan</button></div></div></div>';
     g('dos-inhoud').innerHTML = h;
+    laadChecklistsInDossier(d.naam, d.email, p ? p.id : id);
   };
   var laatsteDossierQs = '';
   window.dossierNotitie = async function () {
@@ -1230,6 +1234,174 @@
     g('gv-body').innerHTML = r.tabellen.map(gvRij).join('');
     toast((droog ? 'Droogloop klaar: ' : 'Import klaar: ') + r.totaalSheet + ' sheetrijen' + (r.fouten.length ? ', ' + r.fouten.length + ' fout(en)' : ''), r.fouten.length ? 'err' : 'ok');
     var d = await api('/api/migratie'); if (d.success) { gvData = d; g('gv-runs').innerHTML = (d.runs || []).slice(0, 14).map(function (x) { return '<tr><td style="white-space:nowrap">' + esc(String(x.created_at || '').replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(x.door || '') + '</td><td><span class="badge ' + (x.droog ? 'boat' : 'bg') + '">' + (x.droog ? 'droog' : 'echt') + '</span></td><td>' + esc(x.tabel) + '</td><td>' + x.sheet_rijen + '</td><td>' + x.db_rijen_voor + ' → ' + x.db_rijen_na + '</td><td style="font-size:.78rem;white-space:normal">' + esc(x.opmerking || '') + '</td></tr>'; }).join(''); }
+  };
+
+
+  // ======================================================================
+  // Fase 1 (v0.13.0): takenlijst, checklists, winkel-filter, compacte rijacties
+  // ======================================================================
+  function normN(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, ' ').trim(); }
+  // ---------- Takenlijst (Overzicht) ----------
+  var tkData = null, tkFilter = 'alle';
+  window.laadTaken = async function (live) {
+    var el = g('tk-lijst'); if (!el) return;
+    el.innerHTML = '<div class="leeg grijs">' + (live ? 'Checks draaien (Shiftbase)… dit duurt even' : 'Taken laden…') + '</div>';
+    var d = await api('/api/taken' + (live ? '?live=1' : ''));
+    if (!d.success) { el.innerHTML = '<div class="leeg grijs">' + esc(d.bericht) + '</div>'; return; }
+    tkData = d; renderTaken();
+  };
+  function tkKnop(a, t) {
+    if (!a) return '';
+    var attrs = ' data-tk-actie="' + esc(a.soort) + '" data-tk-naam="' + esc(t.naam || '') + '" data-tk-email="' + esc(t.email || '') + '"';
+    if (a.persoon) attrs += ' data-tk-persoon="' + esc(JSON.stringify(a.persoon)) + '"';
+    if (a.tab) attrs += ' data-tk-tab="' + esc(a.tab) + '"'; if (a.zoek) attrs += ' data-tk-zoek="' + esc(a.zoek) + '"'; if (a.id) attrs += ' data-tk-id="' + esc(a.id) + '"'; if (a.url) attrs += ' data-tk-url="' + esc(a.url) + '"';
+    return '<button class="btn ' + (a === t.actie ? 'bp' : 'bd') + ' bsm"' + attrs + '>' + esc(a.label) + '</button>';
+  }
+  function renderTaken() {
+    var d = tkData, el = g('tk-lijst'); if (!d || !el) return;
+    var w = winkelFilter();
+    var lijst = d.taken.filter(function (t) { return (tkFilter === 'alle' || t.urgentie === tkFilter) && (!w || !t.winkel || normN(t.winkel) === normN(w) || hoortBijWinkel(t.naam, t.email, w)); });
+    document.querySelectorAll('#tk-filter .tb').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-tk') === tkFilter); });
+    g('tk-count').textContent = d.aantallen.rood + ' nu · ' + d.aantallen.oranje + ' deze week · ' + d.aantallen.grijs + ' info';
+    el.innerHTML = lijst.length ? lijst.map(function (t) {
+      return '<div class="tk ' + t.urgentie + '"><div class="tk-t"><strong>' + esc(t.titel) + '</strong><span>' + esc(t.sub || '') + '</span></div><div class="tk-a">' + tkKnop(t.actie, t) + tkKnop(t.extra, t) + (t.naam && !(t.actie && t.actie.soort === 'dossier') && !(t.extra && t.extra.soort === 'dossier') ? dosBtn(t.naam, t.email) : '') + (t.afhandelbaar ? '<button class="btn bd bsm" data-tk-af="' + esc(t.sleutel) + '" title="Verbergen tot de volgende check (7 dagen)">✓ Afgehandeld</button>' : '') + '<span class="tk-bron">' + esc(t.bron) + (t.stand ? ' · ' + esc(t.stand) : '') + '</span></div></div>';
+    }).join('') : '<div class="leeg grijs">✓ Niets te doen' + (tkFilter !== 'alle' || w ? ' in deze selectie' : '') + '</div>';
+    g('tk-voet').textContent = (d.live ? 'Verse stand uit de checks. ' : 'Stand van de laatste automatische checks (↻ Verse stand draait ze nu). ') + (d.verborgen ? d.verborgen + ' afgehandeld verborgen. ' : '') + (d.fouten && d.fouten.length ? 'Fouten: ' + d.fouten.join('; ') : '');
+  }
+  document.addEventListener('click', async function (e) {
+    var f = e.target.closest && e.target.closest('#tk-filter .tb'); if (f) { tkFilter = f.getAttribute('data-tk'); renderTaken(); return; }
+    var af = e.target.closest && e.target.closest('button[data-tk-af]');
+    if (af) { af.disabled = true; var r = await api('/api/taken', { sleutel: af.getAttribute('data-tk-af'), dagen: 7 }); if (!r.success) { af.disabled = false; toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadTaken(false); return; }
+    var b = e.target.closest && e.target.closest('button[data-tk-actie]'); if (!b) return;
+    var soort = b.getAttribute('data-tk-actie'), naam = b.getAttribute('data-tk-naam'), email = b.getAttribute('data-tk-email');
+    var persoon = b.getAttribute('data-tk-persoon') ? JSON.parse(b.getAttribute('data-tk-persoon')) : { naam: naam, email: email };
+    if (soort === 'loonmail') { swT('loonheffing', 'Loonheffingsverklaring'); openLoonMail(persoon); }
+    else if (soort === 'ontslagmail') { swT('ontslag', 'Ontslag & aanzegging'); openOntslagMail(persoon); }
+    else if (soort === 'korting') { swT('loonheffingskorting', 'Loonheffingskorting'); openKrtModal(persoon); }
+    else if (soort === 'sommatie') { swT('sommatie', 'Sommaties'); openSomModal(persoon); }
+    else if (soort === 'beschikbaarheid') { swT('beschikbaarheid', 'Beschikbaarheid'); openBkModal(persoon); }
+    else if (soort === 'dossier') openDossier(naam, email);
+    else if (soort === 'onboarding') startChecklist('onboarding', naam, email);
+    else if (soort === 'checklist') openChecklist(b.getAttribute('data-tk-id'));
+    else if (soort === 'tab') { var tab = b.getAttribute('data-tk-tab'); swT(tab, tab); var z = b.getAttribute('data-tk-zoek'); if (z) setTimeout(function () { var inp = document.querySelector('#tab-' + tab + ' input.sb'); if (inp) { inp.value = z; inp.dispatchEvent(new Event('input')); } }, 400); }
+    else if (soort === 'link') window.open(b.getAttribute('data-tk-url'), '_blank');
+  });
+
+  // ---------- Checklists (dossier + takenlijst) ----------
+  window.startChecklist = async function (type, naam, email) {
+    var m = medewerkers.find(function (x) { return (email && (x.email || '').toLowerCase() === String(email).toLowerCase()) || normN(x.naam) === normN(naam); });
+    var r = await api('/api/checklist', { actie: 'start', type: type, naam: naam, email: email || (m ? m.email : ''), winkel: m ? m.winkelNaam : '', medewerker_id: m ? m.id : '' });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, r.bestaand ? 'err' : 'ok');
+    openDossier(naam, email || (m ? m.email : ''), m ? m.id : undefined);
+  };
+  window.openChecklist = async function (id) {
+    var r = await api('/api/checklist?id=' + encodeURIComponent(id));
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    openDossier(r.checklist.naam, r.checklist.email, r.checklist.medewerker_id || undefined);
+  };
+  function chkHtml(c) {
+    var pct = c.totaal ? Math.round(c.klaar / c.totaal * 100) : 0;
+    return '<div class="sec-sub">' + (c.type === 'onboarding' ? 'Onboarding' : 'Offboarding') + '-checklist · ' + c.klaar + '/' + c.totaal + (c.afgerond_op ? ' · <span class="badge bg">afgerond</span>' : '') + ' <span style="text-transform:none;font-weight:400;color:#aaa">gestart ' + esc(String(c.gestart_op || '').slice(0, 10)) + ' door ' + esc(c.gestart_door || '') + '</span></div>'
+      + '<div class="chk-lijst"><div class="chk-balk"><i style="width:' + pct + '%"></i></div>'
+      + c.items.map(function (i) { return '<div class="chk-item' + (i.klaar ? ' klaar' : '') + '"><input type="checkbox" id="chk-' + esc(c.id) + '-' + esc(i.key) + '" data-chk-id="' + esc(c.id) + '" data-chk-key="' + esc(i.key) + '"' + (i.klaar ? ' checked' : '') + '><label for="chk-' + esc(c.id) + '-' + esc(i.key) + '">' + esc(i.label) + '</label>' + (i.klaar ? '<span class="chk-wie">' + esc(i.door || '') + ' · ' + esc(i.op || '') + '</span>' : '') + '</div>'; }).join('')
+      + '<div style="margin-top:8px;text-align:right">' + (c.afgerond_op ? '<button class="btn bd bsm" data-chk-actie="heropen" data-chk-id="' + esc(c.id) + '">Heropenen</button>' : '<button class="btn bd bsm" data-chk-actie="afronden" data-chk-id="' + esc(c.id) + '">Afronden</button>') + '</div></div>';
+  }
+  window.laadChecklistsInDossier = async function (naam, email, id) {
+    var el = g('dos-checklists'); if (!el) return;
+    var r = await api('/api/checklist?naam=' + encodeURIComponent(naam || '') + '&email=' + encodeURIComponent(email || '') + (id ? '&id=' + encodeURIComponent(id) : ''));
+    var lijst = r.success ? r.checklists : [];
+    var open = lijst.filter(function (c) { return !c.afgerond_op; }), dicht = lijst.filter(function (c) { return c.afgerond_op; });
+    var knoppen = '<div style="padding:10px 24px;display:flex;gap:8px;flex-wrap:wrap">' + (open.some(function (c) { return c.type === 'onboarding'; }) ? '' : '<button class="btn bd bsm" onclick="startChecklist(\'onboarding\',' + JSON.stringify(naam) + ',' + JSON.stringify(email || '') + ')">+ Onboarding starten</button>') + (open.some(function (c) { return c.type === 'offboarding'; }) ? '' : '<button class="btn bd bsm" onclick="startChecklist(\'offboarding\',' + JSON.stringify(naam) + ',' + JSON.stringify(email || '') + ')">+ Offboarding starten</button>') + (!r.success ? '<span class="lay-sub">' + esc(r.bericht) + '</span>' : '') + '</div>';
+    el.innerHTML = open.map(chkHtml).join('') + knoppen + (dicht.length ? '<details style="padding:0 24px 12px"><summary class="lay-sub" style="cursor:pointer">' + dicht.length + ' afgeronde checklist(s)</summary>' + dicht.map(chkHtml).join('') + '</details>' : '');
+  };
+  document.addEventListener('change', async function (e) {
+    var cb = e.target; if (!cb.matches || !cb.matches('input[data-chk-id]')) return;
+    cb.disabled = true;
+    var r = await api('/api/checklist', { actie: 'vink', id: cb.getAttribute('data-chk-id'), key: cb.getAttribute('data-chk-key'), klaar: cb.checked });
+    cb.disabled = false;
+    if (!r.success) { cb.checked = !cb.checked; toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); laadChecklistsInDossier(laatsteDossier[0], laatsteDossier[1], laatsteDossier[2]); if (tkData) laadTaken(false);
+  });
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-chk-actie]'); if (!b) return;
+    b.disabled = true; var r = await api('/api/checklist', { actie: b.getAttribute('data-chk-actie'), id: b.getAttribute('data-chk-id') }); b.disabled = false;
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); laadChecklistsInDossier(laatsteDossier[0], laatsteDossier[1], laatsteDossier[2]);
+  });
+
+  // ---------- Winkel-filter (header): alle tabellen + takenlijst ----------
+  function winkelFilter() { var s = g('winkel-filter'); return s ? s.value : ''; }
+  var persoonIndex = null; // email -> winkel, normnaam -> winkel, id -> winkel
+  function bouwPersoonIndex() {
+    persoonIndex = { email: {}, naam: {}, id: {} };
+    medewerkers.forEach(function (m) { var w = m.winkelNaam || ''; if (m.email) persoonIndex.email[m.email.toLowerCase()] = w; persoonIndex.naam[normN(m.naam)] = w; persoonIndex.id[m.id] = w; });
+  }
+  function hoortBijWinkel(naam, email, w) {
+    if (!persoonIndex) bouwPersoonIndex();
+    var pw = (email && persoonIndex.email[String(email).toLowerCase()]) || persoonIndex.naam[normN(naam)];
+    return pw ? normN(pw) === normN(w) : false; // onbekend bij Shiftbase -> niet tonen onder een winkelfilter
+  }
+  window.vulWinkelFilter = function () {
+    var s = g('winkel-filter'); if (!s || !medewerkers.length) return;
+    var winkels = {}; medewerkers.forEach(function (m) { if (m.winkelNaam) winkels[m.winkelNaam] = (winkels[m.winkelNaam] || 0) + 1; });
+    var huidig = s.value;
+    s.innerHTML = '<option value="">Alle winkels</option>' + Object.keys(winkels).sort(function (a, b) { return a.localeCompare(b, 'nl'); }).map(function (w) { return '<option value="' + esc(w) + '">' + esc(w) + ' (' + winkels[w] + ')</option>'; }).join('');
+    s.value = huidig; s.style.display = ''; persoonIndex = null;
+    try { var bewaard = localStorage.getItem('hr-winkel'); if (bewaard && !huidig && Array.prototype.some.call(s.options, function (o) { return o.value === bewaard; })) { s.value = bewaard; } } catch (err) { /* noop */ }
+    pasWinkelFilterToe();
+  };
+  function pasWinkelFilterToe(tbody) {
+    var w = winkelFilter(), s = g('winkel-filter'); if (s) s.classList.toggle('actief', !!w);
+    var tbodies = tbody ? [tbody] : Array.prototype.slice.call(document.querySelectorAll('.tc .tw table tbody'));
+    tbodies.forEach(function (tb) {
+      if (!tb.closest('.tc .tw')) return; // alleen tabellen in tabs (niet in modals)
+      if (tb.id === 'dos-lijst' || tb.id === 'tg-body' || tb.id === 'tg-mut-body' || tb.id === 'gv-body' || tb.id === 'gv-runs') return; // eigen filters / geen personen
+      Array.prototype.forEach.call(tb.rows, function (tr) {
+        if (!w) { tr.classList.remove('wf-verborgen'); return; }
+        if (tr.cells.length < 2 || tr.querySelector('.leeg')) return;
+        var tekst = tr.textContent || '', em = (tekst.match(/[\w.+-]+@[\w.-]+\.\w+/) || [''])[0];
+        var sterk = tr.querySelector('td strong'), naam = sterk ? sterk.textContent : (tr.cells[0] ? tr.cells[0].textContent : '');
+        tr.classList.toggle('wf-verborgen', !hoortBijWinkel(naam, em, w));
+      });
+    });
+    if (tkData) renderTaken();
+  }
+  document.addEventListener('change', function (e) { if (e.target && e.target.id === 'winkel-filter') { try { localStorage.setItem('hr-winkel', e.target.value); } catch (err) { /* noop */ } pasWinkelFilterToe(); } });
+
+  // ---------- Compacte rijacties: eerste knop blijft, de rest in een ⋯-menu ----------
+  function compactActies(tbody) {
+    if (!tbody || tbody.id === 'dos-lijst') return;
+    Array.prototype.forEach.call(tbody.rows, function (tr) {
+      Array.prototype.forEach.call(tr.cells, function (td) {
+        if (td.querySelector('.meer')) return;
+        var knoppen = Array.prototype.filter.call(td.children, function (c) { return c.tagName === 'BUTTON' || (c.tagName === 'A' && c.classList.contains('btn')); });
+        if (knoppen.length < 3) return;
+        var rest = knoppen.slice(1), wrap = document.createElement('span'), menu = document.createElement('div'), knop = document.createElement('button');
+        wrap.className = 'meer'; menu.className = 'meer-menu'; knop.className = 'btn bd bsm'; knop.textContent = '⋯'; knop.title = rest.length + ' meer acties'; knop.setAttribute('data-meer', '1');
+        rest.forEach(function (k) { menu.appendChild(k); });
+        wrap.appendChild(knop); wrap.appendChild(menu); td.appendChild(wrap);
+      });
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var k = e.target.closest && e.target.closest('button[data-meer]');
+    document.querySelectorAll('.meer.open').forEach(function (m) { if (!k || m !== k.parentNode) m.classList.remove('open'); });
+    if (k) { k.parentNode.classList.toggle('open'); e.stopPropagation(); }
+  });
+  // Na elke (her)render van een tabel: compacte acties + winkelfilter
+  (function () {
+    var obs = new MutationObserver(function (muts) { muts.forEach(function (m) { if (m.target && m.target.tagName === 'TBODY') { compactActies(m.target); pasWinkelFilterToe(m.target); } }); });
+    document.querySelectorAll('tbody').forEach(function (tb) { obs.observe(tb, { childList: true }); });
+  })();
+
+  // ---------- Medewerkers koppelen (Beheer → Gegevens) ----------
+  window.koppelMedewerkers = async function () {
+    var b = g('gv-koppel'); b.disabled = true; b.textContent = 'Koppelen…';
+    var r = await api('/api/koppel', {});
+    b.disabled = false; b.textContent = '⇄ Medewerkers koppelen';
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.gekoppeld + ' rijen gekoppeld aan ' + r.medewerkers + ' medewerkers', 'ok');
   };
 
   // ---------- Sorteren (port van SorteerUI.gs, uitgebreid) ----------

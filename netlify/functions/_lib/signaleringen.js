@@ -58,6 +58,11 @@ async function syncFormulieren(droog) {
   // Korting-uploads (syncKortingUploads_ in Korting.gs: alleen uploads ná de verzenddatum)
   try { for (const k of await S.syncKortingUploads(rap.droog)) rap.gevonden.push({ bron: 'korting', naam: k.naam, rij: k.rij }); }
   catch (e) { rap.fouten.push('korting-sync: ' + e.message); }
+  // Fase 1: medewerker_id bijwerken op nieuwe rijen (alleen op de Supabase-laag; stil bij fouten)
+  if (!rap.droog && S.bron && S.bron() === 'supabase') {
+    try { const uit = await require('./data').koppelMedewerkers(await SB.getMedewerkers()); rap.gekoppeld = Object.values(uit).reduce((n, v) => n + (typeof v === 'number' ? v : 0), 0); }
+    catch (e) { rap.fouten.push('koppelen: ' + e.message); }
+  }
   return rap;
 }
 
