@@ -443,6 +443,7 @@
     g('om-eind').value = persoon ? persoon.einddatum || '' : '';
     // Slimme default: aanzegging-dossier -> aanzegging; al verstuurd -> herinnering
     omKey = persoon && persoon.type === 'aanzegging' ? (isVerz(persoon.status) ? 'ontslag-herinnering' : 'aanzegging-nl') : (persoon && isVerz(persoon.status) ? 'ontslag-herinnering' : 'ontslag-pdf');
+    if (persoon && persoon.zelfOpgezegd) { omKey = 'ontslag-pdf'; if (!g('om-opz').value) { var nu = new Date(); g('om-opz').value = ('0' + nu.getDate()).slice(-2) + '-' + ('0' + (nu.getMonth() + 1)).slice(-2) + '-' + nu.getFullYear(); } toast('Bevestiging van de opzegging door de medewerker — controleer de opzegdatum en einddatum', 'ok'); }
     omBouwTbar(); omHerbouw();
     g('om-zoek').value = ''; g('om-zoek-res').classList.remove('open');
     g('om-modal').classList.add('open');
@@ -1264,14 +1265,24 @@
     document.querySelectorAll('#tk-filter .tb').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-tk') === tkFilter); });
     g('tk-count').textContent = d.aantallen.rood + ' nu · ' + d.aantallen.oranje + ' deze week · ' + d.aantallen.grijs + ' info';
     el.innerHTML = lijst.length ? lijst.map(function (t) {
-      return '<div class="tk ' + t.urgentie + '"><div class="tk-t"><strong>' + esc(t.titel) + '</strong><span>' + esc(t.sub || '') + '</span></div><div class="tk-a">' + tkKnop(t.actie, t) + tkKnop(t.extra, t) + (t.naam && !(t.actie && t.actie.soort === 'dossier') && !(t.extra && t.extra.soort === 'dossier') ? dosBtn(t.naam, t.email) : '') + (t.afhandelbaar ? '<button class="btn bd bsm" data-tk-af="' + esc(t.sleutel) + '" title="Verbergen tot de volgende check (7 dagen)">✓ Afgehandeld</button>' : '') + '<span class="tk-bron">' + esc(t.bron) + (t.stand ? ' · ' + esc(t.stand) : '') + '</span></div></div>';
+      return '<div class="tk ' + t.urgentie + '"><div class="tk-t"><strong>' + esc(t.titel) + '</strong><span>' + esc(t.sub || '') + '</span></div><div class="tk-a">' + tkKnop(t.actie, t) + tkKnop(t.extra, t) + (t.naam && !(t.actie && t.actie.soort === 'dossier') && !(t.extra && t.extra.soort === 'dossier') ? dosBtn(t.naam, t.email) : '') + (t.afhandelbaar ? (t.afhandelOpties ? '<span class="meer"><button class="btn bd bsm" data-meer="1">✓ Afgehandeld ▾</button><div class="meer-menu">' + t.afhandelOpties.map(function (o) { return '<button class="btn bd bsm" data-tk-af="' + esc(t.sleutel) + '" data-tk-dagen="' + (o.dagen || 7) + '" data-tk-opm="' + esc(o.opmerking || '') + '">' + esc(o.label) + '</button>'; }).join('') + '</div></span>' : '<button class="btn bd bsm" data-tk-af="' + esc(t.sleutel) + '" data-tk-dagen="7" title="Verbergen tot de volgende check (7 dagen)">✓ Afgehandeld</button>') : '') + '<span class="tk-bron">' + esc(t.bron) + (t.stand ? ' · ' + esc(t.stand) : '') + '</span></div></div>';
     }).join('') : '<div class="leeg grijs">✓ Niets te doen' + (tkFilter !== 'alle' || w ? ' in deze selectie' : '') + '</div>';
     g('tk-voet').textContent = (d.live ? 'Verse stand uit de checks. ' : 'Stand van de laatste automatische checks (↻ Verse stand draait ze nu). ') + (d.verborgen ? d.verborgen + ' afgehandeld verborgen. ' : '') + (d.fouten && d.fouten.length ? 'Fouten: ' + d.fouten.join('; ') : '');
   }
   document.addEventListener('click', async function (e) {
     var f = e.target.closest && e.target.closest('#tk-filter .tb'); if (f) { tkFilter = f.getAttribute('data-tk'); renderTaken(); return; }
     var af = e.target.closest && e.target.closest('button[data-tk-af]');
-    if (af) { af.disabled = true; var r = await api('/api/taken', { sleutel: af.getAttribute('data-tk-af'), dagen: 7 }); if (!r.success) { af.disabled = false; toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadTaken(false); return; }
+    if (af) {
+      af.disabled = true;
+      var rij = af.closest('.tk'), sleutel = af.getAttribute('data-tk-af');
+      var r = await api('/api/taken', { sleutel: sleutel, dagen: parseInt(af.getAttribute('data-tk-dagen'), 10) || 7, opmerking: af.getAttribute('data-tk-opm') || '' });
+      if (!r.success) { af.disabled = false; toast(r.bericht, 'err'); return; }
+      toast(r.bericht, 'ok');
+      // Ter plekke weghalen (geen herlaad = geen springend beeld); tellers bijwerken
+      if (tkData) { var idx = tkData.taken.findIndex(function (x) { return x.sleutel === sleutel; }); if (idx > -1) { tkData.aantallen[tkData.taken[idx].urgentie]--; tkData.taken.splice(idx, 1); tkData.verborgen = (tkData.verborgen || 0) + 1; } }
+      if (rij) { rij.style.transition = 'opacity .25s, max-height .3s'; rij.style.overflow = 'hidden'; rij.style.maxHeight = rij.offsetHeight + 'px'; requestAnimationFrame(function () { rij.style.opacity = '0'; rij.style.maxHeight = '0'; rij.style.paddingTop = '0'; rij.style.paddingBottom = '0'; }); setTimeout(function () { renderTaken(); }, 320); }
+      return;
+    }
     var b = e.target.closest && e.target.closest('button[data-tk-actie]'); if (!b) return;
     var soort = b.getAttribute('data-tk-actie'), naam = b.getAttribute('data-tk-naam'), email = b.getAttribute('data-tk-email');
     var persoon = b.getAttribute('data-tk-persoon') ? JSON.parse(b.getAttribute('data-tk-persoon')) : { naam: naam, email: email };
