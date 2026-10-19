@@ -14,7 +14,7 @@
     { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -63,6 +63,7 @@
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
     if (tab === 'exit' && !exData) laadExit(12);
     if (tab === 'checkin' && !ciData) laadCheckin(6);
+    if (tab === 'scorekaart' && !skData) laadScorekaart(6);
     if (tab === 'toegang' && !tgData) laadToegang();
     if (tab === 'archief' && !arData) laadArchief();
     if (tab === 'gegevens' && !gvData) laadGegevens();
@@ -1088,6 +1089,58 @@
     b.disabled = false; g('ex-slbl').textContent = 'Verstuur uitnodiging';
     if (r.success) { toast(r.bericht, 'ok'); closeExModal(); laadExit(); } else toast('Fout: ' + r.bericht, 'err');
   };
+
+  // ---------- Scorekaart per winkel (fase 3c) ----------
+  var skData = null, skMaanden = 6, skWinkel = null;
+  var SK_KLS = { groen: 'bg', oranje: 'bo', rood: 'br', klein: 'boat', geen: 'boat' };
+  var SK_KORT = { verloop: 'Verloop', vroegPct: 'Weg ≤ 90 d (uitstroom)', uitval90: 'Nieuw weg ≤ 90 d', checkinScore: 'Check-in', checkinLaagPct: 'Lage check-ins', onboarding: 'Onboarding op tijd', verzuimPct: 'Verzuim', meldingsfreq: 'Meldingen p.p./jr', enps: 'eNPS exit', aanzegOpTijd: 'Aanzegging op tijd' };
+  window.laadScorekaart = async function (mnd, vers) {
+    if (mnd) skMaanden = mnd;
+    [3, 6, 12].forEach(function (m) { g('sk-b' + m).className = 'btn bsm ' + (skMaanden === m ? 'bp' : 'bd'); });
+    g('sk-body').innerHTML = '<tr><td class="leeg grijs">Scorekaart berekenen (Shiftbase + dashboard)…</td></tr>';
+    var d = await api('/api/scorekaart?maanden=' + skMaanden + (vers ? '&ververs=1' : ''));
+    if (!d.success) { g('sk-body').innerHTML = '<tr><td class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    skData = d;
+    g('sk-periode').textContent = d.periode + ' · bijgewerkt ' + (d.bijgewerkt || '');
+    g('sk-fout').style.display = d.fouten && d.fouten.length ? '' : 'none'; g('sk-fout').textContent = d.fouten && d.fouten.length ? 'Niet alles kon worden opgehaald: ' + d.fouten.join(' · ') : '';
+    g('sk-head').innerHTML = '<tr><th>Winkel</th><th>In dienst</th>' + d.kpis.map(function (k) { return '<th title="' + esc(k.label + ' — ' + k.uitleg) + '">' + esc(SK_KORT[k.key] || k.label) + '</th>'; }).join('') + '<th>Aandacht</th><th></th></tr>';
+    var cel = function (it, tot) { if (!it || it.v === null || it.v === undefined) return '<td><span class="no-doc">-</span></td>'; return '<td' + (it.n ? ' title="n=' + Math.round(it.n) + '"' : '') + '>' + (tot ? '<strong>' + esc(it.f) + '</strong>' : '<span class="badge ' + (SK_KLS[it.status] || 'boat') + '">' + esc(it.f) + '</span>') + '</td>'; };
+    var rij = function (w, tot) { return '<tr class="' + (tot ? 'sk-tot' : 'sk-rij') + (skWinkel === w.naam ? ' sk-sel' : '') + '"' + (tot ? '' : ' data-sk="' + esc(w.naam) + '"') + '><td><strong>' + esc(w.naam) + '</strong></td><td>' + w.bestand + '</td>' + d.kpis.map(function (k) { return cel(w.waarden[k.key], tot); }).join('') + '<td>' + (tot ? '' : (w.rood ? '<span class="badge br">' + w.rood + '</span> ' : '') + (w.oranje ? '<span class="badge bo">' + w.oranje + '</span>' : (w.rood ? '' : '<span class="no-doc">-</span>'))) + '</td><td>' + (tot ? '' : '<button class="btn bd bsm" data-sk-pdf="' + esc(w.naam) + '" title="PDF voor het overleg met de Store Manager">⬇ PDF</button>') + '</td></tr>'; };
+    g('sk-body').innerHTML = rij(d.totaal, true) + d.winkels.map(function (w) { return rij(w, false); }).join('');
+    if (skWinkel && d.winkels.some(function (w) { return w.naam === skWinkel; })) skDetail(skWinkel); else g('sk-detail').style.display = 'none';
+  };
+  function skSpark(reeks, kleur, max, labels, dec) {
+    var n = reeks.length, w = 18, h = 46, mx = max || Math.max.apply(null, reeks.map(function (v) { return v || 0; }).concat([1]));
+    var bars = reeks.map(function (v, i) { var hh = v ? Math.max(2, Math.round(v / mx * (h - 12))) : 1; return '<rect x="' + (i * (w + 6)) + '" y="' + (h - hh) + '" width="' + w + '" height="' + hh + '" rx="2" fill="' + (v === null ? '#e8e2de' : kleur) + '"><title>' + esc(labels[i]) + ': ' + (v === null ? 'geen' : String(v).replace('.', ',')) + '</title></rect>' + (v ? '<text x="' + (i * (w + 6) + w / 2) + '" y="' + (h - hh - 2) + '" font-size="8" text-anchor="middle" fill="#888078">' + String(dec ? v.toFixed(1) : v).replace('.', ',') + '</text>' : ''); }).join('');
+    var lbl = labels.map(function (l, i) { return '<text x="' + (i * (w + 6) + w / 2) + '" y="' + (h + 11) + '" font-size="8" text-anchor="middle" fill="#888078">' + esc(l.split(' ')[0]) + '</text>'; }).join('');
+    return '<svg width="' + (n * (w + 6)) + '" height="' + (h + 14) + '" style="overflow:visible">' + bars + lbl + '</svg>';
+  }
+  function skDetail(naam) {
+    var d = skData, w = d.winkels.find(function (x) { return x.naam === naam; }); if (!w) return;
+    skWinkel = naam;
+    document.querySelectorAll('#sk-body tr.sk-rij').forEach(function (tr) { tr.classList.toggle('sk-sel', tr.getAttribute('data-sk') === naam); });
+    g('sk-d-titel').textContent = 'Scorekaart ' + naam + ' · ' + d.periode;
+    var lijst = function (titel, items, cls) { return '<div style="flex:1;min-width:280px"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">' + titel + '</div>' + (items.length ? items.map(function (a) { return '<div class="alert ' + cls + '" style="margin:0 0 6px;padding:8px 12px;font-size:.85rem">' + esc(a.tekst) + '</div>'; }).join('') : '<div class="lay-sub">—</div>') + '</div>'; };
+    var h = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"><span class="badge boat">In dienst ' + w.bestand + '</span><span class="badge boat">Instroom ' + w.instroom + '</span><span class="badge boat">Uitstroom ' + w.uitstroom + '</span><span class="badge ' + (w.lopendVerzuim ? 'bo' : 'boat') + '">Nu ziek ' + w.lopendVerzuim + '</span><span class="badge boat">Check-ins ' + w.checkin.ingevuld + '/' + w.checkin.verstuurd + ' ingevuld' + (w.checkin.laag ? ', ' + w.checkin.laag + ' laag' : '') + '</span></div>';
+    h += '<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:18px">' + lijst('Aandachtspunten', w.aandacht, 'rood') + lijst('Wat goed gaat', w.goed, 'groen') + '</div>';
+    h += '<div style="display:flex;gap:36px;flex-wrap:wrap">'
+      + '<div><div class="lay-sub" style="margin-bottom:4px">Instroom per maand</div>' + skSpark(w.trend.in, '#009f4b', null, d.maanden) + '</div>'
+      + '<div><div class="lay-sub" style="margin-bottom:4px">Uitstroom per maand</div>' + skSpark(w.trend.uit, '#e8824a', null, d.maanden) + '</div>'
+      + '<div><div class="lay-sub" style="margin-bottom:4px">Check-in score per maand (1–5)</div>' + skSpark(w.trend.checkin, '#2980b9', 5, d.maanden, true) + '</div>'
+      + '<div><div class="lay-sub" style="margin-bottom:4px">Ziekmeldingen per maand</div>' + skSpark(w.trend.meldingen, '#9a4a1a', null, d.maanden) + '</div></div>';
+    g('sk-d-body').innerHTML = h; g('sk-detail').style.display = '';
+  }
+  window.skPdf = async function (naam) {
+    naam = naam || skWinkel; if (!naam) return;
+    toast('PDF maken voor ' + naam + '…', 'ok');
+    var r = await api('/api/scorekaart?maanden=' + skMaanden + '&winkel=' + encodeURIComponent(naam) + '&pdf=1');
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam);
+  };
+  document.addEventListener('click', function (e) {
+    var p = e.target.closest && e.target.closest('button[data-sk-pdf]'); if (p) { e.stopPropagation(); skPdf(p.getAttribute('data-sk-pdf')); return; }
+    var tr = e.target.closest && e.target.closest('#sk-body tr.sk-rij'); if (tr) { skDetail(tr.getAttribute('data-sk')); setTimeout(function () { g('sk-detail').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 30); }
+  });
 
   // ---------- Check-in 30/60 dagen (fase 3a) ----------
   var ciData = null, ciMaanden = 6, ciFilter = 'alle';

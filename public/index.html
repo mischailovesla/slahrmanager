@@ -33,6 +33,7 @@
   <button class="active" data-tab="overview">Overzicht</button>
   <button data-tab="dossier">Medewerkers</button>
   <button data-tab="signalering">Signaleringen</button>
+  <button data-tab="scorekaart">Scorekaart</button>
   <!-- lifecycle-groepen worden door app.js opgebouwd -->
   <div class="spacer"></div>
 </div>
@@ -303,6 +304,22 @@
   </div></div>
 
   <!-- OPROEPAANBOD (fase 2d, art. 7:628a lid 5 BW) -->
+  <!-- SCOREKAART PER WINKEL (fase 3c) -->
+  <div class="tc" id="tab-scorekaart">
+    <div class="sec">
+      <div class="sh"><div class="st">Scorekaart per winkel <span class="lay-sub" id="sk-periode" style="color:rgba(255,255,255,.6);margin-left:8px"></span></div>
+        <div class="hr2"><button class="btn bd bsm" id="sk-b3" onclick="laadScorekaart(3)">3 mnd</button><button class="btn bd bsm" id="sk-b6" onclick="laadScorekaart(6)">6 mnd</button><button class="btn bd bsm" id="sk-b12" onclick="laadScorekaart(12)">12 mnd</button><button class="btn bd bsm" onclick="laadScorekaart(0, true)">↻ Vernieuwen</button></div></div>
+      <div id="sk-fout" class="alert geel" style="display:none;margin:12px 24px 0"></div>
+      <div class="tw"><table class="sk-tabel"><thead id="sk-head"></thead><tbody id="sk-body"><tr><td class="leeg grijs">Laden…</td></tr></tbody></table></div>
+      <div class="lay-sub" style="padding:10px 24px 14px"><span class="badge br">rood</span> duidelijk slechter dan het SLA-gemiddelde (≥ 30% bij aantallen, ≥ 15% bij scores, eNPS ≥ 20 punten) · <span class="badge bo">oranje</span> iets slechter · <span class="badge bg">groen</span> gelijk of beter · <span class="badge boat">grijs</span> te weinig gegevens (&lt; 3). Klik op een winkel voor de details.</div>
+    </div>
+    <div class="sec" id="sk-detail" style="display:none">
+      <div class="sh"><div class="st" id="sk-d-titel">-</div><div class="hr2"><button class="btn bp bsm" id="sk-pdf" onclick="skPdf()">⬇ PDF voor het overleg</button></div></div>
+      <div id="sk-d-body" style="padding:14px 24px 18px"></div>
+    </div>
+    <div class="alert grijs"><strong>Bronnen:</strong> in-/uitstroom en verloop uit Shiftbase (zelfde berekening als de Verloopanalyse), verzuim uit goedgekeurde ziekmeldingen in Shiftbase, check-in 30/60, exit-survey, aanzeggingen en onboarding-checklists uit het dashboard. <strong>De PDF</strong> bevat alleen geaggregeerde cijfers; check-in- en exitcijfers verschijnen pas vanaf 3 reacties, zodat de Store Manager niet kan herleiden wie wat heeft ingevuld.</div>
+  </div>
+
   <!-- CHECK-IN 30/60 (fase 3a) -->
   <div class="tc" id="tab-checkin">
     <div class="alert geel" id="ci-pauze" style="display:none"><strong>⏸ Check-in staat op pauze.</strong> Er gaan geen uitnodigingen uit en de check-in-pagina is gesloten. Hieronder zie je wie er vandaag en de komende 14 dagen een uitnodiging zou krijgen. Zet hem aan bij <em>Instellingen</em> onderaan zodra de vragen zijn doorgenomen.</div>

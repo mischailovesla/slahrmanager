@@ -195,3 +195,8 @@ tbody tr:hover td{background:#fdfaf8}
 .meer.open .meer-menu{display:flex;flex-direction:column;gap:4px}
 .meer-menu .btn{width:100%;justify-content:flex-start}
 .wf-verborgen{display:none !important}
+
+/* Scorekaart (fase 3c) */
+.sk-tabel td,.sk-tabel th{white-space:nowrap}.sk-tabel th{font-size:.66rem}
+#sk-body tr.sk-rij{cursor:pointer}#sk-body tr.sk-rij:hover td{background:#faf7f5}#sk-body tr.sk-sel td{background:#eef8f2}
+#sk-body tr.sk-tot td{background:#f8f3f0;border-bottom:2px solid #e8e2de}

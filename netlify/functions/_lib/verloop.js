@@ -86,12 +86,17 @@ function berekenVerloop(med, eindMaand, aantalMaanden, vandaag) {
   return { maanden, winkels: lijst, totaal, vroegeLijst: vroegeLijst.slice(0, 15) };
 }
 let _cache = { t: 0, v: null };
-async function getVerloopData(maanden, ververs) {
-  maanden = Number(maanden) || 12;
+// Alle medewerkers (ook uit dienst) met id, naam, winkel, start, eind — 30 min cache; ook gebruikt door de scorekaart (fase 3c)
+async function laadMedewerkers(ververs) {
   if (ververs || !_cache.v || _cache.t < Date.now()) {
     const users = await SB.sbGet('users'); let cons = []; try { cons = await SB.sbGet('contracts'); } catch (e) { console.warn('contracts:', e.message); }
     _cache = { t: Date.now() + 30 * 60000, v: verwerkVerloopData(users, cons) };
   }
+  return _cache.v;
+}
+async function getVerloopData(maanden, ververs) {
+  maanden = Number(maanden) || 12;
+  await laadMedewerkers(ververs);
   const nu = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' }));
   const r = berekenVerloop(_cache.v, new Date(nu.getFullYear(), nu.getMonth(), 1), maanden, nu);
   r.cohorten = C.VRL_COHORTEN; r.vroegDagen = C.VRL_VROEG_DAGEN; r.bijgewerkt = D.stempel();
@@ -121,4 +126,4 @@ async function uitstroomredenen(vanIso, totIso) {
   const eigen = lijst.filter(x => /^eigen keuze/i.test(x.reden)).reduce((a, x) => a + x.aantal, 0);
   return { totaal, lijst, zonder, eigenKeuze: eigen, eigenKeuzePct: totaal ? Math.round(eigen / totaal * 100) : 0 };
 }
-module.exports = { verwerkVerloopData, berekenVerloop, getVerloopData, uitstroomredenen };
+module.exports = { verwerkVerloopData, berekenVerloop, getVerloopData, uitstroomredenen, laadMedewerkers };
