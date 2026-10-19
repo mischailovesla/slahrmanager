@@ -681,5 +681,87 @@ const OOSV_WEDERHOOR = `
 Op {{Wederhoor}} bent u in de gelegenheid gesteld uw zienswijze op het geconstateerde te geven. Hetgeen u naar voren heeft gebracht leidt niet tot een ander oordeel.
 `;
 
+// --- Aanbod vaste arbeidsomvang (fase 2; art. 7:628a lid 5 BW) ---
+// Placeholders: {{Naam}} {{Adres}} {{BV}} {{Winkel}} {{Sinds}} {{Periode}} {{GemUren}} {{AangebodenUren}} {{Ingangsdatum}} {{Reactiedatum}} {{HuidigeDatum}}
+const OPROEP_NL = `{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Betreft: Aanbod vaste arbeidsomvang (artikel 7:628a lid 5 BW)**
+
+Beste {{Naam}},
+
+Je werkt sinds {{Sinds}} op basis van een oproepovereenkomst bij {{BV}} ({{Winkel}}). De wet bepaalt dat een werkgever een oproepkracht na twaalf maanden een aanbod moet doen voor een vaste arbeidsomvang, ten minste gelijk aan het gemiddelde aantal uren dat in die twaalf maanden is gewerkt.
+
+In de periode {{Periode}} heb je volgens onze roostergegevens gemiddeld **{{GemUren}} uur per week** gewerkt.
+
+**Ons aanbod**
+
+Wij bieden je hierbij een arbeidsovereenkomst aan met een vaste arbeidsomvang van **{{AangebodenUren}} uur per week**, ingaande {{Ingangsdatum}}. De overige voorwaarden van je arbeidsovereenkomst blijven ongewijzigd. Met een vaste arbeidsomvang heb je zekerheid over je uren en je inkomen; je wordt voor deze uren ingeroosterd en doorbetaald, ook als er een keer minder werk is.
+
+**Wat we van je vragen**
+
+Laat ons uiterlijk op {{Reactiedatum}} weten of je dit aanbod aanvaardt. Dat kan door deze brief ondertekend terug te sturen via de link in de e-mail, of door te antwoorden op de e-mail. Aanvaard je het aanbod, dan leggen we de nieuwe arbeidsomvang schriftelijk vast.
+
+Je bent niet verplicht het aanbod te accepteren. Wil je liever op oproepbasis blijven werken, dan respecteren we dat; je oproepovereenkomst loopt dan ongewijzigd door en wij doen je volgend jaar opnieuw een aanbod. Reageer je niet vóór {{Reactiedatum}}, dan gaan wij ervan uit dat je op oproepbasis wilt blijven werken.
+
+Heb je vragen over dit aanbod? Neem dan contact op met je Store Manager of met HR via hr@ilovesla.com.
+
+Met vriendelijke groet,
+
+${AFZENDER_NAAM}
+HR - SLA Hoofdkantoor
+{{BV}}
+
+
+Voor akkoord / niet akkoord (doorhalen wat niet van toepassing is):
+
+Naam: {{Naam}}
+
+Ik aanvaard het aanbod van {{AangebodenUren}} uur per week  /  Ik blijf op oproepbasis werken
+
+Datum: ____________________   Handtekening: ____________________`;
+
+const OPROEP_EN = `{{HuidigeDatum}}
+
+{{Naam}}
+{{Adres}}
+
+**Re: Offer of fixed working hours (Section 7:628a(5) Dutch Civil Code)**
+
+Dear {{Naam}},
+
+You have been working for {{BV}} ({{Winkel}}) under an on-call agreement since {{Sinds}}. Dutch law requires an employer to offer an on-call worker, after twelve months, a fixed number of working hours at least equal to the average number of hours worked in those twelve months.
+
+According to our scheduling records you worked an average of **{{GemUren}} hours per week** in the period {{Periode}}.
+
+**Our offer**
+
+We hereby offer you an employment agreement with a fixed working time of **{{AangebodenUren}} hours per week**, starting {{Ingangsdatum}}. All other terms of your employment agreement remain unchanged. Fixed hours give you certainty about your hours and income: you will be scheduled and paid for these hours, also when there is less work.
+
+**What we ask of you**
+
+Please let us know by {{Reactiedatum}} whether you accept this offer, by returning this letter signed via the link in the e-mail or by replying to the e-mail. If you accept, we will confirm the new working hours in writing.
+
+You are not obliged to accept. If you prefer to keep working on an on-call basis, we respect that: your on-call agreement continues unchanged and we will make you a new offer next year. If we do not hear from you before {{Reactiedatum}}, we will assume you wish to continue on an on-call basis.
+
+If you have any questions, please contact your Store Manager or HR at hr@ilovesla.com.
+
+Kind regards,
+
+${AFZENDER_NAAM}
+HR - SLA Head Office
+{{BV}}
+
+
+Accept / decline (strike out what does not apply):
+
+Name: {{Naam}}
+
+I accept the offer of {{AangebodenUren}} hours per week  /  I prefer to continue on an on-call basis
+
+Date: ____________________   Signature: ____________________`;
+
 module.exports = { ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, OVERPL_NL, OVERPL_EN, STANDPL_NL, STANDPL_EN,
-  PROEFTIJD_WG_NL, PROEFTIJD_WG_EN, PROEFTIJD_WN_NL, PROEFTIJD_WN_EN, WRS_NL, WRS_EN, BESCHIKB_NL, BESCHIKB_EN, OOSV, OOSV_WEDERHOOR, vul, handtekening };
+  PROEFTIJD_WG_NL, PROEFTIJD_WG_EN, PROEFTIJD_WN_NL, PROEFTIJD_WN_EN, WRS_NL, WRS_EN, BESCHIKB_NL, BESCHIKB_EN, OOSV, OOSV_WEDERHOOR, OPROEP_NL, OPROEP_EN, vul, handtekening };

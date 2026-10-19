@@ -18,7 +18,11 @@ const OMSCHRIJVING = {
   'korting-herinneringen': { label: 'Loonheffingskorting-herinneringen', wanneer: 'dagelijks 09:55', wat: 'Herinnering aan medewerkers van wie het kortingsformulier na 3 dagen nog niet retour is (tab Korting K/L), max. 1 per 3 dagen.' },
   'vakantiepieken': { label: 'Afwezigheidspieken', wanneer: 'maandag 09:00', wat: 'Mail aan HR: winkels waar in de komende 4 weken ≥30% van de bezetting tegelijk weg is (vakantie + stille afwezigen, open aanvragen meegerekend).' },
   'bewaartermijnen': { label: 'AVG-bewaartermijnen', wanneer: '1e van de maand 08:00', wat: 'Mail aan Mischa: dossierregels voorbij hun bewaartermijn (2 jaar dossier, 5 jaar loonheffing). Verwijdert niets — beoordelen blijft mensenwerk.' },
-  'data-hygiene': { label: 'Datakwaliteit Shiftbase', wanneer: '1e van de maand 09:00', wat: 'Mail aan HR: actieve medewerkers zonder adres of functie in Shiftbase, per winkel.' }
+  'data-hygiene': { label: 'Datakwaliteit Shiftbase', wanneer: '1e van de maand 09:00', wat: 'Mail aan HR: actieve medewerkers zonder adres of functie in Shiftbase, per winkel.' },
+  'contractketen': { label: 'Contractketen & proeftijd', wanneer: 'dagelijks 10:00', wat: 'Mail aan HR: contracten die binnen 60 dagen aflopen terwijl de ketenregeling (3 contracten / 36 maanden, art. 7:668a BW) vol is of bijna vol; en proeftijden die binnen 10 dagen eindigen (art. 7:652 BW).' },
+  'verzuim': { label: 'Verzuim & Poortwachter', wanneer: 'dagelijks 10:20', wat: 'Mail aan HR: lopende ziekteperiodes (Shiftbase) met een Poortwachter-mijlpaal binnen 7 dagen (week 6/8/42/52), en frequent verzuim (≥3 meldingen in 12 maanden).' },
+  'jeugd': { label: 'Jeugd: ATW-rooster & jeugdloon', wanneer: 'maandag 10:15', wat: 'Mail aan HR: roosterdiensten van <18-jarigen die niet passen bij de Arbeidstijdenwet (eindtijd, uren per dienst/week), en verjaardagen t/m 20 jaar in de komende 21 dagen (minimumjeugdloon stijgt).' },
+  'oproepaanbod': { label: 'Oproepaanbod na 12 maanden', wanneer: 'maandag 10:30', wat: 'Mail aan HR: oproepkrachten die binnen 30 dagen 12 maanden in dienst zijn zonder aanbod vaste arbeidsomvang (art. 7:628a lid 5 BW), met het gemiddelde aantal uren uit de roosters.' }
 };
 
 exports.handler = beveiligd('signalering', async (event, g) => {

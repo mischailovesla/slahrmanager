@@ -32,6 +32,12 @@ async function zetVinkje(tok, refs) {
     await S.zetCel(C.SHEETS.loonheffing.id, C.TAB_KORTING, r.rij, 10, refs.korting || '');
     return r.rij;
   }
+  if (tok.s === 'oproep') {
+    const open = (await S.getOproepaanbod()).filter(r => match(r) && !r.reactie); const r = open[0]; if (!r) return 0;
+    await S.zetCel(C.SHEETS.ontslag.id, 'Oproepaanbod', r.rij, 14, 'Ontvangen (document)'); await S.zetCel(C.SHEETS.ontslag.id, 'Oproepaanbod', r.rij, 15, new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).slice(0, 16).replace('T', ' '));
+    await S.zetCel(C.SHEETS.ontslag.id, 'Oproepaanbod', r.rij, 16, refs.oproep || '');
+    return r.rij;
+  }
   return 0;
 }
 

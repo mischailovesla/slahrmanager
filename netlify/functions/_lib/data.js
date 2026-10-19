@@ -197,7 +197,7 @@ async function getOntslag() {
   const data = await sheetWeergave('hr_ontslag'); const dl = await ontslagDocLinks(); const out = [];
   for (let i = 1; i < data.length; i++) {
     const r = data[i]; if (!cel(r, 0)) continue;
-    out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), opzegging: cel(r, 2), einddatum: cel(r, 3), bedrijf: cel(r, 5), adres: cel(r, 6), status: cel(r, 7), verzenddatum: cel(r, 8), ondertekend: isJa(r[9]) ? 'Ja' : 'Nee', herinnering: cel(r, 10), aantalHer: parseInt(cel(r, 11), 10) || 0, mahdia: isJa(r[13]) ? 'Ja' : 'Nee', salaris: cel(r, 14), docUrl: zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', briefUrl: cel(r, 15), type: (!cel(r, 2) && cel(r, 3)) ? 'aanzegging' : 'ontslag' }));
+    out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), opzegging: cel(r, 2), einddatum: cel(r, 3), bedrijf: cel(r, 5), adres: cel(r, 6), status: cel(r, 7), verzenddatum: cel(r, 8), ondertekend: isJa(r[9]) ? 'Ja' : 'Nee', herinnering: cel(r, 10), aantalHer: parseInt(cel(r, 11), 10) || 0, mahdia: isJa(r[13]) ? 'Ja' : 'Nee', salaris: cel(r, 14), docUrl: zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', briefUrl: cel(r, 15), uitstroomreden: cel(r, 16), type: (!cel(r, 2) && cel(r, 3)) ? 'aanzegging' : 'ontslag' }));
   }
   return out;
 }
@@ -302,6 +302,17 @@ async function zetSalarisStempel(type, rij, stempelTekst) {
   if (type === 'korting') return zetCel(SHEETS.loonheffing.id, TAB_KORTING, rij, 13, stempelTekst);
   throw new Error('Onbekend type: ' + type);
 }
+// Fase 2d: aanbod vaste arbeidsomvang (hr_oproepaanbod)
+async function getOproepaanbod() {
+  return leesTab(SHEETS.ontslag.id, 'Oproepaanbod', (r, rij) => ({ rij, naam: cel(r, 0), email: cel(r, 1), adres: cel(r, 2), winkel: cel(r, 3), bv: cel(r, 4), sinds: cel(r, 5), gemUren: cel(r, 6), aangebodenUren: cel(r, 7), ingangsdatum: cel(r, 8), reactiedatum: cel(r, 9), taal: cel(r, 10) || 'NL', status: cel(r, 11), verzenddatum: cel(r, 12), reactie: cel(r, 13), reactieDatum: cel(r, 14), docUrl: cel(r, 15) }));
+}
+async function logOproepaanbod(p, w, stempelTekst) {
+  return nieuweRij('hr_oproepaanbod', [p.naam, p.to, p.adres || '', w.naam, w.bv, p.sinds || '', String(p.gemUren || ''), String(p.aangebodenUren || ''), p.ingangsdatum || '', p.reactiedatum || '', p.taal || 'NL', 'Verstuurd op ' + stempelTekst, stempelTekst, '', '', '']);
+}
+async function zetOproepReactie(rij, reactie, door) {
+  const { error } = await db().from('hr_oproepaanbod').update({ reactie, reactie_datum: stempelNu() + (door ? ' (' + door + ')' : '') }).eq('rij', rij);
+  if (error) fout(error, 'hr_oproepaanbod rij ' + rij);
+}
 async function getNotities() {
   return leesTab(SHEETS.loonheffing.id, TAB_NOTITIES, (r, rij) => ({ rij, naam: cel(r, 0), email: cel(r, 1), datum: cel(r, 2), auteur: cel(r, 3), tekst: String((r && r[4]) || '') }));
 }
@@ -334,6 +345,7 @@ async function koppelMedewerkers(medewerkers) {
   return uit;
 }
 
-module.exports = { koppelMedewerkers, jwt, eersteTabNaam, getNotities, voegNotitieToe, getArchief, herstelUitArchief, leesRuw, getKorting, logKorting, syncKortingUploads, zetSalarisStempel, zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij,
+async function zetUitstroomreden(rij, reden) { return zetCel(SHEETS.ontslag.id, null, rij, 17, reden || ''); }
+module.exports = { zetUitstroomreden, getOproepaanbod, logOproepaanbod, zetOproepReactie, koppelMedewerkers, jwt, eersteTabNaam, getNotities, voegNotitieToe, getArchief, herstelUitArchief, leesRuw, getKorting, logKorting, syncKortingUploads, zetSalarisStempel, zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij,
   // intern, voor import/export
   _intern: { alles, upsert, naarRecord, naarArr, sheetWeergave, volgendeRij } };

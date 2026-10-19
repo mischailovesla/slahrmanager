@@ -27,7 +27,7 @@ const TABELLEN = {
     kolommen: [k('naam', 'Naam'), k('email', 'Email'), k('opzegging', 'Datum opzegging'), k('einddatum', 'Einddatum'), k('kol_e', 'E'),
       k('bedrijf', 'Bedrijf (BV)'), k('adres', 'Adres'), k('status', 'Status'), k('verzenddatum', 'Verzenddatum'), k('ondertekend', 'Ondertekend'),
       k('herinnering', 'Herinnering'), k('aantal_herinneringen', 'Aantal herinneringen'), k('kol_m', 'M'), k('mahdia', 'Naar Mahdia'),
-      k('salaris', 'Naar salaris'), k('brief_url', 'Brief')]
+      k('salaris', 'Naar salaris'), k('brief_url', 'Brief'), k('uitstroomreden', 'Uitstroomreden')]
   },
   hr_sommatie: {
     sheet: 'sommatie', tab: null, label: 'Sommatie', archief: true, kopLabel: 'Naam',
@@ -66,6 +66,12 @@ const TABELLEN = {
     kolommen: [k('naam', 'Naam'), k('email', 'Email'), k('keuze', 'Keuze'), k('ingangsdatum', 'Gewenste ingangsdatum'), k('deadline', 'Deadline'), k('taal', 'Taal'),
       k('status', 'Status'), k('verzenddatum', 'Verzenddatum'), k('retour', 'Formulier retour'), k('document', 'Document'), k('herinnering', 'Herinnering'),
       k('aantal_herinneringen', 'Aantal herinneringen'), k('salaris', 'Naar salaris')]
+  },
+  hr_oproepaanbod: {
+    sheet: 'ontslag', tab: 'Oproepaanbod', label: 'Oproepaanbod', archief: false, kopLabel: 'Naam',
+    kolommen: [k('naam', 'Naam'), k('email', 'Email'), k('adres', 'Adres'), k('winkel', 'Winkel'), k('bv', 'BV'), k('sinds', 'Oproep sinds'), k('gem_uren', 'Gemiddeld u/week'),
+      k('aangeboden_uren', 'Aangeboden u/week'), k('ingangsdatum', 'Ingangsdatum'), k('reactiedatum', 'Reageren vóór'), k('taal', 'Taal'), k('status', 'Status'), k('verzenddatum', 'Verzenddatum'),
+      k('reactie', 'Reactie'), k('reactie_datum', 'Reactie op'), k('document', 'Document')]
   },
   hr_notities: {
     sheet: 'loonheffing', tab: TAB_NOTITIES, label: 'Notities', archief: false, kopLabel: 'Naam',

@@ -19,6 +19,7 @@ const TOEGESTAAN = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png
 const SOORTEN = {
   loon:    { label: 'Loonheffingsverklaring en indiensttredingsformulier', labelEN: 'Payroll tax form and onboarding form', bestanden: [{ key: 'loon', label: 'Loonheffingsverklaring (model opgaaf gegevens voor de loonheffingen)', labelEN: 'Payroll tax statement (model opgaaf gegevens voor de loonheffingen)', verplicht: true }, { key: 'indienst', label: 'Indiensttredingsformulier', labelEN: 'Onboarding form', verplicht: false }] },
   ontslag: { label: 'Ondertekende ontslagbevestiging', labelEN: 'Signed confirmation', bestanden: [{ key: 'ontslag', label: 'Ondertekend document', labelEN: 'Signed document', verplicht: true }] },
+  oproep:  { label: 'Ondertekend aanbod vaste arbeidsomvang', labelEN: 'Signed offer of fixed working hours', bestanden: [{ key: 'oproep', label: 'Ondertekende brief (akkoord of niet akkoord aangekruist)', labelEN: 'Signed letter (accept or decline ticked)', verplicht: true }] },
   korting: { label: 'Formulier loonheffingskorting', labelEN: 'Payroll tax credit form', bestanden: [{ key: 'korting', label: 'Ondertekend formulier loonheffingskorting', labelEN: 'Signed payroll tax credit form', verplicht: true }] }
 };
 const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

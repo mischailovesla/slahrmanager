@@ -397,7 +397,94 @@ async function dataHygiene(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene };
+// ============================================================
+// Fase 2: juridische checks (contractketen/proeftijd, verzuim/Poortwachter, jeugd, oproepaanbod)
+// ============================================================
+const KT = require('./contracten');
+const VZ = require('./verzuim');
+const JG = require('./jeugd');
+const OP = require('./oproep');
+
+// Generieke HR-mail met blokken per item (zelfde huisstijl als de andere checks)
+function blokMail(kleur, kop, intro, items, tip, voet) {
+  const blokken = items.map(i => '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px"><tr><td style="padding:14px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid ' + (i.kleur || kleur) + '"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 4px">' + esc(i.titel) + (i.sub ? ' <span style="font-weight:400;color:#888078;font-size:12px">&middot; ' + esc(i.sub) + '</span>' : '') + '</p><p style="' + F + 'font-size:12px;color:#666;margin:0;line-height:1.6">' + i.html + '</p></td></tr></table>').join('');
+  return T.slaWrap(T.slaHead(kleur, kop) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">' + intro + '</p>' + blokken + (tip ? '<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0"><tr><td style="padding:12px 16px;background:#e6f7ee;border-radius:8px;border-left:4px solid #009f4b;' + F + 'font-size:12px;color:#006b30;line-height:1.6">' + tip + '</td></tr></table>' : '') + '<p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">' + esc(voet || 'Automatisch bericht van het SLA HR Dashboard') + '</p></td></tr>' + T.slaFoot());
+}
+
+// ---- 12. Contractketen + proeftijd (dagelijks) ----
+async function contractketen(droog) {
+  const rap = { naam: 'contractketen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const [med, per] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true)]);
+  const lijst = KT.contractSignalen(med, per, vandaag0());
+  rap.gevonden = lijst;
+  if (!lijst.length) return rap;
+  const items = lijst.map(x => x.soort === 'keten'
+    ? { kleur: x.vol ? '#c0392b' : '#e8824a', titel: x.naam, sub: x.winkel + ' · contract eindigt ' + x.einddatum + ' (over ' + x.dagenTotEinde + ' dagen)', html: (x.vol ? '<strong style="color:#c0392b">Keten vol</strong> — ' : '<strong>Let op</strong> — ') + esc(x.reden) + '. Keten: ' + x.aantal + ' contract(en), ' + x.maanden + ' maanden.' + (x.vol ? ' Verlengen kan alleen als <strong>onbepaalde tijd</strong>; anders aanzeggen (niet verlengen).' : ' Het volgende contract is het laatste tijdelijke; daarna wordt het vast.') }
+    : { kleur: '#2980b9', titel: x.naam, sub: x.winkel + ' · in dienst ' + x.start, html: 'Proeftijd (indien schriftelijk overeengekomen) eindigt op <strong>' + esc(x.proeftijdEinde) + '</strong>' + (x.dagenTotEinde >= 0 ? ' — over ' + x.dagenTotEinde + ' dagen' : ' — <strong style="color:#c0392b">verstreken</strong>') + '. Plan het proeftijdgesprek en beslis vóór die datum; proeftijdontslag ná de proeftijd is niet meer mogelijk.' });
+  const plain = 'Hallo,\n\nContractsignalen:\n' + lijst.map(x => '- ' + x.naam + ' (' + x.winkel + '): ' + (x.soort === 'keten' ? 'contract eindigt ' + x.einddatum + ' — ' + x.reden : 'proeftijd eindigt ' + x.proeftijdEinde)).join('\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
+  await mailOfDroog(rap, { to: ontvangers('contractketen'), subject: 'Contracten: ' + lijst.filter(x => x.soort === 'keten').length + ' ketensignaal/-signalen, ' + lijst.filter(x => x.soort === 'proeftijd').length + ' proeftijd(en)', text: plain, html: blokMail('#e8824a', 'HR &middot; Contractketen &amp; proeftijd', 'Deze contracten vragen een beslissing (ketenregeling art. 7:668a BW: na ' + C.KETEN_MAX_CONTRACTEN + ' tijdelijke contracten of ' + C.KETEN_MAX_MAANDEN + ' maanden wordt het volgende contract onbepaalde tijd; proeftijd art. 7:652 BW):', items, 'Verlengen: zet het nieuwe contract in Shiftbase. Niet verlengen: Uitstroom &rarr; Ontslag &amp; aanzegging &rarr; Aanzegging. CAO-afwijkingen: pas de grenzen aan in config.js (KETEN_*).', 'Dagelijkse contractcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
+  return rap;
+}
+
+// ---- 13. Verzuim / Wet verbetering poortwachter (dagelijks) ----
+async function verzuim(droog) {
+  const rap = { naam: 'verzuim', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const vandaag = vandaag0();
+  const [med, abs] = await Promise.all([SB.getMedewerkers(true), SB.sbGet('absentees?min_date=' + isoDag(plusDagen(vandaag, -C.VERZUIM_TERUGKIJK_DAGEN)) + '&max_date=' + isoDag(plusDagen(vandaag, 60))).then(r => (r && r.data) || r || [])]);
+  const periodes = VZ.ziekteperiodes(abs, vandaag);
+  const lijst = VZ.verzuimSignalen(med, periodes, vandaag);
+  rap.gevonden = lijst;
+  if (!lijst.length) return rap;
+  const items = lijst.map(x => x.soort === 'mijlpaal'
+    ? { kleur: x.teLaat ? '#c0392b' : '#e8824a', titel: x.naam, sub: x.winkel + ' · ziek sinds ' + x.sinds + ' (dag ' + x.dag + ')', html: '<strong>' + esc(x.mijlpaal) + '</strong>' + (x.over > 0 ? ' — over ' + x.over + ' dagen' : x.over === 0 ? ' — <strong>vandaag</strong>' : ' — <strong style="color:#c0392b">' + (-x.over) + ' dagen geleden (nog niet vastgelegd?)</strong>') }
+    : x.soort === 'frequent'
+      ? { kleur: '#2980b9', titel: x.naam, sub: x.winkel, html: '<strong>Frequent verzuim:</strong> ' + x.meldingen + ' ziekmeldingen in 12 maanden (laatste ' + esc(x.laatste) + '). Plan een verzuimgesprek: wat speelt er, en wat is er nodig?' }
+      : { kleur: '#888078', titel: x.naam, sub: x.winkel + ' · ziek sinds ' + x.sinds, html: 'Lopend verzuim, dag ' + x.dag + '. Houd contact (wekelijks) en leg afspraken vast in het dossier.' });
+  const plain = 'Hallo,\n\nVerzuimsignalen:\n' + lijst.map(x => '- ' + x.naam + ' (' + x.winkel + '): ' + (x.soort === 'mijlpaal' ? x.mijlpaal + (x.over >= 0 ? ' over ' + x.over + ' dagen' : ' ' + (-x.over) + ' dagen geleden') : x.soort === 'frequent' ? 'frequent verzuim (' + x.meldingen + 'x in 12 mnd)' : 'lopend verzuim dag ' + x.dag)).join('\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
+  await mailOfDroog(rap, { to: ontvangers('verzuim'), subject: 'Verzuim: ' + lijst.filter(x => x.soort === 'mijlpaal').length + ' Poortwachter-mijlpa(a)l(en), ' + lijst.filter(x => x.soort === 'frequent').length + 'x frequent verzuim', text: plain, html: blokMail('#e8824a', 'HR &middot; Verzuim &amp; Poortwachter', 'Op basis van de ziekmeldingen in Shiftbase (status goedgekeurd; periodes korter dan 4 weken uit elkaar tellen als één ziektegeval):', items, 'Mijlpalen uit de Wet verbetering poortwachter: week 6 probleemanalyse (bedrijfsarts), week 8 plan van aanpak, week 42 UWV-melding, week 52 eerstejaarsevaluatie. Een onvolledig dossier kan een loonsanctie van UWV opleveren.', 'Dagelijkse verzuimcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
+  return rap;
+}
+
+// ---- 14. Jeugd: minimumjeugdloon-verjaardagen + Arbeidstijdenwet-roostercheck < 18 (wekelijks) ----
+async function jeugd(droog) {
+  const rap = { naam: 'jeugd', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const vandaag = vandaag0();
+  const med = await SB.getMedewerkers(true);
+  const jong = med.filter(m => m.leeftijd != null && m.leeftijd < 18);
+  let ros = [];
+  if (jong.length) ros = await SB.sbGet('rosters?min_date=' + isoDag(vandaag) + '&max_date=' + isoDag(plusDagen(vandaag, C.ATW_DAGEN_VOORUIT))).then(r => (r && r.data) || r || []).catch(e => { rap.fouten.push('roosters: ' + e.message); return []; });
+  const vj = JG.verjaardagen(med, vandaag).map(x => Object.assign({ soort: 'verjaardag' }, x));
+  const atw = JG.atwOvertredingen(med, ros, vandaag).map(x => Object.assign({ soort: 'atw' }, x));
+  rap.gevonden = atw.concat(vj);
+  rap.zonderGeboortedatum = med.filter(m => m.leeftijd == null).length;
+  if (!rap.gevonden.length) return rap;
+  const items = atw.map(x => ({ kleur: '#c0392b', titel: x.naam + ' (' + x.leeftijd + ')', sub: x.winkel + ' · ' + x.datum + (x.dienst ? ' · ' + x.dienst : ''), html: '<strong>Rooster past niet bij de Arbeidstijdenwet:</strong> ' + esc(x.wat) + '. Regel: ' + esc(x.regel) + '.' }))
+    .concat(vj.map(x => ({ kleur: '#009f4b', titel: x.naam, sub: x.winkel + ' · wordt ' + x.wordt + ' op ' + x.op + (x.over === 0 ? ' (vandaag)' : ' (over ' + x.over + ' dagen)'), html: 'Minimumjeugdloon stijgt per die datum — doorgeven aan de salarisadministratie (' + esc(C.SALARIS_EMAIL) + ').' })));
+  const plain = 'Hallo,\n\n' + (atw.length ? 'Arbeidstijdenwet (<18):\n' + atw.map(x => '- ' + x.naam + ' (' + x.leeftijd + ', ' + x.winkel + ') ' + x.datum + ': ' + x.wat).join('\n') + '\n\n' : '') + (vj.length ? 'Verjaardagen (minimumjeugdloon):\n' + vj.map(x => '- ' + x.naam + ' (' + x.winkel + ') wordt ' + x.wordt + ' op ' + x.op).join('\n') + '\n\n' : '') + '(Automatisch bericht van het SLA HR Dashboard)';
+  await mailOfDroog(rap, { to: ontvangers('jeugd'), subject: 'Jeugd: ' + atw.length + ' roosterafwijking(en) ATW, ' + vj.length + ' verjaardag(en) minimumjeugdloon', text: plain, html: blokMail('#2980b9', 'HR &middot; Jeugd: rooster &amp; jeugdloon', 'Medewerkers onder de 18 en verjaardagen tot en met ' + C.JEUGD_LOON_MAX_LEEFTIJD + ' jaar in de komende ' + C.JEUGD_VERJAARDAG_DAGEN + ' dagen:', items, 'Roosterafwijkingen: pas het rooster in Shiftbase aan vóór de dienst. Verjaardagen: het wettelijk minimumjeugdloon geldt vanaf de verjaardag zelf; de salarisadministratie moet dit per loonrun verwerken.' + (rap.zonderGeboortedatum ? ' Let op: bij ' + rap.zonderGeboortedatum + ' medewerker(s) ontbreekt de geboortedatum in Shiftbase.' : ''), 'Wekelijkse jeugdcheck'), kort: { naam: 'HR-team', aantal: rap.gevonden.length } });
+  return rap;
+}
+
+// ---- 15. Oproepaanbod na 12 maanden (wekelijks) ----
+async function oproepaanbod(droog) {
+  const rap = { naam: 'oproepaanbod', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const vandaag = vandaag0();
+  const [med, per, aanbod] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true), S.getOproepaanbod().catch(() => [])]);
+  const kandidaat = med.filter(m => OP.oproepSinds(per[String(m.id)] || [], vandaag));
+  if (!kandidaat.length) return rap;
+  const ros = await SB.sbGet('rosters?min_date=' + isoDag(plusDagen(vandaag, -400)) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || []).catch(e => { rap.fouten.push('roosters: ' + e.message); return []; });
+  const laatste = {};
+  for (const r of aanbod) { const d = parseNLDatum(r.verzenddatum); if (!d) continue; const isoD = isoDag(d); const e = String(r.email || '').toLowerCase(), n = normNaam(r.naam); if (e && (!laatste[e] || laatste[e] < isoD)) laatste[e] = isoD; if (n && (!laatste[n] || laatste[n] < isoD)) laatste[n] = isoD; }
+  const lijst = OP.oproepSignalen(med, per, ros, laatste, vandaag);
+  rap.gevonden = lijst;
+  if (!lijst.length) return rap;
+  const items = lijst.map(x => ({ kleur: x.teLaat ? '#c0392b' : '#e8824a', titel: x.naam, sub: x.winkel + ' · oproep sinds ' + x.sinds + ' (' + x.contractType + ')', html: '12-maandsgrens <strong>' + esc(x.grens) + '</strong>' + (x.teLaat ? ' — <strong style="color:#c0392b">' + (-x.over) + ' dagen verstreken</strong>; de medewerker kan loon claimen over niet-aangeboden uren' : ' — over ' + x.over + ' dagen') + '. Gemiddeld <strong>' + x.gemPerWeek + ' u/week</strong> (' + x.diensten + ' diensten, ' + esc(x.periode) + ').' + (x.laatsteAanbod ? ' Laatste aanbod: ' + esc(x.laatsteAanbod) + ' (herhaling na 12 maanden).' : '') }));
+  const plain = 'Hallo,\n\nOproepkrachten die een aanbod vaste arbeidsomvang moeten krijgen (art. 7:628a lid 5 BW):\n' + lijst.map(x => '- ' + x.naam + ' (' + x.winkel + '): grens ' + x.grens + ', gemiddeld ' + x.gemPerWeek + ' u/week').join('\n') + '\n\nVerstuur het aanbod via HR Dashboard → In dienst → Oproepaanbod.\n\n(Automatisch bericht van het SLA HR Dashboard)';
+  await mailOfDroog(rap, { to: ontvangers('oproepaanbod'), subject: 'Oproepaanbod: ' + lijst.length + ' medewerker(s) bereiken de 12-maandsgrens' + (lijst.some(x => x.teLaat) ? ' (' + lijst.filter(x => x.teLaat).length + ' al verstreken)' : ''), text: plain, html: blokMail('#e8824a', 'HR &middot; Aanbod vaste arbeidsomvang', 'Deze oproepkrachten werken (bijna) 12 maanden op oproepbasis. De wet verplicht binnen een maand een schriftelijk aanbod van ten minste het gemiddelde aantal uren:', items, 'Verstuur het aanbod met brief + PDF via <strong>In dienst &rarr; Oproepaanbod</strong>. De medewerker mag weigeren; dan volgend jaar opnieuw aanbieden. Contracttype-herkenning via OPROEP_TREFWOORDEN in config.js.', 'Wekelijkse oproepcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
+  return rap;
+}
+
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 async function draai(naam, droog, bron) {
@@ -412,4 +499,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod };

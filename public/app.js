@@ -8,13 +8,13 @@
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters']] },
-    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners']] },
+    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners']] },
     { label: 'Dossier', items: [['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] },
     { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -64,6 +64,7 @@
     if (tab === 'toegang' && !tgData) laadToegang();
     if (tab === 'archief' && !arData) laadArchief();
     if (tab === 'gegevens' && !gvData) laadGegevens();
+    if (tab === 'oproepaanbod' && !oprData) laadOproep(false);
   }
   window.swT = swT;
 
@@ -296,6 +297,16 @@
     else if (c && c.einde) h += '<div class="alert grijs" style="margin:0 0 12px">Contract eindigt over ' + c.dagenTotEinde + ' dagen — buiten de 42-dagen-alert.</div>';
     h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">Verlof (Shiftbase, 12 mnd terug / 6 vooruit)</label>';
     h += d.verlof && d.verlof.length ? '<div class="kv">' + d.verlof.slice(0, 8).map(function (v) { return '<div>' + esc(v.start) + (v.eind && v.eind !== v.start ? ' – ' + esc(v.eind) : '') + ' · <b>' + esc(v.type || '-') + '</b> · ' + esc(v.status) + (v.uren ? ' · ' + esc(v.uren) + ' u' : '') + '</div>'; }).join('') + (d.verlof.length > 8 ? '<div class="lay-sub">+' + (d.verlof.length - 8) + ' meer</div>' : '') + '</div>' : '<div class="lay-sub">Geen afwezigheden gevonden</div>';
+    // Fase 2: verzuim (Poortwachter) + contractketen
+    if (d.verzuim && !d.verzuim.fout) {
+      var vz = d.verzuim, lop = vz.periodes.find(function (x) { return x.lopend; });
+      h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Verzuim (Shiftbase, 24 mnd)</label>';
+      h += '<div class="kv">' + (lop ? '<div class="alert ' + (lop.dagVandaag >= 42 ? 'rood' : 'geel') + '" style="margin:0 0 8px;padding:8px 12px">Ziek sinds <b>' + esc(lop.start) + '</b> (dag ' + lop.dagVandaag + ')' + (lop.volgendeMijlpaal ? ' · volgende Poortwachter-stap: <b>' + esc(lop.volgendeMijlpaal.label) + '</b> op dag ' + lop.volgendeMijlpaal.dag : '') + '</div>' : '') + '<div>' + vz.meldingen12mnd + ' ziekmelding(en) · ' + vz.dagen12mnd + ' ziektedag(en) in 12 maanden' + (vz.frequent ? ' · <b style="color:#c0392b">frequent verzuim</b>' : '') + '</div>' + vz.periodes.slice(0, 6).filter(function (x) { return !x.lopend; }).map(function (x) { return '<div>' + esc(x.start) + ' – ' + esc(x.eind) + ' · ' + x.dagen + ' d' + (x.meldingen > 1 ? ' (' + x.meldingen + ' meldingen samengeteld)' : '') + '</div>'; }).join('') + (vz.periodes.length === 0 ? '<div class="lay-sub">Geen ziekmeldingen</div>' : '') + '</div>';
+    }
+    if (d.keten) {
+      h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Contractketen (art. 7:668a BW)</label>';
+      h += '<div class="kv">' + (d.keten.onbepaald ? '<div><b>Onbepaalde tijd</b></div>' : '<div>' + d.keten.aantal + ' tijdelijk(e) contract(en) · ' + d.keten.maanden + ' maanden' + (d.keten.vol ? ' · <b style="color:#c0392b">keten vol: volgende = vast</b>' : d.keten.aantal >= 2 ? ' · <b>volgende is het laatste tijdelijke</b>' : '') + '</div>') + d.keten.contracten.slice(-4).map(function (c) { return '<div class="lay-sub">' + esc(c.start) + (c.eind ? ' – ' + esc(c.eind) : ' – heden') + ' · ' + esc(c.type || '-') + (c.functie ? ' · ' + esc(c.functie) : '') + '</div>'; }).join('') + '</div>';
+    }
     h += '</div></div>';
     // Checklists (fase 1) vóór de dossierregels: dat is wat er nú moet gebeuren
     h += '<div class="sec"><div class="sh"><div class="st">Checklists</div></div><div id="dos-checklists"><div class="leeg grijs" style="padding:14px 24px">Laden…</div></div></div>';
@@ -431,7 +442,7 @@
     if (a) openOntslagMail({ naam: a.getAttribute('data-naam'), email: a.getAttribute('data-email'), bedrijf: a.getAttribute('data-bv'), einddatum: a.getAttribute('data-eind'), type: 'aanzegging' });
   });
   window.openOntslagMail = async function (persoon) {
-    if (!omTpl.length) { var d = await api('/api/ontslag'); if (d.success) { omTpl = d.templates; omData = d.rijen; } }
+    if (!omTpl.length) { var d = await api('/api/ontslag'); if (d.success) { omTpl = d.templates; omData = d.rijen; g('om-reden').innerHTML = '<option value="">— kies een reden —</option>' + (d.redenen || []).map(function (x) { return '<option value="' + esc(x) + '">' + esc(x) + '</option>'; }).join(''); } }
     if (!vbBvs.length) { var b = await api('/api/brieven'); if (b.success) vbBvs = b.bvs; }
     g('om-bv-list').innerHTML = vbBvs.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
     omRij = persoon && persoon.rij ? persoon.rij : null;
@@ -441,6 +452,7 @@
     g('om-adres').value = persoon ? persoon.adres || '' : '';
     g('om-opz').value = persoon ? persoon.opzegging || '' : '';
     g('om-eind').value = persoon ? persoon.einddatum || '' : '';
+    g('om-reden').value = persoon ? persoon.uitstroomreden || '' : '';
     // Slimme default: aanzegging-dossier -> aanzegging; al verstuurd -> herinnering
     omKey = persoon && persoon.type === 'aanzegging' ? (isVerz(persoon.status) ? 'ontslag-herinnering' : 'aanzegging-nl') : (persoon && isVerz(persoon.status) ? 'ontslag-herinnering' : 'ontslag-pdf');
     if (persoon && persoon.zelfOpgezegd) { omKey = 'ontslag-pdf'; if (!g('om-opz').value) { var nu = new Date(); g('om-opz').value = ('0' + nu.getDate()).slice(-2) + '-' + ('0' + (nu.getMonth() + 1)).slice(-2) + '-' + nu.getFullYear(); } toast('Bevestiging van de opzegging door de medewerker — controleer de opzegdatum en einddatum', 'ok'); }
@@ -462,6 +474,7 @@
     g('om-fg-opz').style.display = isA ? 'none' : '';
     g('om-opz-lbl').textContent = t.opzLabel || 'Datum opzegging';
     g('om-pdfbtn').style.display = t.pdf ? '' : 'none';
+    g('om-fg-reden').style.display = t.type === 'herinnering' ? 'none' : '';
     omAanzegDagen();
   }
   window.omAanzegDagen = function () {
@@ -483,7 +496,7 @@
     if (r.success) g('om-tekst').value = r.text; else g('om-tekst').value = '(kon template niet laden: ' + r.bericht + ')';
   };
   function omLees() {
-    return { template: omKey, to: g('om-to').value.trim(), naam: g('om-naam').value.trim(), bv: g('om-bv').value.trim(), adres: g('om-adres').value.trim(), datumOpzegging: g('om-opz').value.trim(), einddatum: g('om-eind').value.trim(), rij: omRij, subject: g('om-subj').value.trim(), body: g('om-tekst').value };
+    return { template: omKey, to: g('om-to').value.trim(), naam: g('om-naam').value.trim(), bv: g('om-bv').value.trim(), adres: g('om-adres').value.trim(), datumOpzegging: g('om-opz').value.trim(), einddatum: g('om-eind').value.trim(), uitstroomreden: g('om-reden').value, rij: omRij, subject: g('om-subj').value.trim(), body: g('om-tekst').value };
   }
   window.omKopieer = function () { navigator.clipboard.writeText('Onderwerp: ' + g('om-subj').value + '\n\n' + g('om-tekst').value).then(function () { toast('Gekopieerd', 'ok'); }); };
   window.omPdf = async function () {
@@ -501,6 +514,7 @@
     var t = omT();
     if (t.type === 'aanzegging' && !p.einddatum) { toast('Vul de einddatum in (staat in de aanzegging)', 'err'); return; }
     if (t.type === 'proeftijd' && !p.einddatum) { toast('Vul de einddatum in', 'err'); return; }
+    if (t.type !== 'herinnering' && !p.uitstroomreden) { toast('Kies een uitstroomreden (nodig voor de verloopanalyse)', 'err'); g('om-reden').focus(); return; }
     if (t.key === 'ontslag-pdf' && !confirm('Ontslagbevestiging + PDF versturen naar ' + p.to + '?')) return;
     if (t.type === 'proeftijd' && !confirm(t.label + ' versturen naar ' + p.to + '?')) return;
     var b = g('om-sbtn'); b.disabled = true; g('om-slbl').textContent = t.pdf ? 'PDF maken en versturen…' : 'Versturen…';
@@ -861,6 +875,75 @@
     else g('bk-ond-status').textContent = '⚠ ' + r.bericht;
   });
 
+
+  // ---------- Oproepaanbod (fase 2d) ----------
+  var oprData = null, oprWinkels = [];
+  window.laadOproep = async function (live) {
+    g('opr-kand').innerHTML = '<tr><td colspan="8" class="leeg grijs">' + (live ? 'Check draaien (roosters 12 maanden)…' : 'Laden…') + '</td></tr>';
+    var d = await api('/api/oproepaanbod' + (live ? '?live=1' : ''));
+    if (!d.success) { toast('Oproepaanbod: ' + d.bericht, 'err'); g('opr-kand').innerHTML = '<tr><td colspan="8" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    oprData = d; oprWinkels = d.winkels || [];
+    g('opr-stand').textContent = d.stand ? 'stand: ' + d.stand : 'nog geen check gedraaid';
+    g('opr-kand-count').textContent = d.kandidaten.length;
+    g('opr-kand').innerHTML = d.kandidaten.map(function (k) { return '<tr><td><strong>' + esc(k.naam) + '</strong><div class="lay-sub">' + esc(k.contractType || '') + '</div></td><td>' + esc(k.winkel) + '</td><td>' + esc(k.sinds) + '</td><td>' + esc(k.grens) + (k.teLaat ? ' <span class="badge br">' + (-k.over) + ' d te laat</span>' : ' <span class="badge boat">over ' + k.over + ' d</span>') + '</td><td><strong>' + k.gemPerWeek + '</strong> <span class="lay-sub">(' + esc(k.periode) + ')</span></td><td>' + k.diensten + '</td><td>' + esc(k.laatsteAanbod || '-') + '</td><td><button class="btn bp bsm" data-opr-kand="' + esc(JSON.stringify(k)) + '">Aanbod + PDF</button> ' + dosBtn(k.naam, k.email) + '</td></tr>'; }).join('') || '<tr><td colspan="8" class="leeg grijs">Geen oproepkrachten bij de 12-maandsgrens' + (d.stand ? '' : ' — klik ↻ Verse stand') + '</td></tr>';
+    g('opr-count').textContent = d.rijen.length;
+    g('opr-body').innerHTML = d.rijen.map(function (r) { return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.winkel) + '</td><td>' + esc(r.sinds || '-') + '</td><td>' + esc(r.gemUren || '-') + '</td><td><strong>' + esc(r.aangebodenUren) + '</strong> u</td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + esc(r.reactiedatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + (r.reactie ? '<span class="badge ' + (r.reactie === 'Aanvaard' ? 'bg' : r.reactie === 'Afgewezen' ? 'bo' : 'boat') + '">' + esc(r.reactie) + '</span>' + (r.docUrl ? ' ' + bDoc(r.docUrl, 'Brief') : '') + '<div class="lay-sub">' + esc(r.reactieDatum || '') + '</div>' : '<span class="badge br">Wacht</span>') + '</td><td>' + (r.reactie && r.reactie !== 'Ontvangen (document)' ? '' : '<button class="btn bp bsm" data-opr-reactie="Aanvaard" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '">Aanvaard</button><button class="btn bd bsm" data-opr-reactie="Afgewezen" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '">Afgewezen</button><button class="btn bd bsm" data-opr-reactie="Geen reactie" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '">Geen reactie</button>') + ' ' + dosBtn(r.naam, r.email) + '</td></tr>'; }).join('') || '<tr><td colspan="11" class="leeg grijs">Nog geen aanbiedingen verstuurd</td></tr>';
+  };
+  document.addEventListener('click', async function (e) {
+    var k = e.target.closest && e.target.closest('button[data-opr-kand]'); if (k) { openOprModal(JSON.parse(k.getAttribute('data-opr-kand'))); return; }
+    var b = e.target.closest && e.target.closest('button[data-opr-reactie]'); if (!b) return;
+    b.disabled = true;
+    var r = await api('/api/oproepaanbod-mail', { actie: 'reactie', rij: parseInt(b.getAttribute('data-rij'), 10), reactie: b.getAttribute('data-opr-reactie'), naam: b.getAttribute('data-naam') });
+    b.disabled = false; if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); laadOproep(false);
+  });
+  window.openOprModal = async function (k) {
+    if (!oprWinkels.length) { var d = await api('/api/oproepaanbod'); if (d.success) { oprWinkels = d.winkels; oprData = d; } }
+    ['opr-naam', 'opr-email', 'opr-adres', 'opr-sinds', 'opr-periode', 'opr-gem', 'opr-aang', 'opr-ingang', 'opr-reactie', 'opr-zoek'].forEach(function (id) { g(id).value = ''; });
+    var code = k && k.winkel ? (oprWinkels.find(function (w) { return w.naam === k.winkel; }) || {}).code : '';
+    vulWinkelSelect('opr-winkel', oprWinkels, code);
+    var d1 = new Date(); d1.setDate(1); d1.setMonth(d1.getMonth() + 1); var d14 = new Date(); d14.setDate(d14.getDate() + 14);
+    g('opr-ingang').value = nlDatum(d1.toISOString().substring(0, 10)); g('opr-reactie').value = nlDatum(d14.toISOString().substring(0, 10));
+    if (k) {
+      g('opr-naam').value = k.naam || ''; g('opr-email').value = k.email || ''; g('opr-sinds').value = k.sinds || ''; g('opr-periode').value = k.periode || '';
+      g('opr-gem').value = k.gemPerWeek != null ? String(k.gemPerWeek).replace('.', ',') : ''; g('opr-aang').value = k.gemPerWeek != null ? String(Math.ceil(k.gemPerWeek)) : '';
+      var m = medewerkers.find(function (x) { return x.naam === k.naam; }); if (m && m.adres) g('opr-adres').value = m.adres;
+    }
+    zetTaal('opr-taal', 'NL');
+    g('opr-zoek-res').classList.remove('open'); g('opr-modal').classList.add('open');
+    if (!k) setTimeout(function () { g('opr-zoek').focus(); }, 60);
+  };
+  window.closeOprModal = function () { g('opr-modal').classList.remove('open'); };
+  g('opr-modal').addEventListener('click', function (e) { if (e.target === this) closeOprModal(); });
+  koppelTaal('opr-taal');
+  function oprLees() { return { to: g('opr-email').value.trim(), naam: g('opr-naam').value.trim(), adres: g('opr-adres').value.trim(), winkel: g('opr-winkel').value, sinds: g('opr-sinds').value.trim(), periode: g('opr-periode').value.trim(), gemUren: g('opr-gem').value.trim(), aangebodenUren: g('opr-aang').value.trim(), ingangsdatum: g('opr-ingang').value.trim(), reactiedatum: g('opr-reactie').value.trim(), taal: leesTaal('opr-taal') }; }
+  function oprCheck(p) { if (!p.naam) return 'Vul de naam in'; if (!p.winkel) return 'Selecteer een winkel'; if (!p.aangebodenUren) return 'Vul de aangeboden uren in'; if (!p.ingangsdatum || !p.reactiedatum) return 'Vul ingangsdatum en reactiedatum in'; return ''; }
+  window.oprPdf = async function () {
+    var p = oprLees(), f = oprCheck(p); if (f) { toast(f, 'err'); return; }
+    var b = g('opr-pdfbtn'); b.disabled = true; toast('PDF maken…', 'ok');
+    var r = await api('/api/oproepaanbod-mail', Object.assign(p, { alleenPdf: true })); b.disabled = false;
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam || 'Aanbod.pdf');
+  };
+  window.oprVerstuur = async function () {
+    var p = oprLees(), f = oprCheck(p); if (f) { toast(f, 'err'); return; }
+    if (!p.to || p.to.indexOf('@') === -1) { toast('Ongeldig e-mailadres', 'err'); return; }
+    var b = g('opr-sbtn'); b.disabled = true; g('opr-slbl').textContent = 'PDF maken en versturen…';
+    var r = await api('/api/oproepaanbod-mail', p);
+    b.disabled = false; g('opr-slbl').textContent = 'Verstuur aanbod + PDF';
+    if (r.success) { toast(r.bericht, 'ok'); closeOprModal(); laadOproep(false); if (tkData) laadTaken(false); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  koppelSbZoek('opr-zoek', 'opr-zoek-res', function (m) {
+    if (!m) return;
+    g('opr-naam').value = m.naam || ''; g('opr-email').value = m.email || ''; if (m.adres) g('opr-adres').value = m.adres;
+    if (m.winkelCode && oprWinkels.some(function (w) { return w.code === m.winkelCode; })) g('opr-winkel').value = m.winkelCode;
+    if (m.indienst) g('opr-sinds').value = m.indienst;
+    var k = oprData && oprData.kandidaten.find(function (x) { return x.naam === m.naam; });
+    if (k) { g('opr-sinds').value = k.sinds; g('opr-periode').value = k.periode; g('opr-gem').value = String(k.gemPerWeek).replace('.', ','); g('opr-aang').value = String(Math.ceil(k.gemPerWeek)); }
+    else toast('Niet in de kandidatenlijst: vul het gemiddelde zelf in (of klik eerst ↻ Verse stand)', 'err');
+  });
+
   // ---------- Ontslag op staande voet (port van OoSV.gs v1.0; knop in de Sommaties-kop) ----------
   window.openOoModal = function (d) {
     ['oo-naam', 'oo-email', 'oo-bv', 'oo-adres', 'oo-const', 'oo-wederhoor', 'oo-gronden', 'oo-zoek'].forEach(function (id) { g(id).value = ''; });
@@ -1109,7 +1192,7 @@
     g('vrl-kpi').textContent = 'Verloopdata berekenen uit Shiftbase…'; g('vrl-body').innerHTML = '<tr><td colspan="8" class="leeg grijs">Rekenen…</td></tr>';
     var r = await api('/api/verloop?maanden=' + vrlMaanden + (vers ? '&ververs=1' : ''));
     if (!r.success) { g('vrl-kpi').textContent = 'Fout: ' + r.bericht; return; }
-    vrlData = r; vrlKpi(); vrlGrafiek(); vrlTabel(); vrlCohort(); vrlVroeg();
+    vrlData = r; vrlKpi(); vrlGrafiek(); vrlTabel(); vrlCohort(); vrlRedenen(); vrlVroeg();
   };
   function vrlKpi() {
     var t = vrlData.totaal, sep = '<span style="color:#e8e2de;margin:0 6px">|</span>';
@@ -1140,6 +1223,14 @@
     var cel = function (c, gemPct) { if (!c.n) return '<td><span class="no-doc">geen cohort</span></td>'; var cls = gemPct !== null && c.pct > gemPct * 1.3 ? 'br' : gemPct !== null && c.pct > gemPct * 1.1 ? 'bo' : 'bg'; return '<td><span class="badge ' + cls + '">' + c.pct + '%</span> <span style="color:#888078;font-size:.78rem">' + c.uit + '/' + c.n + '</span></td>'; };
     g('vrl-cohort-body').innerHTML = vrlData.winkels.map(function (w) { return '<tr><td><strong>' + esc(w.naam) + '</strong></td>' + cel(w.cohort['30'], tc['30'].pct) + cel(w.cohort['60'], tc['60'].pct) + cel(w.cohort['90'], tc['90'].pct) + '<td style="color:#006b30">+' + w.instroom + '</td></tr>'; }).join('')
       + '<tr style="background:#f8f3f0;font-weight:700"><td><strong>Organisatie</strong></td>' + cel(tc['30'], null) + cel(tc['60'], null) + cel(tc['90'], null) + '<td>+' + vrlData.totaal.instroom + '</td></tr>';
+  }
+  function vrlRedenen() {
+    var d = vrlData.redenen || { totaal: 0, lijst: [], zonder: 0 };
+    if (!d.totaal) { g('vrl-reden-sub').textContent = ''; g('vrl-redenen').innerHTML = '<div class="lay-sub">Nog geen ontslagdossiers met einddatum in deze periode. Vanaf nu wordt bij elke ontslagbevestiging/aanzegging een uitstroomreden vastgelegd.</div>'; return; }
+    g('vrl-reden-sub').textContent = d.totaal + ' dossiers · ' + d.eigenKeuzePct + '% eigen keuze' + (d.zonder ? ' · ' + d.zonder + ' zonder reden' : '');
+    var mx = Math.max.apply(null, d.lijst.map(function (x) { return x.aantal; }).concat([d.zonder, 1]));
+    var rij = function (label, n, kleur) { return '<div style="display:flex;gap:12px;align-items:center;padding:5px 0;font-size:.85rem"><span style="min-width:300px">' + esc(label) + '</span><div style="flex:1;background:#f3eeea;border-radius:3px;height:14px"><div style="width:' + Math.round(n / mx * 100) + '%;background:' + kleur + ';height:14px;border-radius:3px"></div></div><strong style="min-width:70px;text-align:right">' + n + ' <span style="color:#888078;font-weight:400">(' + Math.round(n / d.totaal * 100) + '%)</span></strong></div>'; };
+    g('vrl-redenen').innerHTML = d.lijst.map(function (x) { return rij(x.reden, x.aantal, /^eigen keuze/i.test(x.reden) ? '#009f4b' : /proeftijd|functioneren|gedrag|staande voet/i.test(x.reden) ? '#c0392b' : '#e8824a'); }).join('') + (d.zonder ? rij('Niet geregistreerd', d.zonder, '#c9c2bc') : '');
   }
   function vrlVroeg() {
     var sec = g('vrl-vroeg-sec');
@@ -1291,6 +1382,7 @@
     else if (soort === 'korting') { swT('loonheffingskorting', 'Loonheffingskorting'); openKrtModal(persoon); }
     else if (soort === 'sommatie') { swT('sommatie', 'Sommaties'); openSomModal(persoon); }
     else if (soort === 'beschikbaarheid') { swT('beschikbaarheid', 'Beschikbaarheid'); openBkModal(persoon); }
+    else if (soort === 'oproep') { swT('oproepaanbod', 'Oproepaanbod'); openOprModal(persoon); }
     else if (soort === 'dossier') openDossier(naam, email);
     else if (soort === 'onboarding') startChecklist('onboarding', naam, email);
     else if (soort === 'checklist') openChecklist(b.getAttribute('data-tk-id'));

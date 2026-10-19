@@ -297,7 +297,7 @@ async function getOntslag() {
       rij: i + 1, naam: cel(r, 0), email: cel(r, 1), opzegging: cel(r, 2), einddatum: cel(r, 3), bedrijf: cel(r, 5), adres: cel(r, 6),
       status: cel(r, 7), verzenddatum: cel(r, 8), ondertekend: isJa(r[9]) ? 'Ja' : 'Nee', herinnering: cel(r, 10),
       aantalHer: parseInt(cel(r, 11), 10) || 0, mahdia: isJa(r[13]) ? 'Ja' : 'Nee', salaris: cel(r, 14),
-      docUrl: zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', briefUrl: cel(r, 15),
+      docUrl: zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', briefUrl: cel(r, 15), uitstroomreden: cel(r, 16),
       // aanzegging = geen opzegdatum maar wel einddatum (zelfde heuristiek als reconstrueerBrief)
       type: (!cel(r, 2) && cel(r, 3)) ? 'aanzegging' : 'ontslag'
     });
@@ -599,6 +599,19 @@ async function zetSalarisStempel(type, rij, stempelTekst) {
   throw new Error('Onbekend type: ' + type);
 }
 
+// --- Oproepaanbod (fase 2d; legacy Sheets-laag) ---
+const OPR_KOP = ['Naam', 'Email', 'Adres', 'Winkel', 'BV', 'Oproep sinds', 'Gemiddeld u/week', 'Aangeboden u/week', 'Ingangsdatum', 'Reageren vóór', 'Taal', 'Status', 'Verzenddatum', 'Reactie', 'Reactie op', 'Document'];
+async function getOproepaanbod() {
+  return leesTab(SHEETS.ontslag.id, 'Oproepaanbod', (r, rij) => ({ rij, naam: cel(r, 0), email: cel(r, 1), adres: cel(r, 2), winkel: cel(r, 3), bv: cel(r, 4), sinds: cel(r, 5), gemUren: cel(r, 6), aangebodenUren: cel(r, 7), ingangsdatum: cel(r, 8), reactiedatum: cel(r, 9), taal: cel(r, 10) || 'NL', status: cel(r, 11), verzenddatum: cel(r, 12), reactie: cel(r, 13), reactieDatum: cel(r, 14), docUrl: cel(r, 15) }));
+}
+async function logOproepaanbod(p, w, stempelTekst) {
+  return logRij(SHEETS.ontslag.id, 'Oproepaanbod', OPR_KOP, [p.naam, p.to, p.adres || '', w.naam, w.bv, p.sinds || '', String(p.gemUren || ''), String(p.aangebodenUren || ''), p.ingangsdatum || '', p.reactiedatum || '', p.taal || 'NL', 'Verstuurd op ' + stempelTekst, stempelTekst, '', '', ''], 0, 12, 'Verstuurd op ' + stempelTekst, stempelTekst, KLEUR.groen);
+}
+async function zetOproepReactie(rij, reactie, door) {
+  await zetCel(SHEETS.ontslag.id, 'Oproepaanbod', rij, 14, reactie, KLEUR.groen);
+  await zetCel(SHEETS.ontslag.id, 'Oproepaanbod', rij, 15, new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).replace('T', ' ').slice(0, 16) + (door ? ' (' + door + ')' : ''));
+}
+
 // --- Notities (Dossier.gs): tab 'Notities' in de loonheffing-sheet ---
 const NOT_KOP = ['Naam', 'Email', 'Datum', 'Auteur', 'Notitie'];
 async function getNotities() {
@@ -635,4 +648,5 @@ async function herstelUitArchief(type, archiefRij) {
   return type === 'onboarding' ? (String(vals[0] || '') + ' ' + String(vals[1] || '')).trim() : String(vals[0] || '');
 }
 
-module.exports = { jwt, eersteTabNaam, getNotities, voegNotitieToe, getArchief, herstelUitArchief, leesRuw, getKorting, logKorting, syncKortingUploads, zetSalarisStempel, zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };
+async function zetUitstroomreden(rij, reden) { return zetCel(SHEETS.ontslag.id, null, rij, 17, reden || ''); }
+module.exports = { zetUitstroomreden, getOproepaanbod, logOproepaanbod, zetOproepReactie, jwt, eersteTabNaam, getNotities, voegNotitieToe, getArchief, herstelUitArchief, leesRuw, getKorting, logKorting, syncKortingUploads, zetSalarisStempel, zorgTab, leesTab, logRij, getWaarschuwingen, logWaarschuwing, getBeschikbaarheid, logBeschikbaarheid, logSommatie, logOverplaatsing, getLoonheffing, getOntslag, getSommatie, getOverplaatsing, getOnboarding, getExtraTabs, getBrieven, logBrief, zorgBrievenTab, lees, zetCel, leesCel, archiveerRij, vergeetCache, KLEUR, vindLoonRij, eersteLegeLoonRij, vindOntslagRij, eersteLegeOntslagRij };

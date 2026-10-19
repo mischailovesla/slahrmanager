@@ -3,7 +3,7 @@
 Herbouw van het SLA HR Dashboard (Google Apps Script) als Netlify-app.
 Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend tot een module volledig is overgezet.
 
-## Status: cutover gedaan (19-10-2026) — stap 6 (v0.12.0) Sheets → Supabase; fase 1 (v0.13.0) takenlijst, checklists, winkel-filter, medewerker-id
+## Status: cutover gedaan (19-10-2026) — stap 6 (v0.12.0) Sheets → Supabase; fase 1 (v0.13.0) takenlijst/checklists; fase 2 (v0.14.0) contractketen, verzuim, jeugd, oproepaanbod, uitstroomreden
 
 | Werkt | Nog in Apps Script |
 |---|---|
@@ -134,6 +134,7 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.6.0 | 16-10-2026 | Stap 3e: Sommaties-tab (mail, printbrief, aanvullende tekst) en Overplaatsing-tab (mail + PDF NL/EN, standplaats vs. overplaatsing) |
 | 0.7.0 | 16-10-2026 | Stap 4: 6 scheduled functions + Signaleringen-tab, droogloop-schakelaar `SIGNALERINGEN_ACTIEF`, log `hr_signaleringen` |
 | 0.7.1 | 16-10-2026 | Medewerkers-tab toont standaard de volledige Shiftbase-lijst per winkel (zoekveld filtert), knop "← Alle medewerkers" in het dossier |
+| 0.14.0 | 19-10-2026 | **Fase 2 (juridische gaten):** `contractketen` (ketenregeling 3 contracten/36 mnd, onderbreking 6 mnd, proeftijd-einde) en `verzuim` (Poortwachter-mijlpalen 42/56/294/364 dagen via Shiftbase-absences, 4-wekenregel, frequent ≥3 meldingen/12 mnd) dagelijks; `jeugd` (verjaardagen ≤20 → minimumjeugdloon, Arbeidstijdenwet <18 op het rooster) en `oproepaanbod` (12-maandsgrens art. 7:628a BW, gemiddelde uren uit roosters) wekelijks; nieuw tabblad *Oproepaanbod* met brief (NL/EN) + PDF + uploadlink + reactie; dossier toont verzuim en keten; uitstroomreden verplicht bij ontslag/aanzegging/proeftijd en uitstroomredenen-verdeling in de Verloopanalyse. Migratie `0008`. |
 | 0.13.0 | 19-10-2026 | **Fase 1 (HR-expertreview):** takenlijst *Vandaag te doen* op het Overzicht (`/api/taken`: laatste stand van alle checks + open dossiers + checklists, urgentie rood/oranje/grijs, directe actie, afhandelen), on-/offboarding-checklists per medewerker (`/api/checklist`, sjablonen in config.js), winkel-filter in de header (alle tabellen + taken), compacte rijacties (⋯-menu), `medewerker_id` op alle tabellen (migratie `0007`, `/api/koppel`, automatisch na elke sync). |
 | 0.12.0 | 19-10-2026 | **Stap 6:** Google Sheets vervangen door Supabase-tabellen (migratie `0006`). `_lib/data.js` heeft dezelfde API als `_lib/sheets.js`; `_lib/db.js` kiest op `DATA_BRON`. Beheer → *Gegevens & export*: droogloop + import vanuit de sheets (hoofdtabs, logtabs, archieftabs, oude Forms-reacties; rijnummers blijven gelijk), CSV-export per tabel. Zie CUTOVER.md blok F |
 | 0.11.3 | 16-10-2026 | Service account als `GOOGLE_SA_EMAIL` + `GOOGLE_SA_KEY` (compact) i.p.v. `GOOGLE_SA_JSON_B64` — de deploy faalde op de 4 KB-limiet van AWS Lambda voor env vars |

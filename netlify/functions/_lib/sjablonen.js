@@ -511,7 +511,21 @@ function salarisPlain(naam, labels, kortKeuze, kortIngang) {
   return 'Beste,\n\nIn de bijlage de documenten van ' + naam + ':\n- ' + labels.join('\n- ') + '\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team\n\n(Automatisch verstuurd vanuit het SLA HR Dashboard)';
 }
 
-module.exports = { KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
+// --- Aanbod vaste arbeidsomvang (fase 2) ---
+function oproepPlain(naam, bv, uren, reactiedatum, isEN) {
+  if (isEN) return 'Dear ' + naam + ',\n\nAttached you will find our offer of fixed working hours (' + uren + ' hours per week), as required by law after twelve months of on-call work. Please let us know by ' + reactiedatum + ' whether you accept: return the signed letter via the link below or reply to this e-mail. You are free to decline and continue on an on-call basis.\n\nUpload the signed letter: {{UPLOADLINK}}\n\nKind regards,\nSLA HR Team\n' + bv;
+  return 'Beste ' + naam + ',\n\nIn de bijlage vind je ons aanbod voor een vaste arbeidsomvang (' + uren + ' uur per week), zoals de wet voorschrijft na twaalf maanden oproepwerk. Laat ons uiterlijk ' + reactiedatum + ' weten of je het aanbod aanvaardt: stuur de ondertekende brief terug via de link hieronder of beantwoord deze e-mail. Je mag het aanbod ook afslaan en op oproepbasis blijven werken.\n\nOndertekende brief uploaden: {{UPLOADLINK}}\n\nMet vriendelijke groet,\nSLA HR Team\n' + bv;
+}
+function oproepHtml(naam, bv, uren, reactiedatum, isEN) {
+  const L = isEN ? { head: 'HR &middot; Offer of fixed hours', greet: 'Dear ', intro: 'Attached you will find our <strong>offer of fixed working hours</strong> (<strong>' + esc(uren) + ' hours per week</strong>), as Dutch law requires after twelve months of on-call work.', actie: 'Please let us know by <strong>' + esc(reactiedatum) + '</strong> whether you accept: return the signed letter via the button below, or simply reply to this e-mail.', vrij: 'You are free to decline and continue on an on-call basis; in that case we will make you a new offer next year.', knop: 'Upload signed letter', sign: 'Kind regards,' }
+    : { head: 'HR &middot; Aanbod vaste uren', greet: 'Beste ', intro: 'In de bijlage vind je ons <strong>aanbod voor een vaste arbeidsomvang</strong> (<strong>' + esc(uren) + ' uur per week</strong>), zoals de wet voorschrijft na twaalf maanden oproepwerk.', actie: 'Laat ons uiterlijk <strong>' + esc(reactiedatum) + '</strong> weten of je het aanbod aanvaardt: stuur de ondertekende brief terug via de knop hieronder, of beantwoord gewoon deze e-mail.', vrij: 'Je mag het aanbod ook afslaan en op oproepbasis blijven werken; dan doen we je volgend jaar opnieuw een aanbod.', knop: 'Ondertekende brief uploaden', sign: 'Met vriendelijke groet,' };
+  const s = P14 + 'line-height:1.7;margin:0 0 16px';
+  return slaWrap(slaHead('#009f4b', L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">' + L.greet + esc(naam) + ',</p><p style="' + s + '">' + L.intro + '</p><p style="' + s + '">' + L.actie + '</p><p style="' + s + '">' + L.vrij + '</p>'
+    + '<table cellpadding="0" cellspacing="0" style="margin:8px 0 22px"><tr><td style="background:#009f4b;border-radius:8px"><a href="{{UPLOADLINK}}" style="' + F + 'display:inline-block;padding:13px 26px;color:#fff;text-decoration:none;font-weight:700;font-size:14px">' + L.knop + ' &rarr;</a></td></tr></table>'
+    + '<p style="' + s + '">' + L.sign + '<br><strong>SLA HR Team</strong><br><span style="color:#888078">' + esc(bv) + '</span></p></td></tr>' + slaFoot());
+}
+
+module.exports = { oproepPlain, oproepHtml, KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
   slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, indienstLink, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
   HUISREGELS, regelsById, wrsPlain, wrsHtml, beschikbPlain, beschikbHtml, oosvPlain, oosvHtml,
   SOM_TYPES, SOM_KLEUR, SOM_SHEETKLEUR, SOM_HINTS, sommatieSubject, sommatieHtml, sommatiePlain, overplaatsingSubject, overplaatsingPlain, overplaatsingHtml };

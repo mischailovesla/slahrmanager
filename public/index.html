@@ -138,6 +138,7 @@
         <div class="fg"><label>Privéadres</label><input type="text" id="om-adres" placeholder="Straat 1, 1234AB Amsterdam"></div></div>
       <div class="fr"><div class="fg" id="om-fg-opz"><label id="om-opz-lbl">Datum opzegging</label><input type="text" id="om-opz" placeholder="01-04-2026"></div>
         <div class="fg"><label>Einddatum</label><input type="text" id="om-eind" placeholder="30-04-2026" oninput="omAanzegDagen()"></div></div>
+      <div class="fg" id="om-fg-reden"><label>Uitstroomreden <span style="color:#888;font-weight:400">(voor de verloopanalyse)</span></label><select id="om-reden"><option value="">— kies een reden —</option></select></div>
       <div class="fg"><label>Onderwerp</label><input type="text" id="om-subj"></div>
       <div class="fg"><label>Begeleidende mail (platte tekst — de medewerker krijgt daarnaast de opgemaakte SLA-versie)</label><textarea id="om-tekst" rows="10"></textarea></div>
       <div class="lay-sub">De upload-link wordt bij versturen automatisch persoonlijk gemaakt (naam voor-ingevuld).</div>
@@ -301,6 +302,34 @@
     <div class="mf"><button class="btn bd" id="bk-pdfbtn" onclick="bkPdf()">⬇ PDF bekijken</button><button class="btn bp" id="bk-sbtn" onclick="bkVerstuur()"><span id="bk-slbl">Verstuur kennisgeving + PDF</span></button></div>
   </div></div>
 
+  <!-- OPROEPAANBOD (fase 2d, art. 7:628a lid 5 BW) -->
+  <div class="tc" id="tab-oproepaanbod">
+    <div class="sec">
+      <div class="sh"><div class="st">Kandidaten: 12-maandsgrens <span class="pill" id="opr-kand-count">-</span></div>
+        <div class="hr2"><span class="lay-sub" id="opr-stand" style="color:rgba(255,255,255,.6)"></span><button class="btn bd bsm" onclick="laadOproep(true)" title="Draait de check nu (roosters 12 maanden uit Shiftbase)">↻ Verse stand</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Winkel</th><th>Oproep sinds</th><th>12-maandsgrens</th><th>Gemiddeld u/week</th><th>Diensten</th><th>Laatste aanbod</th><th>Actie</th></tr></thead><tbody id="opr-kand"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Verstuurde aanbiedingen <span class="pill" id="opr-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('opr-body',this.value)"><button class="btn bd bsm" onclick="laadOproep(false)">↻</button><button class="btn bp bsm" onclick="openOprModal(null)">Nieuw aanbod + PDF</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Winkel</th><th>Oproep sinds</th><th>Gem. u/week</th><th>Aangeboden</th><th>Ingangsdatum</th><th>Reageren vóór</th><th>Verstuurd</th><th>Reactie</th><th>Actie</th></tr></thead><tbody id="opr-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Wet:</strong> na 12 maanden oproepwerk moet de werkgever binnen een maand schriftelijk een vaste arbeidsomvang aanbieden van ten minste het gemiddelde aantal uren van die 12 maanden (art. 7:628a lid 5 BW). De medewerker mag weigeren; dan jaarlijks opnieuw aanbieden. Zonder aanbod kan de medewerker loon claimen over de niet-aangeboden uren. Het gemiddelde komt uit de Shiftbase-roosters; controleer het en rond naar boven af.</div>
+  </div>
+  <div class="mo" id="opr-modal"><div class="modal">
+    <div class="mh"><div class="mti">📄 Aanbod vaste arbeidsomvang + PDF</div><button class="mc" onclick="closeOprModal()">×</button></div>
+    <div class="mb2">
+      <div class="fg"><label>Zoek in Shiftbase</label><div class="zoeklijst" style="position:relative"><input type="text" id="opr-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="opr-zoek-res"></div></div></div>
+      <div class="fr"><div class="fg"><label>Naam</label><input type="text" id="opr-naam"></div><div class="fg"><label>Email</label><input type="email" id="opr-email"></div></div>
+      <div class="fr"><div class="fg"><label>Privéadres</label><input type="text" id="opr-adres" placeholder="Straat 1, 1234AB Amsterdam"></div><div class="fg"><label>Winkel</label><select id="opr-winkel"></select></div></div>
+      <div class="fr"><div class="fg"><label>Oproep sinds</label><input type="text" id="opr-sinds" placeholder="dd-mm-jjjj"></div><div class="fg"><label>Berekende periode</label><input type="text" id="opr-periode" placeholder="dd-mm-jjjj t/m dd-mm-jjjj"></div></div>
+      <div class="fr"><div class="fg"><label>Gemiddeld uren/week <span style="color:#888;font-weight:400">(uit roosters)</span></label><input type="text" id="opr-gem" placeholder="bijv. 12,5"></div><div class="fg"><label>Aangeboden uren/week <span style="color:#888;font-weight:400">(≥ gemiddelde)</span></label><input type="text" id="opr-aang" placeholder="bijv. 13"></div></div>
+      <div class="fr"><div class="fg"><label>Ingangsdatum</label><input type="text" id="opr-ingang" placeholder="dd-mm-jjjj"></div><div class="fg"><label>Reageren vóór</label><input type="text" id="opr-reactie" placeholder="dd-mm-jjjj"></div></div>
+      <div class="fg"><label>Taal</label><div class="tbar" id="opr-taal"><button type="button" class="tb sel" data-taal="NL">Nederlands</button><button type="button" class="tb" data-taal="EN">English</button></div></div>
+    </div>
+    <div class="mf"><button class="btn bd" id="opr-pdfbtn" onclick="oprPdf()">⬇ PDF bekijken</button><button class="btn bp" id="opr-sbtn" onclick="oprVerstuur()"><span id="opr-slbl">Verstuur aanbod + PDF</span></button></div>
+  </div></div>
+
   <!-- LOONHEFFINGSKORTING (Korting.gs v1.5) -->
   <div class="tc" id="tab-loonheffingskorting">
     <div class="stats" style="grid-template-columns:repeat(3,1fr)"><div class="card cg"><div class="si sig">📄</div><div><div class="sv" id="krt-tot">-</div><div class="sl">Dossiers</div></div></div><div class="card cw"><div class="si siw">⏳</div><div><div class="sv" id="krt-open">-</div><div class="sl">Formulier nog open</div></div></div><div class="card cd"><div class="si sid">✓</div><div><div class="sv" id="krt-sal">-</div><div class="sl">Naar salaris</div></div></div></div>
@@ -383,6 +412,10 @@
       <div class="sh"><div class="st">Uitval nieuwe medewerkers (cohort 30/60/90 dagen)</div></div>
       <div class="lay-sub" style="padding:8px 24px 0">Van iedereen die in de periode instroomde: welk deel haalde de mijlpaal niet? Wie de mijlpaal nog niet kón halen telt niet mee in de noemer.</div>
       <div class="tw"><table><thead><tr><th>Winkel</th><th>≤ 30 dagen</th><th>≤ 60 dagen</th><th>≤ 90 dagen</th><th>Instroom in periode</th></tr></thead><tbody id="vrl-cohort-body"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Uitstroomredenen (uit de ontslagdossiers)</div><div class="lay-sub" id="vrl-reden-sub"></div></div>
+      <div id="vrl-redenen" style="padding:8px 24px 14px"></div>
     </div>
     <div class="sec" id="vrl-vroeg-sec" style="display:none">
       <div class="sh"><div class="st">Vroege uitstroom (vertrokken binnen <span id="vrl-vroeg-dagen">90</span> dagen)</div></div>

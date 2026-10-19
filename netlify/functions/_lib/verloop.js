@@ -95,7 +95,28 @@ async function getVerloopData(maanden, ververs) {
   const nu = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' }));
   const r = berekenVerloop(_cache.v, new Date(nu.getFullYear(), nu.getMonth(), 1), maanden, nu);
   r.cohorten = C.VRL_COHORTEN; r.vroegDagen = C.VRL_VROEG_DAGEN; r.bijgewerkt = D.stempel();
+  // Fase 2e: uitstroomredenen uit de ontslagdossiers (HR-registratie) met einddatum in de periode
+  r.redenen = await uitstroomredenen(r.maanden[0].vanIso, r.maanden[r.maanden.length - 1].totIso);
   r.periode = r.maanden[0].label + ' t/m ' + r.maanden[r.maanden.length - 1].label + (r.maanden[r.maanden.length - 1].totIso > iso(nu) ? ' (lopende maand t/m vandaag)' : '');
   return r;
 }
-module.exports = { verwerkVerloopData, berekenVerloop, getVerloopData };
+// Telling van uitstroomredenen (hr_ontslag, kolom Uitstroomreden) voor dossiers met einddatum dd-mm-jjjj in [vanIso, totIso].
+// Dossiers zonder reden tellen als 'Niet geregistreerd' — die verhouding is zelf een KPI (hoe compleet is de registratie).
+async function uitstroomredenen(vanIso, totIso) {
+  let rijen = [];
+  try { rijen = await require('./sheets').getOntslag(); } catch (e) { console.warn('uitstroomredenen:', e.message); return { totaal: 0, lijst: [], zonder: 0 }; }
+  const telling = {}; let totaal = 0, zonder = 0;
+  for (const r of rijen || []) {
+    const m = String(r.einddatum || '').match(/^(\d{1,2})-(\d{1,2})-(\d{4})/); if (!m) continue;
+    const e = m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+    if (e < vanIso || e > totIso) continue;
+    totaal++;
+    const reden = String(r.uitstroomreden || '').trim();
+    if (!reden) { zonder++; continue; }
+    telling[reden] = (telling[reden] || 0) + 1;
+  }
+  const lijst = Object.keys(telling).map(reden => ({ reden, aantal: telling[reden], pct: Math.round(telling[reden] / totaal * 100) })).sort((a, b) => b.aantal - a.aantal);
+  const eigen = lijst.filter(x => /^eigen keuze/i.test(x.reden)).reduce((a, x) => a + x.aantal, 0);
+  return { totaal, lijst, zonder, eigenKeuze: eigen, eigenKeuzePct: totaal ? Math.round(eigen / totaal * 100) : 0 };
+}
+module.exports = { verwerkVerloopData, berekenVerloop, getVerloopData, uitstroomredenen };

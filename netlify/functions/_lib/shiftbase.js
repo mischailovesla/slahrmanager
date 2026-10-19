@@ -79,7 +79,16 @@ function verwerk(usersLijst, contractsLijst, typeNamen) {
       if (pc || ci) adres += ', ' + (pc ? pc + ' ' : '') + ci;
     }
     const ci = perUser[String(u.id)] || {};
-    out.push({
+    // Fase 2: leeftijd en volgende verjaardag uit de geboortedatum (jeugdloon/ATW). De geboortedatum zelf gaat niet mee naar buiten.
+    const gb = String(u.birthdate || u.birth_date || u.date_of_birth || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    let leeftijd = null, verjaardag = '';
+    if (gb && gb[1] !== '0000') {
+      const nu = new Date(isoVandaag() + 'T00:00:00'), jr = nu.getFullYear();
+      let vj = new Date(jr, +gb[2] - 1, +gb[3]); if (vj < nu) vj = new Date(jr + 1, +gb[2] - 1, +gb[3]);
+      leeftijd = jr - +gb[1] - ((nu.getMonth() + 1 < +gb[2] || (nu.getMonth() + 1 === +gb[2] && nu.getDate() < +gb[3])) ? 1 : 0);
+      verjaardag = vj.toLocaleDateString('sv-SE');
+    }
+    out.push({ leeftijd, verjaardag,
       id: String(u.id || ''), naam, voornaam: String(u.first_name || '').trim(), email: String(u.email || '').trim(), adres,
       indienst: ddmm(ci.vroegste || u.startdate || ''), contractEinde: ddmm(ci.einde || ''), contractType: ci.contractType || '',
       functie: ci.functie || '', winkelCode: code, winkelNaam, winkelBv: code ? WINKEL_BV_MAP[code].bv : ''
@@ -123,4 +132,23 @@ async function getVerlof(userId) {
     .sort((a, b) => (b.start || '').split('-').reverse().join('').localeCompare((a.start || '').split('-').reverse().join('')));
 }
 
-module.exports = { getMedewerkers, getVerlof, verwerk, sbGet };
+// Fase 2: alle contracten per user-id (gesorteerd op startdatum), met typenaam. 10 min cache.
+let _ccache = { t: 0, v: null };
+async function getContractenPerUser(forceer) {
+  if (!forceer && _ccache.v && _ccache.t > Date.now()) return _ccache.v;
+  const [cons, ct] = await Promise.all([sbGet('contracts').catch(() => []), sbGet('contract_types').catch(() => [])]);
+  const typeNamen = {};
+  for (const rec of ct || []) { const x = (rec && rec.ContractType) || rec || {}; if (x.id) typeNamen[String(x.id)] = String(x.name || '').trim(); }
+  const per = {};
+  for (const rec of cons || []) {
+    const c = (rec && rec.Contract) || rec || {}; const uid = String(c.user_id || ''); if (!uid) continue;
+    const sd = String(c.startdate || '').trim(); if (!sd || sd === '0000-00-00') continue;
+    const ed = String(c.enddate || '').trim();
+    (per[uid] = per[uid] || []).push({ start: sd, eind: ed && ed !== '0000-00-00' ? ed : '', type: String((c.ContractType && c.ContractType.name) || typeNamen[String(c.contract_type_id || '')] || c.contract_type || '').trim(), functie: String(c['function'] || '').trim(), urenPerWeek: c.contract_hours != null ? Number(c.contract_hours) : (c.hours != null ? Number(c.hours) : null) });
+  }
+  for (const k of Object.keys(per)) per[k].sort((a, b) => a.start < b.start ? -1 : 1);
+  _ccache = { t: Date.now() + 600000, v: per };
+  return per;
+}
+
+module.exports = { getMedewerkers, getVerlof, verwerk, sbGet, getContractenPerUser, isoVandaag };

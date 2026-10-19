@@ -33,8 +33,48 @@ module.exports = {
     weekendBeschikbaarheid: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     vakantiepiek: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     dataHygiene: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
-    bewaartermijn: 'mischa@ilovesla.com'
+    bewaartermijn: 'mischa@ilovesla.com',
+    contractketen: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    verzuim: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    jeugd: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    oproepaanbod: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
   },
+
+  // ---- Fase 2: juridische checks (wettelijke defaults; CAO Horeca-afwijkingen hier aanpassen) ----
+  // Ketenregeling (art. 7:668a BW): na 3 tijdelijke contracten of 36 maanden wordt het volgende contract onbepaalde tijd;
+  // een onderbreking van > 6 maanden breekt de keten. Signaal zodra het huidige contract binnen KETEN_VENSTER_DAGEN afloopt.
+  KETEN_MAX_CONTRACTEN: 3,
+  KETEN_MAX_MAANDEN: 36,
+  KETEN_ONDERBREKING_MAANDEN: 6,
+  KETEN_VENSTER_DAGEN: 60,
+  // Proeftijd (art. 7:652 BW): contract ≤ 6 mnd geen proeftijd; > 6 mnd en < 2 jaar max 1 maand; ≥ 2 jaar of onbepaald max 2 maanden.
+  // Alleen geldig als schriftelijk overeengekomen — het signaal zegt daarom "indien overeengekomen".
+  PROEFTIJD_SIGNAAL_DAGEN: 10,       // zoveel dagen vóór het einde van de proeftijd
+  // Oproepovereenkomst (art. 7:628a lid 5 BW): na 12 maanden verplicht aanbod vaste arbeidsomvang (gemiddelde van die 12 maanden), binnen 1 maand.
+  OPROEP_TREFWOORDEN: ['oproep', 'nul', '0-uren', '0 uren', 'min-max', 'min/max', 'flex'],
+  OPROEP_MAANDEN: 12,
+  OPROEP_SIGNAAL_DAGEN: 30,          // signaal vanaf 30 dagen vóór de 12-maandsgrens
+  // Jeugd: minimumjeugdloon stijgt per verjaardag t/m 20 jaar; Arbeidstijdenwet/Nadere regeling kinderarbeid voor < 18.
+  JEUGD_LOON_MAX_LEEFTIJD: 20,
+  JEUGD_VERJAARDAG_DAGEN: 21,        // zoveel dagen vooruit kijken
+  ATW_REGELS: {                      // per leeftijdsgroep: uiterste eindtijd, max uren per dienst, max uren per week
+    '15': { tot: '19:00', dienstMaxUur: 8, weekMaxUur: 40, label: '15 jaar: tot 19:00, max 8 u/dienst, 40 u/week' },
+    '16-17': { tot: '23:00', dienstMaxUur: 9, weekMaxUur: 45, label: '16–17 jaar: tot 23:00, max 9 u/dienst, 45 u/week' }
+  },
+  ATW_DAGEN_VOORUIT: 14,
+  // Verzuim / Wet verbetering poortwachter (mijlpalen in dagen vanaf de 1e ziektedag); 4-wekenregel: ziekteperiodes < 28 dagen uit elkaar tellen als één.
+  VERZUIM_MIJLPALEN: [
+    { dag: 42, label: 'Probleemanalyse bedrijfsarts (week 6)' },
+    { dag: 56, label: 'Plan van aanpak opstellen (week 8)' },
+    { dag: 294, label: 'Ziekmelding bij UWV (week 42)' },
+    { dag: 364, label: 'Eerstejaarsevaluatie (week 52)' }
+  ],
+  VERZUIM_SAMENTEL_DAGEN: 28,
+  VERZUIM_SIGNAAL_DAGEN: 7,          // mijlpaal binnen 7 dagen (vooruit) of 7 dagen geleden (gemist)
+  VERZUIM_FREQUENT_AANTAL: 3,        // ≥ 3 ziekmeldingen in 12 maanden → frequent-verzuimgesprek
+  VERZUIM_TERUGKIJK_DAGEN: 730,
+  // Uitstroomredenen (verplicht bij ontslagbevestiging/aanzegging; zichtbaar in Verloopanalyse)
+  UITSTROOMREDENEN: ['Eigen keuze: andere baan', 'Eigen keuze: studie/verhuizing', 'Eigen keuze: werk/privé of rooster', 'Einde tijdelijk contract (niet verlengd door SLA)', 'Proeftijd', 'Functioneren', 'Gedrag/huisregels', 'Ontslag op staande voet', 'Wederzijds goedvinden', 'Langdurig ziek', 'Overig/onbekend'],
   SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
   SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam
     'Hannah Frederique Maria Vos'

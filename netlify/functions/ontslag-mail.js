@@ -115,6 +115,7 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
       if (adres) await S.zetCel(id, null, rij, 7, adres);
     }
   }
+  if (p.uitstroomreden && tpl.type !== 'herinnering' && C.UITSTROOMREDENEN.includes(p.uitstroomreden)) await S.zetUitstroomreden(rij, p.uitstroomreden);
   await M.logMail({ door: g.email, bron: 'ontslag', type: tpl.type + (pdf ? '-pdf' : ''), naar: to, naam, onderwerp: subject, taal: tpl.taal, rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'ontslag', veld: tpl.type, rij, naam, nieuw: to, details: subject + (pdf ? ' (+PDF)' : '') });
   const wat = tpl.type === 'aanzegging' ? 'Aanzegging' + (isEN ? ' (EN)' : '') : tpl.type === 'herinnering' ? 'Herinnering' : isProef ? proefLabel : 'Ontslagbevestiging';
