@@ -17,6 +17,7 @@ Doel: op één moment overschakelen, zonder dubbele mails en zonder dataverlies.
 
 1. **Apps Script → Triggers** (klokje links): verwijder **alle** triggers. Dat zijn er elf:
    `syncFormulierStatus`, `checkLoonheffingHerinneringen`, `checkOntslagHerinneringen`, `checkNieuweMedewerkers`, `checkAanzegtermijnen`, `checkStilleAfwezigen`, `checkWeekendBeschikbaarheid`, `checkKortingHerinneringen`, `checkVakantiepieken`, `stuurDataHygieneRapport`, `bewaartermijnRapport`.
+   Sneller: plak `verwijderAlleTriggers()` uit `apps-script/doorverwijzing.gs` onderaan `Code.gs` en voer die uit (log: `11 trigger(s) verwijderd. Nu nog: 0`). Triggers van een ander account (hr@) zie je alleen als dat account; draai de functie dan ook daar.
    Controle: de triggerlijst is leeg.
 2. **Netlify → Site configuration → Environment variables**: `SIGNALERINGEN_ACTIEF` = `1` → **Deploy → Trigger deploy** (env-wijzigingen vereisen een redeploy).
 3. Dashboard → **Signaleringen**: status toont *ACTIEF*. Draai één check echt ("Nu echt draaien" op *sync-formulieren*) en kijk in *Laatste runs* dat `droog = nee`.
@@ -37,7 +38,21 @@ Doel: op één moment overschakelen, zonder dubbele mails en zonder dataverlies.
 3. Apps Script-editor: `instaleerTriggers()` draaien + `instaleerWeekendSignalering()`, `installeerKortingTrigger()`, `installeerBewaarTrigger()` (triggers terug).
 Dataverlies is uitgesloten: beide dashboards schrijven in dezelfde Google Sheets.
 
-## E. Daarna (apart project)
+## E. Daarna
 
-- Datamigratie Google Sheets → Supabase: één medewerker-tabel met alle stukken eraan gekoppeld, in plaats van naam-matching over tien tabs. Pas starten als de cutover een paar weken stabiel is.
-- Google Sheets alleen-lezen zetten voor iedereen behalve het service account, zodat niemand meer "even in de sheet" iets aanpast buiten het dashboard om.
+- ✅ Cutover gedaan op 19-10-2026 (v0.11.3). Restpunten: oude service-account-sleutel verwijderen, Google Forms sluiten, Code.gs → doorverwijzing.gs.
+
+## F. Stap 6: Google Sheets → Supabase (v0.12.0) — ±30 min, in deze volgorde
+
+Vooraf: niemand werkt tijdens de omschakeling in het dashboard (kies een rustig moment; alle schrijfacties tussen import en omschakeling zouden anders in de sheets belanden en niet in Supabase).
+
+1. **Migratie 0006** draaien in de SQL-editor van het Supabase-project "SLA HR Manager": `supabase/migrations/0006_sheets_naar_supabase.sql`. Daarna in het dashboard Beheer → **Gegevens & export** → ↻: de tabellen staan er (0 rijen).
+2. **Droogloop** klikken. Controleer per tabel: *Rijen in sheet* klopt met wat je in de sheet ziet (lege rijen tellen niet mee), *Archief* = het aantal rijen in de tab Archief, en lees de opmerkingen. "koppen wijken af" is alleen een waarschuwing: de import gaat op kolompositie (A, B, C…), niet op kopnaam. Extra kolommen voorbij de bekende gaan naar `extra`. Een FOUT in de kolom Opmerkingen eerst oplossen.
+3. **Importeer uit de sheets** klikken. *In database* moet per tabel gelijk zijn aan sheet + archief (groen vinkje). De import mag herhaald worden (zelfde rijnummers worden overschreven).
+4. Netlify → Environment variables → **`DATA_BRON` = `supabase`** (alle scopes) → Deploys → Trigger deploy. Wacht tot v0.12.0 met *Gegevensbron: SUPABASE* in Beheer → Gegevens staat.
+5. **Controle (10 min):** Overzicht, Loonheffing, Ontslag, Sommaties, Korting, Waarschuwingen, Beschikbaarheid, Brieven, Overplaatsing, Archief herstellen, een dossier openen (notities, documenten), Signaleringen → sync-formulieren *Droogloop nu* (0 fouten). Zet in één dossier een vinkje aan en weer uit (hr_acties logt het).
+6. **Sheets bevriezen:** in elke sheet Delen → het service account (`hr-dashboard-reader@…`) verwijderen, en iedereen behalve jezelf op *Lezer*. Zet in de sheetnaam "(ARCHIEF – niet meer in gebruik sinds 19-10-2026)".
+7. **Netlify opschonen:** `GOOGLE_SA_EMAIL` en `GOOGLE_SA_KEY` verwijderen (de import kan daarna niet meer; dat is de bedoeling). In Google Cloud Console de service-account-sleutel verwijderen. Optioneel: het service account zelf.
+8. **Terugdraaien** (alleen vóór stap 6/7): `DATA_BRON` leegmaken → Trigger deploy. Alles wat ná stap 4 in Supabase is geschreven staat dan niet in de sheets; vergelijk via Beheer → Gegevens → Export.
+
+Daarna: Beheer → Gegevens → **Export** vervangt "even in de sheet kijken". Elke export wordt gelogd (AVG).

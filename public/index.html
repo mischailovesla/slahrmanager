@@ -406,7 +406,30 @@
       <div style="padding:12px 24px 4px"><div class="tbar" id="ar-types"><button type="button" class="tb sel" data-ar="loonheffing" onclick="laadArchief('loonheffing')">Loonheffing</button><button type="button" class="tb" data-ar="ontslag" onclick="laadArchief('ontslag')">Ontslag &amp; aanzegging</button><button type="button" class="tb" data-ar="sommatie" onclick="laadArchief('sommatie')">Sommaties</button><button type="button" class="tb" data-ar="onboarding" onclick="laadArchief('onboarding')">Onboarding</button></div></div>
       <div class="tw"><table><thead><tr><th>Naam</th><th>Gearchiveerd op</th><th>Door</th><th>Inhoud</th><th>Actie</th></tr></thead><tbody id="ar-body"></tbody></table></div>
     </div>
-    <div class="alert grijs"><strong>Werkwijze:</strong> 🗑 in een tabel verplaatst een rij naar de tab <em>Archief</em> van het betreffende Google Sheet (met datum en wie). Hier zet je zo'n rij weer terug: de rij komt onderaan de hoofdtab en is direct weer zichtbaar in het dashboard. Er wordt nooit iets definitief verwijderd vanuit het dashboard; de maandelijkse AVG-bewaartermijncheck (Signaleringen) meldt wat beoordeeld kan worden.</div>
+    <div class="alert grijs"><strong>Werkwijze:</strong> 🗑 in een tabel archiveert een rij (met datum en wie); de rij verdwijnt uit het dashboard maar blijft bewaard. Hier zet je zo'n rij weer terug, waarna hij direct weer zichtbaar is. Er wordt nooit iets definitief verwijderd vanuit het dashboard; de maandelijkse AVG-bewaartermijncheck (Signaleringen) meldt wat beoordeeld kan worden.</div>
+  </div>
+
+  <!-- GEGEVENS: Sheets -> Supabase (stap 6) + export -->
+  <div class="tc" id="tab-gegevens">
+    <div class="sec">
+      <div class="sh"><div class="st">Gegevensbron <span class="pill" id="gv-bron">-</span></div><div class="hr2"><button class="btn bd bsm" onclick="laadGegevens()">↻</button></div></div>
+      <div id="gv-uitleg" class="alert grijs" style="margin:16px 24px"></div>
+      <div style="padding:0 24px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <button class="btn bd" id="gv-droog" onclick="migratieRun(true)">Droogloop (vergelijken, schrijft niets)</button>
+        <button class="btn bp" id="gv-echt" onclick="migratieRun(false)">Importeer uit de sheets</button>
+        <span class="lay-sub" id="gv-hint"></span>
+      </div>
+      <div class="tw"><table><thead><tr><th>Tabel</th><th>Bron (sheet / tab)</th><th>Rijen in sheet</th><th>Archief</th><th>In database</th><th>Opmerkingen</th></tr></thead><tbody id="gv-body"><tr><td colspan="6" class="leeg grijs">Nog niet geladen</td></tr></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Export (CSV voor Excel)</div></div>
+      <div id="gv-export" style="padding:12px 24px 18px;display:flex;gap:8px;flex-wrap:wrap"></div>
+      <div class="alert grijs" style="margin:0 24px 18px"><strong>Let op:</strong> een export is een momentopname met persoonsgegevens; bewaar hem niet langer dan nodig. Elke export wordt gelogd in de Toegangslog.</div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Laatste importruns</div></div>
+      <div class="tw"><table><thead><tr><th>Tijdstip</th><th>Door</th><th>Modus</th><th>Tabel</th><th>Sheet</th><th>DB voor → na</th><th>Opmerking</th></tr></thead><tbody id="gv-runs"></tbody></table></div>
+    </div>
   </div>
 
   <!-- SIGNALERINGEN (stap 4) -->

@@ -11,10 +11,10 @@
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners']] },
     { label: 'Dossier', items: [['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse']] },
-    { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen']] }
+    { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -63,6 +63,7 @@
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
     if (tab === 'toegang' && !tgData) laadToegang();
     if (tab === 'archief' && !arData) laadArchief();
+    if (tab === 'gegevens' && !gvData) laadGegevens();
   }
   window.swT = swT;
 
@@ -93,6 +94,8 @@
     g('login').classList.remove('show');
     g('top-wie').innerHTML = '<strong>' + esc(ik.naam) + '</strong>';
     g('btn-uit').style.display = '';
+    // Beheer → Gegevens & export is alleen voor beheerders (de API weigert anderen toch); knop verbergen
+    if (ik.rol !== 'admin') document.querySelectorAll('.nav button[data-tab="gegevens"]').forEach(function (b) { b.style.display = 'none'; });
     setInterval(function () { g('top-dt').textContent = new Date().toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }, 1000);
     zetDossierZoek();
     await laadOverzicht();
@@ -1168,12 +1171,66 @@
   document.addEventListener('click', async function (e) {
     var b = e.target.closest && e.target.closest('button[data-ar-herstel]'); if (!b || b.disabled) return;
     var naam = b.getAttribute('data-naam');
-    if (!confirm(naam + ' terugzetten uit het archief? De rij komt weer onderaan de hoofdtab en in het dashboard.')) return;
+    if (!confirm(naam + ' terugzetten uit het archief? De rij is daarna weer zichtbaar in het dashboard.')) return;
     b.disabled = true; b.textContent = '…';
     var r = await api('/api/archief', { type: arType, rij: parseInt(b.getAttribute('data-ar-herstel'), 10) });
     if (!r.success) { b.disabled = false; b.textContent = '↩ Terugzetten'; toast('Herstel: ' + r.bericht, 'err'); return; }
     toast(r.bericht, 'ok'); laadArchief(); ovData = null; lhData = null; omData = null; smData = null;
   });
+
+
+  // ---------- Gegevens: Sheets -> Supabase (stap 6) + CSV-export ----------
+  var gvData = null;
+  function gvRij(t) {
+    var opm = (t.koppenAfwijkend && t.koppenAfwijkend.length ? '<span class="badge bo">koppen wijken af</span> ' + esc(t.koppenAfwijkend.join('; ')) + ' ' : '') + esc(t.opmerking || '');
+    var db = t.dbNa == null || t.dbNa === t.dbVoor ? String(t.dbVoor) : t.dbVoor + ' → <strong>' + t.dbNa + '</strong>';
+    var klopt = t.dbNa != null && t.dbNa === (t.sheetRijen + (t.archiefRijen || 0));
+    return '<tr><td><strong>' + esc(t.label) + '</strong><div class="lay-sub">' + esc(t.tabel) + '</div></td><td>' + esc(t.bron) + '</td><td>' + t.sheetRijen + '</td><td>' + (t.archiefRijen || 0) + '</td><td>' + db + (klopt ? ' <span class="badge bg">✓</span>' : '') + '</td><td style="font-size:.78rem;white-space:normal;max-width:420px">' + (opm || '-') + '</td></tr>';
+  }
+  window.laadGegevens = async function () {
+    g('gv-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">Laden…</td></tr>';
+    var d = await api('/api/migratie');
+    if (!d.success) { g('gv-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; g('gv-bron').textContent = '-'; return; }
+    gvData = d;
+    var sup = d.bron === 'supabase';
+    g('gv-bron').textContent = sup ? 'SUPABASE' : 'GOOGLE SHEETS';
+    g('gv-bron').style.background = sup ? '#009f4b' : '#e8824a'; g('gv-bron').style.color = '#fff';
+    g('gv-uitleg').innerHTML = sup
+      ? '<strong>Het dashboard draait op Supabase.</strong> De Google Sheets worden niet meer gelezen of geschreven; gebruik de export hieronder om gegevens in Excel te bekijken. Importeren is nu geblokkeerd (zou nieuwe data overschrijven).'
+      : (d.migratie0006
+        ? '<strong>Het dashboard draait nog op Google Sheets.</strong> Stappen: 1) <em>Droogloop</em> — controleer dat de aantallen en koppen kloppen; 2) <em>Importeer</em> — zet alle sheet-tabs (incl. archief en oude Forms-reacties) in Supabase; 3) zet in Netlify <code>DATA_BRON=supabase</code> en deploy opnieuw; 4) maak de sheets alleen-lezen. Terugdraaien = de env var weghalen.'
+        : '<strong>Migratie 0006 is nog niet gedraaid.</strong> Voer <code>supabase/migrations/0006_sheets_naar_supabase.sql</code> uit in de SQL-editor van het Supabase-project en ververs daarna.');
+    g('gv-droog').disabled = !d.migratie0006 || !d.sheetsBeschikbaar; g('gv-echt').disabled = !d.migratie0006 || !d.sheetsBeschikbaar || sup;
+    g('gv-hint').textContent = !d.sheetsBeschikbaar ? 'Geen service account meer in Netlify: de sheets zijn niet bereikbaar (dat is de bedoeling ná de overstap).' : '';
+    g('gv-body').innerHTML = (d.tabellen || []).map(function (t) { return '<tr><td><strong>' + esc(t.label) + '</strong><div class="lay-sub">' + esc(t.tabel) + '</div></td><td>-</td><td>-</td><td>-</td><td>' + (t.rijen < 0 ? '?' : t.rijen) + '</td><td>-</td></tr>'; }).join('') || '<tr><td colspan="6" class="leeg grijs">Nog geen tabellen (migratie 0006)</td></tr>';
+    g('gv-runs').innerHTML = (d.runs || []).map(function (r) { return '<tr><td style="white-space:nowrap">' + esc(String(r.created_at || '').replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(r.door || '') + '</td><td><span class="badge ' + (r.droog ? 'boat' : 'bg') + '">' + (r.droog ? 'droog' : 'echt') + '</span></td><td>' + esc(r.tabel) + '</td><td>' + r.sheet_rijen + '</td><td>' + r.db_rijen_voor + ' → ' + r.db_rijen_na + '</td><td style="font-size:.78rem;white-space:normal">' + esc(r.opmerking || '') + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="leeg grijs">Nog geen runs</td></tr>';
+    gvExportKnoppen();
+  };
+  function gvExportKnoppen() {
+    var T = [['hr_loonheffing', 'Loonheffing'], ['hr_ontslag', 'Ontslag & aanzegging'], ['hr_sommatie', 'Sommaties'], ['hr_onboarding', 'Onboarding'], ['hr_overplaatsing', 'Overplaatsing'], ['hr_brieven', 'Vrije brieven'], ['hr_waarschuwingen', 'Waarschuwingen'], ['hr_beschikbaarheid', 'Beschikbaarheid'], ['hr_korting', 'Loonheffingskorting'], ['hr_notities', 'Notities']];
+    g('gv-export').innerHTML = T.map(function (t) { return '<button class="btn bd bsm" data-export="' + t[0] + '">⬇ ' + esc(t[1]) + '</button>'; }).join('') + '<label class="chk" style="margin-left:8px"><input type="checkbox" id="gv-arch"> incl. archief</label>';
+  }
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-export]'); if (!b || b.disabled) return;
+    b.disabled = true; var oud = b.textContent; b.textContent = '…';
+    var r = await api('/api/export?tabel=' + b.getAttribute('data-export') + (g('gv-arch') && g('gv-arch').checked ? '&archief=1' : ''));
+    b.disabled = false; b.textContent = oud;
+    if (!r.success) { toast('Export: ' + r.bericht, 'err'); return; }
+    var url = URL.createObjectURL(new Blob([r.csv], { type: 'text/csv;charset=utf-8' }));
+    var a = document.createElement('a'); a.href = url; a.download = r.bestandsnaam; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+    toast(r.aantal + ' rijen geëxporteerd', 'ok');
+  });
+  window.migratieRun = async function (droog) {
+    if (!droog && !confirm('Alle sheet-tabs importeren in Supabase? Bestaande rijen met hetzelfde rijnummer worden overschreven. Doe dit alleen vóór de omschakeling (DATA_BRON).')) return;
+    g('gv-droog').disabled = g('gv-echt').disabled = true;
+    g('gv-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">' + (droog ? 'Droogloop' : 'Import') + ' bezig — alle sheets worden gelezen, dit kan een minuut duren…</td></tr>';
+    var r = await api('/api/migratie', { droog: droog ? 1 : 0 });
+    g('gv-droog').disabled = g('gv-echt').disabled = false;
+    if (!r.success) { toast(r.bericht, 'err'); g('gv-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">' + esc(r.bericht) + '</td></tr>'; return; }
+    g('gv-body').innerHTML = r.tabellen.map(gvRij).join('');
+    toast((droog ? 'Droogloop klaar: ' : 'Import klaar: ') + r.totaalSheet + ' sheetrijen' + (r.fouten.length ? ', ' + r.fouten.length + ' fout(en)' : ''), r.fouten.length ? 'err' : 'ok');
+    var d = await api('/api/migratie'); if (d.success) { gvData = d; g('gv-runs').innerHTML = (d.runs || []).slice(0, 14).map(function (x) { return '<tr><td style="white-space:nowrap">' + esc(String(x.created_at || '').replace('T', ' ').slice(0, 16)) + '</td><td>' + esc(x.door || '') + '</td><td><span class="badge ' + (x.droog ? 'boat' : 'bg') + '">' + (x.droog ? 'droog' : 'echt') + '</span></td><td>' + esc(x.tabel) + '</td><td>' + x.sheet_rijen + '</td><td>' + x.db_rijen_voor + ' → ' + x.db_rijen_na + '</td><td style="font-size:.78rem;white-space:normal">' + esc(x.opmerking || '') + '</td></tr>'; }).join(''); }
+  };
 
   // ---------- Sorteren (port van SorteerUI.gs, uitgebreid) ----------
   // 1) Klik op een kolomkop in elke tabel sorteert die kolom (datums dd-mm-jjjj, getallen, tekst).

@@ -3,7 +3,7 @@
 Herbouw van het SLA HR Dashboard (Google Apps Script) als Netlify-app.
 Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend tot een module volledig is overgezet.
 
-## Status: batch D — het Apps Script-dashboard is volledig overgezet; alleen de cutover (stap 5) rest (checks in droogloop tot dan)
+## Status: cutover gedaan (19-10-2026, v0.11.3) — stap 6 (v0.12.0): Google Sheets → Supabase, omschakelen via `DATA_BRON`
 
 | Werkt | Nog in Apps Script |
 |---|---|
@@ -134,6 +134,7 @@ Staat in `public/version.js` (één plek) en is zichtbaar onderin elke pagina en
 | 0.6.0 | 16-10-2026 | Stap 3e: Sommaties-tab (mail, printbrief, aanvullende tekst) en Overplaatsing-tab (mail + PDF NL/EN, standplaats vs. overplaatsing) |
 | 0.7.0 | 16-10-2026 | Stap 4: 6 scheduled functions + Signaleringen-tab, droogloop-schakelaar `SIGNALERINGEN_ACTIEF`, log `hr_signaleringen` |
 | 0.7.1 | 16-10-2026 | Medewerkers-tab toont standaard de volledige Shiftbase-lijst per winkel (zoekveld filtert), knop "← Alle medewerkers" in het dossier |
+| 0.12.0 | 19-10-2026 | **Stap 6:** Google Sheets vervangen door Supabase-tabellen (migratie `0006`). `_lib/data.js` heeft dezelfde API als `_lib/sheets.js`; `_lib/db.js` kiest op `DATA_BRON`. Beheer → *Gegevens & export*: droogloop + import vanuit de sheets (hoofdtabs, logtabs, archieftabs, oude Forms-reacties; rijnummers blijven gelijk), CSV-export per tabel. Zie CUTOVER.md blok F |
 | 0.11.3 | 16-10-2026 | Service account als `GOOGLE_SA_EMAIL` + `GOOGLE_SA_KEY` (compact) i.p.v. `GOOGLE_SA_JSON_B64` — de deploy faalde op de 4 KB-limiet van AWS Lambda voor env vars |
 | 0.11.2 | 16-10-2026 | Indiensttredingsformulier wordt geserveerd vanuit `public/Indiensttredingsformulier_SLA.xlsx` (welkomstmail stap 1) i.p.v. een Google Drive-exportlink — de laatste Drive-verwijzing in de mails is weg |
 | 0.11.1 | 16-10-2026 | Knop *⇅ Sorteer op datum* (nieuw → oud / oud → nieuw / uit) in de Loonheffing- en Ontslag-tab; sortering blijft staan na verversen (SorteerUI.gs-gedrag) |
@@ -183,6 +184,9 @@ npx netlify dev        # http://localhost:8888
 ## Toegang beheren
 Allowlist = tabel `hr_toegang` in Supabase (Table Editor). `actief=false` zet iemand uit zonder de regel te verwijderen. Alle opvragen worden gelogd in `hr_toegangslog`; de view `hr_toegangslog_recent` toont de laatste 200.
 
+## Gegevensbron: Supabase (stap 6) of Google Sheets
+`DATA_BRON=supabase` laat alle endpoints en checks via `_lib/data.js` op de tabellen uit migratie `0006` werken; leeg = Google Sheets via `_lib/sheets.js`. Alle code praat alleen met `_lib/db.js`. De import (Beheer → Gegevens & export, alleen rol `admin`) leest de sheets altijd rechtstreeks en is idempotent (upsert op `rij`); na de omschakeling is importeren geblokkeerd. Tabellen en kolommen staan in `_lib/tabellen.js` (kolom A = index 0, alle waarden tekst). Archief = `gearchiveerd_op/door/bron` op de rij. Oude Google-Forms-uploads (Drive-links) staan in `hr_formulier_reacties`; nieuwe uploads in `hr_uploads`.
+
 ## Extra dossier-tabs
 `DOSSIER_EXTRA_TABS` in `netlify/functions/_lib/config.js` — per tab sheet-ID, tabnaam en de kolomindex van naam/e-mail/datum. Zodra Waarschuwing.gs, Proeftijd.gs, Korting.gs en Beschikbaarheid.gs zijn aangeleverd worden die hier ingevuld (Brieven heeft al een eigen sectie).
 
@@ -191,4 +195,5 @@ Allowlist = tabel `hr_toegang` in Supabase (Table Editor). `actief=false` zet ie
 2. ✅ Afvinken + archiveren in de sheets, actielog in Supabase, contracttype uit Shiftbase
 3. ✅ Mail + brieven: 3a mailfundament, 3b loonheffing, 3c vrije brieven, 3d ontslag/aanzegging, 3e sommatie + overplaatsing. (Waarschuwing, Proeftijd, Korting, Beschikbaarheid: aparte modules, nog in Apps Script)
 4. ✅ Signaleringen als Netlify Scheduled Functions (droogloop) → cutover: Apps Script-triggers uit + `SIGNALERINGEN_ACTIEF=1`
-5. Apps Script uit, oude exec-URL doorverwijzen
+5. ✅ Cutover 19-10-2026: triggers uit, `SIGNALERINGEN_ACTIEF=1`, Apps Script → `apps-script/doorverwijzing.gs`
+6. ✅ Google Sheets → Supabase (v0.12.0): migratie 0006 → Beheer → Gegevens: droogloop → import → `DATA_BRON=supabase` → sheets bevriezen, service account weg
