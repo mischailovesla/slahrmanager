@@ -57,9 +57,9 @@ Vooraf: niemand werkt tijdens de omschakeling in het dashboard (kies een rustig 
 
 Daarna: Beheer → Gegevens → **Export** vervangt "even in de sheet kijken". Elke export wordt gelogd (AVG).
 
-## G. Fase 2 (v0.14.2): juridische checks + exit-survey — ±5 min
+## G. Fase 2 (v0.14.3): juridische checks + exit-survey — ±5 min
 
-1. **Migraties 0008 én 0009** in de Supabase SQL-editor (project *SLA HR Manager*): `0009_exit_survey.sql` maakt `hr_exit` (exit-survey). **Migratie 0008** in de Supabase SQL-editor (project *SLA HR Manager*): `supabase/migrations/0008_fase2.sql` — voegt `uitstroomreden` toe aan `hr_ontslag`, maakt `hr_oproepaanbod` en staat uploadsoort `oproep` toe. Zonder deze migratie geven het tabblad Oproepaanbod en het opslaan van de uitstroomreden een fout; de rest draait gewoon.
-2. Commit + push in GitHub Desktop → Netlify bouwt v0.14.2 (badge in de header).
+1. **Migraties 0008, 0009 én 0010** in de Supabase SQL-editor (project *SLA HR Manager*): `0009_exit_survey.sql` maakt `hr_exit` (exit-survey); `0010_instellingen.sql` maakt `hr_instellingen` en zet de exit-survey op **pauze** — aanzetten doe je in Uitstroom → Exit-surveys → Instellingen zodra de vragen zijn doorgenomen. **Migratie 0008** in de Supabase SQL-editor (project *SLA HR Manager*): `supabase/migrations/0008_fase2.sql` — voegt `uitstroomreden` toe aan `hr_ontslag`, maakt `hr_oproepaanbod` en staat uploadsoort `oproep` toe. Zonder deze migratie geven het tabblad Oproepaanbod en het opslaan van de uitstroomreden een fout; de rest draait gewoon.
+2. Commit + push in GitHub Desktop → Netlify bouwt v0.14.3 (badge in de header).
 3. De vier nieuwe schedules (`sched-contractketen` 08:00, `sched-verzuim` 08:20 dagelijks; `sched-jeugd` ma 08:15, `sched-oproepaanbod` ma 08:30, UTC = +1/+2 u NL) staan direct **aan** omdat `SIGNALERINGEN_ACTIEF=1` al staat. Wil je ze eerst zien: Signaleringen → "Nu draaien (droog)" per check, of op het Overzicht "↻ Live" bij de takenlijst.
 4. Controle eerste week: Shiftbase-contracttypes (keten/proeftijd/oproep herkenning via `OPROEP_TREFWOORDEN` en "onbepaald/vast" in de contractnaam), geboortedatums ingevuld (jeugdcheck meldt hoeveel er ontbreken), ziekmeldingen op status *goedgekeurd* (alleen die tellen mee voor Poortwachter).

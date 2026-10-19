@@ -955,8 +955,17 @@
     var d = await api('/api/exit-admin?maanden=' + exMaanden);
     if (!d.success) { g('ex-body').innerHTML = '<tr><td colspan="11" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
     exData = d;
+    // status / pauze
+    g('ex-pauze').style.display = d.actief ? 'none' : '';
+    g('ex-status').className = 'badge ' + (d.actief ? 'bg' : 'bo'); g('ex-status').textContent = d.actief ? 'ACTIEF — link gaat mee in brieven en mails' : 'GEPAUZEERD — geen link, pagina gesloten';
+    g('ex-toggle').textContent = d.actief ? 'Pauzeren' : 'Aanzetten'; g('ex-toggle').className = 'btn bsm ' + (d.actief ? 'bd' : 'bp');
+    // kolommen volgen de vragenlijst (keuze/schaal/nps); tekstvragen in de laatste kolom
+    var kol = (d.vragenConfig || []).filter(function (v) { return v.type !== 'tekst'; });
+    g('ex-head').innerHTML = '<tr><th>Ingevuld</th><th>Naam</th><th>Winkel</th>' + kol.map(function (v) { return '<th title="' + esc(v.nl) + '">' + esc(v.nl.length > 22 ? v.nl.slice(0, 20) + '…' : v.nl) + '</th>'; }).join('') + '<th>Opmerking</th></tr>';
+    var nk = 4 + kol.length;
     g('ex-count').textContent = d.rijen.length;
-    g('ex-body').innerHTML = d.rijen.length ? d.rijen.map(function (r) { var a = r.antwoorden || {}; return '<tr><td>' + esc(r.op) + '</td><td>' + (r.anoniem ? '<span class="badge boat">anoniem</span>' : '<strong>' + esc(r.naam) + '</strong>' + (r.email ? '<div class="lay-sub">' + esc(r.email) + '</div>' : '')) + '</td><td>' + esc(r.winkel || '-') + '</td><td>' + esc(r.reden || '-') + '</td><td>' + exScore(a.sfeer) + '</td><td>' + exScore(a.leiding) + '</td><td>' + exScore(a.onboarding) + '</td><td>' + exScore(a.rooster) + '</td><td>' + (r.nps == null ? '<span class="no-doc">-</span>' : '<span class="badge ' + (r.nps >= 9 ? 'bg' : r.nps >= 7 ? 'bo' : 'br') + '">' + r.nps + '/10</span>') + '</td><td>' + esc(r.terug || '-') + '</td><td style="max-width:320px;white-space:normal;font-size:.82rem">' + esc(r.opmerking || '') + '</td></tr>'; }).join('') : '<tr><td colspan="11" class="leeg grijs">Nog geen reacties in deze periode.</td></tr>';
+    g('ex-body').innerHTML = d.rijen.length ? d.rijen.map(function (r) { var a = r.antwoorden || {}, lb = r.labels || {}; return '<tr><td>' + esc(r.op) + '</td><td>' + (r.anoniem ? '<span class="badge boat">anoniem</span>' : '<strong>' + esc(r.naam) + '</strong>' + (r.email ? '<div class="lay-sub">' + esc(r.email) + '</div>' : '')) + '</td><td>' + esc(r.winkel || '-') + '</td>' + kol.map(function (v) { var x = a[v.key]; if (x == null || x === '') return '<td><span class="no-doc">-</span></td>'; if (v.type === 'schaal') return '<td>' + exScore(x) + '</td>'; if (v.type === 'nps') return '<td><span class="badge ' + (x >= 9 ? 'bg' : x >= 7 ? 'bo' : 'br') + '">' + x + '/10</span></td>'; return '<td>' + esc(lb[v.key] || x) + '</td>'; }).join('') + '<td style="max-width:320px;white-space:normal;font-size:.82rem">' + esc(r.opmerking || '') + '</td></tr>'; }).join('') : '<tr><td colspan="' + nk + '" class="leeg grijs">Nog geen reacties in deze periode.</td></tr>';
+    exVragenRender(d.vragenConfig || []); g('ex-vragen-sub').textContent = d.standaard ? 'Standaardlijst (config.js)' : 'Eigen lijst (opgeslagen in het dashboard)';
     g('ex-vcount').textContent = d.vertrokken.length;
     g('ex-vbody').innerHTML = d.vertrokken.length ? d.vertrokken.map(function (v) { var st = v.ingevuld ? '<span class="badge bg">ingevuld</span>' : v.uitgenodigd ? '<span class="badge bo">uitgenodigd</span>' : '<span class="badge boat">nog niet</span>'; return '<tr><td><strong>' + esc(v.naam) + '</strong></td><td>' + esc(v.email || '-') + '</td><td>' + esc(v.winkelNaam || '-') + '</td><td>' + esc(v.einddatum) + '</td><td>' + st + '</td><td>' + (v.ingevuld ? '' : '<button class="btn bp bsm" data-ex-stuur=\'' + esc(JSON.stringify({ naam: v.naam, email: v.email })) + '\'>' + (v.uitgenodigd ? 'Opnieuw' : 'Verstuur') + '</button>') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="leeg grijs">Geen uitdiensttredingen in deze periode (of Shiftbase niet bereikbaar).</td></tr>';
     g('ex-ucount').textContent = d.uitnodigingen.length;
@@ -965,11 +974,55 @@
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('button[data-ex-stuur]'); if (b) openExModal(JSON.parse(b.getAttribute('data-ex-stuur'))); });
   window.exExport = function () {
     if (!exData || !exData.rijen.length) { toast('Geen reacties om te exporteren', 'err'); return; }
-    var kop = ['Ingevuld', 'Naam', 'Email', 'Winkel', 'BV', 'Bron', 'Taal', 'Reden', 'Team', 'Manager', 'Onboarding', 'Rooster', 'Aanbeveling', 'Terug', 'Opmerking'];
+    var vr = exData.vragenConfig || [];
+    var kop = ['Ingevuld', 'Naam', 'Email', 'Winkel', 'BV', 'Bron', 'Taal'].concat(vr.map(function (v) { return v.nl; }));
     var cel = function (v) { v = v == null ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
-    var regels = [kop.join(';')].concat(exData.rijen.map(function (r) { var a = r.antwoorden || {}; return [r.op, r.anoniem ? 'anoniem' : r.naam, r.email, r.winkel, r.bv, r.bron, r.taal, r.reden, a.sfeer, a.leiding, a.onboarding, a.rooster, r.nps, r.terug, r.opmerking].map(cel).join(';'); }));
+    var regels = [kop.join(';')].concat(exData.rijen.map(function (r) { var a = r.antwoorden || {}, lb = r.labels || {}; return [r.op, r.anoniem ? 'anoniem' : r.naam, r.email, r.winkel, r.bv, r.bron, r.taal].concat(vr.map(function (v) { return lb[v.key] || a[v.key]; })).map(cel).join(';'); }));
     var blob = new Blob(['\ufeff' + regels.join('\r\n')], { type: 'text/csv;charset=utf-8' }); var url = URL.createObjectURL(blob);
     var a = document.createElement('a'); a.href = url; a.download = 'exit-surveys_' + exMaanden + 'mnd.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  };
+  // --- instellingen: aan/uit, voorbeeld, vragen-editor ---
+  window.exToggle = async function () {
+    if (!exData) return; var aan = !exData.actief;
+    if (!confirm(aan ? 'Exit-survey aanzetten? Vanaf nu gaat de link mee in elke ontslagbevestiging, aanzegging en proeftijdbrief.' : 'Exit-survey pauzeren? Brieven en mails gaan dan zonder link; de pagina sluit.')) return;
+    var r = await api('/api/exit-admin', { actie: 'actief', actief: aan });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); laadExit();
+  };
+  window.exVoorbeeld = async function (taal) { var r = await api('/api/exit-admin', { actie: 'voorbeeld', taal: taal }); if (!r.success) { toast(r.bericht, 'err'); return; } window.open(r.link, '_blank'); };
+  var exVragen = [];
+  function exVragenRender(lijst) {
+    exVragen = JSON.parse(JSON.stringify(lijst));
+    var types = (exData && exData.types) || ['keuze', 'schaal', 'nps', 'tekst'];
+    g('ex-vragen').innerHTML = exVragen.map(function (v, i) {
+      var opt = v.type === 'keuze' ? '<div class="fg" style="margin:8px 0 0"><label>Opties (één per regel: Nederlands | English)</label><textarea data-exv="opties" data-i="' + i + '" rows="' + Math.max(3, (v.opties || []).length) + '" style="font-size:.85rem;min-height:0;height:auto">' + esc((v.opties || []).map(function (o) { return o[1] + (o[2] && o[2] !== o[1] ? ' | ' + o[2] : ''); }).join('\n')) + '</textarea></div>' : '';
+      return '<div class="ex-vraag" style="border:1px solid #e8e2de;border-radius:10px;padding:12px 14px;margin:10px 0;background:#fff"><div style="display:flex;gap:10px;align-items:center;margin-bottom:8px"><strong style="color:#009f4b">' + (i + 1) + '.</strong><select data-exv="type" data-i="' + i + '" style="width:auto">' + types.map(function (t) { return '<option value="' + t + '"' + (t === v.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select><span class="lay-sub" style="flex:1">sleutel: ' + esc(v.key || '(automatisch)') + '</span><button class="btn bd bsm" title="Omhoog" onclick="exVraagMove(' + i + ',-1)">↑</button><button class="btn bd bsm" title="Omlaag" onclick="exVraagMove(' + i + ',1)">↓</button><button class="btn bd bsm" style="color:#c0392b" onclick="exVraagWeg(' + i + ')">✕</button></div>'
+        + '<div class="fr"><div class="fg" style="margin:0"><label>Nederlands</label><input type="text" data-exv="nl" data-i="' + i + '" value="' + esc(v.nl || '') + '"></div><div class="fg" style="margin:0"><label>English</label><input type="text" data-exv="en" data-i="' + i + '" value="' + esc(v.en || '') + '"></div></div>' + opt + '</div>';
+    }).join('') || '<div class="lay-sub">Geen vragen.</div>';
+    g('ex-vragen').querySelectorAll('[data-exv]').forEach(function (el) { el.addEventListener('change', function () { exVragenLees(); if (el.getAttribute('data-exv') === 'type') exVragenRender(exVragen); }); });
+  }
+  function exVragenLees() {
+    g('ex-vragen').querySelectorAll('[data-exv]').forEach(function (el) {
+      var i = +el.getAttribute('data-i'), k = el.getAttribute('data-exv'), v = exVragen[i]; if (!v) return;
+      if (k === 'opties') v.opties = el.value.split('\n').map(function (r) { var p = r.split('|').map(function (x) { return x.trim(); }); return p[0] ? ['', p[0], p[1] || p[0]] : null; }).filter(Boolean);
+      else v[k] = el.value;
+      if (k === 'type' && el.value === 'keuze' && !(v.opties && v.opties.length)) v.opties = [['', 'Ja', 'Yes'], ['', 'Nee', 'No']];
+    });
+  }
+  window.exVraagToe = function () { exVragenLees(); exVragen.push({ key: '', type: 'schaal', nl: '', en: '' }); exVragenRender(exVragen); };
+  window.exVraagWeg = function (i) { exVragenLees(); exVragen.splice(i, 1); exVragenRender(exVragen); };
+  window.exVraagMove = function (i, d) { exVragenLees(); var j = i + d; if (j < 0 || j >= exVragen.length) return; var t = exVragen[i]; exVragen[i] = exVragen[j]; exVragen[j] = t; exVragenRender(exVragen); };
+  window.exVragenOpslaan = async function () {
+    exVragenLees();
+    var r = await api('/api/exit-admin', { actie: 'vragen', vragen: exVragen });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); laadExit();
+  };
+  window.exVragenHerstel = async function () {
+    if (!confirm('Eigen vragenlijst weggooien en de standaardlijst terugzetten?')) return;
+    var r = await api('/api/exit-admin', { actie: 'vragen', herstel: true });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); laadExit();
   };
   window.openExModal = function (v) {
     g('ex-naam').value = v ? v.naam || '' : ''; g('ex-email').value = v ? v.email || '' : ''; g('ex-zoek').value = ''; g('ex-zoek-res').classList.remove('open');
@@ -1304,7 +1357,7 @@
     var sk = Object.keys(d.schaal || {});
     if (sk.length) h += sk.map(function (k) { var x = d.schaal[k]; var pct = x.gem == null ? 0 : Math.round((x.gem - 1) / 4 * 100); var kl = x.gem == null ? '#c9c2bc' : x.gem >= 4 ? '#009f4b' : x.gem >= 3 ? '#e8824a' : '#c0392b'; return '<div style="display:flex;gap:12px;align-items:center;padding:5px 0;font-size:.85rem"><span style="min-width:300px">' + esc(x.vraag) + '</span><div style="flex:1;background:#f3eeea;border-radius:3px;height:14px"><div style="width:' + pct + '%;background:' + kl + ';height:14px;border-radius:3px"></div></div><strong style="min-width:110px;text-align:right">' + (x.gem == null ? '-' : x.gem + ' / 5') + ' <span style="color:#888078;font-weight:400">(' + x.n + (x.laag ? ', ' + x.laag + ' laag' : '') + ')</span></strong></div>'; }).join('');
     var kz = d.keuze || {};
-    ['reden', 'terug'].forEach(function (k) { if (kz[k] && kz[k].length) h += '<div style="margin-top:10px;font-size:.85rem"><span class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px">' + (k === 'reden' ? 'Belangrijkste reden (zelf opgegeven)' : 'Zou weer bij SLA werken') + '</span><div style="margin-top:4px">' + kz[k].map(function (o) { return '<span class="badge boat" style="margin:0 6px 6px 0">' + esc(o.label) + ' · ' + o.aantal + '</span>'; }).join('') + '</div></div>'; });
+    Object.keys(kz).forEach(function (k) { var q = kz[k], lijst = Array.isArray(q) ? q : (q.opties || []); if (!lijst.length) return; h += '<div style="margin-top:10px;font-size:.85rem"><span class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px">' + esc(q.vraag || k) + '</span><div style="margin-top:4px">' + lijst.map(function (o) { return '<span class="badge boat" style="margin:0 6px 6px 0">' + esc(o.label) + ' · ' + o.aantal + '</span>'; }).join('') + '</div></div>'; });
     if (d.opmerkingen && d.opmerkingen.length) h += '<div style="margin-top:12px"><span class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px">Opmerkingen</span>' + d.opmerkingen.map(function (o) { return '<div style="padding:8px 0;border-bottom:1px solid #f0ebe7;font-size:.85rem"><span style="color:#888078">' + esc(o.op) + ' · ' + esc(o.winkel || '-') + (o.naam ? ' · ' + esc(o.naam) : ' · anoniem') + (o.nps != null ? ' · ' + o.nps + '/10' : '') + '</span><br>' + esc(o.tekst) + '</div>'; }).join('') + '</div>';
     g('vrl-exit').innerHTML = h;
   }

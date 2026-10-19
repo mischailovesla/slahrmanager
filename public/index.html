@@ -398,10 +398,11 @@
   <!-- VERLOOPANALYSE (Verloop.gs v1.3) -->
   <!-- EXIT-SURVEYS (fase 2f) -->
   <div class="tc" id="tab-exit">
+    <div class="alert geel" id="ex-pauze" style="display:none"><strong>⏸ Exit-survey staat op pauze.</strong> Er gaat géén link mee in ontslagbevestigingen, aanzeggingen en proeftijdbrieven, de survey-pagina is gesloten en uitnodigingen kunnen niet verstuurd worden. Zet hem aan bij <em>Instellingen</em> onderaan zodra de vragen zijn doorgenomen.</div>
     <div class="sec">
       <div class="sh"><div class="st">Exit-surveys: reacties <span class="pill" id="ex-count">-</span></div>
         <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam, winkel, opmerking..." oninput="flt('ex-body',this.value)"><button class="btn bd bsm" id="ex-b12" onclick="laadExit(12)">12 mnd</button><button class="btn bd bsm" id="ex-b36" onclick="laadExit(36)">36 mnd</button><button class="btn bd bsm" onclick="exExport()">⬇ CSV</button><button class="btn bp bsm" onclick="openExModal(null)">Survey versturen</button></div></div>
-      <div class="tw"><table><thead><tr><th>Ingevuld</th><th>Naam</th><th>Winkel</th><th>Reden</th><th>Team</th><th>Manager</th><th>Onboarding</th><th>Rooster</th><th>Aanbeveling</th><th>Terug?</th><th>Opmerking</th></tr></thead><tbody id="ex-body"></tbody></table></div>
+      <div class="tw"><table><thead id="ex-head"><tr><th>Ingevuld</th><th>Naam</th><th>Winkel</th><th>Opmerking</th></tr></thead><tbody id="ex-body"></tbody></table></div>
     </div>
     <div class="sec">
       <div class="sh"><div class="st">Uit dienst (Shiftbase) — survey handmatig versturen <span class="pill" id="ex-vcount">-</span></div><div class="lay-sub" style="color:rgba(255,255,255,.6)">Iedereen met een einddatum in de gekozen periode. Bij een ontslagbevestiging, aanzegging of proeftijdbrief via het dashboard zit de link al in brief + mail.</div></div>
@@ -410,6 +411,13 @@
     <div class="sec">
       <div class="sh"><div class="st">Handmatig verstuurde uitnodigingen <span class="pill" id="ex-ucount">-</span></div></div>
       <div class="tw"><table><thead><tr><th>Verstuurd</th><th>Naam</th><th>Naar</th><th>Taal</th><th>Door</th></tr></thead><tbody id="ex-ubody"></tbody></table></div>
+    </div>
+    <div class="sec" id="ex-instel">
+      <div class="sh"><div class="st">Instellingen: aan/uit en vragen</div>
+        <div class="hr2"><span id="ex-status" class="badge boat">-</span><button class="btn bsm bp" id="ex-toggle" onclick="exToggle()">Aanzetten</button><button class="btn bd bsm" onclick="exVoorbeeld('NL')">Voorbeeld NL</button><button class="btn bd bsm" onclick="exVoorbeeld('EN')">Voorbeeld EN</button></div></div>
+      <div style="padding:14px 24px 6px" class="lay-sub">Pas hieronder de vragen aan (volgorde, tekst NL/EN, type, opties). Types: <strong>keuze</strong> (één optie), <strong>schaal</strong> (1–5 oneens–eens), <strong>nps</strong> (0–10, telt als aanbeveling/eNPS), <strong>tekst</strong> (open). Opties bij keuze: één per regel, <code>Nederlands | English</code>. De sleutel (kolomnaam in de export) wordt automatisch gemaakt; al ingevulde surveys behouden hun antwoorden.</div>
+      <div id="ex-vragen" style="padding:0 24px 8px"></div>
+      <div style="padding:6px 24px 18px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn bd bsm" onclick="exVraagToe()">+ Vraag toevoegen</button><button class="btn bp bsm" onclick="exVragenOpslaan()">Vragen opslaan</button><button class="btn bd bsm" onclick="exVragenHerstel()">Standaardlijst terugzetten</button><span class="lay-sub" id="ex-vragen-sub" style="align-self:center"></span></div>
     </div>
     <div class="alert grijs"><strong>Privacy:</strong> wie "anoniem" aanvinkt, staat hier zonder naam en e-mail; die reacties tellen wel mee in de Verloopanalyse. Een link is 90 dagen geldig en één keer te gebruiken.</div>
   </div>

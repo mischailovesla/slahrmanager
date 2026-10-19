@@ -78,6 +78,7 @@
       var r = await post({ taal: taal.toUpperCase() });
       if (!r.success) return fout(r.bericht);
       info = r; render();
+      if (r.voorbeeld) g('card').insertAdjacentHTML('afterbegin', '<div class="melding groen">Voorbeeld voor HR — antwoorden worden niet opgeslagen.</div>');
     } catch (e) { fout('Er ging iets mis: ' + e.message); }
   }
   // token bepaalt de starttaal; de knoppen NL/EN laden de vragen opnieuw in de andere taal

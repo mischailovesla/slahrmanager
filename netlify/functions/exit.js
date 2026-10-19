@@ -14,7 +14,10 @@ exports.handler = async (event) => {
   try {
     const p = body(event);
     const tok = X.leesExitToken(p.t);
-    if (!p.antwoorden) { const taal = String(p.taal || tok.t || 'NL').toUpperCase() === 'EN' ? 'EN' : 'NL'; return json(200, { success: true, naam: tok.n, taal, vragen: X.vragen(taal) }); }
+    const isVoorbeeld = tok.b === 'voorbeeld'; // HR-voorbeeld vanuit het dashboard: wel bekijken, nooit opslaan
+    if (!isVoorbeeld && !(await X.actief())) return json(200, { success: false, bericht: tok.t === 'EN' ? 'The exit survey is temporarily unavailable. Please try again later.' : 'De exit-survey is tijdelijk niet beschikbaar. Probeer het later nog eens.' });
+    if (!p.antwoorden) { const taal = String(p.taal || tok.t || 'NL').toUpperCase() === 'EN' ? 'EN' : 'NL'; return json(200, { success: true, naam: tok.n, taal, voorbeeld: isVoorbeeld, vragen: await X.vragen(taal) }); }
+    if (isVoorbeeld) return json(200, { success: true, id: null, aantal: 0, voorbeeld: true });
     const meta = { anoniem: !!p.anoniem, email: p.email, ip: (event.headers || {})['x-nf-client-connection-ip'] || null };
     try {
       const med = await require('./_lib/shiftbase').getMedewerkers();
