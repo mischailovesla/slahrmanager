@@ -9,12 +9,12 @@
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['checkin', 'Check-in 30/60']] },
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners']] },
-    { label: 'Dossier', items: [['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
+    { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -64,6 +64,7 @@
     if (tab === 'exit' && !exData) laadExit(12);
     if (tab === 'checkin' && !ciData) laadCheckin(6);
     if (tab === 'scorekaart' && !skData) laadScorekaart(6);
+    if (tab === 'gesprekken' && !gsData) laadGesprekken(90);
     if (tab === 'toegang' && !tgData) laadToegang();
     if (tab === 'archief' && !arData) laadArchief();
     if (tab === 'gegevens' && !gvData) laadGegevens();
@@ -96,7 +97,7 @@
     var ik = await api('/api/ik');
     if (!ik.success) { await sb.auth.signOut(); g('login').classList.add('show'); toonLoginFout(ik.bericht || 'Geen toegang.'); return; }
     g('login').classList.remove('show');
-    g('top-wie').innerHTML = '<strong>' + esc(ik.naam) + '</strong>';
+    g('top-wie').innerHTML = '<strong>' + esc(ik.naam) + '</strong>'; ikNaam = ik.naam || ik.email || '';
     g('btn-uit').style.display = '';
     // Beheer → Gegevens & export is alleen voor beheerders (de API weigert anderen toch); knop verbergen
     if (ik.rol !== 'admin') document.querySelectorAll('.nav button[data-tab="gegevens"]').forEach(function (b) { b.style.display = 'none'; });
@@ -162,7 +163,7 @@
   function bArch(type, rij, naam) {
     return '<button class="mah-btn arch" title="Archiveer ' + esc(naam) + ' — rij gaat naar tab Archief" data-arch="' + type + '" data-rij="' + rij + '" data-naam="' + esc(naam) + '">🗑</button>';
   }
-  var bezig = false, laatsteDossier = null;
+  var bezig = false, laatsteDossier = null, ikNaam = '';
   document.addEventListener('click', async function (e) {
     var b = e.target.closest && (e.target.closest('button[data-tog]') || e.target.closest('button[data-arch]'));
     if (!b || bezig) return;
@@ -321,6 +322,9 @@
     h += '</div></div>';
     // Checklists (fase 1) vóór de dossierregels: dat is wat er nú moet gebeuren
     h += '<div class="sec"><div class="sh"><div class="st">Checklists</div></div><div id="dos-checklists"><div class="leeg grijs" style="padding:14px 24px">Laden…</div></div></div>';
+    // Gesprekken (fase 3b)
+    dosPersoon = { naam: d.naam, email: d.email, mid: p ? p.id : (id || ''), winkel: p ? p.winkelNaam : '' }; dosGesprekken = d.gesprekken || [];
+    h += '<div class="sec"><div class="sh"><div class="st">Gesprekken <span class="pill">' + dosGesprekken.length + '</span></div><div class="hr2"><button class="btn bp bsm" data-gs-nieuw="1">+ Gesprek vastleggen</button></div></div><div style="padding:6px 24px 14px">' + (dosGesprekken.length ? dosGesprekken.map(gsKaart).join('') : '<div class="leeg grijs" style="padding:8px 0">Nog geen gesprekken vastgelegd.</div>') + '</div></div>';
     // Secties
     h += '<div class="sec"><div class="sh"><div class="st">Dossierregels <span class="pill">' + d.totaal + '</span></div></div>';
     d.secties.forEach(function (s) {
@@ -1090,6 +1094,98 @@
     if (r.success) { toast(r.bericht, 'ok'); closeExModal(); laadExit(); } else toast('Fout: ' + r.bericht, 'err');
   };
 
+  // ---------- Gesprekken (fase 3b): formulier, dossierblok, overzicht ----------
+  var gsData = null, gsDagen = 90, gsMeta = null, gsOpts = {}, dosPersoon = null, dosGesprekken = [];
+  var gsVandaag = function () { return new Date().toLocaleDateString('sv-SE'); };
+  var gsPlus = function (n) { var d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv-SE'); };
+  async function gsZorgMeta() { if (gsMeta) return gsMeta; var r = await api('/api/gesprek?dagen=7'); if (r.success) gsMeta = { soorten: r.soorten, kanalen: r.kanalen }; return gsMeta; }
+  function gsSoortLabel(k) { var s = gsMeta && gsMeta.soorten.find(function (x) { return x.key === k; }); return s ? s.label : k; }
+  function gsKaart(x) {
+    var vv = x.vervolgDatum ? (x.vervolgOpen ? '<span class="badge ' + (x.vervolgTeLaat ? 'br' : 'bo') + '">vervolg ' + esc(x.vervolgNL) + (x.vervolgTeLaat ? ' — over tijd' : '') + '</span>' : '<span class="badge bg">vervolg ' + esc(x.vervolgNL) + ' afgerond' + (x.vervolgNotitie ? ': ' + esc(x.vervolgNotitie) : '') + '</span>') : '';
+    var blok = function (t, v) { return v ? '<div style="margin-top:4px"><span class="lay-sub" style="text-transform:uppercase;letter-spacing:.3px">' + t + '</span><div style="white-space:pre-wrap">' + esc(v) + '</div></div>' : ''; };
+    return '<div style="border:1px solid #e8e2de;border-radius:10px;padding:10px 14px;margin:8px 0;background:#fff;font-size:.86rem"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="badge boat">' + esc(x.soortLabel) + '</span><strong>' + esc(x.datumNL) + '</strong><span class="lay-sub">' + esc([x.kanaal, x.gevoerdDoor].filter(Boolean).join(' · ')) + '</span>' + vv + '<span style="margin-left:auto;display:flex;gap:6px">' + (x.vervolgOpen ? '<button class="btn bp bsm" data-gs-vervolg="' + esc(x.id) + '">Vervolggesprek</button><button class="btn bd bsm" data-gs-af="' + esc(x.id) + '">✓ Vervolg afvinken</button>' : '') + '<button class="btn bd bsm" data-gs-bewerk="' + esc(x.id) + '">Bewerken</button></span></div>'
+      + blok('Aanleiding', x.aanleiding) + blok('Besproken', x.besproken) + blok('Afspraken', x.afspraken) + (x.bijgewerkt ? '<div class="lay-sub" style="margin-top:4px">bewerkt ' + esc(x.bijgewerkt) + ' door ' + esc(x.bijgewerktDoor) + '</div>' : '') + '</div>';
+  }
+  window.openGesprek = async function (o) {
+    o = o || {}; gsOpts = o; await gsZorgMeta();
+    var gs = o.gesprek || null, p = o.persoon || (gs ? { naam: gs.naam, email: gs.email, mid: gs.medewerker_id, winkel: gs.winkel } : {});
+    g('gs-soort').innerHTML = (gsMeta ? gsMeta.soorten : []).map(function (s) { return '<option value="' + s.key + '">' + esc(s.label) + '</option>'; }).join('');
+    g('gs-kanaal').innerHTML = '<option value="">—</option>' + (gsMeta ? gsMeta.kanalen : []).map(function (k) { return '<option>' + esc(k) + '</option>'; }).join('');
+    g('gs-id').value = gs ? gs.id : ''; g('gs-naam').value = p.naam || ''; g('gs-email').value = p.email || ''; g('gs-mid').value = p.mid || ''; g('gs-winkel').value = p.winkel || '';
+    if (!g('gs-mid').value && p.naam) { var m = medewerkers.find(function (x) { return normN(x.naam) === normN(p.naam); }); if (m) { g('gs-mid').value = m.id; if (!g('gs-winkel').value) g('gs-winkel').value = m.winkelNaam || ''; if (!g('gs-email').value) g('gs-email').value = m.email || ''; } }
+    g('gs-soort').value = gs ? gs.soort : (o.soort || 'overig'); g('gs-datum').value = gs ? gs.datum : gsVandaag(); g('gs-datum').max = gsVandaag();
+    g('gs-kanaal').value = gs ? gs.kanaal : ''; g('gs-door').value = gs ? gs.gevoerdDoor : ikNaam;
+    g('gs-aanleiding').value = gs ? gs.aanleiding : (o.aanleiding || ''); g('gs-besproken').value = gs ? gs.besproken : ''; g('gs-afspraken').value = gs ? gs.afspraken : ''; g('gs-vervolg').value = gs ? gs.vervolgDatum : '';
+    g('gs-titel').textContent = gs ? 'Gesprek bewerken' : o.vervolgVan ? 'Vervolggesprek vastleggen' : 'Gesprek vastleggen';
+    var ctx = o.checkinId ? 'Bij opslaan wordt de lage check-in ook op <b>opgevolgd</b> gezet.' : o.vervolgVan ? 'Bij opslaan wordt de vervolgafspraak van het vorige gesprek afgerond.' : '';
+    g('gs-context').innerHTML = ctx; g('gs-context').style.display = ctx ? '' : 'none';
+    g('gs-alleenaf').style.display = o.checkinId ? '' : 'none';
+    g('gs-fg-zoek').style.display = p.naam ? 'none' : ''; g('gs-zoek').value = ''; g('gs-zoek-res').classList.remove('open');
+    gsHint(); g('gs-modal').classList.add('open');
+    setTimeout(function () { (p.naam ? g('gs-besproken') : g('gs-zoek')).focus(); }, 60);
+  };
+  window.closeGesprek = function () { g('gs-modal').classList.remove('open'); };
+  g('gs-modal').addEventListener('click', function (e) { if (e.target === this) closeGesprek(); });
+  window.gsHint = function () { var s = gsMeta && gsMeta.soorten.find(function (x) { return x.key === g('gs-soort').value; }); g('gs-hint').textContent = s && s.hint ? s.hint : ''; g('gs-hint').style.display = s && s.hint ? '' : 'none'; };
+  koppelSbZoek('gs-zoek', 'gs-zoek-res', function (m) { if (!m) return; g('gs-naam').value = m.naam; g('gs-email').value = m.email || ''; g('gs-mid').value = m.id; g('gs-winkel').value = m.winkelNaam || ''; g('gs-fg-zoek').style.display = 'none'; });
+  window.gsOpslaan = async function () {
+    var gsp = { id: g('gs-id').value || undefined, naam: g('gs-naam').value.trim(), email: g('gs-email').value.trim(), medewerker_id: g('gs-mid').value, winkel: g('gs-winkel').value, soort: g('gs-soort').value, datum: g('gs-datum').value, kanaal: g('gs-kanaal').value, gevoerd_door: g('gs-door').value.trim(), aanleiding: g('gs-aanleiding').value, besproken: g('gs-besproken').value, afspraken: g('gs-afspraken').value, vervolg_datum: g('gs-vervolg').value || null };
+    var b = g('gs-sbtn'); b.disabled = true; g('gs-slbl').textContent = 'Opslaan…';
+    var r = await api('/api/gesprek', { actie: 'opslaan', gesprek: gsp, checkinId: gsOpts.checkinId, vervolgVan: gsOpts.vervolgVan });
+    b.disabled = false; g('gs-slbl').textContent = 'Gesprek opslaan';
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); closeGesprek(); gsNa();
+  };
+  window.gsAlleenAfvinken = async function () {
+    var nt = prompt('Check-in afvinken zonder gesprek. Wat is er gedaan? (optioneel)', ''); if (nt === null) return;
+    var r = await api('/api/checkin-admin', { actie: 'opgevolgd', id: gsOpts.checkinId, notitie: nt });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); closeGesprek(); gsNa();
+  };
+  function gsNa() {
+    if (gsOpts.naOpslaan) gsOpts.naOpslaan();
+    if (gsData) laadGesprekken();
+    if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier);
+  }
+  document.addEventListener('click', async function (e) {
+    var pl = e.target.closest && e.target.closest('button[data-gs-plus]'); if (pl) { var n = +pl.getAttribute('data-gs-plus'); g('gs-vervolg').value = n ? gsPlus(n) : ''; return; }
+    var nw = e.target.closest && e.target.closest('button[data-gs-nieuw]'); if (nw) { openGesprek({ persoon: dosPersoon }); return; }
+    var bron = function (id) { return (dosGesprekken || []).concat(gsData ? gsData.gesprekken.concat(gsData.open) : []).find(function (x) { return x.id === id; }); };
+    var bw = e.target.closest && e.target.closest('button[data-gs-bewerk]'); if (bw) { var x = bron(bw.getAttribute('data-gs-bewerk')); if (x) openGesprek({ gesprek: x }); return; }
+    var vv = e.target.closest && e.target.closest('button[data-gs-vervolg]'); if (vv) { var y = bron(vv.getAttribute('data-gs-vervolg')); if (y) openGesprek({ persoon: { naam: y.naam, email: y.email, mid: y.medewerker_id, winkel: y.winkel }, soort: y.soort, vervolgVan: y.id, aanleiding: 'Vervolg op ' + y.soortLabel.toLowerCase() + ' van ' + y.datumNL + (y.afspraken ? '. Afspraak was: ' + y.afspraken : ''), naOpslaan: function () { if (tkData) laadTaken(false); } }); return; }
+    var af = e.target.closest && e.target.closest('button[data-gs-af]'); if (af) {
+      var nt = prompt('Vervolg afvinken zonder nieuw gesprek. Reden of notitie (optioneel):', ''); if (nt === null) return;
+      var r = await api('/api/gesprek', { actie: 'vervolg-af', id: af.getAttribute('data-gs-af'), notitie: nt });
+      if (!r.success) { toast(r.bericht, 'err'); return; }
+      toast(r.bericht, 'ok'); gsOpts = {}; gsNa(); if (tkData) laadTaken(false);
+    }
+  });
+  window.laadGesprekken = async function (dagen) {
+    if (dagen) gsDagen = dagen;
+    g('gs-b90').className = 'btn bsm ' + (gsDagen === 90 ? 'bp' : 'bd'); g('gs-b365').className = 'btn bsm ' + (gsDagen === 365 ? 'bp' : 'bd');
+    g('gs-body').innerHTML = '<tr><td colspan="9" class="leeg grijs">Laden…</td></tr>';
+    var d = await api('/api/gesprek?dagen=' + gsDagen);
+    if (!d.success) { g('gs-body').innerHTML = '<tr><td colspan="9" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    gsData = d; gsMeta = { soorten: d.soorten, kanalen: d.kanalen };
+    var fs = g('gs-fsoort'), keuze = fs.value; fs.innerHTML = '<option value="">Alle soorten</option>' + d.soorten.map(function (s) { return '<option value="' + s.key + '">' + esc(s.label) + '</option>'; }).join(''); fs.value = keuze;
+    g('gs-ocount').textContent = d.open.length;
+    g('gs-obody').innerHTML = d.open.length ? d.open.map(function (x) { return '<tr><td><span class="badge ' + (x.vervolgTeLaat ? 'br' : 'bo') + '">' + esc(x.vervolgNL) + '</span></td><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td>' + esc(x.soortLabel) + '</td><td>' + esc(x.datumNL) + '</td><td style="max-width:320px;white-space:normal;font-size:.82rem">' + esc(x.afspraken || '') + '</td><td style="white-space:nowrap"><button class="btn bp bsm" data-gs-vervolg="' + esc(x.id) + '">Vervolggesprek</button> <button class="btn bd bsm" data-gs-af="' + esc(x.id) + '">✓ Afvinken</button> ' + dosBtn(x.naam, x.email) + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="leeg grijs">Geen openstaande vervolgafspraken.</td></tr>';
+    gsRender();
+  };
+  window.gsRender = function () {
+    var d = gsData; if (!d) return; var fs = g('gs-fsoort').value;
+    var rijen = d.gesprekken.filter(function (x) { return !fs || x.soort === fs; });
+    g('gs-count').textContent = rijen.length;
+    g('gs-body').innerHTML = rijen.length ? rijen.map(function (x) { return '<tr><td>' + esc(x.datumNL) + '</td><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td><span class="badge boat">' + esc(x.soortLabel) + '</span></td><td>' + esc(x.gevoerdDoor || '') + '</td><td style="max-width:300px;white-space:normal;font-size:.82rem">' + esc(x.aanleiding || '') + (x.besproken ? '<div class="lay-sub">' + esc(x.besproken.slice(0, 160)) + (x.besproken.length > 160 ? '…' : '') + '</div>' : '') + '</td><td style="max-width:260px;white-space:normal;font-size:.82rem">' + esc(x.afspraken || '') + '</td><td>' + (x.vervolgDatum ? '<span class="badge ' + (x.vervolgOpen ? (x.vervolgTeLaat ? 'br' : 'bo') : 'bg') + '">' + esc(x.vervolgNL) + (x.vervolgOpen ? '' : ' ✓') + '</span>' : '<span class="no-doc">-</span>') + '</td><td><button class="btn bd bsm" data-gs-bewerk="' + esc(x.id) + '">Bewerken</button> ' + dosBtn(x.naam, x.email) + '</td></tr>'; }).join('') : '<tr><td colspan="9" class="leeg grijs">Geen gesprekken in deze periode.</td></tr>';
+  };
+  window.gsExport = function () {
+    if (!gsData || !gsData.gesprekken.length) { toast('Geen gesprekken om te exporteren', 'err'); return; }
+    var cel = function (v) { v = v == null ? '' : String(v); return '"' + v.replace(/"/g, '""') + '"'; };
+    var kop = ['Datum', 'Naam', 'Email', 'Winkel', 'Soort', 'Hoe', 'Gevoerd door', 'Aanleiding', 'Besproken', 'Afspraken', 'Vervolg', 'Vervolg afgerond'];
+    var regels = [kop.join(';')].concat(gsData.gesprekken.map(function (x) { return [x.datumNL, x.naam, x.email, x.winkel, x.soortLabel, x.kanaal, x.gevoerdDoor, x.aanleiding, x.besproken, x.afspraken, x.vervolgNL, x.vervolgAfgerond].map(cel).join(';'); }));
+    var url = URL.createObjectURL(new Blob(['﻿' + regels.join('\r\n')], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a'); a.href = url; a.download = 'gesprekken_' + gsDagen + 'dgn.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  };
+
   // ---------- Scorekaart per winkel (fase 3c) ----------
   var skData = null, skMaanden = 6, skWinkel = null;
   var SK_KLS = { groen: 'bg', oranje: 'bo', rood: 'br', klein: 'boat', geen: 'boat' };
@@ -1189,11 +1285,8 @@
     var f = e.target.closest && e.target.closest('#ci-filter .tb'); if (f) { ciFilter = f.getAttribute('data-ci'); ciRender(); return; }
     var m = e.target.closest && e.target.closest('#ci-moment .tb'); if (m) { document.querySelectorAll('#ci-moment .tb').forEach(function (x) { x.classList.toggle('sel', x === m); }); return; }
     var b = e.target.closest && e.target.closest('button[data-ci-op]'); if (!b) return;
-    var notitie = prompt('Wat is er afgesproken of gedaan? (optioneel)', ''); if (notitie === null) return;
-    b.disabled = true;
-    var r = await api('/api/checkin-admin', { actie: 'opgevolgd', id: b.getAttribute('data-ci-op'), notitie: notitie });
-    if (!r.success) { b.disabled = false; toast(r.bericht, 'err'); return; }
-    toast(r.bericht, 'ok'); laadCheckin(); if (tkData) laadTaken(false);
+    var cr = (ciData.rijen || []).find(function (x) { return x.id === b.getAttribute('data-ci-op'); }) || {};
+    openGesprek({ persoon: { naam: cr.naam, email: cr.email, winkel: cr.winkel }, soort: 'checkin', checkinId: cr.id, aanleiding: 'Lage check-in dag ' + cr.moment + (cr.laagReden ? ': ' + cr.laagReden : '') + (cr.opmerking ? ' — "' + cr.opmerking + '"' : ''), naOpslaan: function () { laadCheckin(); if (tkData) laadTaken(false); } });
   });
   window.ciToggle = async function () {
     if (!ciData) return; var aan = !ciData.actief;
@@ -1654,7 +1747,7 @@
     if (!a) return '';
     var attrs = ' data-tk-actie="' + esc(a.soort) + '" data-tk-naam="' + esc(t.naam || '') + '" data-tk-email="' + esc(t.email || '') + '"';
     if (a.persoon) attrs += ' data-tk-persoon="' + esc(JSON.stringify(a.persoon)) + '"';
-    if (a.tab) attrs += ' data-tk-tab="' + esc(a.tab) + '"'; if (a.zoek) attrs += ' data-tk-zoek="' + esc(a.zoek) + '"'; if (a.id) attrs += ' data-tk-id="' + esc(a.id) + '"'; if (a.url) attrs += ' data-tk-url="' + esc(a.url) + '"';
+    if (a.tab) attrs += ' data-tk-tab="' + esc(a.tab) + '"'; if (a.zoek) attrs += ' data-tk-zoek="' + esc(a.zoek) + '"'; if (a.id) attrs += ' data-tk-id="' + esc(a.id) + '"'; if (a.url) attrs += ' data-tk-url="' + esc(a.url) + '"'; if (a.gs) attrs += ' data-tk-gs="' + esc(a.gs) + '"'; if (a.aanleiding) attrs += ' data-tk-aanleiding="' + esc(a.aanleiding) + '"'; attrs += ' data-tk-sleutel="' + esc(t.sleutel || '') + '"' + (t.winkel ? ' data-tk-winkel="' + esc(t.winkel) + '"' : '');
     return '<button class="btn ' + (a === t.actie ? 'bp' : 'bd') + ' bsm"' + attrs + '>' + esc(a.label) + '</button>';
   }
   // Taak ter plekke weghalen (geen herlaad = geen springend beeld); tellers bijwerken
@@ -1685,16 +1778,21 @@
       tkWeg(rij, sleutel, true);
       return;
     }
-    var cio = e.target.closest && e.target.closest('button[data-tk-actie="checkin-opvolgen"]');
-    if (cio) {
-      var notitie = prompt('Wat is er afgesproken of gedaan? (optioneel)', '');
-      if (notitie === null) return;
-      cio.disabled = true;
-      var rc = await api('/api/checkin-admin', { actie: 'opgevolgd', id: cio.getAttribute('data-tk-id'), notitie: notitie });
-      if (!rc.success) { cio.disabled = false; toast(rc.bericht, 'err'); return; }
-      toast(rc.bericht, 'ok'); tkWeg(cio.closest('.tk'), 'checkin|' + cio.getAttribute('data-tk-id'), false);
-      if (ciData) laadCheckin();
-      return;
+    var gb = e.target.closest && e.target.closest('button[data-tk-actie="checkin-opvolgen"],button[data-tk-actie="gesprek"],button[data-tk-actie="gesprek-vervolg"],button[data-tk-actie="gesprek-af"]');
+    if (gb) {
+      var gsrt = gb.getAttribute('data-tk-actie'), gid = gb.getAttribute('data-tk-id'), grij = gb.closest('.tk'), gsl = gb.getAttribute('data-tk-sleutel');
+      var gp = { naam: gb.getAttribute('data-tk-naam'), email: gb.getAttribute('data-tk-email'), winkel: gb.getAttribute('data-tk-winkel') || '' };
+      if (gsrt === 'gesprek-af') {
+        var nt = prompt('Vervolg afvinken zonder nieuw gesprek. Reden of notitie (optioneel):', ''); if (nt === null) return;
+        var ra = await api('/api/gesprek', { actie: 'vervolg-af', id: gid, notitie: nt });
+        if (!ra.success) { toast(ra.bericht, 'err'); return; }
+        toast(ra.bericht, 'ok'); tkWeg(grij, gsl, false); if (gsData) laadGesprekken(); return;
+      }
+      var opts = { persoon: gp, soort: gb.getAttribute('data-tk-gs') || (gsrt === 'checkin-opvolgen' ? 'checkin' : 'overig'), aanleiding: gb.getAttribute('data-tk-aanleiding') || '' };
+      if (gsrt === 'checkin-opvolgen') { opts.checkinId = gid; opts.naOpslaan = function () { tkWeg(grij, gsl, false); if (ciData) laadCheckin(); }; }
+      else if (gsrt === 'gesprek-vervolg') { opts.vervolgVan = gid; opts.naOpslaan = function () { tkWeg(grij, gsl, false); }; }
+      else opts.naOpslaan = async function () { var rt = await api('/api/taken', { sleutel: gsl, dagen: 30, opmerking: 'gesprek vastgelegd' }); if (rt.success) tkWeg(grij, gsl, true); };
+      openGesprek(opts); return;
     }
     var b = e.target.closest && e.target.closest('button[data-tk-actie]'); if (!b) return;
     var soort = b.getAttribute('data-tk-actie'), naam = b.getAttribute('data-tk-naam'), email = b.getAttribute('data-tk-email');

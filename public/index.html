@@ -304,6 +304,36 @@
   </div></div>
 
   <!-- OPROEPAANBOD (fase 2d, art. 7:628a lid 5 BW) -->
+  <!-- GESPREKKEN (fase 3b) -->
+  <div class="tc" id="tab-gesprekken">
+    <div class="sec">
+      <div class="sh"><div class="st">Vervolgafspraken open <span class="pill" id="gs-ocount">-</span></div></div>
+      <div class="tw"><table><thead><tr><th>Vervolg</th><th>Naam</th><th>Winkel</th><th>Soort</th><th>Gesprek</th><th>Afspraak</th><th>Actie</th></tr></thead><tbody id="gs-obody"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Gesprekken <span class="pill" id="gs-count">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam, winkel, tekst..." oninput="flt('gs-body',this.value)"><select id="gs-fsoort" onchange="gsRender()" style="width:auto"><option value="">Alle soorten</option></select><button class="btn bd bsm" id="gs-b90" onclick="laadGesprekken(90)">90 dgn</button><button class="btn bd bsm" id="gs-b365" onclick="laadGesprekken(365)">12 mnd</button><button class="btn bd bsm" onclick="gsExport()">⬇ CSV</button><button class="btn bp bsm" onclick="openGesprek({})">+ Gesprek vastleggen</button></div></div>
+      <div class="tw"><table><thead><tr><th>Datum</th><th>Naam</th><th>Winkel</th><th>Soort</th><th>Door</th><th>Aanleiding / besproken</th><th>Afspraken</th><th>Vervolg</th><th></th></tr></thead><tbody id="gs-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Dossier:</strong> gesprekken staan ook in het medewerkersdossier en in de dossier-PDF (inzageverzoek). Ze worden niet verwijderd; bewerken wordt gelogd. Leg bij verzuim géén medische informatie vast.</div>
+  </div>
+  <div class="mo" id="gs-modal"><div class="modal" style="max-width:760px">
+    <div class="mh" style="background:#333d3a"><div class="mti" id="gs-titel">Gesprek vastleggen</div><button class="mc" onclick="closeGesprek()">×</button></div>
+    <div class="mb2">
+      <div class="alert groen" id="gs-context" style="display:none;margin:0 0 12px;font-size:.82rem"></div>
+      <div class="fg" id="gs-fg-zoek"><label>Zoek medewerker (Shiftbase)</label><div class="zoeklijst" style="position:relative"><input type="text" id="gs-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="gs-zoek-res"></div></div></div>
+      <div class="fr"><div class="fg"><label>Medewerker</label><input type="text" id="gs-naam"></div><div class="fg"><label>Soort gesprek</label><select id="gs-soort" onchange="gsHint()"></select></div></div>
+      <div class="alert geel" id="gs-hint" style="display:none;margin:0 0 12px;font-size:.8rem"></div>
+      <div class="fr"><div class="fg"><label>Datum gesprek</label><input type="date" id="gs-datum"></div><div class="fg"><label>Hoe</label><select id="gs-kanaal"></select></div><div class="fg"><label>Gevoerd door</label><input type="text" id="gs-door"></div></div>
+      <div class="fg"><label>Aanleiding</label><textarea id="gs-aanleiding" rows="2"></textarea></div>
+      <div class="fg"><label>Wat is er besproken</label><textarea id="gs-besproken" rows="4"></textarea></div>
+      <div class="fg"><label>Afspraken (wie doet wat, wanneer)</label><textarea id="gs-afspraken" rows="3"></textarea></div>
+      <div class="fg"><label>Vervolg (optioneel) — er komt een taak op het Overzicht op deze datum</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input type="date" id="gs-vervolg" style="width:auto"><button type="button" class="btn bd bsm" data-gs-plus="7">+1 week</button><button type="button" class="btn bd bsm" data-gs-plus="14">+2 weken</button><button type="button" class="btn bd bsm" data-gs-plus="28">+4 weken</button><button type="button" class="btn bd bsm" data-gs-plus="0">Geen</button></div></div>
+      <input type="hidden" id="gs-email"><input type="hidden" id="gs-mid"><input type="hidden" id="gs-winkel"><input type="hidden" id="gs-id">
+    </div>
+    <div class="mf"><button class="btn bd" id="gs-alleenaf" style="display:none" onclick="gsAlleenAfvinken()">Alleen afvinken (geen gesprek)</button><button class="btn bp" id="gs-sbtn" onclick="gsOpslaan()"><span id="gs-slbl">Gesprek opslaan</span></button></div>
+  </div></div>
+
   <!-- SCOREKAART PER WINKEL (fase 3c) -->
   <div class="tc" id="tab-scorekaart">
     <div class="sec">

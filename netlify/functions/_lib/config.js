@@ -104,6 +104,17 @@ module.exports = {
   CHECKIN_HERINNERING_DAGEN: 5,        // één herinnering als er na zoveel dagen nog niets is ingevuld
   CHECKIN_GELDIG_DAGEN: 30,            // link geldig na versturen
   CHECKIN_LAAG_SCHAAL: 2,              // een schaalantwoord ≤ dit getal (of een alarm-optie) = lage check-in → mail + taak voor HR             // link werkt tot 90 dagen na versturen
+  // Fase 3b: gesprekken vastleggen in het dossier. hint = wat er in het formulier boven de velden staat.
+  GESPREK_SOORTEN: [
+    { key: 'checkin', label: 'Opvolging check-in', hint: 'Na een lage check-in: vraag door op wat er speelt en spreek iets concreets af (wie doet wat, wanneer).' },
+    { key: 'proeftijd', label: 'Proeftijdgesprek', hint: 'Bespreek vóór het einde van de proeftijd wat goed gaat en wat beter moet, en leg de beslissing vast. Opzeggen in de proeftijd kan alleen tot en met de laatste dag (art. 7:652 BW).' },
+    { key: 'verzuim', label: 'Verzuimgesprek', hint: 'Leg géén medische informatie vast (AVG): geen diagnose, klachten of behandeling. Wel: wat de medewerker wél en niet kan, verwachte duur, afspraken over bereikbaarheid en werkhervatting, en eventueel doorverwijzing naar de bedrijfsarts.' },
+    { key: 'waarschuwing', label: 'Correctiegesprek', hint: 'Beschrijf feitelijk wat er is gebeurd (datum, wat, wie erbij was), de reactie van de medewerker (hoor en wederhoor) en wat je hebt afgesproken. Een schriftelijke waarschuwing verstuur je via Dossier → Waarschuwingen.' },
+    { key: 'functioneren', label: 'Functioneringsgesprek', hint: 'Wat gaat goed, wat kan beter, ontwikkelwensen en afspraken voor de komende periode.' },
+    { key: 'overig', label: 'Overig', hint: '' }
+  ],
+  GESPREK_KANALEN: ['In de winkel', 'Telefonisch', 'Op kantoor', 'Videobellen'],
+  GESPREK_VERVOLG_TE_LAAT_DAGEN: 7,     // vervolg zoveel dagen over tijd = rood op de takenlijst
   UITSTROOMREDENEN: ['Eigen keuze: andere baan', 'Eigen keuze: studie/verhuizing', 'Eigen keuze: werk/privé of rooster', 'Einde tijdelijk contract (niet verlengd door SLA)', 'Proeftijd', 'Functioneren', 'Gedrag/huisregels', 'Ontslag op staande voet', 'Wederzijds goedvinden', 'Langdurig ziek', 'Overig/onbekend'],
   SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
   SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam

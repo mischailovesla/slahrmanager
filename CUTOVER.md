@@ -70,3 +70,9 @@ Daarna: Beheer → Gegevens → **Export** vervangt "even in de sheet kijken". E
 2. Commit + push → Netlify bouwt v0.15.0.
 3. **Instroom → Check-in 30/60**: vragen doornemen (Voorbeeld NL/EN), eventueel aanpassen en opslaan, dan *Aanzetten*. Zolang hij op pauze staat zie je wie er vandaag en de komende 14 dagen een uitnodiging zou krijgen.
 4. Na aanzetten: de dagelijkse run (±10:40) nodigt iedereen uit die op dag 30–36 of 60–66 zit (eerste contract in Shiftbase). Wie al verder is, krijgt er geen — handmatig versturen kan via de knop. Medewerkers zonder e-mailadres in Shiftbase verschijnen als fout op Signaleringen.
+
+## I. Fase 3b (v0.17.0): gesprekken — ±3 min
+
+1. **Migratie 0012** in de Supabase SQL-editor (project *SLA HR Manager*): `supabase/migrations/0012_gesprekken.sql` maakt `hr_gesprekken`. Zonder deze migratie geven het tabblad Gesprekken en *Gesprek vastleggen* een fout ("migratie 0012 gedraaid?"); de rest draait gewoon.
+2. Commit + push → Netlify bouwt v0.17.0.
+3. Proef: Overzicht → een proeftijd- of verzuimtaak → *Gesprek vastleggen* met vervolg over 1 week → controleer Dossier → Gesprekken en het medewerkersdossier.

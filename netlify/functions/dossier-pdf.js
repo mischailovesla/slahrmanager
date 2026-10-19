@@ -26,19 +26,31 @@ exports.handler = beveiligd('dossier-pdf', async (event, g) => {
   if (d.persoon) t += (d.persoon.winkelNaam ? 'Winkel: ' + d.persoon.winkelNaam + (d.persoon.winkelBv ? ' (' + d.persoon.winkelBv + ')' : '') + '\n' : '') + 'Functie: ' + veld(d.persoon.functie) + '\nIn dienst sinds: ' + veld(d.persoon.indienst) + '\nContract: ' + veld(d.contract && d.contract.type) + (d.contract && d.contract.einde ? ', eindigt ' + d.contract.einde : ', onbepaalde tijd / onbekend') + '\n';
   if (d.verlof && d.verlof.length) t += 'Verlof (Shiftbase): ' + d.verlof.slice(0, 10).map(v => v.start + (v.eind && v.eind !== v.start ? ' t/m ' + v.eind : '') + ' ' + (v.type || '') + ' (' + v.status + ')').join('; ') + '\n';
   t += '\n';
+  if (d.gesprekken && d.gesprekken.length) {
+    t += '**Gesprekken (' + d.gesprekken.length + ')**\n';
+    d.gesprekken.forEach((x, i) => {
+      if (i > 0) t += '\n';
+      t += '**' + x.soortLabel + ':** ' + x.datumNL + (x.kanaal ? ' (' + x.kanaal + ')' : '') + (x.gevoerdDoor ? ' · ' + x.gevoerdDoor : '') + '\n';
+      if (x.aanleiding) t += '**Aanleiding:** ' + x.aanleiding + '\n';
+      if (x.besproken) t += '**Besproken:** ' + x.besproken + '\n';
+      if (x.afspraken) t += '**Afspraken:** ' + x.afspraken + '\n';
+      if (x.vervolgDatum) t += '**Vervolg:** ' + x.vervolgNL + (x.vervolgAfgerond ? ' (afgerond ' + x.vervolgAfgerond + ')' : ' (open)') + '\n';
+    });
+    t += '\n';
+  }
   const leeg = [];
   for (const s of d.secties) {
     if (!s.rijen.length) { leeg.push(s.label); continue; }
     t += '**' + s.label + ' (' + s.rijen.length + ')**\n';
     const L = LABELS[s.key];
     s.rijen.forEach((r, i) => {
-      if (i > 0) t += '- - -\n';
+      if (i > 0) t += '\n';
       if (L) { for (let k = 0; k < L.length; k += 2) { const v = r[L[k + 1]]; if (v === undefined) continue; t += '**' + L[k] + ':** ' + veld(v) + '\n'; } }
       else t += (r.datum ? '**Datum:** ' + r.datum + '\n' : '') + (r.raw || []).slice(0, 8).join(' · ') + '\n';
     });
     t += '\n';
   }
-  if (!d.secties.some(s => s.rijen.length)) t += '*Geen dossierstukken aanwezig.*\n\n';
+  if (!d.secties.some(s => s.rijen.length)) t += (d.gesprekken && d.gesprekken.length ? '*Geen overige dossierstukken aanwezig.*' : '*Geen dossierstukken aanwezig.*') + '\n\n';
   if (leeg.length) t += '*Geen stukken in: ' + leeg.join(', ') + '*\n\n';
   t += '*Gegenereerd op ' + nu + ' door ' + g.email + ' via het SLA HR Dashboard.*';
   const pdf = await P.maakOpgemaakteBrief(t, { titel: 'Dossier - ' + d.naam, kop: false });

@@ -200,3 +200,8 @@ tbody tr:hover td{background:#fdfaf8}
 .sk-tabel td,.sk-tabel th{white-space:nowrap}.sk-tabel th{font-size:.66rem}
 #sk-body tr.sk-rij{cursor:pointer}#sk-body tr.sk-rij:hover td{background:#faf7f5}#sk-body tr.sk-sel td{background:#eef8f2}
 #sk-body tr.sk-tot td{background:#f8f3f0;border-bottom:2px solid #e8e2de}
+
+/* Fase 3b: gesprek-modal compacter */
+#gs-modal .fg textarea{min-height:0;height:auto}
+#gs-modal #gs-besproken{min-height:110px}
+#gs-fsoort{padding:6px 10px;border-radius:8px;border:1.5px solid #e8e2de;font-family:inherit;font-size:.8rem}

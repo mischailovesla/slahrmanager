@@ -83,7 +83,11 @@ async function laad(qs) {
       .map(r => ({ id: r.id, moment: r.moment, verstuurd: fmt(r.verstuurd_op), ingevuld: fmt(r.ingevuld_op), score: r.score == null ? null : Number(r.score), laag: !!r.laag, reden: r.laag_reden, opmerking: r.opmerking, opgevolgd: fmt(r.opgevolgd_op), opgevolgdDoor: r.opgevolgd_door, notitie: r.opvolg_notitie }));
   } catch (e) { checkins = []; }
 
-  return { persoon, naam, email, contract, verlof, verzuim, keten, checkins, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
+  // Fase 3b: gesprekken
+  let gesprekken = [];
+  try { gesprekken = await require('./_lib/gesprekken').voorPersoon({ mid: persoon && persoon.id, naam: naam || (persoon && persoon.naam) }); } catch (e) { gesprekken = []; }
+
+  return { persoon, naam, email, contract, verlof, verzuim, keten, checkins, gesprekken, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
 }
 exports.laad = laad;
 exports.handler = beveiligd('dossier', async (event) => laad(event.queryStringParameters || {}));
