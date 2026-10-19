@@ -76,3 +76,12 @@ Daarna: Beheer → Gegevens → **Export** vervangt "even in de sheet kijken". E
 1. **Migratie 0012** in de Supabase SQL-editor (project *SLA HR Manager*): `supabase/migrations/0012_gesprekken.sql` maakt `hr_gesprekken`. Zonder deze migratie geven het tabblad Gesprekken en *Gesprek vastleggen* een fout ("migratie 0012 gedraaid?"); de rest draait gewoon.
 2. Commit + push → Netlify bouwt v0.17.0.
 3. Proef: Overzicht → een proeftijd- of verzuimtaak → *Gesprek vastleggen* met vervolg over 1 week → controleer Dossier → Gesprekken en het medewerkersdossier.
+
+## J. Fase 4a (v0.18.0): koppeling met SLA Academy — ±5 min
+
+1. Open **het Academy-project** in Supabase (project *training*, `xiyyyminsswiucnluxbf` — dus níet *SLA HR Manager*) → SQL-editor → plak `supabase/academy/hr_koppeling.sql` → Run. Het resultaat is één regel met een lange sleutel (64 tekens).
+2. Netlify → HR Dashboard → *Environment variables* → nieuwe variabele **`ACADEMY_HR_SLEUTEL`** = die sleutel (markeer als secret). Let op de 4KB-limiet: haal bij voorkeur eerst GOOGLE_SA_EMAIL/GOOGLE_SA_KEY weg (stap 7).
+3. Commit + push → Netlify bouwt v0.18.0 (env-wijziging vraagt sowieso een nieuwe deploy).
+4. Controle: **In dienst → Training (Academy)** toont de dekking per winkel; op het Overzicht verschijnen de Academy-taken. Foutmelding "weigert de sleutel" = sleutel verkeerd geplakt; "hr_training_status ontbreekt" = stap 1 niet in het Academy-project gedraaid.
+5. Sleutel vervangen: stap 1 opnieuw draaien en de nieuwe waarde in Netlify zetten. Intrekken: `delete from public.hr_koppeling;` in Academy.
+

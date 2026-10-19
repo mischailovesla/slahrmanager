@@ -304,6 +304,27 @@
   </div></div>
 
   <!-- OPROEPAANBOD (fase 2d, art. 7:628a lid 5 BW) -->
+  <!-- TRAINING (fase 4a, SLA Academy — alleen lezen) -->
+  <div class="tc" id="tab-training">
+    <div id="tr-fout" class="alert geel" style="display:none;margin:0 0 14px"></div>
+    <div class="sec">
+      <div class="sh"><div class="st">Training per winkel <span class="lay-sub" id="tr-stand" style="color:rgba(255,255,255,.6);margin-left:8px"></span></div>
+        <div class="hr2"><button class="btn bd bsm" onclick="laadTraining(true)">↻ Vernieuwen</button></div></div>
+      <div class="tw"><table><thead><tr><th>Winkel</th><th>Medewerkers</th><th>Ingelogd</th><th>Welkomstcollectie af</th><th>Certificaten geldig</th><th>Verlopen</th><th>Aftekenen achter</th></tr></thead><tbody id="tr-wbody"><tr><td colspan="7" class="leeg grijs">Laden…</td></tr></tbody></table></div>
+      <div class="lay-sub" style="padding:10px 24px 14px">Welkomstcollectie telt voor wie begon nadat de winkel live ging in Academy en ≥ 21 dagen in dienst is. Certificaten = Basis voedselveiligheid en HACCP (6 maanden geldig). Groen ≥ 90%, oranje ≥ 75%.</div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Signalen <span class="pill" id="tr-scount">-</span></div></div>
+      <div class="tw"><table><thead><tr><th></th><th>Wat</th><th>Winkel</th><th></th></tr></thead><tbody id="tr-sbody"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Medewerkers <span class="pill" id="tr-mcount">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam of winkel..." oninput="flt('tr-mbody',this.value);flt('tr-sbody',this.value)"><select id="tr-ffilter" onchange="trRender()" style="width:auto;padding:6px 10px;border-radius:8px;border:1.5px solid #e8e2de;font-family:inherit;font-size:.8rem"><option value="">Iedereen</option><option value="cert">Certificaat niet geldig</option><option value="welkom">Welkomstcollectie niet af</option><option value="nooit">Nooit ingelogd</option><option value="aftekenen">Aftekenen open</option></select><button class="btn bd bsm" onclick="trExport()">⬇ CSV</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Winkel</th><th>Rol</th><th>In dienst</th><th>Laatst ingelogd</th><th>Welkom</th><th>Certificaten</th><th></th></tr></thead><tbody id="tr-mbody"></tbody></table></div>
+      <div class="lay-sub" id="tr-ongekoppeld" style="padding:8px 24px 14px"></div>
+    </div>
+    <div class="alert grijs"><strong>Bron:</strong> SLA Academy (alleen lezen, via de functie <code>hr_training_status</code>). Toewijzen en herinneren doe je in Kas; Academy mailt medewerkers zelf bij deadlines. Taken op het Overzicht: verlopen/verlopend certificaat, welkomstcollectie niet af na 21 dagen, aftekenen te laat en per winkel wie na 7 dagen nog nooit heeft ingelogd.</div>
+  </div>
   <!-- GESPREKKEN (fase 3b) -->
   <div class="tc" id="tab-gesprekken">
     <div class="sec">

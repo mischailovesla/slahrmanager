@@ -8,13 +8,13 @@
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['checkin', 'Check-in 30/60']] },
-    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners']] },
+    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -65,6 +65,7 @@
     if (tab === 'checkin' && !ciData) laadCheckin(6);
     if (tab === 'scorekaart' && !skData) laadScorekaart(6);
     if (tab === 'gesprekken' && !gsData) laadGesprekken(90);
+    if (tab === 'training' && !trData) laadTraining(false);
     if (tab === 'toegang' && !tgData) laadToegang();
     if (tab === 'archief' && !arData) laadArchief();
     if (tab === 'gegevens' && !gvData) laadGegevens();
@@ -325,6 +326,8 @@
     // Gesprekken (fase 3b)
     dosPersoon = { naam: d.naam, email: d.email, mid: p ? p.id : (id || ''), winkel: p ? p.winkelNaam : '' }; dosGesprekken = d.gesprekken || [];
     h += '<div class="sec"><div class="sh"><div class="st">Gesprekken <span class="pill">' + dosGesprekken.length + '</span></div><div class="hr2"><button class="btn bp bsm" data-gs-nieuw="1">+ Gesprek vastleggen</button></div></div><div style="padding:6px 24px 14px">' + (dosGesprekken.length ? dosGesprekken.map(gsKaart).join('') : '<div class="leeg grijs" style="padding:8px 0">Nog geen gesprekken vastgelegd.</div>') + '</div></div>';
+    // Training & certificaten uit SLA Academy (fase 4a)
+    h += acKaart(d.academy, d.academyFout);
     // Secties
     h += '<div class="sec"><div class="sh"><div class="st">Dossierregels <span class="pill">' + d.totaal + '</span></div></div>';
     d.secties.forEach(function (s) {
@@ -1189,7 +1192,7 @@
   // ---------- Scorekaart per winkel (fase 3c) ----------
   var skData = null, skMaanden = 6, skWinkel = null;
   var SK_KLS = { groen: 'bg', oranje: 'bo', rood: 'br', klein: 'boat', geen: 'boat' };
-  var SK_KORT = { verloop: 'Verloop', vroegPct: 'Weg ≤ 90 d (uitstroom)', uitval90: 'Nieuw weg ≤ 90 d', checkinScore: 'Check-in', checkinLaagPct: 'Lage check-ins', onboarding: 'Onboarding op tijd', verzuimPct: 'Verzuim', meldingsfreq: 'Meldingen p.p./jr', enps: 'eNPS exit', aanzegOpTijd: 'Aanzegging op tijd' };
+  var SK_KORT = { verloop: 'Verloop', vroegPct: 'Weg ≤ 90 d (uitstroom)', uitval90: 'Nieuw weg ≤ 90 d', checkinScore: 'Check-in', checkinLaagPct: 'Lage check-ins', onboarding: 'Onboarding op tijd', verzuimPct: 'Verzuim', meldingsfreq: 'Meldingen p.p./jr', enps: 'eNPS exit', aanzegOpTijd: 'Aanzegging op tijd', welkomAf: 'Welkom Academy af', certGeldig: 'Certificaat geldig' };
   window.laadScorekaart = async function (mnd, vers) {
     if (mnd) skMaanden = mnd;
     [3, 6, 12].forEach(function (m) { g('sk-b' + m).className = 'btn bsm ' + (skMaanden === m ? 'bp' : 'bd'); });
@@ -2201,4 +2204,52 @@
     g('top-versie').textContent = 'NETLIFY · v' + (v.nummer || '?');
   }
   document.addEventListener('DOMContentLoaded', function () { toonVersie(); init(); });
+
+  // ---------- Fase 4a: Training & certificaten (SLA Academy, alleen lezen) ----------
+  var trData = null;
+  var AC_CERT = { geldig: ['geldig', 'bg'], verloopt_binnenkort: ['verloopt binnenkort', 'bo'], verlopen: ['verlopen', 'br'], bezig: ['bezig', 'boat'], nooit: ['nog niet gedaan', 'boat'], geen_inhoud: ['-', 'boat'] };
+  var AC_AFT = { afgetekend: 'bg', open: 'boat', te_laat: 'br', niet_geslaagd: 'br', verlopen: 'bo' };
+  function acCertBadge(c) { var s = AC_CERT[c.status] || [c.status, 'boat']; return '<span class="badge ' + s[1] + '" title="' + esc(c.titel) + '">' + esc(c.titel.replace(/ \/ .*$/, '')) + ': ' + s[0] + (c.geldigTot && c.status !== 'nooit' ? ' t/m ' + esc(c.geldigTot) : '') + '</span>'; }
+  function acKaart(a, fout) {
+    var h = '<div class="sec"><div class="sh"><div class="st">Training &amp; certificaten <span class="lay-sub" style="color:rgba(255,255,255,.6);margin-left:6px">SLA Academy</span></div></div><div style="padding:10px 24px 14px;font-size:.86rem">';
+    if (!a) return h + '<div class="leeg grijs" style="padding:4px 0">' + esc(fout || 'Niet gevonden in Academy (andere naam of e-mail?).') + '</div></div></div>';
+    h += '<div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:8px"><span><b>Laatst ingelogd:</b> ' + (a.laatstIngelogd ? esc(a.laatstIngelogd) : '<span class="badge ' + (a.nooitIngelogd ? 'br' : 'boat') + '">nog nooit</span>') + '</span>'
+      + (a.trainingen ? '<span><b>Trainingen af:</b> ' + a.trainingen.af + ' van ' + a.trainingen.totaal + '</span>' : '')
+      + (a.welkom && a.welkom.totaal ? '<span><b>Welkomstcollectie:</b> <span class="badge ' + (a.welkomAf ? 'bg' : a.welkomTelt ? 'br' : 'boat') + '">' + a.welkom.af + '/' + a.welkom.totaal + '</span></span>' : '') + '</div>';
+    if (a.welkom && a.welkom.open && a.welkom.open.length) h += '<div class="lay-sub" style="margin-bottom:8px">Nog open: ' + esc(a.welkom.open.join(', ')) + '</div>';
+    if ((a.certificaten || []).length) h += '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">' + a.certificaten.map(acCertBadge).join('') + '</div>';
+    if ((a.aftekenen || []).length) h += '<div style="display:flex;gap:6px;flex-wrap:wrap">' + a.aftekenen.map(function (x) { return '<span class="badge ' + (AC_AFT[x.status] || 'boat') + '">Aftekenen ' + esc(x.observatie) + ': ' + esc(x.statusLabel) + (x.op ? ' · ' + esc(x.op) : x.deadline ? ' · deadline ' + esc(x.deadline) : '') + '</span>'; }).join('') + '</div>';
+    return h + '</div></div>';
+  }
+  window.laadTraining = async function (ververs) {
+    g('tr-fout').style.display = 'none';
+    try {
+      var d = await api('/api/academy' + (ververs ? '?ververs=1' : ''));
+      trData = d; trRender();
+    } catch (e) { g('tr-fout').textContent = e.message; g('tr-fout').style.display = ''; g('tr-wbody').innerHTML = '<tr><td colspan="8" class="leeg grijs">Geen gegevens.</td></tr>'; g('tr-sbody').innerHTML = ''; g('tr-mbody').innerHTML = ''; }
+  };
+  function trPct(v, norm) { if (v == null) return '<span class="grijs">-</span>'; var k = v >= norm ? 'bg' : v >= norm - 15 ? 'bo' : 'br'; return '<span class="badge ' + k + '">' + v + '%</span>'; }
+  window.trRender = function () {
+    var d = trData; if (!d) return;
+    g('tr-stand').textContent = 'stand Academy ' + (d.stand ? new Date(d.stand).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-');
+    var rij = function (w, tot) { return '<tr' + (tot ? ' style="font-weight:700;background:#f8f3f0"' : '') + '><td>' + (tot ? esc(w.winkel) : '<a href="#" data-tr-winkel="' + esc(w.winkel) + '">' + esc(w.winkel) + '</a>') + '</td><td>' + w.medewerkers + '</td><td>' + trPct(w.ingelogdPct, 90) + (w.nooitIngelogd ? ' <span class="lay-sub">' + w.nooitIngelogd + ' nooit</span>' : '') + '</td><td>' + trPct(w.welkomPct, 90) + ' <span class="lay-sub">n=' + w.welkomTelt + '</span></td><td>' + trPct(w.certPct, 90) + ' <span class="lay-sub">n=' + w.certTelt + '</span></td><td>' + (w.verlopen ? '<span class="badge br">' + w.verlopen + '</span>' : '0') + '</td><td>' + (w.aftekenProbleem ? '<span class="badge bo">' + w.aftekenProbleem + '</span>' : '0') + (w.aftekenOpen ? ' <span class="lay-sub">' + w.aftekenOpen + ' open</span>' : '') + '</td></tr>'; };
+    g('tr-wbody').innerHTML = d.winkels.map(function (w) { return rij(w); }).join('') + rij(d.totaal, true);
+    var URG = { rood: 'br', oranje: 'bo', grijs: 'boat' };
+    g('tr-scount').textContent = d.signalen.length;
+    g('tr-sbody').innerHTML = d.signalen.length ? d.signalen.map(function (s) { return '<tr><td><span class="badge ' + URG[s.urgentie] + '">' + esc(s.urgentie) + '</span></td><td style="white-space:normal"><strong>' + esc(s.titel) + '</strong><div class="lay-sub">' + esc(s.sub) + '</div></td><td>' + esc(s.winkel || '-') + '</td><td>' + (s.naam ? dosBtn(s.naam, s.email) : '') + '</td></tr>'; }).join('') : '<tr><td colspan="4" class="leeg grijs">Geen signalen — iedereen is bij.</td></tr>';
+    var f = g('tr-ffilter').value, ms = d.medewerkers.filter(function (m) { return !f || (f === 'cert' && m.certTelt && !m.certOk) || (f === 'welkom' && m.welkomTelt && !m.welkomAf) || (f === 'nooit' && !m.laatstIngelogd) || (f === 'aftekenen' && m.aftekenen.some(function (a) { return a.status !== 'afgetekend'; })); });
+    g('tr-mcount').textContent = ms.length;
+    g('tr-mbody').innerHTML = ms.length ? ms.map(function (m) { return '<tr><td><strong>' + esc(m.naam) + '</strong>' + (m.gekoppeld ? '' : ' <span class="badge boat" title="Niet gevonden in Shiftbase">?</span>') + '</td><td>' + esc(m.winkel || '-') + '</td><td>' + esc(m.rol || '') + '</td><td>' + esc(m.startNL) + '</td><td>' + (m.laatstIngelogd ? esc(m.laatstIngelogd) : '<span class="badge ' + (m.nooitIngelogd ? 'br' : 'boat') + '">nooit</span>') + '</td><td>' + (m.welkom && m.welkom.totaal ? '<span class="badge ' + (m.welkomAf ? 'bg' : m.welkomTelt ? 'br' : 'boat') + '">' + m.welkom.af + '/' + m.welkom.totaal + '</span>' : '-') + '</td><td style="white-space:normal">' + (m.certificaten || []).map(acCertBadge).join(' ') + '</td><td>' + dosBtn(m.naam, m.email) + '</td></tr>'; }).join('') : '<tr><td colspan="8" class="leeg grijs">Niemand in deze selectie.</td></tr>';
+    g('tr-ongekoppeld').textContent = d.ongekoppeld && d.ongekoppeld.length ? d.ongekoppeld.length + ' Academy-account(s) niet gevonden in Shiftbase: ' + d.ongekoppeld.slice(0, 10).join(', ') + (d.ongekoppeld.length > 10 ? ' …' : '') : '';
+  };
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[data-tr-winkel]'); if (!a) return; e.preventDefault();
+    var inp = document.querySelector('#tab-training input.sb'); inp.value = a.getAttribute('data-tr-winkel'); inp.dispatchEvent(new Event('input'));
+  });
+  window.trExport = function () {
+    if (!trData) return; var rows = [['Naam', 'Winkel', 'Rol', 'In dienst', 'Laatst ingelogd', 'Welkom af', 'Welkom totaal', 'Certificaten', 'Aftekenen']];
+    trData.medewerkers.forEach(function (m) { rows.push([m.naam, m.winkel, m.rol, m.startNL, m.laatstIngelogd || 'nooit', m.welkom ? m.welkom.af : '', m.welkom ? m.welkom.totaal : '', (m.certificaten || []).map(function (c) { return c.titel + ': ' + c.status + (c.geldigTot ? ' t/m ' + c.geldigTot : ''); }).join(' | '), (m.aftekenen || []).map(function (x) { return x.observatie + ': ' + x.statusLabel; }).join(' | ')]); });
+    var csv = '﻿' + rows.map(function (r) { return r.map(function (v) { v = String(v == null ? '' : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(';'); }).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = 'training-academy.csv'; a.click();
+  };
 })();

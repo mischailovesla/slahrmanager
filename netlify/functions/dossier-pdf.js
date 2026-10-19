@@ -38,6 +38,15 @@ exports.handler = beveiligd('dossier-pdf', async (event, g) => {
     });
     t += '\n';
   }
+  if (d.academy) {
+    const a = d.academy;
+    t += '**Training & certificaten (SLA Academy)**\n';
+    t += 'Laatst ingelogd: ' + (a.laatstIngelogd || 'nog nooit') + (a.trainingen ? ' · trainingen af: ' + a.trainingen.af + ' van ' + a.trainingen.totaal : '') + '\n';
+    if (a.welkom && a.welkom.totaal) t += 'Welkomstcollectie: ' + a.welkom.af + ' van ' + a.welkom.totaal + ' af' + (a.welkom.open && a.welkom.open.length ? ' (open: ' + a.welkom.open.join(', ') + ')' : '') + '\n';
+    (a.certificaten || []).forEach(c => { t += '**' + c.titel + ':** ' + ({ geldig: 'geldig', verloopt_binnenkort: 'verloopt binnenkort', verlopen: 'verlopen', bezig: 'bezig', nooit: 'nog niet gedaan' }[c.status] || c.status) + (c.geldigTot ? ', geldig t/m ' + c.geldigTot : '') + '\n'; });
+    (a.aftekenen || []).forEach(x => { t += '**Aftekenen ' + x.observatie + ':** ' + x.statusLabel + (x.op ? ' (' + x.op + ')' : x.deadline ? ' (deadline ' + x.deadline + ')' : '') + '\n'; });
+    t += '\n';
+  }
   const leeg = [];
   for (const s of d.secties) {
     if (!s.rijen.length) { leeg.push(s.label); continue; }

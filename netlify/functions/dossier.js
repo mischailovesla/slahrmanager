@@ -87,7 +87,10 @@ async function laad(qs) {
   let gesprekken = [];
   try { gesprekken = await require('./_lib/gesprekken').voorPersoon({ mid: persoon && persoon.id, naam: naam || (persoon && persoon.naam) }); } catch (e) { gesprekken = []; }
 
-  return { persoon, naam, email, contract, verlof, verzuim, keten, checkins, gesprekken, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
+  // Fase 4a: Academy (training, certificaten, aftekenen)
+  let academy = null, academyFout = '';
+  try { academy = await require('./_lib/academy').voorPersoon({ mid: persoon && persoon.id, email: email || (persoon && persoon.email), naam: naam || (persoon && persoon.naam) }); } catch (e) { academyFout = e.message; }
+  return { persoon, naam, email, contract, verlof, verzuim, keten, checkins, gesprekken, academy, academyFout, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
 }
 exports.laad = laad;
 exports.handler = beveiligd('dossier', async (event) => laad(event.queryStringParameters || {}));

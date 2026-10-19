@@ -16,6 +16,8 @@ const KPIS = [
   { key: 'checkinScore', label: 'Check-in score', eenheid: '/5', richting: 'hoog', groep: 'Instroom', uitleg: 'Gemiddelde van de schaalvragen in de check-in na 30/60 dagen' },
   { key: 'checkinLaagPct', label: 'Lage check-ins', eenheid: '%', richting: 'laag', groep: 'Instroom', uitleg: 'Deel van de ingevulde check-ins met een lage score of een alarm-antwoord' },
   { key: 'onboarding', label: 'Onboarding binnen 21 dagen af', eenheid: '%', richting: 'hoog', groep: 'Instroom', uitleg: 'Onboarding-checklists die binnen 21 dagen zijn afgerond' },
+  { key: 'welkomAf', label: 'Welkomstcollectie Academy af', eenheid: '%', richting: 'hoog', groep: 'Training', uitleg: 'Nu: van wie sinds de Academy-start begon en ≥ 21 dagen in dienst is, deel met de welkomstcollectie helemaal af' },
+  { key: 'certGeldig', label: 'Certificaat voedselveiligheid geldig', eenheid: '%', richting: 'hoog', groep: 'Training', uitleg: 'Nu: deel van de medewerkers met alle verplichte certificaten (Basis voedselveiligheid, HACCP) geldig in Academy' },
   { key: 'verzuimPct', label: 'Verzuim', eenheid: '%', richting: 'laag', groep: 'In dienst', uitleg: 'Ziektedagen ÷ dagen in dienst (kalenderdagen, goedgekeurde ziekmeldingen in Shiftbase)' },
   { key: 'meldingsfreq', label: 'Ziekmeldingen per medewerker per jaar', eenheid: '', richting: 'laag', groep: 'In dienst', uitleg: 'Aantal ziekmeldingen omgerekend naar een heel jaar per medewerker' },
   { key: 'enps', label: 'eNPS exit-survey', eenheid: '', richting: 'hoog', vergelijk: 'verschil', groep: 'Uitstroom', uitleg: '% promotors (9–10) min % criticasters (0–6) onder vertrekkers' },
@@ -47,7 +49,7 @@ const fmt = (k, v) => v === null || v === undefined ? '-' : (DECIMAAL.includes(k
 
 // ---- puur rekenwerk ----
 function bereken(inp) {
-  const { med, verloop, absences, checkins, exits, aanzeggingen, checklists, vandaag } = inp;
+  const { med, verloop, absences, checkins, exits, aanzeggingen, checklists, academy, vandaag } = inp;
   const maanden = verloop.maanden, vanIso = maanden[0].vanIso, totIsoVol = maanden[maanden.length - 1].totIso;
   const vandaagIso = isoD(vandaag), totIso = totIsoVol > vandaagIso ? vandaagIso : totIsoVol;
   const van = dag(vanIso), tot = dag(totIso);
@@ -55,7 +57,7 @@ function bereken(inp) {
   (med || []).forEach(m => { perId[String(m.id)] = m.winkel; if (m.naam) perNaam[normNaam(m.naam)] = m.winkel; });
   const winkelVan = (id, naam, gegeven) => (id && perId[String(id)]) || (naam && perNaam[normNaam(naam)]) || gegeven || '';
   const namen = verloop.winkels.map(w => w.naam).filter(n => n && n !== '(geen winkel)');
-  const leeg = () => ({ ziekDagen: 0, dienstDagen: 0, meldingen: 0, lopend: 0, ciVerstuurd: 0, ciIngevuld: 0, ciScores: [], ciLaag: 0, ciMaand: maanden.map(() => []), meldMaand: maanden.map(() => 0), ex: [], az: 0, azOpTijd: 0, ob: 0, obOpTijd: 0, mensen: 0 });
+  const leeg = () => ({ ziekDagen: 0, dienstDagen: 0, meldingen: 0, lopend: 0, ciVerstuurd: 0, ciIngevuld: 0, ciScores: [], ciLaag: 0, ciMaand: maanden.map(() => []), meldMaand: maanden.map(() => 0), ex: [], az: 0, azOpTijd: 0, ob: 0, obOpTijd: 0, mensen: 0, wkTelt: 0, wkAf: 0, ctTelt: 0, ctOk: 0, acad: false });
   const acc = {}; namen.forEach(n => { acc[n] = leeg(); }); const tot0 = leeg();
   const bij = (w, f) => { if (acc[w]) f(acc[w]); f(tot0); };
 
@@ -104,6 +106,14 @@ function bereken(inp) {
     const w = winkelVan(c.medewerker_id, c.naam, c.winkel);
     bij(w, x => { x.ob++; if (af && dagenTussen(gs, af) <= 21) x.obOpTijd++; });
   }
+  // Academy (stand van nu, niet per periode): welkomstcollectie en certificaten — alleen als de koppeling werkt
+  if (academy) {
+    const A = require('./academy'), vi = isoD(vandaag);
+    for (const m of academy) {
+      const b = A.beoordeel(m, vi);
+      bij(m.winkel, x => { x.acad = true; if (b.welkomTelt) { x.wkTelt++; if (b.welkomAf) x.wkAf++; } if (b.certTelt) { x.ctTelt++; if (b.certOk) x.ctOk++; } });
+    }
+  }
 
   const gem = a => a.length ? a.reduce((s, v) => s + v, 0) / a.length : null;
   const waarden = (vr, x) => {
@@ -118,6 +128,8 @@ function bereken(inp) {
       verzuimPct: { v: x.dienstDagen ? r1(x.ziekDagen / x.dienstDagen * 100) : null, n: x.mensen, klein: x.mensen < MIN_N },
       meldingsfreq: { v: x.dienstDagen ? r1(x.meldingen / (x.dienstDagen / 365)) : null, n: x.mensen, klein: x.mensen < MIN_N },
       enps: { v: enpsN ? Math.round((prom - det) / enpsN * 100) : null, n: enpsN, klein: enpsN < MIN_N },
+      welkomAf: { v: x.wkTelt ? Math.round(x.wkAf / x.wkTelt * 100) : null, n: x.wkTelt, klein: x.wkTelt < MIN_N },
+      certGeldig: { v: x.ctTelt ? Math.round(x.ctOk / x.ctTelt * 100) : null, n: x.ctTelt, klein: x.ctTelt < MIN_N },
       aanzegOpTijd: { v: x.az ? Math.round(x.azOpTijd / x.az * 100) : null, n: x.az, klein: false }
     };
   };
@@ -157,6 +169,7 @@ async function getScorekaart(maanden, ververs) {
   const db = admin(), fouten = [];
   const veilig = async (naam, f) => { try { return await f(); } catch (e) { fouten.push(naam + ': ' + e.message); return []; } };
   const lijst = r => { if (r.error) throw new Error(r.error.message); return r.data || []; };
+  const academyP = (async () => { try { const r = await require('./academy').laad(ververs); return r.lijst; } catch (e) { if (process.env.ACADEMY_HR_SLEUTEL) fouten.push('Academy: ' + e.message); return null; } })();
   const [absences, checkins, exits, ontslag, checklists] = await Promise.all([
     veilig('verzuim (Shiftbase)', async () => { const r = await SB.sbGet('absentees?min_date=' + isoD(new Date(dag(vanIso).getTime() - 60 * 864e5)) + '&max_date=' + totIso); return (r && r.data) || r || []; }),
     veilig('check-ins', async () => lijst(await db.from('hr_checkin').select('medewerker_id,naam,winkel,verstuurd_op,ingevuld_op,score,laag').gte('verstuurd_op', vanIso + 'T00:00:00').lte('verstuurd_op', totIso + 'T23:59:59'))),
@@ -164,7 +177,9 @@ async function getScorekaart(maanden, ververs) {
     veilig('aanzeggingen', async () => (await S.getOntslag()).filter(r => r.type === 'aanzegging')),
     veilig('checklists', async () => lijst(await db.from('hr_checklists').select('type,naam,winkel,medewerker_id,gestart_op,afgerond_op').eq('type', 'onboarding')))
   ]);
-  const r = bereken({ med, verloop, absences, checkins, exits, aanzeggingen: ontslag, checklists, vandaag: nu });
+  const academy = await academyP;
+  const r = bereken({ med, verloop, absences, checkins, exits, aanzeggingen: ontslag, checklists, academy, vandaag: nu });
+  r.academy = !!academy;
   r.maandenAantal = maanden; r.fouten = fouten; r.bijgewerkt = require('./datum').stempel();
   return r;
 }

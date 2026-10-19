@@ -108,6 +108,24 @@ async function uitGesprekken() {
   return t;
 }
 
+// Fase 4a: training & certificaten uit SLA Academy (geen mails — Academy herinnert de medewerker zelf)
+async function uitAcademy() {
+  const t = [];
+  try {
+    const A = require('./_lib/academy');
+    const r = await A.laad(false);
+    for (const s of r.signalen) {
+      const perWinkel = s.soort === 'nooit' || s.soort === 'zonder-cert';
+      t.push(Object.assign({}, s, { afhandelbaar: true,
+        afhandelOpties: s.soort === 'cert' ? [{ label: 'Medewerker/SM ingelicht', dagen: 14, opmerking: 'certificaat besproken' }]
+          : perWinkel ? [{ label: 'Store Manager gevraagd', dagen: s.soort === 'nooit' ? 7 : 30, opmerking: 'winkel ingelicht' }]
+          : [{ label: 'Besproken', dagen: 7, opmerking: 'besproken' }],
+        actie: perWinkel ? { soort: 'tab', tab: 'training', zoek: s.winkel, label: 'Bekijk' } : { soort: 'dossier', label: 'Dossier' } }));
+    }
+  } catch (e) { /* koppeling nog niet aan (ACADEMY_HR_SLEUTEL / hr_koppeling.sql) */ }
+  return t;
+}
+
 async function uitChecklists() {
   const t = [];
   try {
@@ -147,6 +165,7 @@ exports.handler = beveiligd('taken', async (event, g) => {
   taken.push(...await uitChecklists());
   taken.push(...await uitCheckins());
   taken.push(...await uitGesprekken());
+  taken.push(...await uitAcademy());
   // afgehandelde items verbergen
   let verborgen = 0;
   try {

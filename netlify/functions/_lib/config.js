@@ -115,6 +115,14 @@ module.exports = {
   ],
   GESPREK_KANALEN: ['In de winkel', 'Telefonisch', 'Op kantoor', 'Videobellen'],
   GESPREK_VERVOLG_TE_LAAT_DAGEN: 7,     // vervolg zoveel dagen over tijd = rood op de takenlijst
+  // Fase 4a: koppeling met SLA Academy (Supabase-project "training"). URL + publishable key zijn openbaar (staan ook in de Academy-app);
+  // de toegang zit in de geheime sleutel ACADEMY_HR_SLEUTEL (env) die hr_training_status() controleert.
+  ACADEMY_URL: 'https://xiyyyminsswiucnluxbf.supabase.co',
+  ACADEMY_KEY: 'sb_publishable_WRtl8X1QhfVWaQt0NrMLrA_q9ueIilJ',
+  ACADEMY_CACHE_MIN: 15,               // zo lang onthoudt een function de Academy-stand
+  ACADEMY_NOOIT_INGELOGD_DAGEN: 7,     // welkomstmail zoveel dagen geleden en nog nooit ingelogd = signaal
+  ACADEMY_WELKOM_DAGEN: 21,            // welkomstcollectie af binnen zoveel dagen na de eerste werkdag (zelfde norm als de onboarding-checklist)
+  ACADEMY_CERT_WAARSCHUW_DAGEN: 30,    // certificaat verloopt binnen zoveel dagen = oranje (Academy gebruikt dezelfde grens)
   UITSTROOMREDENEN: ['Eigen keuze: andere baan', 'Eigen keuze: studie/verhuizing', 'Eigen keuze: werk/privé of rooster', 'Einde tijdelijk contract (niet verlengd door SLA)', 'Proeftijd', 'Functioneren', 'Gedrag/huisregels', 'Ontslag op staande voet', 'Wederzijds goedvinden', 'Langdurig ziek', 'Overig/onbekend'],
   SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
   SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam
