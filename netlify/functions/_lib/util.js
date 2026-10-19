@@ -23,14 +23,16 @@ function vandaagNL() {
   return new Date().toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '-');
 }
 
-// Drive-URL -> directe download-URL (toDownloadUrl in Code.gs)
+// Drive-URL -> weergavelink /file/d/<id>/view. Bewust NIET de uc?export=download-variant uit Code.gs:
+// die gebruikt in Chrome altijd het eerste ingelogde Google-account en geeft dan "toegang aanvragen"
+// bij collega's met meerdere accounts, ook al hebben ze rechten. De weergavelink laat van account wisselen.
 function toDownloadUrl(url) {
   if (!url) return '';
   url = String(url).trim();
   let m = url.match(/\/d\/([-\w]{25,})/);
   let id = m ? m[1] : '';
   if (!id) { m = url.match(/[?&]id=([-\w]{25,})/); if (m) id = m[1]; }
-  return id ? 'https://drive.google.com/uc?export=download&id=' + id : url;
+  return id ? 'https://drive.google.com/file/d/' + id + '/view' : url;
 }
 
 // Vind kolomindexen op kolomkop (vindResponseKolommen in Code.gs)
