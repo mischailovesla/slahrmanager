@@ -317,7 +317,8 @@ async function koppelMedewerkers(medewerkers) {
   for (const m of medewerkers || []) { const e = String(m.email || '').trim().toLowerCase(); if (e && !byEmail[e]) byEmail[e] = m.id; const n = normNaam(m.naam); if (n && !byNaam[n]) byNaam[n] = m.id; }
   const uit = {};
   for (const tabel of Object.keys(T.TABELLEN)) {
-    const { data, error } = await db().from(tabel).select('rij,naam,email,voornaam,achternaam').is('medewerker_id', null).limit(5000);
+    // '*' en niet een vaste kolomlijst: hr_onboarding heeft voornaam/achternaam i.p.v. naam
+    const { data, error } = await db().from(tabel).select('*').is('medewerker_id', null).limit(5000);
     if (error) { uit[tabel] = 'fout: ' + error.message; continue; }
     let n = 0;
     for (const r of data || []) {
