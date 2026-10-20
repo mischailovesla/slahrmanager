@@ -325,6 +325,16 @@
     </div>
     <div class="alert grijs"><strong>Bron:</strong> SLA Academy (alleen lezen, via de functie <code>hr_training_status</code>). Toewijzen en herinneren doe je in Kas; Academy mailt medewerkers zelf bij deadlines. Taken op het Overzicht: verlopen/verlopend certificaat, welkomstcollectie niet af na 21 dagen, aftekenen te laat en per winkel wie na 7 dagen nog nooit heeft ingelogd.</div>
   </div>
+  <!-- Document zelf uploaden (oud Google-formulier → Drive) -->
+  <div class="mo" id="du-modal"><div class="modal" style="max-width:620px">
+    <div class="mh" style="background:#333d3a"><div class="mti" id="du-titel">Document uploaden</div><button class="mc" onclick="closeDocUpload()">×</button></div>
+    <div class="mb2">
+      <div class="alert geel" style="margin:0 0 14px;font-size:.84rem">Dit document is ooit via het oude Google-formulier ingestuurd en staat in Google Drive. Het dashboard kan Drive niet uitlezen. <strong>1.</strong> Open het document in Drive en download het (PDF of foto). <strong>2.</strong> Kies het bestand hieronder. Daarna gaat het mee naar de salarisadministratie en staat het voortaan in de eigen opslag.</div>
+      <div id="du-lijst"></div>
+      <div id="du-melding"></div>
+    </div>
+    <div class="mf"><button class="btn bd" id="du-zonder" onclick="duZonder()">Versturen zonder dit document</button><button class="btn bp" id="du-btn" onclick="duVerstuur()">Uploaden en naar salaris</button></div>
+  </div></div>
   <!-- GESPREKKEN (fase 3b) -->
   <div class="tc" id="tab-gesprekken">
     <div class="sec">

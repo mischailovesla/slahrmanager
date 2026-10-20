@@ -80,7 +80,7 @@ async function registreer(tok, bestanden, meta) {
     lijst.push({ key: b.key, label: spec.label, pad, naam_orig: String(b.naam_orig || '').slice(0, 120), bytes: Number(b.bytes) || 0, mime: String(b.mime || '') });
   }
   if (!lijst.length) throw new Error('Geen bestanden ontvangen.');
-  for (const spec of soort.bestanden) if (spec.verplicht && !lijst.some(x => x.key === spec.key)) throw new Error('"' + spec.label + '" ontbreekt.');
+  if (!(meta && meta.handmatig)) for (const spec of soort.bestanden) if (spec.verplicht && !lijst.some(x => x.key === spec.key)) throw new Error('"' + spec.label + '" ontbreekt.');
   const { data, error } = await admin().from('hr_uploads').insert({ soort: tok.s, naam: tok.n, email: (meta && meta.email) || null, rij: (meta && meta.rij) || null, bestanden: lijst, ip: (meta && meta.ip) || null }).select('id').single();
   if (error) throw new Error('hr_uploads: ' + error.message);
   return { id: data.id, bestanden: lijst, refs: Object.fromEntries(lijst.map(x => [x.key, 'sb:' + data.id + ':' + x.key])) };

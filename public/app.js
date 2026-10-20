@@ -156,11 +156,55 @@
     b.disabled = true; b.textContent = '…';
     var r = await api('/api/salaris-mail', { type: type, rij: rij });
     b.disabled = false;
-    if (!r.success) { b.textContent = op ? '✓ ' + op.split(' ')[0] : '→ Salaris'; toast('Salaris: ' + r.bericht, 'err'); return; }
+    if (!r.success) { b.textContent = op ? '✓ ' + op.split(' ')[0] : '→ Salaris'; if (r.upload) { openDocUpload(r.upload); return; } toast('Salaris: ' + r.bericht, 'err'); return; }
+    salarisKlaar(type, rij, r);
+  });
+  function salarisKlaar(type, rij, r) {
     toast(r.bericht, 'ok');
     document.querySelectorAll('button[data-sal="' + type + '"][data-rij="' + rij + '"]').forEach(function (x) { x.classList.add('ok'); x.textContent = '✓ ' + r.salaris.split(' ')[0]; x.setAttribute('data-sal-op', r.salaris); });
     if (type === 'korting') { krtData = null; laadKorting(); }
-  });
+  }
+  // ---------- Document zelf uploaden (oude Drive-documenten, zodat → Salaris werkt) ----------
+  var duInfo = null, duGekozen = {};
+  window.openDocUpload = function (info) {
+    duInfo = info; duGekozen = {};
+    g('du-titel').textContent = 'Document uploaden — ' + info.naam;
+    g('du-lijst').innerHTML = info.bestanden.map(function (b) {
+      return '<div class="fg"><label>' + esc(b.label) + '</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + (b.drive ? '<a class="btn bd bsm" href="' + esc(b.drive) + '" target="_blank" rel="noopener">1. Open in Drive ↗</a>' : '') + '<input type="file" data-du-key="' + esc(b.key) + '" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,application/pdf,image/*" style="flex:1;min-width:220px"></div></div>';
+    }).join('');
+    g('du-melding').innerHTML = ''; g('du-btn').disabled = false; g('du-btn').textContent = 'Uploaden en naar salaris';
+    g('du-lijst').querySelectorAll('input[type=file]').forEach(function (inp) { inp.onchange = function () { if (inp.files[0]) duGekozen[inp.getAttribute('data-du-key')] = inp.files[0]; else delete duGekozen[inp.getAttribute('data-du-key')]; }; });
+    g('du-modal').classList.add('open');
+  };
+  window.closeDocUpload = function () { g('du-modal').classList.remove('open'); };
+  function duMelding(cls, t) { g('du-melding').innerHTML = '<div class="alert ' + cls + '" style="margin:6px 0 0;font-size:.84rem">' + esc(t) + '</div>'; }
+  window.duVerstuur = async function () {
+    var keys = Object.keys(duGekozen); if (!keys.length) { duMelding('geel', 'Kies eerst het bestand dat je uit Drive hebt gedownload.'); return; }
+    var btn = g('du-btn'); btn.disabled = true; btn.textContent = 'Uploaden…';
+    try {
+      var klaar = [];
+      for (var i = 0; i < keys.length; i++) {
+        var k = keys[i], f = duGekozen[k], mime = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.hei[cf]$/i.test(f.name) ? 'image/heic' : 'image/jpeg');
+        var st = await api('/api/document-upload', { stap: 'start', type: duInfo.type, rij: duInfo.rij, key: k, naam: f.name, mime: mime, bytes: f.size });
+        if (!st.success) throw new Error(st.bericht);
+        var up = await sb.storage.from(st.bucket).uploadToSignedUrl(st.pad, st.token, f, { contentType: mime, upsert: false });
+        if (up.error) throw new Error(up.error.message);
+        klaar.push({ key: k, pad: st.pad, naam_orig: f.name, bytes: f.size, mime: mime });
+      }
+      var rg = await api('/api/document-upload', { stap: 'klaar', type: duInfo.type, rij: duInfo.rij, bestanden: klaar });
+      if (!rg.success) throw new Error(rg.bericht);
+      btn.textContent = 'Naar salaris…';
+      var r = await api('/api/salaris-mail', { type: duInfo.type, rij: duInfo.rij });
+      if (!r.success) { if (r.upload) { duMelding('geel', 'Opgeslagen. ' + r.bericht); openDocUpload(r.upload); return; } throw new Error('Opgeslagen, maar versturen naar salaris mislukte: ' + r.bericht); }
+      closeDocUpload(); salarisKlaar(duInfo.type, duInfo.rij, r);
+    } catch (e) { duMelding('rood', e.message); btn.disabled = false; btn.textContent = 'Uploaden en naar salaris'; }
+  };
+  window.duZonder = async function () {
+    if (!confirm('Versturen naar de salarisadministratie zónder ' + duInfo.bestanden.map(function (b) { return b.label; }).join(' en ') + '?')) return;
+    var r = await api('/api/salaris-mail', { type: duInfo.type, rij: duInfo.rij, zonderDrive: 1 });
+    if (!r.success) { duMelding('rood', r.bericht); return; }
+    closeDocUpload(); salarisKlaar(duInfo.type, duInfo.rij, r);
+  };
   function bArch(type, rij, naam) {
     return '<button class="mah-btn arch" title="Archiveer ' + esc(naam) + ' — rij gaat naar tab Archief" data-arch="' + type + '" data-rij="' + rij + '" data-naam="' + esc(naam) + '">🗑</button>';
   }

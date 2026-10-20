@@ -4,7 +4,8 @@
 //  - haalt de geüploade formulieren uit Supabase Storage (eigen uploadpagina, _lib/uploads.js)
 //    en mailt ze als bijlage naar SALARIS_EMAIL (Mahdia / HRM Online) in SLA-huisstijl
 //  - logt de tijdstempel: loonheffing K, ontslag O, korting M (groen)
-//  - oude Google-Forms-uploads (Drive-links) kunnen niet automatisch mee: duidelijke melding, HR stuurt die zelf door.
+//  - oude Google-Forms-uploads (Drive-links) kunnen niet automatisch mee: antwoord { success:false, upload:{...} } → het dashboard
+//    laat HR het document uit Drive downloaden en hier uploaden (/api/document-upload) en stuurt daarna opnieuw. zonderDrive:1 = toch versturen zonder.
 // ============================================================
 const { beveiligd, body, logActie } = require('./_lib/auth');
 const S = require('./_lib/sheets');
@@ -26,15 +27,17 @@ exports.handler = beveiligd('salaris-mail', async (event, g) => {
 
   const bijlagen = [], labels = [];
   const oudeDrive = [];
-  const voeg = async (url, label, naamLabel) => {
+  const driveKeys = [];
+  const voeg = async (url, label, naamLabel, key) => {
     if (!url) return;
-    if (!U.isRef(url)) { oudeDrive.push(naamLabel); return; }
+    if (!U.isRef(url)) { oudeDrive.push(naamLabel); driveKeys.push({ key, label: naamLabel, drive: url }); return; }
     bijlagen.push(await U.bestandMetLabel(url, label, row.naam)); labels.push(naamLabel);
   };
-  if (type === 'loonheffing') { await voeg(row.docUrl, 'Loonheffingsverklaring', 'Loonheffingsverklaring'); await voeg(row.docUrl2, 'Indiensttreding', 'Indiensttredingsformulier'); }
-  else if (type === 'ontslag') await voeg(row.docUrl, 'Ontslagbevestiging_ondertekend', 'Ondertekende ontslagbevestiging');
-  else { if (!row.docUrl) throw new Error('Nog geen formulier retour ontvangen voor ' + row.naam + '.'); await voeg(row.docUrl, 'Loonheffingskorting', 'Formulier loonheffingskorting'); }
-  if (!bijlagen.length && oudeDrive.length) throw new Error(oudeDrive.join(' en ') + ' van ' + row.naam + ' staat nog in Google Drive (oud Google-formulier). Open het document via de link en stuur het zelf door naar ' + C.SALARIS_EMAIL + '.');
+  if (type === 'loonheffing') { await voeg(row.docUrl, 'Loonheffingsverklaring', 'Loonheffingsverklaring', 'loon'); await voeg(row.docUrl2, 'Indiensttreding', 'Indiensttredingsformulier', 'indienst'); }
+  else if (type === 'ontslag') await voeg(row.docUrl, 'Ontslagbevestiging_ondertekend', 'Ondertekende ontslagbevestiging', 'ontslag');
+  else { if (!row.docUrl) throw new Error('Nog geen formulier retour ontvangen voor ' + row.naam + '.'); await voeg(row.docUrl, 'Loonheffingskorting', 'Formulier loonheffingskorting', 'korting'); }
+  // Oud Google-formulier: document staat in Drive (geen Drive-API). HR downloadt het en uploadt het hier (/api/document-upload); daarna gaat het automatisch mee.
+  if (driveKeys.length && !p.zonderDrive) return { success: false, upload: { type, rij, naam: row.naam, bestanden: driveKeys }, bericht: oudeDrive.join(' en ') + ' van ' + row.naam + ' staat nog in Google Drive (oud Google-formulier). Download het daar en upload het hier, dan gaat het mee naar salaris.' };
   if (!bijlagen.length) throw new Error('Geen document gevonden voor ' + row.naam + ' - is het formulier al geupload?');
 
   const isK = type === 'korting';
