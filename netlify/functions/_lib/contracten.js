@@ -39,7 +39,18 @@ function overeenkomsten(contracten) {
       let knip = false;
       if (gat <= 1) {
         if (gat < -1) knip = true;                                   // begint ruim vóór het einde: wijziging binnen het contract
-        else if (heleMaanden(g.start, g.eind)) knip = false;          // vorige eindigde op een afgesproken einde → verlenging
+        else if (heleMaanden(g.start, g.eind)) {                      // vorige eindigde op een afgesproken einde → verlenging,
+          // behalve bij een loonknip op 01-01/01-07 waarna het contract doorloopt tot een (later) afgesproken einde vanaf dezelfde start
+          knip = false;
+          if (loondatum(c.start)) {
+            for (let j = i; j < lijst.length; j++) {
+              const x = lijst[j]; if (!x.eind) break;
+              if (j > i && dagen(dag(lijst[j - 1].eind), dag(x.start)) > 1) break;
+              const na = lijst[j + 1], volgtLoonknip = na && dagen(dag(x.eind), dag(na.start)) <= 1 && loondatum(na.start);
+              if (heleMaanden(g.start, x.eind) && !volgtLoonknip) { knip = true; break; }
+            }
+          }
+        }
         else {
           // kijk vooruit: heeft dit deel (met de knips erna) een eigen looptijd van hele maanden? Een "hele maanden"-einde
           // waar direct een deel op 01-01/01-07 op aansluit is zelf een loonknip en telt niet als afgesproken einde.

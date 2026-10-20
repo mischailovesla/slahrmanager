@@ -366,6 +366,37 @@
     <div class="mf"><button class="btn bd" id="gs-alleenaf" style="display:none" onclick="gsAlleenAfvinken()">Alleen afvinken (geen gesprek)</button><button class="btn bp" id="gs-sbtn" onclick="gsOpslaan()"><span id="gs-slbl">Gesprek opslaan</span></button></div>
   </div></div>
 
+  <!-- CONTRACTVERLENGING (fase 4c) -->
+  <div class="tc" id="tab-verlenging">
+    <div class="sec">
+      <div class="sh"><div class="st">Contractverlenging <span class="pill" id="vl-count">-</span> <span class="lay-sub" style="color:rgba(255,255,255,.6);margin-left:8px">tijdelijke contracten die binnen 60 dagen aflopen</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('vl-body',this.value)"><button class="btn bp bsm" id="vl-f-open" onclick="vlFilter('open')">Open</button><button class="btn bd bsm" id="vl-f-alle" onclick="vlFilter('alle')">Alle</button><button class="btn bd bsm" onclick="laadVerlenging()">↻</button></div></div>
+      <div id="vl-melding" class="alert geel" style="display:none;margin:12px 24px 0"></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Winkel</th><th>Contract</th><th>Eindigt</th><th>Besluit uiterlijk</th><th>Keten</th><th>Besluit</th><th>Advies SM</th><th>Status</th><th>Actie</th></tr></thead><tbody id="vl-body"><tr><td colspan="10" class="leeg grijs">Laden…</td></tr></tbody></table></div>
+      <div class="lay-sub" style="padding:10px 24px 14px">Proces: <strong>besluit</strong> (uiterlijk 35 dagen vóór het einde; bij contracten van 6 maanden of langer moet de medewerker uiterlijk 1 maand vóór het einde schriftelijk weten of en hoe er verlengd wordt, art. 7:668 BW) → <strong>uitvoering</strong>: verlengen = nieuw contract in Shiftbase (binnen 7 dagen), niet verlengen = aanzegging, stopt zelf = ontslagbevestiging → <strong>afgerond</strong> zodra dat er is. Contracten worden uit Shiftbase gelezen; loon-/urenknips tellen als één contract.</div>
+    </div>
+  </div>
+
+  <div class="mo" id="vl-modal"><div class="modal" style="max-width:720px">
+    <div class="mh" style="background:#333d3a"><div class="mti" id="vl-titel">Besluit contract</div><button class="mc" onclick="closeVerlenging()">×</button></div>
+    <div class="mb2">
+      <div class="alert grijs" id="vl-context" style="margin:0 0 12px;font-size:.85rem"></div>
+      <div class="alert rood" id="vl-keten" style="display:none;margin:0 0 12px;font-size:.85rem"></div>
+      <div class="fg"><label>Besluit</label>
+        <div id="vl-keuzes" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label class="chk"><input type="radio" name="vl-besluit" value="verlengen-tijdelijk"> Verlengen (tijdelijk)</label>
+          <label class="chk"><input type="radio" name="vl-besluit" value="verlengen-vast"> Verlengen (vast contract)</label>
+          <label class="chk"><input type="radio" name="vl-besluit" value="niet-verlengen"> Niet verlengen (aanzegging)</label>
+          <label class="chk"><input type="radio" name="vl-besluit" value="zelf-opgezegd"> Medewerker stopt zelf</label>
+        </div></div>
+      <div class="fg" id="vl-fg-eind" style="display:none"><label>Nieuwe einddatum</label><div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><input type="date" id="vl-nieuwe-eind" style="max-width:180px"><button class="btn bd bsm" type="button" onclick="vlPlus(6)">+6 mnd</button><button class="btn bd bsm" type="button" onclick="vlPlus(12)">+12 mnd</button></div></div>
+      <div class="fr"><div class="fg"><label>Advies Store Manager</label><select id="vl-advies"><option value="">Niet gevraagd</option><option value="verlengen">Verlengen</option><option value="niet">Niet verlengen</option><option value="twijfel">Twijfel</option></select></div><div class="fg"><label>Opmerking Store Manager</label><input type="text" id="vl-advies-opm" placeholder="bijv. betrouwbaar, wil meer uren"></div></div>
+      <div class="fg"><label>Notitie HR (optioneel)</label><textarea id="vl-notitie" rows="2" style="min-height:60px;height:60px"></textarea></div>
+      <input type="hidden" id="vl-mid"><input type="hidden" id="vl-eind"><input type="hidden" id="vl-start">
+    </div>
+    <div class="mf"><button class="btn bd" id="vl-wis" style="display:none" onclick="vlWis()">Besluit intrekken</button><button class="btn bp" id="vl-sbtn" onclick="vlOpslaan()">Besluit opslaan</button></div>
+  </div></div>
+
   <!-- SCOREKAART PER WINKEL (fase 3c) -->
   <div class="tc" id="tab-scorekaart">
     <!-- HR-maandrapport (fase 4b) -->

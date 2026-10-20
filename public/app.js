@@ -8,13 +8,13 @@
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['checkin', 'Check-in 30/60']] },
-    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)']] },
+    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -65,6 +65,7 @@
     if (tab === 'checkin' && !ciData) laadCheckin(6);
     if (tab === 'scorekaart' && !skData) laadScorekaart(6);
     if (tab === 'scorekaart') mrVulMaanden();
+    if (tab === 'verlenging' && !vlData) laadVerlenging();
     if (tab === 'gesprekken' && !gsData) laadGesprekken(90);
     if (tab === 'training' && !trData) laadTraining(false);
     if (tab === 'toegang' && !tgData) laadToegang();
@@ -390,6 +391,7 @@
       var kt = d.keten; window._dosNaam = d.naam || (d.persoon && d.persoon.naam) || '';
       h += '<div class="kv">' + (kt.onbepaald ? '<div><b>Onbepaalde tijd</b></div>' : '<div>' + kt.aantal + ' tijdelijk(e) contract(en) · ' + kt.maanden + ' maanden' + (kt.vol ? ' · <b style="color:#c0392b">keten vol: volgende = vast</b>' : kt.aantal >= 2 ? ' · <b>volgende is het laatste tijdelijke</b>' : '') + (kt.gecorrigeerd ? ' · <span class="badge bo" title="' + esc((kt.correctie.notitie || '') + ' — ' + (kt.correctie.door || '')) + '">aantal door HR vastgelegd (telling Shiftbase: ' + kt.telling + ')</span>' : '') + '</div>')
         + (kt.overeenkomsten || []).slice(-5).map(function (o) { return '<div class="lay-sub"' + (o.knips ? ' title="Shiftbase-records: ' + esc(o.delen.join(' | ')) + '"' : '') + '>' + (o.huidig ? '<b>' : '') + esc(o.start) + (o.eind ? ' – ' + esc(o.eind) : ' – heden') + ' · ' + esc(o.type || '-') + (o.huidig ? ' (huidig)</b>' : '') + (o.knips ? ' · <span style="color:#888078">' + o.knips + ' loon-/urenwijziging(en) in Shiftbase, telt als één contract</span>' : '') + '</div>'; }).join('')
+        + (kt.besluiten && kt.besluiten.length ? kt.besluiten.map(function (b) { return '<div style="margin-top:4px"><span class="badge boat">Besluit (einde ' + esc(b.eind) + ')</span> <b>' + esc(b.label) + '</b>' + (b.nieuweEind ? ' t/m ' + esc(b.nieuweEind) : '') + (b.advies && b.advies !== 'Niet gevraagd' ? ' · SM: ' + esc(b.advies) + (b.adviesOpmerking ? ' (' + esc(b.adviesOpmerking) + ')' : '') : '') + '<span class="lay-sub"> · ' + esc(b.door) + ' ' + esc(b.op) + (b.notitie ? ' · ' + esc(b.notitie) : '') + '</span></div>'; }).join('') : '')
         + (!kt.onbepaald && kt.mid ? '<div style="margin-top:6px"><button class="btn bd bsm" onclick="ketenCorrigeer(\'' + esc(kt.mid) + '\', \'' + esc(kt.huidigStart) + '\', ' + kt.aantal + ', ' + (kt.gecorrigeerd ? 1 : 0) + ')">Aantal contracten corrigeren</button></div>' : '') + '</div>';
     }
     // Fase 3a: check-ins dag 30/60
@@ -1390,6 +1392,88 @@
     toast(r.success ? r.bericht : 'Mail: ' + r.bericht, r.success ? 'ok' : 'err');
   };
 
+  // ---------- Contractverlenging (fase 4c) ----------
+  var vlData = null, vlFilt = 'open', vlItem = null, vlTaakRij = null;
+  var VL_STATUS = { 'besluit-nodig': ['br', 'Besluit nodig'], 'wacht-shiftbase': ['bo', 'Wacht op Shiftbase'], 'wacht-aanzegging': ['br', 'Aanzegging versturen'], 'wacht-bevestiging': ['bo', 'Ontslagbevestiging versturen'], 'type-klopt-niet': ['br', 'Vast ≠ Shiftbase'], 'tegenstrijdig': ['br', 'Tegenstrijdig'], 'van-rechtswege-vast': ['br', 'Van rechtswege vast'], 'afgerond': ['bg', 'Afgerond'] };
+  window.vlFilter = function (f) { vlFilt = f; g('vl-f-open').className = 'btn bsm ' + (f === 'open' ? 'bp' : 'bd'); g('vl-f-alle').className = 'btn bsm ' + (f === 'alle' ? 'bp' : 'bd'); renderVerlenging(); };
+  window.laadVerlenging = async function () {
+    g('vl-body').innerHTML = '<tr><td colspan="10" class="leeg grijs">Contracten ophalen uit Shiftbase…</td></tr>';
+    var d = await api('/api/verlenging');
+    if (!d.success) { g('vl-body').innerHTML = '<tr><td colspan="10" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    vlData = d; g('vl-melding').style.display = d.tabelOk ? 'none' : ''; g('vl-melding').textContent = d.tabelOk ? '' : 'Migratie 0014 is nog niet gedraaid: besluiten kunnen nog niet worden opgeslagen.';
+    renderVerlenging();
+  };
+  function renderVerlenging() {
+    if (!vlData) return;
+    var lijst = vlData.lijst.filter(function (x) { return vlFilt === 'alle' || x.open; });
+    g('vl-count').textContent = vlData.lijst.filter(function (x) { return x.open; }).length + ' open · ' + vlData.lijst.length + ' totaal';
+    g('vl-body').innerHTML = lijst.map(function (x) {
+      var st = VL_STATUS[x.status] || ['boat', x.status], b = x.besluit;
+      var dl = x.aanzegplichtig ? '<span class="badge ' + (x.dagenTotDeadline < 0 ? 'br' : x.dagenTotDeadline <= 5 ? 'bo' : 'boat') + '">' + esc(x.deadline) + '</span>' : '<span class="lay-sub">geen aanzegplicht</span>';
+      var kt = x.keten.aantal + ' · ' + String(x.keten.maanden).replace('.', ',') + ' mnd' + (x.keten.vol ? ' <span class="badge br">vol</span>' : x.keten.laatste ? ' <span class="badge bo">laatste tijdelijke</span>' : '');
+      return '<tr><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel) + '</td><td>' + esc(x.start) + '<div class="lay-sub">' + esc(x.type || '') + ' · ' + String(x.duurMnd).replace('.', ',') + ' mnd</div></td><td>' + esc(x.einddatum) + '<div class="lay-sub">over ' + x.dagenTotEinde + ' d</div></td><td>' + dl + '</td><td>' + kt + '</td>'
+        + '<td>' + (b ? esc(b.label) + (b.nieuweEind ? '<div class="lay-sub">t/m ' + esc(b.nieuweEind.split('-').reverse().join('-')) + '</div>' : '') : '<span class="no-doc">-</span>') + '</td><td>' + (b && b.advies ? esc(b.adviesLabel) + (b.adviesOpmerking ? '<div class="lay-sub">' + esc(b.adviesOpmerking) + '</div>' : '') : '<span class="no-doc">-</span>') + '</td>'
+        + '<td><span class="badge ' + st[0] + '" title="' + esc(x.titel + (x.uitleg ? ' — ' + x.uitleg : '')) + '">' + esc(st[1]) + '</span>' + (x.vervolg ? '<div class="lay-sub">Shiftbase: ' + (x.vervolg.vast ? 'vast' : 't/m ' + esc(x.vervolg.eind)) + '</div>' : x.brief ? '<div class="lay-sub">' + (x.brief.type === 'aanzegging' ? 'aanzegging' : 'bevestiging') + ' ' + esc(x.brief.verzonden) + '</div>' : '') + '</td>'
+        + '<td><div class="vb-knoppen"><button class="btn ' + (x.status === 'besluit-nodig' ? 'bp' : 'bd') + ' bsm" data-vl-mid="' + esc(x.mid) + '" data-vl-eind="' + esc(x.eindIso) + '">' + (b ? 'Besluit wijzigen' : 'Besluit') + '</button>' + (x.status === 'wacht-aanzegging' ? '<button class="btn bp bsm" data-vl-brief="aanzegging" data-vl-mid="' + esc(x.mid) + '" data-vl-eind="' + esc(x.eindIso) + '">Aanzegging</button>' : x.status === 'wacht-bevestiging' ? '<button class="btn bp bsm" data-vl-brief="ontslag" data-vl-mid="' + esc(x.mid) + '" data-vl-eind="' + esc(x.eindIso) + '">Ontslagbevestiging</button>' : '') + dosBtn(x.naam, x.email) + '</div></td></tr>';
+    }).join('') || '<tr><td colspan="10" class="leeg grijs">' + (vlFilt === 'open' ? 'Niets open — alle aflopende contracten zijn geregeld.' : 'Geen tijdelijke contracten die binnen 60 dagen aflopen.') + '</td></tr>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-vl-mid]'); if (!b || !vlData) return;
+    var x = vlData.lijst.find(function (y) { return y.mid === b.getAttribute('data-vl-mid') && y.eindIso === b.getAttribute('data-vl-eind'); }); if (!x) return;
+    var brief = b.getAttribute('data-vl-brief');
+    if (brief) { swT('ontslag', 'Ontslag & aanzegging'); openOntslagMail(brief === 'aanzegging' ? { naam: x.naam, email: x.email, einddatum: x.einddatum, type: 'aanzegging' } : { naam: x.naam, email: x.email, einddatum: x.einddatum, type: 'ontslag', zelfOpgezegd: true }); return; }
+    openVerlenging(x, null);
+  });
+  window.openVerlenging = function (x, taakRij) {
+    vlItem = x; vlTaakRij = taakRij || null;
+    g('vl-titel').textContent = 'Besluit contract — ' + x.naam;
+    g('vl-context').innerHTML = '<strong>' + esc(x.naam) + '</strong> · ' + esc(x.winkel || '-') + '<br>Huidig contract ' + esc(x.startIso ? x.startIso.split('-').reverse().join('-') : '') + ' t/m <strong>' + esc(x.einddatum) + '</strong> (over ' + x.dagenTotEinde + ' dagen' + (x.duurMnd ? ', ' + String(x.duurMnd).replace('.', ',') + ' mnd' : '') + ')<br>'
+      + 'Keten: ' + x.keten.aantal + ' contract' + (x.keten.aantal === 1 ? '' : 'en') + ', ' + String(x.keten.maanden).replace('.', ',') + ' maanden' + (x.keten.gecorrigeerd ? ' (aantal door HR vastgelegd)' : '')
+      + (x.aanzegplichtig ? '<br>Besluit uiterlijk <strong>' + esc(x.deadline) + '</strong> · de medewerker moet het uiterlijk <strong>' + esc(x.wettelijkeDeadline) + '</strong> schriftelijk weten (aanzegtermijn)' : '<br>Contract korter dan 6 maanden: geen wettelijke aanzegtermijn');
+    g('vl-keten').style.display = x.keten.vol || x.keten.laatste ? '' : 'none';
+    g('vl-keten').className = 'alert ' + (x.keten.vol ? 'rood' : 'geel');
+    g('vl-keten').innerHTML = x.keten.vol ? '<strong>Keten vol</strong> — een nieuw tijdelijk contract wordt van rechtswege een vast contract (art. 7:668a BW). Verlengen = vast contract.' : '<strong>Let op:</strong> het volgende contract is het laatste tijdelijke; daarna kan alleen nog vast.';
+    var b = x.besluit;
+    document.querySelectorAll('input[name="vl-besluit"]').forEach(function (r) { r.checked = !!b && r.value === b.besluit; });
+    g('vl-nieuwe-eind').value = b && b.nieuweEind ? b.nieuweEind : '';
+    g('vl-advies').value = b ? (b.advies || '') : ''; g('vl-advies-opm').value = b ? (b.adviesOpmerking || '') : ''; g('vl-notitie').value = b ? (b.notitie || '') : '';
+    g('vl-mid').value = x.mid; g('vl-eind').value = x.eindIso; g('vl-start').value = x.startIso || '';
+    g('vl-wis').style.display = b ? '' : 'none';
+    vlToon(); g('vl-modal').classList.add('open');
+  };
+  function vlKeuze() { var r = document.querySelector('input[name="vl-besluit"]:checked'); return r ? r.value : ''; }
+  function vlToon() { g('vl-fg-eind').style.display = vlKeuze() === 'verlengen-tijdelijk' ? '' : 'none'; }
+  document.addEventListener('change', function (e) { if (e.target && e.target.name === 'vl-besluit') vlToon(); });
+  window.vlPlus = function (mnd) {
+    var e = String(g('vl-eind').value || '').split('-'); if (e.length !== 3) return;
+    var d = new Date(+e[0], +e[1] - 1 + mnd, +e[2] - 1); // nieuw contract start op de einddatum (zoals in Shiftbase) → einde = n maanden later min 1 dag
+    g('vl-nieuwe-eind').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  };
+  window.closeVerlenging = function () { g('vl-modal').classList.remove('open'); };
+  g('vl-modal').addEventListener('click', function (e) { if (e.target === this) closeVerlenging(); });
+  async function vlNaOpslaan(besluit) {
+    closeVerlenging(); vlData = null;
+    if (g('tab-verlenging').classList.contains('active')) laadVerlenging();
+    if (vlTaakRij && tkData) laadTaken(true);
+    if (besluit === 'niet-verlengen' && confirm('Aanzegging nu opstellen?')) { swT('ontslag', 'Ontslag & aanzegging'); openOntslagMail({ naam: vlItem.naam, email: vlItem.email, einddatum: vlItem.einddatum, type: 'aanzegging' }); }
+    if (besluit === 'zelf-opgezegd' && confirm('Ontslagbevestiging nu opstellen?')) { swT('ontslag', 'Ontslag & aanzegging'); openOntslagMail({ naam: vlItem.naam, email: vlItem.email, einddatum: vlItem.einddatum, type: 'ontslag', zelfOpgezegd: true }); }
+  }
+  window.vlOpslaan = async function (bevestigVol) {
+    var besluit = vlKeuze(); if (!besluit) { toast('Kies een besluit', 'err'); return; }
+    var p = { mid: g('vl-mid').value, eindIso: g('vl-eind').value, startIso: g('vl-start').value, naam: vlItem.naam, email: vlItem.email, winkel: vlItem.winkel, besluit: besluit, nieuweEind: g('vl-nieuwe-eind').value, advies: g('vl-advies').value, adviesOpmerking: g('vl-advies-opm').value, notitie: g('vl-notitie').value, bevestigVol: bevestigVol ? 1 : 0 };
+    g('vl-sbtn').disabled = true;
+    var r = await api('/api/verlenging', p);
+    g('vl-sbtn').disabled = false;
+    if (!r.success && r.ketenVol) { if (confirm(r.bericht + '\n\nToch tijdelijk vastleggen (je weet dat het contract dan als vast geldt)?')) return vlOpslaan(true); return; }
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); vlNaOpslaan(besluit);
+  };
+  window.vlWis = async function () {
+    if (!confirm('Besluit intrekken? De taak "besluit nodig" komt dan terug.')) return;
+    var r = await api('/api/verlenging', { actie: 'wissen', mid: g('vl-mid').value, eindIso: g('vl-eind').value, naam: vlItem.naam });
+    toast(r.success ? r.bericht : r.bericht, r.success ? 'ok' : 'err'); if (r.success) vlNaOpslaan('');
+  };
+
   // ---------- Check-in 30/60 dagen (fase 3a) ----------
   var ciData = null, ciMaanden = 6, ciFilter = 'alle';
   window.ciEditor = maakVragenEditor('ci-vragen', true);
@@ -1951,6 +2035,7 @@
     var persoon = b.getAttribute('data-tk-persoon') ? JSON.parse(b.getAttribute('data-tk-persoon')) : { naam: naam, email: email };
     if (soort === 'loonmail') { swT('loonheffing', 'Loonheffingsverklaring'); openLoonMail(persoon); }
     else if (soort === 'ontslagmail') { swT('ontslag', 'Ontslag & aanzegging'); openOntslagMail(persoon); }
+    else if (soort === 'verlenging') openVerlenging(persoon, b.closest('.tk'));
     else if (soort === 'korting') { swT('loonheffingskorting', 'Loonheffingskorting'); openKrtModal(persoon); }
     else if (soort === 'sommatie') { swT('sommatie', 'Sommaties'); openSomModal(persoon); }
     else if (soort === 'beschikbaarheid') { swT('beschikbaarheid', 'Beschikbaarheid'); openBkModal(persoon); }

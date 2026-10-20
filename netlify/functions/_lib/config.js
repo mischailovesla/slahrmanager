@@ -54,6 +54,11 @@ module.exports = {
   KETEN_MAX_MAANDEN: 36,
   KETEN_ONDERBREKING_MAANDEN: 6,
   KETEN_VENSTER_DAGEN: 60,
+  // Fase 4c: contractverlenging als proces — vanaf 60 dagen vóór het einde een besluit vragen, uiterlijk 35 dagen vóór het einde
+  // (5 dagen marge op de wettelijke aanzegtermijn van 1 maand); na een besluit 'verlengen' moet het contract binnen 7 dagen in Shiftbase staan.
+  VERLENG_VENSTER_DAGEN: 60,
+  VERLENG_BESLUIT_DAGEN: 35,
+  VERLENG_SHIFTBASE_DAGEN: 7,
   // Proeftijd (art. 7:652 BW): contract ≤ 6 mnd geen proeftijd; > 6 mnd en < 2 jaar max 1 maand; ≥ 2 jaar of onbepaald max 2 maanden.
   // Alleen geldig als schriftelijk overeengekomen — het signaal zegt daarom "indien overeengekomen".
   PROEFTIJD_SIGNAAL_DAGEN: 10,       // zoveel dagen vóór het einde van de proeftijd

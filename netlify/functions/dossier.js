@@ -74,6 +74,8 @@ async function laad(qs) {
       if (k) keten = { mid: String(persoon.id), onbepaald: k.onbepaald, aantal: k.aantal, maanden: k.maanden, vol: k.vol, reden: k.reden || '', gecorrigeerd: !!k.gecorrigeerd, correctie: k.gecorrigeerd ? corr : null, huidigStart: k.huidig ? k.huidig.start : '', telling: (k.keten || []).length,
         overeenkomsten: k.overeenkomsten.map(o => ({ start: nl(o.start), eind: nl(o.eind), type: o.type, functie: o.functie, inKeten: (k.keten || []).includes(o), huidig: o === k.huidig, knips: o.delen.length - 1, delen: o.delen.map(d => nl(d.start) + (d.eind ? ' – ' + nl(d.eind) : ' – heden')) })),
         contracten: (per[String(persoon.id)] || []).map(c => ({ start: nl(c.start), eind: nl(c.eind), type: c.type, functie: c.functie })) };
+      // Fase 4c: besluiten over verlenging
+      if (keten) { try { const VL = require('./_lib/verlenging'); const { data } = await require('./_lib/auth').admin().from('hr_verlenging').select('*').eq('medewerker_id', String(persoon.id)).order('contract_eind', { ascending: false }).limit(10); keten.besluiten = (data || []).map(b => ({ eind: nl(b.contract_eind), label: VL.BESLUITEN[b.besluit] || b.besluit, nieuweEind: nl(b.nieuwe_eind), advies: VL.ADVIES[b.advies_sm || ''] || '', adviesOpmerking: b.advies_opmerking || '', notitie: b.notitie || '', door: b.besloten_door || '', op: String(b.besloten_op || '').slice(0, 10).split('-').reverse().join('-') })); } catch (e) { keten.besluiten = []; } }
     } catch (e) { keten = null; }
   }
   // Fase 3a: check-ins (dag 30/60) — op medewerker-id, anders op naam

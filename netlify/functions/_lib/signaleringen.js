@@ -557,7 +557,24 @@ async function maandrapport(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport };
+// ---- Fase 4c: contractverlengingen (dagelijks; geen mail — alleen de takenlijst en het tabblad Contractverlenging) ----
+async function laadVerlengingen() {
+  const VL = require('./verlenging');
+  const [med, per, corr, ontslag, bes] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true), require('./instellingen').lees('keten_correcties', {}), S.getOntslag(true),
+    admin().from('hr_verlenging').select('*').then(r => { if (r.error) throw new Error(r.error.message); return r.data || []; }).catch(e => { console.warn('hr_verlenging:', e.message); return null; })]);
+  const besluiten = {}; (bes || []).forEach(b => { besluiten[VL.sleutel(b.medewerker_id, b.contract_eind)] = b; });
+  return { lijst: VL.overzicht(med, per, besluiten, ontslag, vandaag0(), corr || {}), tabelOk: bes !== null };
+}
+async function verlengingen(droog) {
+  const rap = { naam: 'verlengingen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const { lijst, tabelOk } = await laadVerlengingen();
+  if (!tabelOk) rap.fouten.push('hr_verlenging ontbreekt (migratie 0014): besluiten worden nog niet meegenomen');
+  rap.gevonden = lijst.filter(x => x.open);
+  rap.afgerond = lijst.filter(x => !x.open).length;
+  return rap;
+}
+
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 async function draai(naam, droog, bron) {
@@ -572,4 +589,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen };
