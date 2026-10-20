@@ -59,7 +59,8 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
   const metExit = s => exitAan ? String(s || '').split('{{EXITLINK}}').join(exitLink) : T.zonderExit(s);
   const text = metExit(T.personaliseerUploadLinks(String(p.body || tpl.body(naam, bv)), naam));
   const html = metExit(T.ontslagMailHtml(tpl, naam, bv, einddatum));
-  if (p.preview) return { subject, text, html };
+  const AI = require('./_lib/allin'); const manager = await AI.isManager({ email: to, naam }); // managers: geen all-in-tekst
+  if (p.preview) return { subject, text, html, manager };
   if (!naam) throw new Error('Naam ontbreekt.');
 
   // --- PDF uit de code-template ---
@@ -71,7 +72,8 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
       : isProef ? (isWG ? (isEN ? B.PROEFTIJD_WG_EN : B.PROEFTIJD_WG_NL) : (isEN ? B.PROEFTIJD_WN_EN : B.PROEFTIJD_WN_NL))
       : B.ONTSLAG;
     const tekst = B.vul(sjabloon, { '{{Naam}}': naam, '{{Adres}}': adres, '{{DatumOpzegging}}': datumOpzegging, '{{Einddatum}}': einddatum, '{{BV}}': bv, '{{HuidigeDatum}}': briefDatum(isEN), '{{EXITLINK}}': exitAan ? exitLink : '{{EXITLINK}}' });
-    const tekstDef = exitAan ? tekst : T.zonderExit(tekst); // placeholder blijft staan tot zonderExit de regel weghaalt
+    const tekst1 = manager ? AI.voorManager(tekst) : tekst;
+    const tekstDef = exitAan ? tekst1 : T.zonderExit(tekst1); // placeholder blijft staan tot zonderExit de regel weghaalt
     const titel = tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : isProef ? proefLabel : 'Ontslagbevestiging';
     return P.maakOpgemaakteBrief(tekstDef, { titel: titel + ' - ' + naam, handtekening: tpl.type === 'ontslag' ? B.handtekening() : null });
   };

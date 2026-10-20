@@ -25,6 +25,7 @@ exports.handler = beveiligd('uitdienst', async (event, g) => {
   const r = rij ? (await S.getOntslag()).find(x => x.rij === rij) : VOORBEELD;
   if (!r) throw new Error('Dossier niet gevonden (rij ' + rij + ').');
   if (p.actie === 'voorbeeld') {
+    if (rij) r.manager = await require('./_lib/allin').isManager({ email: r.email, naam: r.naam });
     const soort = rij ? await UD.soortVan(r) : 'ontslag', t = UD.teksten(r, soort), pdf = await UD.pdfVan(r, soort);
     return { subject: t.subject, html: t.html, pdf: pdf.toString('base64'), bestandsnaam: UD.bestandsnaam(r), soort };
   }

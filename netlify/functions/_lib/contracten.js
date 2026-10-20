@@ -13,7 +13,9 @@ const dag = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); 
 const ddmm = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : String(s || ''); };
 const dagen = (a, b) => Math.round((b - a) / 864e5);
 function plusMaanden(d, n) { const x = new Date(d.getTime()); x.setMonth(x.getMonth() + n); return x; }
-const isOnbepaald = c => !c.eind || /onbepaald|indefinite|permanent|vast/i.test(c.type || '');
+// Onbepaalde tijd = geen einddatum, of een type dat dat expliciet zegt. LET OP: "Vaste uren" betekent een vast aantal
+// uren per week (tegenover nul uren), níet een vast contract — daarom matchen we niet op het losse woord "vast".
+const isOnbepaald = c => !c.eind || /onbepaald|indefinite|permanent|vast\s*contract|vaste\s*aanstelling|vast\s*dienstverband/i.test(c.type || '');
 
 // ---- Shiftbase-records → arbeidsovereenkomsten (v0.19.1) ----
 // Shiftbase knipt een contract op bij elke loon-/urenwijziging (vrijwel altijd op 01-01 en 01-07, soms op een verjaardag

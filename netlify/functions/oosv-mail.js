@@ -31,7 +31,7 @@ exports.handler = beveiligd('oosv-mail', async (event, g) => {
     '{{Datum}}': vandaag, '{{DatumConstatering}}': String(p.datumConstatering || '').trim() || vandaag, '{{Gronden}}': gronden.split('\n').map(l => l.trim()).filter(Boolean).join('*\n*'),
     '{{Wederhoor}}': wederhoor ? B.OOSV_WEDERHOOR.replace('{{Wederhoor}}', wederhoor) : ''
   });
-  const pdf = await P.maakOpgemaakteBrief(tekst, { titel: 'Ontslag op staande voet - ' + naam });
+  const pdf = await P.maakOpgemaakteBrief(await require('./_lib/allin').pasAan(tekst, { email, naam }), { titel: 'Ontslag op staande voet - ' + naam });
   const bestandsnaam = 'Ontslag op staande voet - ' + naam.replace(/[\\/:*?"<>|]/g, '') + ' - ' + vandaag + '.pdf';
   if (p.alleenPdf) return { pdf: pdf.toString('base64'), bestandsnaam };
 

@@ -30,7 +30,9 @@ const dag = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); 
 const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const nl = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : String(s || ''); };
 const dagen = (a, b) => Math.round((b - a) / 864e5);
-const isOnbepaald = c => !c.eind || /onbepaald|indefinite|permanent|vast/i.test(c.type || '');
+// Onbepaalde tijd = geen einddatum, of een type dat dat expliciet zegt. LET OP: "Vaste uren" betekent een vast aantal
+// uren per week (tegenover nul uren), níet een vast contract — daarom matchen we niet op het losse woord "vast".
+const isOnbepaald = c => !c.eind || /onbepaald|indefinite|permanent|vast\s*contract|vaste\s*aanstelling|vast\s*dienstverband/i.test(c.type || '');
 const sleutel = (mid, eindIso) => String(mid) + '|' + eindIso;
 
 // Is er een aanzegging/ontslagbevestiging verstuurd voor dit contract? (ná de start van het huidige contract)

@@ -28,10 +28,11 @@ exports.handler = beveiligd('brief-mail', async (event, g) => {
   const bv = String(p.bv || '').trim() || C.BEDRIJFSNAAM;
   const categorie = String(p.categorie || '').trim() || 'Personeelszaken';
   const onderwerp = String(p.onderwerp || '').trim() || (categorie + ' - ' + naam);
-  const tekst = String(p.tekst || '');
+  const tekst0 = String(p.tekst || '');
   const metPdf = !!p.metPdf;
   if (!naam) throw new Error('Vul de naam in.');
-  if (!tekst.trim()) throw new Error('De brief is nog leeg.');
+  if (!tekst0.trim()) throw new Error('De brief is nog leeg.');
+  const tekst = await require('./_lib/allin').pasAan(tekst0, { email, naam }); // managers: geen all-in-tekst
 
   const brief = { naam, tekst };
   const maakPdf = async () => (await P.maakBriefPdf(brief, bv, categorie, onderwerp)).toString('base64');

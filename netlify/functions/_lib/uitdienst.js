@@ -61,6 +61,7 @@ function teksten(r, soort) {
     punten: ['Your last working day is ' + eind + ' at the latest. Please return any keys and SLA items to your Store Manager by then.', 'Your final settlement (wages for your last hours worked) will be paid with your last payslip. Because you have an all-in contract, holiday hours and holiday allowance are already included in your hourly wage and are not paid out separately.', 'Is anything incorrect? Let us know within ' + REACTIE_DAGEN + ' days at hr@ilovesla.com. If we do not hear from you, we will assume this is correct.'],
     slot: 'You do not need to sign or return anything. Thank you for your work at SLA and good luck!'
   };
+  if (r.manager) { const AI = require('./allin'); nl.punten = nl.punten.map(AI.voorManager); en.punten = en.punten.map(AI.voorManager); } // managers: geen all-in
   const subject = 'Bevestiging uitdiensttreding / Confirmation of end of employment - ' + bv;
   const F = 'font-family:Arial,sans-serif;', P14 = F + 'font-size:14px;color:#333d3a;';
   const blok = (L, greet, kop) => '<p style="' + F + 'font-size:11px;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px">' + kop + '</p><p style="' + P14 + 'margin:0 0 14px">' + greet + ' ' + esc(voornaam) + ',</p><p style="' + P14 + 'line-height:1.7;margin:0 0 14px">' + esc(L.intro) + '</p>'
@@ -100,6 +101,7 @@ async function bevestig(r, door) {
   const S = require('./sheets'), D = require('./datum');
   if (!r.email || r.email.indexOf('@') === -1) throw new Error('Geen e-mailadres bij ' + r.naam + '.');
   if (r.ondertekend === 'Ja') throw new Error(r.naam + ' heeft al ondertekend.');
+  r.manager = await require('./allin').isManager({ email: r.email, naam: r.naam });
   const soort = await soortVan(r), t = teksten(r, soort), pdf = await pdfVan(r, soort), bijlage = [{ filename: bestandsnaam(r), content: pdf.toString('base64') }];
   const id = await M.verstuur({ to: r.email, subject: t.subject, text: t.plain, html: t.html, attachments: bijlage, tags: [{ name: 'bron', value: 'ontslag' }, { name: 'type', value: 'bevestiging-uitdienst' }] });
   await M.logMail({ door: door || 'signalering', bron: 'ontslag', type: 'bevestiging-uitdienst', naar: r.email, naam: r.naam, onderwerp: t.subject, taal: 'NL/EN', rij: r.rij, resend_id: id });
