@@ -26,6 +26,7 @@ function slaStep(n, t, l, tx, isEN) {
 const U = require('./uploads');
 function prefillLoonUrl(naam) { return naam ? U.uploadLink('loon', naam) : C.UPLOAD_LOON; }
 function prefillOntslagUrl(naam) { return naam ? U.uploadLink('ontslag', naam) : C.UPLOAD_ONTSLAG; }
+function overplaatsingUploadUrl(naam) { return naam ? U.uploadLink('overplaatsing', naam) : C.UPLOAD_ONTSLAG; }
 function prefillKortingUrl(naam) { return naam ? U.uploadLink('korting', naam) : C.UPLOAD_LOON; }
 // Indiensttredingsformulier: bestand in public/ van het dashboard zelf (voorheen een Google Drive-exportlink, INDIENSTLINK)
 function indienstLink() { return U.site() + '/Indiensttredingsformulier_SLA.xlsx'; }
@@ -353,7 +354,7 @@ function overplaatsingSubject(naam, isStandpl, isEN) {
   return (isEN ? 'Confirmation of internal transfer - ' : 'Bevestiging interne overplaatsing - ') + naam;
 }
 function overplaatsingPlain(naam, huidig, nieuw, ingangsdatum, isStandpl, isEN) {
-  const u = C.UPLOAD_ONTSLAG;
+  const u = overplaatsingUploadUrl(naam);
   if (isEN) {
     if (isStandpl) return 'Dear ' + naam + ',\n\nAttached you will find the confirmation of the change of your place of work within ' + huidig.bv + '.\n\nAs of ' + (ingangsdatum || 'the agreed date') + ', your workplace changes from ' + huidig.naam + ' to ' + nieuw.naam + '.\n\nPlease sign for approval and upload via:\n' + u + '\n\nQuestions? hr@ilovesla.com\n\nKind regards,\nSLA HR Team';
     return 'Dear ' + naam + ',\n\nAttached you will find the official confirmation of your internal transfer from ' + huidig.bv + ' to ' + nieuw.bv + '.\n\nAs of ' + (ingangsdatum || 'the agreed date') + ', your employment formally transfers, with retention of your years of service.\n\nPlease sign for approval and upload via:\n' + u + '\n\nQuestions? hr@ilovesla.com\n\nKind regards,\nSLA HR Team';
@@ -381,7 +382,7 @@ function overplaatsingHtml(naam, huidig, nieuw, ingangsdatum, isStandpl, isEN) {
     cta: 'Onderteken voor akkoord en upload via:', btn: '&rarr; Upload ondertekend document', q: 'Vragen?', sign: 'Met vriendelijke groet,'
   });
   const afzender = isStandpl ? hb : hb + ' &amp; ' + nb;
-  return slaWrap(slaHead('#009f4b', L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">' + L.greet + esc(naam) + ',</p><p style="' + P14 + 'line-height:1.7;margin:0 0 16px">' + L.intro + '</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">' + L.detail + '</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding:16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #009f4b"><p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 12px">' + L.cta + '</p>' + knop(prefillOntslagUrl(naam), L.btn) + '</td></tr></table>' + exitBlok(isEN) + '<p style="' + P14 + 'margin:0 0 20px">' + L.q + ' <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p><p style="' + P14 + 'margin:0">' + L.sign + '<br><br><strong>SLA HR Team</strong><br>' + afzender + '</p></td></tr>' + slaFoot());
+  return slaWrap(slaHead('#009f4b', L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">' + L.greet + esc(naam) + ',</p><p style="' + P14 + 'line-height:1.7;margin:0 0 16px">' + L.intro + '</p><p style="' + P14 + 'line-height:1.7;margin:0 0 20px">' + L.detail + '</p><table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding:16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #009f4b"><p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 12px">' + L.cta + '</p>' + knop(overplaatsingUploadUrl(naam), L.btn) + '</td></tr></table>' + exitBlok(isEN) + '<p style="' + P14 + 'margin:0 0 20px">' + L.q + ' <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p><p style="' + P14 + 'margin:0">' + L.sign + '<br><br><strong>SLA HR Team</strong><br>' + afzender + '</p></td></tr>' + slaFoot());
 }
 
 // --- Officiële waarschuwing: huisregels WOORDELIJK uit de contractbijlage (waarschuwing.gs v1.2) ---
@@ -551,6 +552,21 @@ function salarisHtml(naam, labels, kortKeuze, kortIngang) {
   }
   return slaWrap(slaHead('#2b6cb0', 'HR &middot; Salarisadministratie') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Beste,</p>' + body + '<p style="' + P14 + 'margin:0 0 20px">Vragen? <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p><p style="' + P14 + 'margin:0">Met vriendelijke groet,<br><strong>SLA HR Team</strong></p><p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0">Automatisch verstuurd vanuit het SLA HR Dashboard</p></td></tr>' + slaFoot());
 }
+// Overplaatsing/standplaatswijziging naar salaris: de mutatie zelf (BV, ingangsdatum) + het ondertekende document als dat er is
+function salarisOverplaatsingRegels(r) {
+  const isStandpl = /standplaats/i.test(r.type || '') || (r.huidigeBV && r.huidigeBV === r.nieuweBV);
+  return { isStandpl, regels: [['Medewerker', r.naam], ['Soort', isStandpl ? 'Standplaatswijziging (zelfde werkgever)' : 'Overplaatsing naar andere BV (andere werkgever, met behoud van dienstjaren)'], ['Van', r.huidigeBV || '-'], ['Naar', r.nieuweBV || '-'], ['Nieuwe standplaats', r.standplaats || '-'], ['Ingangsdatum', r.ingangsdatum || '-'], ['Functie', r.functie || '-'], ['In dienst sinds', r.datumIndienst || '-']] };
+}
+function salarisOverplaatsingHtml(r, labels) {
+  const { isStandpl, regels } = salarisOverplaatsingRegels(r);
+  const tabel = '<table cellpadding="0" cellspacing="0" style="margin:0 0 18px;border-collapse:collapse">' + regels.map(x => '<tr><td style="' + F + 'font-size:13px;color:#888078;padding:4px 16px 4px 0">' + esc(x[0]) + '</td><td style="' + F + 'font-size:13px;color:#333d3a;font-weight:700;padding:4px 0">' + esc(x[1]) + '</td></tr>').join('') + '</table>';
+  const doc = labels.length ? 'In de bijlage: ' + esc(labels.join(', ')) + '.' : '<strong>Het ondertekende document is nog niet binnen</strong>; dat sturen we na zodra we het hebben. Wil je de mutatie alvast verwerken?';
+  return slaWrap(slaHead('#2b6cb0', 'HR &middot; ' + (isStandpl ? 'Standplaatswijziging' : 'Overplaatsing') + ' doorgeven') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Beste,</p><p style="' + P14 + 'line-height:1.7;margin:0 0 14px">Hierbij een ' + (isStandpl ? 'standplaatswijziging' : '<strong>overplaatsing naar een andere BV</strong>') + ' voor de salarisadministratie:</p>' + tabel + '<p style="' + P14 + 'line-height:1.7;margin:0 0 20px">' + doc + '</p><p style="' + P14 + 'margin:0 0 20px">Vragen? <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a></p><p style="' + P14 + 'margin:0">Met vriendelijke groet,<br><br><strong>SLA HR Team</strong></p></td></tr>' + slaFoot());
+}
+function salarisOverplaatsingPlain(r, labels) {
+  const { isStandpl, regels } = salarisOverplaatsingRegels(r);
+  return 'Beste,\n\nHierbij een ' + (isStandpl ? 'standplaatswijziging' : 'overplaatsing naar een andere BV') + ' voor de salarisadministratie:\n\n' + regels.map(x => x[0] + ': ' + x[1]).join('\n') + '\n\n' + (labels.length ? 'In de bijlage: ' + labels.join(', ') + '.' : 'Het ondertekende document is nog niet binnen; dat sturen we na. Wil je de mutatie alvast verwerken?') + '\n\nVragen? hr@ilovesla.com\n\nMet vriendelijke groet,\nSLA HR Team\n\n(Automatisch verstuurd vanuit het SLA HR Dashboard)';
+}
 function salarisPlain(naam, labels, kortKeuze, kortIngang) {
   if (kortKeuze !== undefined) {
     const actie = kortKeuze === 'Aanzetten' ? 'loonheffingskorting AANZETTEN' : kortKeuze === 'Uitzetten' ? 'loonheffingskorting UITZETTEN' : 'wijziging loonheffingskorting';
@@ -574,6 +590,6 @@ function oproepHtml(naam, bv, uren, reactiedatum, isEN) {
 }
 
 module.exports = { oproepPlain, oproepHtml, KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
-  slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, indienstLink, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, exitBlok, zonderExit, exitUitnodigingPlain, exitUitnodigingHtml, checkinOnderwerp, checkinPlain, checkinHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
+  slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, overplaatsingUploadUrl, salarisOverplaatsingHtml, salarisOverplaatsingPlain, indienstLink, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, exitBlok, zonderExit, exitUitnodigingPlain, exitUitnodigingHtml, checkinOnderwerp, checkinPlain, checkinHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
   HUISREGELS, regelsById, wrsPlain, wrsHtml, beschikbPlain, beschikbHtml, oosvPlain, oosvHtml,
   SOM_TYPES, SOM_KLEUR, SOM_SHEETKLEUR, SOM_HINTS, sommatieSubject, sommatieHtml, sommatiePlain, overplaatsingSubject, overplaatsingPlain, overplaatsingHtml };

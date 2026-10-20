@@ -23,6 +23,12 @@ async function zetVinkje(tok, refs) {
     await S.zetCel(C.SHEETS.loonheffing.id, C.TAB_KORTING, r.rij, 10, refs.korting || '');
     return r.rij;
   }
+  if (tok.s === 'overplaatsing') {
+    const lijst = (await S.getOverplaatsing()).filter(match); // nieuwste niet-ondertekende eerst, anders de laatste
+    const r = lijst.filter(x => x.ondertekend !== 'Ja').pop() || lijst[lijst.length - 1]; if (!r) return 0;
+    if (r.ondertekend !== 'Ja') await S.zetCel(C.SHEETS.overplaatsing.id, C.SHEETS.overplaatsing.tab, r.rij, 13, 'Ja', S.KLEUR.groen);
+    return r.rij;
+  }
   if (tok.s === 'oproep') {
     const open = (await S.getOproepaanbod()).filter(r => match(r) && !r.reactie); const r = open[0]; if (!r) return 0;
     await S.zetCel(C.SHEETS.ontslag.id, 'Oproepaanbod', r.rij, 14, 'Ontvangen (document)'); await S.zetCel(C.SHEETS.ontslag.id, 'Oproepaanbod', r.rij, 15, new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).slice(0, 16).replace('T', ' '));

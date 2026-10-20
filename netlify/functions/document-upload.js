@@ -11,13 +11,13 @@ const U = require('./_lib/uploads');
 const S = require('./_lib/sheets');
 const { zetVinkje } = require('./_lib/vinkje');
 
-const SOORT = { loonheffing: 'loon', ontslag: 'ontslag', korting: 'korting' };
+const SOORT = { loonheffing: 'loon', ontslag: 'ontslag', korting: 'korting', overplaatsing: 'overplaatsing' };
 
 exports.handler = beveiligd('document-upload', async (event, g) => {
   if (event.httpMethod !== 'POST') throw new Error('Gebruik POST');
   const p = body(event), type = String(p.type || ''), rij = parseInt(p.rij, 10) || 0;
   if (!SOORT[type]) throw new Error('Onbekend type: ' + type);
-  const lijst = type === 'loonheffing' ? await S.getLoonheffing() : type === 'ontslag' ? await S.getOntslag() : await S.getKorting();
+  const lijst = type === 'loonheffing' ? await S.getLoonheffing() : type === 'ontslag' ? await S.getOntslag() : type === 'overplaatsing' ? await S.getOverplaatsing() : await S.getKorting();
   const row = lijst.find(r => r.rij === rij); if (!row) throw new Error('Dossier niet gevonden (rij ' + rij + ').');
   const tok = { s: SOORT[type], n: row.naam };
   if (p.stap === 'info') {

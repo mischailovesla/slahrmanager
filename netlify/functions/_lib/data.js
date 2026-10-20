@@ -210,10 +210,22 @@ async function getSommatie() {
   for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), bv: cel(r, 2), type: cel(r, 3), datumAfwezig: cel(r, 4), datumAfspraak: cel(r, 5), verzenddatum: cel(r, 6), status: cel(r, 7), verwerkt: cel(r, 8), aanvullend: cel(r, 9)  })); }
   return out;
 }
+// v0.19.3: + docUrl (ondertekende brief via de uploadpagina, soort 'overplaatsing') en salaris (tijdstip → Salaris, uit hr_mails)
 async function getOverplaatsing() {
-  const data = await sheetWeergave('hr_overplaatsing'); const out = [];
+  const [data, docs, sal] = await Promise.all([sheetWeergave('hr_overplaatsing'), require('./uploads').vindUploads('overplaatsing'), salarisVerstuurd('overplaatsing')]); const out = [];
   for (let i = 1; i < data.length; i++) { const r = data[i]; if (!cel(r, 0) && !cel(r, 1)) continue; out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), adres: cel(r, 2), huidigeBV: cel(r, 3), nieuweBV: cel(r, 4), datumIndienst: cel(r, 5), ingangsdatum: cel(r, 6), functie: cel(r, 7), standplaats: cel(r, 8), taal: cel(r, 9).toUpperCase() || 'NL', status: cel(r, 10), verzenddatum: cel(r, 11), ondertekend: isJa(r[12]) ? 'Ja' : 'Nee', herinnering: cel(r, 13), aantalHer: parseInt(cel(r, 14), 10) || 0, type: cel(r, 15), briefUrl: cel(r, 16)  })); }
+  out.forEach(r => { const d = zoekDoc(docs, r.naam, r.email) || {}; r.docUrl = d.overplaatsing || ''; r.salaris = sal[r.rij] || ''; });
   return out;
+}
+// Wanneer is een dossierrij naar salaris gestuurd? (voor tabellen zonder eigen salaris-kolom) → { rij: 'dd-mm-jjjj uu:mm' }
+async function salarisVerstuurd(type) {
+  const uit = {};
+  try {
+    const { data, error } = await db().from('hr_mails').select('rij,tijdstip').eq('bron', 'salaris').eq('type', type).order('tijdstip', { ascending: true }).limit(5000);
+    if (error) throw new Error(error.message);
+    (data || []).forEach(m => { if (m.rij) uit[m.rij] = new Date(m.tijdstip).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '').replace(/\//g, '-'); });
+  } catch (e) { console.warn('salarisVerstuurd:', e.message); }
+  return uit;
 }
 async function getOnboarding() {
   const data = await sheetWeergave('hr_onboarding'); const out = [];

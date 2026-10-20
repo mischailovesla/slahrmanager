@@ -156,6 +156,8 @@
     if (!op && !confirm('Documenten van ' + naam + ' naar de salarisadministratie (' + ((cfg && cfg.salarisEmail) || 'HRM Online') + ') mailen?')) return;
     b.disabled = true; b.textContent = '…';
     var r = await api('/api/salaris-mail', { type: type, rij: rij });
+    if (!r.success && r.geenDocument && confirm(r.bericht)) r = await api('/api/salaris-mail', { type: type, rij: rij, zonderDocument: 1 });
+    else if (!r.success && r.geenDocument) { b.disabled = false; b.textContent = op ? '✓ ' + op.split(' ')[0] : '→ Salaris'; return; }
     b.disabled = false;
     if (!r.success) { b.textContent = op ? '✓ ' + op.split(' ')[0] : '→ Salaris'; if (r.upload) { openDocUpload(r.upload); return; } toast('Salaris: ' + r.bericht, 'err'); return; }
     salarisKlaar(type, rij, r);
@@ -214,7 +216,7 @@
       }
       var rg = await api('/api/document-upload', { stap: 'klaar', type: duInfo.type, rij: duInfo.rij, bestanden: klaar });
       if (!rg.success) throw new Error(rg.bericht);
-      if (duInfo.alleenUpload) { closeDocUpload(); toast(rg.bericht + (duInfo.type === 'ontslag' ? ' Dossier staat op Ondertekend.' : ' Dossier staat op Ontvangen.'), 'ok'); if (duInfo.type === 'ontslag' && window.laadOntslag) laadOntslag(); else if (window.laadLoonheffing) laadLoonheffing(); return; }
+      if (duInfo.alleenUpload) { closeDocUpload(); toast(rg.bericht + (duInfo.type === 'ontslag' || duInfo.type === 'overplaatsing' ? ' Dossier staat op Ondertekend.' : ' Dossier staat op Ontvangen.'), 'ok'); if (duInfo.type === 'overplaatsing') { opData = null; laadOverplaatsingen(); } else if (duInfo.type === 'ontslag' && window.laadOntslag) laadOntslag(); else if (window.laadLoonheffing) laadLoonheffing(); return; }
       btn.textContent = 'Naar salaris…';
       var r = await api('/api/salaris-mail', { type: duInfo.type, rij: duInfo.rij });
       if (!r.success) { if (r.upload) { duMelding('geel', 'Opgeslagen. ' + r.bericht); openDocUpload(r.upload); return; } throw new Error('Opgeslagen, maar versturen naar salaris mislukte: ' + r.bericht); }
@@ -439,7 +441,7 @@
     switch (key) {
       case 'loonheffing': return kv('Deadline', esc(r.deadline || '-')) + kv('Mail', bSent(r.status)) + kv('Formulier', bOk(r.ontvangen)) + kv('Documenten', bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst')) + kv('Herinneringen', bH(r.herinnering, r.aantalHer)) + kv('Naar salaris', bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r)) + kv('', bArch('loonheffing', r.rij, r.naam));
       case 'onboarding': return kv('Locatie', esc(r.locatie || '-')) + kv('Taal', esc(r.taal)) + kv('Welkomstmail', bSent(r.status)) + kv('Datum', esc(r.verzenddatum || '-')) + kv('', bArch('onboarding', r.rij, r.naam));
-      case 'overplaatsing': return kv('Type', '<span class="badge bo">' + esc(r.type || '-') + '</span>') + kv('Van → naar', esc(r.huidigeBV) + ' → ' + esc(r.nieuweBV)) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ja', 'Aanvinken')) + kv('Brief', bDoc(r.briefUrl, '⬇ PDF')) + kv('', opBtn(r));
+      case 'overplaatsing': return kv('Type', '<span class="badge bo">' + esc(r.type || '-') + '</span>') + kv('Van → naar', esc(r.huidigeBV) + ' → ' + esc(r.nieuweBV)) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ja', 'Aanvinken')) + kv('Brief', bDoc(r.briefUrl, '⬇ PDF') + ' ' + bDoc(r.docUrl, 'Getekend')) + kv('Naar salaris', bSal('overplaatsing', r)) + kv('', opBtn(r));
       case 'sommatie': return kv('Type', '<span class="badge bdk">' + esc(r.type) + '</span>') + kv('BV', esc(r.bv || '-')) + kv('Afwezig', esc(r.datumAfwezig || '-')) + kv('Afspraak', esc(r.datumAfspraak || '-')) + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('Status', esc(r.status || '-')) + kv('Verwerkt', bTog('som-verwerkt', r.verwerkt, r.rij, r.naam)) + (r.aanvullend ? kv('Aanvullend', esc(r.aanvullend)) : '') + kv('', smBriefBtn(r) + ' ' + bArch('sommatie', r.rij, r.naam));
       case 'brief': return kv('Categorie', '<span class="badge bdk">' + esc(r.categorie || '-') + '</span>') + kv('Onderwerp', esc(r.onderwerp || '-')) + kv('BV', esc(r.bv || '-')) + kv('PDF', r.pdf === 'Ja' ? '<span class="badge bg">Ja</span>' : '<span class="no-doc">-</span>') + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('', '<button class="btn bd bsm" data-vb-print="' + esc(r.rij) + '">Brief</button> <button class="btn bd bsm" data-vb-opnieuw="' + esc(r.rij) + '">Opnieuw</button>');
       case 'ontslag': return kv('Type', '<span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span>') + kv('BV', esc(r.bedrijf || '-')) + kv('Opzegging', esc(r.opzegging || '-')) + kv('Einddatum', esc(r.einddatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bOk(r.ondertekend, 'Ja', 'Nee')) + kv('Docs', bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief')) + kv('Naar salaris', bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r)) + kv('', omBtn(r) + ' ' + bArch('ontslag', r.rij, r.naam));
@@ -726,7 +728,7 @@
     opData = d.rijen; opWinkels = d.winkels;
     g('op-count').textContent = opData.length + ' dossiers';
     g('op-body').innerHTML = opData.map(function (r) {
-      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.standplaats || '-') + '</td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td><div class="vb-knoppen">' + opBtn(r) + bDoc(r.briefUrl, '⬇ Brief') + dosBtn(r.naam, r.email) + '</div></td></tr>';
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.standplaats || '-') + '</td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td><div class="vb-knoppen">' + opBtn(r) + bDoc(r.briefUrl, '⬇ Brief') + bDoc(r.docUrl, 'Getekend') + bSal('overplaatsing', r) + bUp('overplaatsing', r, !!r.docUrl) + dosBtn(r.naam, r.email) + '</div></td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen overplaatsingen</td></tr>';
   };
   document.addEventListener('click', function (e) {

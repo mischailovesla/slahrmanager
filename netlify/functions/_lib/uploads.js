@@ -20,6 +20,7 @@ const SOORTEN = {
   loon:    { label: 'Loonheffingsverklaring en indiensttredingsformulier', labelEN: 'Payroll tax form and onboarding form', bestanden: [{ key: 'loon', label: 'Loonheffingsverklaring (model opgaaf gegevens voor de loonheffingen)', labelEN: 'Payroll tax statement (model opgaaf gegevens voor de loonheffingen)', verplicht: true }, { key: 'indienst', label: 'Indiensttredingsformulier', labelEN: 'Onboarding form', verplicht: false }] },
   ontslag: { label: 'Ondertekende ontslagbevestiging', labelEN: 'Signed confirmation', bestanden: [{ key: 'ontslag', label: 'Ondertekend document', labelEN: 'Signed document', verplicht: true }] },
   oproep:  { label: 'Ondertekend aanbod vaste arbeidsomvang', labelEN: 'Signed offer of fixed working hours', bestanden: [{ key: 'oproep', label: 'Ondertekende brief (akkoord of niet akkoord aangekruist)', labelEN: 'Signed letter (accept or decline ticked)', verplicht: true }] },
+  overplaatsing: { label: 'Ondertekende overplaatsing / standplaatswijziging', labelEN: 'Signed transfer / change of workplace', bestanden: [{ key: 'overplaatsing', label: 'Ondertekende brief', labelEN: 'Signed letter', verplicht: true }] },
   korting: { label: 'Formulier loonheffingskorting', labelEN: 'Payroll tax credit form', bestanden: [{ key: 'korting', label: 'Ondertekend formulier loonheffingskorting', labelEN: 'Signed payroll tax credit form', verplicht: true }] }
 };
 const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -82,7 +83,7 @@ async function registreer(tok, bestanden, meta) {
   if (!lijst.length) throw new Error('Geen bestanden ontvangen.');
   if (!(meta && meta.handmatig)) for (const spec of soort.bestanden) if (spec.verplicht && !lijst.some(x => x.key === spec.key)) throw new Error('"' + spec.label + '" ontbreekt.');
   const { data, error } = await admin().from('hr_uploads').insert({ soort: tok.s, naam: tok.n, email: (meta && meta.email) || null, rij: (meta && meta.rij) || null, bestanden: lijst, ip: (meta && meta.ip) || null }).select('id').single();
-  if (error) throw new Error('hr_uploads: ' + error.message);
+  if (error) throw new Error('hr_uploads: ' + error.message + (/soort_check/.test(error.message) ? ' (migratie 0013 nog draaien in Supabase)' : ''));
   return { id: data.id, bestanden: lijst, refs: Object.fromEntries(lijst.map(x => [x.key, 'sb:' + data.id + ':' + x.key])) };
 }
 // Alle uploads van een soort → { byNaam: {norm: {key: ref}}, byEmail }, nieuwste wint
