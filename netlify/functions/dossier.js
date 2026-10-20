@@ -68,8 +68,12 @@ async function laad(qs) {
     } catch (e) { verzuim = { fout: e.message }; }
     try {
       const KT = require('./_lib/contracten'); const per = await SB.getContractenPerUser(false);
-      const k = KT.bepaalKeten(per[String(persoon.id)] || [], new Date());
-      if (k) keten = { onbepaald: k.onbepaald, aantal: k.aantal, maanden: k.maanden, vol: k.vol, reden: k.reden || '', contracten: (per[String(persoon.id)] || []).map(c => ({ start: c.start.split('-').reverse().join('-'), eind: c.eind ? c.eind.split('-').reverse().join('-') : '', type: c.type, functie: c.functie })) };
+      const corr = ((await require('./_lib/instellingen').lees('keten_correcties', {})) || {})[String(persoon.id)] || null;
+      const k = KT.bepaalKeten(per[String(persoon.id)] || [], new Date(), corr);
+      const nl = d => d ? d.split('-').reverse().join('-') : '';
+      if (k) keten = { mid: String(persoon.id), onbepaald: k.onbepaald, aantal: k.aantal, maanden: k.maanden, vol: k.vol, reden: k.reden || '', gecorrigeerd: !!k.gecorrigeerd, correctie: k.gecorrigeerd ? corr : null, huidigStart: k.huidig ? k.huidig.start : '', telling: (k.keten || []).length,
+        overeenkomsten: k.overeenkomsten.map(o => ({ start: nl(o.start), eind: nl(o.eind), type: o.type, functie: o.functie, inKeten: (k.keten || []).includes(o), huidig: o === k.huidig, knips: o.delen.length - 1, delen: o.delen.map(d => nl(d.start) + (d.eind ? ' – ' + nl(d.eind) : ' – heden')) })),
+        contracten: (per[String(persoon.id)] || []).map(c => ({ start: nl(c.start), eind: nl(c.eind), type: c.type, functie: c.functie })) };
     } catch (e) { keten = null; }
   }
   // Fase 3a: check-ins (dag 30/60) — op medewerker-id, anders op naam

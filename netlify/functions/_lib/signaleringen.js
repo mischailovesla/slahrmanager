@@ -98,6 +98,8 @@ async function ontslagHerinneringen(droog) {
     const sindsLaatste = dagenSinds(r.herinnering, vandaag);
     if (r.herinnering && sindsLaatste !== null && sindsLaatste < C.COOLDOWN_DAGEN) continue;
     const bv = r.bedrijf || C.BEDRIJFSNAAM;
+    // na het maximum geen automatische mail meer (voorheen eindeloos: tot 53 herinneringen) — wel een (rode) taak voor HR
+    if ((r.aantalHer || 0) >= C.ONTSLAG_MAX_HERINNERINGEN) { rap.gevonden.push({ naam: r.naam, email: r.email, verzonden: r.verzenddatum, rij: r.rij, eerder: r.aantalHer, type: r.type, gestopt: true }); continue; }
     rap.gevonden.push({ naam: r.naam, email: r.email, verzonden: r.verzenddatum, rij: r.rij, eerder: r.aantalHer, type: r.type });
     await mailOfDroog(rap, {
       to: r.email, subject: 'Herinnering: ondertekend HR-document nog niet ontvangen',
@@ -414,15 +416,17 @@ function blokMail(kleur, kop, intro, items, tip, voet) {
 // ---- 12. Contractketen + proeftijd (dagelijks) ----
 async function contractketen(droog) {
   const rap = { naam: 'contractketen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
-  const [med, per] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true)]);
-  const lijst = KT.contractSignalen(med, per, vandaag0());
+  const [med, per, corr] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true), require('./instellingen').lees('keten_correcties', {})]);
+  const lijst = KT.contractSignalen(med, per, vandaag0(), corr || {});
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
-  const items = lijst.map(x => x.soort === 'keten'
+  const items = lijst.map(x => x.soort === 'vast'
+    ? { kleur: '#c0392b', titel: x.naam, sub: x.winkel + ' · contract eindigt ' + x.einddatum + ', verlengd t/m ' + x.verlengdTot, html: '<strong style="color:#c0392b">Van rechtswege vast?</strong> — ' + esc(x.reden) + ' (keten: ' + x.aantal + ' contracten, ' + x.maanden + ' maanden). Het vervolgcontract geldt dan als <strong>onbepaalde tijd</strong>: pas het contract aan (en zet het in Shiftbase op onbepaald) of corrigeer het aantal in het dossier als de telling niet klopt.' }
+    : x.soort === 'keten'
     ? { kleur: x.vol ? '#c0392b' : '#e8824a', titel: x.naam, sub: x.winkel + ' · contract eindigt ' + x.einddatum + ' (over ' + x.dagenTotEinde + ' dagen)', html: (x.vol ? '<strong style="color:#c0392b">Keten vol</strong> — ' : '<strong>Let op</strong> — ') + esc(x.reden) + '. Keten: ' + x.aantal + ' contract(en), ' + x.maanden + ' maanden.' + (x.vol ? ' Verlengen kan alleen als <strong>onbepaalde tijd</strong>; anders aanzeggen (niet verlengen).' : ' Het volgende contract is het laatste tijdelijke; daarna wordt het vast.') }
     : { kleur: '#2980b9', titel: x.naam, sub: x.winkel + ' · in dienst ' + x.start, html: 'Proeftijd (indien schriftelijk overeengekomen) eindigt op <strong>' + esc(x.proeftijdEinde) + '</strong>' + (x.dagenTotEinde >= 0 ? ' — over ' + x.dagenTotEinde + ' dagen' : ' — <strong style="color:#c0392b">verstreken</strong>') + '. Plan het proeftijdgesprek en beslis vóór die datum; proeftijdontslag ná de proeftijd is niet meer mogelijk.' });
-  const plain = 'Hallo,\n\nContractsignalen:\n' + lijst.map(x => '- ' + x.naam + ' (' + x.winkel + '): ' + (x.soort === 'keten' ? 'contract eindigt ' + x.einddatum + ' — ' + x.reden : 'proeftijd eindigt ' + x.proeftijdEinde)).join('\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
-  await mailOfDroog(rap, { to: ontvangers('contractketen'), subject: 'Contracten: ' + lijst.filter(x => x.soort === 'keten').length + ' ketensignaal/-signalen, ' + lijst.filter(x => x.soort === 'proeftijd').length + ' proeftijd(en)', text: plain, html: blokMail('#e8824a', 'HR &middot; Contractketen &amp; proeftijd', 'Deze contracten vragen een beslissing (ketenregeling art. 7:668a BW: na ' + C.KETEN_MAX_CONTRACTEN + ' tijdelijke contracten of ' + C.KETEN_MAX_MAANDEN + ' maanden wordt het volgende contract onbepaalde tijd; proeftijd art. 7:652 BW):', items, 'Verlengen: zet het nieuwe contract in Shiftbase. Niet verlengen: Uitstroom &rarr; Ontslag &amp; aanzegging &rarr; Aanzegging. CAO-afwijkingen: pas de grenzen aan in config.js (KETEN_*).', 'Dagelijkse contractcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
+  const plain = 'Hallo,\n\nContractsignalen:\n' + lijst.map(x => '- ' + x.naam + ' (' + x.winkel + '): ' + (x.soort === 'vast' ? 'mogelijk van rechtswege vast: ' + x.reden : x.soort === 'keten' ? 'contract eindigt ' + x.einddatum + ' — ' + x.reden : 'proeftijd eindigt ' + x.proeftijdEinde)).join('\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
+  await mailOfDroog(rap, { to: ontvangers('contractketen'), subject: 'Contracten: ' + lijst.filter(x => x.soort === 'keten' || x.soort === 'vast').length + ' ketensignaal/-signalen, ' + lijst.filter(x => x.soort === 'proeftijd').length + ' proeftijd(en)', text: plain, html: blokMail('#e8824a', 'HR &middot; Contractketen &amp; proeftijd', 'Deze contracten vragen een beslissing (ketenregeling art. 7:668a BW: na ' + C.KETEN_MAX_CONTRACTEN + ' tijdelijke contracten of ' + C.KETEN_MAX_MAANDEN + ' maanden wordt het volgende contract onbepaalde tijd; proeftijd art. 7:652 BW):', items, 'Verlengen: zet het nieuwe contract in Shiftbase. Niet verlengen: Uitstroom &rarr; Ontslag &amp; aanzegging &rarr; Aanzegging. CAO-afwijkingen: pas de grenzen aan in config.js (KETEN_*).', 'Dagelijkse contractcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
   return rap;
 }
 

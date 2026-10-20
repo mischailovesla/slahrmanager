@@ -350,6 +350,15 @@
     inp.onblur = function () { setTimeout(function () { res.classList.remove('open'); }, 180); };
     g('dos-ververs').onclick = function () { laadMedewerkers(true); };
   }
+  window.ketenCorrigeer = async function (mid, huidigStart, aantal, gecorrigeerd) {
+    var naam = window._dosNaam || (laatsteDossier ? laatsteDossier[0] : '');
+    var v = prompt('Hoeveel tijdelijke arbeidsovereenkomsten telt de huidige keten echt, inclusief het huidige contract?\n(Loon- of urenwijzigingen binnen een contract tellen niet mee.)' + (gecorrigeerd ? '\nLaat leeg om de correctie weg te halen.' : ''), String(aantal));
+    if (v === null) return;
+    var notitie = String(v).trim() ? (prompt('Korte toelichting (bijv. "2 getekende contracten in personeelsdossier")', '') || '') : '';
+    var r = await api('/api/keten-correctie', { mid: mid, naam: naam, aantal: String(v).trim(), huidigStart: huidigStart, notitie: notitie });
+    toast(r.success ? r.bericht : 'Correctie: ' + r.bericht, r.success ? 'ok' : 'err');
+    if (r.success && laatsteDossier) openDossier(laatsteDossier[0], laatsteDossier[1], laatsteDossier[2]);
+  };
   window.openDossier = async function (naam, email, id) {
     laatsteDossier = [naam, email, id];
     swT('dossier', 'Medewerkers');
@@ -376,7 +385,10 @@
     }
     if (d.keten) {
       h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Contractketen (art. 7:668a BW)</label>';
-      h += '<div class="kv">' + (d.keten.onbepaald ? '<div><b>Onbepaalde tijd</b></div>' : '<div>' + d.keten.aantal + ' tijdelijk(e) contract(en) · ' + d.keten.maanden + ' maanden' + (d.keten.vol ? ' · <b style="color:#c0392b">keten vol: volgende = vast</b>' : d.keten.aantal >= 2 ? ' · <b>volgende is het laatste tijdelijke</b>' : '') + '</div>') + d.keten.contracten.slice(-4).map(function (c) { return '<div class="lay-sub">' + esc(c.start) + (c.eind ? ' – ' + esc(c.eind) : ' – heden') + ' · ' + esc(c.type || '-') + (c.functie ? ' · ' + esc(c.functie) : '') + '</div>'; }).join('') + '</div>';
+      var kt = d.keten; window._dosNaam = d.naam || (d.persoon && d.persoon.naam) || '';
+      h += '<div class="kv">' + (kt.onbepaald ? '<div><b>Onbepaalde tijd</b></div>' : '<div>' + kt.aantal + ' tijdelijk(e) contract(en) · ' + kt.maanden + ' maanden' + (kt.vol ? ' · <b style="color:#c0392b">keten vol: volgende = vast</b>' : kt.aantal >= 2 ? ' · <b>volgende is het laatste tijdelijke</b>' : '') + (kt.gecorrigeerd ? ' · <span class="badge bo" title="' + esc((kt.correctie.notitie || '') + ' — ' + (kt.correctie.door || '')) + '">aantal door HR vastgelegd (telling Shiftbase: ' + kt.telling + ')</span>' : '') + '</div>')
+        + (kt.overeenkomsten || []).slice(-5).map(function (o) { return '<div class="lay-sub"' + (o.knips ? ' title="Shiftbase-records: ' + esc(o.delen.join(' | ')) + '"' : '') + '>' + (o.huidig ? '<b>' : '') + esc(o.start) + (o.eind ? ' – ' + esc(o.eind) : ' – heden') + ' · ' + esc(o.type || '-') + (o.huidig ? ' (huidig)</b>' : '') + (o.knips ? ' · <span style="color:#888078">' + o.knips + ' loon-/urenwijziging(en) in Shiftbase, telt als één contract</span>' : '') + '</div>'; }).join('')
+        + (!kt.onbepaald && kt.mid ? '<div style="margin-top:6px"><button class="btn bd bsm" onclick="ketenCorrigeer(\'' + esc(kt.mid) + '\', \'' + esc(kt.huidigStart) + '\', ' + kt.aantal + ', ' + (kt.gecorrigeerd ? 1 : 0) + ')">Aantal contracten corrigeren</button></div>' : '') + '</div>';
     }
     // Fase 3a: check-ins dag 30/60
     if (d.checkins && d.checkins.length) {

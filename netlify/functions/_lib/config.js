@@ -24,6 +24,8 @@ module.exports = {
 
   AANZEG_VENSTER_DAGEN: 42,
   COOLDOWN_DAGEN: 3,
+  // Ontslag/aanzegging: na zoveel automatische herinneringen stopt de mail; de taak blijft rood staan (bellen, of zelf uploaden).
+  ONTSLAG_MAX_HERINNERINGEN: 3,
 
   // Signaleringen (uit Shiftbase.gs v9.4) — stap 4
   SIGNALERING_ONTVANGERS: {
