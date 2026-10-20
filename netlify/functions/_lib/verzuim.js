@@ -1,6 +1,7 @@
 // ============================================================
 // Fase 2b: verzuim uit Shiftbase-afwezigheden (type "Ziek" via VL_TYPE_MAP) en de Wet verbetering poortwachter.
 // - Ziekteperiodes per medewerker; periodes die < VERZUIM_SAMENTEL_DAGEN (28) na elkaar beginnen tellen als één (4-wekenregel).
+//   Gewerkte dagen tussen samengetelde meldingen tellen niet als ziektedag (dagen = som van de losse delen).
 // - Mijlpalen (dag 42/56/294/364 vanaf de 1e ziektedag) voor lopende periodes.
 // - Frequent verzuim: ≥ VERZUIM_FREQUENT_AANTAL losse ziekmeldingen in 12 maanden.
 // Pure functies; de check in signaleringen.js haalt data op en mailt. Niets hiervan is een diagnose:
@@ -31,14 +32,30 @@ function ziekteperiodes(absences, vandaag) {
   }
   const uit = {};
   for (const uid of Object.keys(per)) {
+    // 1) overlappende/aansluitende meldingen samenvoegen tot losse ziektedelen
     const lijst = per[uid].sort((x, y) => x.s - y.s);
-    const periodes = [];
+    const delen = [];
     for (const z of lijst) {
-      const laatste = periodes[periodes.length - 1];
-      if (laatste && dagen(laatste.e, z.s) <= C.VERZUIM_SAMENTEL_DAGEN) { if (z.e > laatste.e) laatste.e = z.e; laatste.meldingen++; }
-      else periodes.push({ s: z.s, e: z.e, meldingen: 1 });
+      const l = delen[delen.length - 1];
+      if (l && dagen(l.e, z.s) <= 1) { if (z.e > l.e) l.e = z.e; l.meldingen++; }
+      else delen.push({ s: z.s, e: z.e, meldingen: 1 });
     }
-    uit[uid] = periodes.map(p => ({ start: iso(p.s), eind: iso(p.e), dagen: dagen(p.s, p.e) + 1, lopend: p.e >= vandaag, meldingen: p.meldingen, dagVandaag: dagen(p.s, vandaag) + 1 }));
+    // 2) 4-wekenregel: delen < 28 dagen na elkaar vormen één ziektegeval, maar de gewerkte dagen
+    //    ertussen tellen NIET als ziektedag (art. 7:629 lid 10 BW: perioden worden samengeteld).
+    const periodes = [];
+    for (const d of delen) {
+      const laatste = periodes[periodes.length - 1];
+      if (laatste && dagen(laatste.e, d.s) <= C.VERZUIM_SAMENTEL_DAGEN) { laatste.delen.push(d); if (d.e > laatste.e) laatste.e = d.e; laatste.meldingen += d.meldingen; }
+      else periodes.push({ s: d.s, e: d.e, meldingen: d.meldingen, delen: [d] });
+    }
+    const ziekeDagen = (d, tot) => { const e = tot && d.e > tot ? tot : d.e; return e < d.s ? 0 : dagen(d.s, e) + 1; };
+    uit[uid] = periodes.map(p => ({
+      start: iso(p.s), eind: iso(p.e), lopend: p.e >= vandaag, meldingen: p.meldingen,
+      dagen: p.delen.reduce((n, d) => n + ziekeDagen(d), 0),                 // werkelijke ziektedagen
+      kalenderdagen: dagen(p.s, p.e) + 1,                                     // eerste t/m laatste ziektedag
+      dagVandaag: p.delen.reduce((n, d) => n + ziekeDagen(d, vandaag), 0),   // ziektedag-teller (Poortwachter)
+      delen: p.delen.map(d => ({ start: iso(d.s), eind: iso(d.e), dagen: ziekeDagen(d) }))
+    }));
   }
   return uit;
 }
@@ -71,7 +88,7 @@ function verzuimSignalen(med, periodesPerUser, vandaag) {
 
 // Dossier: periodes van één medewerker in leesbare vorm
 function dossierVerzuim(periodes) {
-  return (periodes || []).slice().reverse().map(p => ({ start: ddmm(p.start), eind: p.lopend ? '' : ddmm(p.eind), dagen: p.dagen, lopend: p.lopend, meldingen: p.meldingen, dagVandaag: p.lopend ? p.dagVandaag : null, volgendeMijlpaal: p.lopend ? (C.VERZUIM_MIJLPALEN.find(mp => mp.dag >= p.dagVandaag) || null) : null }));
+  return (periodes || []).slice().reverse().map(p => ({ start: ddmm(p.start), eind: p.lopend ? '' : ddmm(p.eind), dagen: p.dagen, lopend: p.lopend, meldingen: p.meldingen, dagVandaag: p.lopend ? p.dagVandaag : null, kalenderdagen: p.kalenderdagen, delen: (p.delen || []).map(d => ({ start: ddmm(d.start), eind: ddmm(d.eind), dagen: d.dagen })), volgendeMijlpaal: p.lopend ? (C.VERZUIM_MIJLPALEN.find(mp => mp.dag >= p.dagVandaag) || null) : null }));
 }
 
 module.exports = { isZiek, ziekteperiodes, verzuimSignalen, dossierVerzuim };

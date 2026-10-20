@@ -72,9 +72,11 @@ function bereken(inp) {
     const dd = dagenTussen(a, b) + 1;
     bij(m.winkel, x => { x.dienstDagen += dd; x.mensen++; });
     for (const p of periodes[String(m.id)] || []) {
-      const ps = dag(p.start), pe = dag(p.eind) || ps; if (!ps) continue;
-      const ca = ps > a ? ps : a, cb = pe < b ? pe : b;
-      if (cb >= ca) bij(m.winkel, x => { x.ziekDagen += dagenTussen(ca, cb) + 1; });
+      for (const d of p.delen || [p]) { // alleen echte ziektedagen, niet de gewerkte dagen tussen samengetelde meldingen
+        const ps = dag(d.start), pe = dag(d.eind) || ps; if (!ps) continue;
+        const ca = ps > a ? ps : a, cb = pe < b ? pe : b;
+        if (cb >= ca) bij(m.winkel, x => { x.ziekDagen += dagenTussen(ca, cb) + 1; });
+      }
       if (p.start >= vanIso && p.start <= totIso) { const mi = maandIdx(maanden, p.start); bij(m.winkel, x => { x.meldingen += p.meldingen; if (mi > -1) x.meldMaand[mi] += p.meldingen; }); }
       if (p.lopend && (!e || e >= vandaag)) bij(m.winkel, x => { x.lopend++; });
     }
