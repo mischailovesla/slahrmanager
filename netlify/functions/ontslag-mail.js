@@ -55,7 +55,7 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
   // Exit-survey (fase 2f): persoonlijke link in mail + brief bij ontslag/aanzegging/proeftijd (niet bij herinnering)
   const X = require('./_lib/exit');
   const exitAan = tpl.type !== 'herinnering' && await X.actief(); // gepauzeerd (Uitstroom → Exit-surveys) = alinea/blok/zin weglaten
-  const exitLink = exitAan ? X.exitLink(naam || 'medewerker', tpl.taal, tpl.type) : '';
+  const exitLink = exitAan ? X.exitLink(naam || 'medewerker', tpl.taal, tpl.type + (tpl.variant ? '-' + tpl.variant : '')) : '';
   const metExit = s => exitAan ? String(s || '').split('{{EXITLINK}}').join(exitLink) : T.zonderExit(s);
   const text = metExit(T.personaliseerUploadLinks(String(p.body || tpl.body(naam, bv)), naam));
   const html = metExit(T.ontslagMailHtml(tpl, naam, bv, einddatum));

@@ -1,6 +1,8 @@
 // ============================================================
 // Gedeelde logica voor vragenlijsten die HR zelf beheert (exit-survey, check-in 30/60).
-// Vorm van een vraag: { key, type: keuze|schaal|nps|tekst, nl, en, opties?: [[key, nl, en, alarm?], ...] }
+// Vorm van een vraag: { key, type: keuze|schaal|nps|tekst, nl, en, opties?: [[key, nl, en, alarm?], ...],
+//   toelichting?: true  (optioneel tekstveld onder de vraag; antwoord onder key + '__toelichting'),
+//   alleenEigenOntslag?: true (exit-survey: alleen tonen als de medewerker zelf ontslag nam — niet na een aanzegging/niet verlengen) }
 // - normaliseer(lijst): controleert en normaliseert wat de editor in het dashboard opstuurt
 // - vertaal(lijst, taal): vragen zoals de publieke pagina ze toont
 // - valideer(antwoorden, lijst): controleert ingevulde antwoorden → { uit, nps, opmerking, schalen, alarmen }
@@ -21,6 +23,8 @@ function normaliseer(lijst) {
     if (keys.has(key)) throw new Error('Vraag ' + (i + 1) + ': sleutel "' + key + '" komt dubbel voor.');
     keys.add(key);
     const q = { key, type, nl, en };
+    if (type !== 'tekst' && (v.toelichting === true || v.toelichting === 'true')) q.toelichting = true;
+    if (v.alleenEigenOntslag === true || v.alleenEigenOntslag === 'true') q.alleenEigenOntslag = true;
     if (type === 'keuze') {
       const opties = (v.opties || [])
         .map(o => Array.isArray(o) ? o : [o.key, o.nl, o.en, o.alarm])
@@ -35,13 +39,16 @@ function normaliseer(lijst) {
   });
   return uit;
 }
-function vertaal(lijst, taal) {
+// ctx.eigenOntslag: true = zelf opgezegd, false = aanzegging/werkgever (vragen met alleenEigenOntslag vallen weg), null = onbekend (de pagina beslist op basis van de vertrekreden)
+const zichtbaar = (lijst, ctx) => (lijst || []).filter(v => !(v.alleenEigenOntslag && ctx && ctx.eigenOntslag === false));
+function vertaal(lijst, taal, ctx) {
   const en = String(taal || '').toUpperCase() === 'EN';
-  return lijst.map(v => ({ key: v.key, type: v.type, vraag: en ? v.en : v.nl, opties: v.opties ? v.opties.map(o => ({ key: o[0], label: en ? o[2] : o[1] })) : undefined }));
+  return zichtbaar(lijst, ctx).map(v => ({ key: v.key, type: v.type, vraag: en ? v.en : v.nl, opties: v.opties ? v.opties.map(o => ({ key: o[0], label: en ? o[2] : o[1] })) : undefined, toelichting: v.toelichting || undefined, alleenEigenOntslag: v.alleenEigenOntslag || undefined }));
 }
-function valideer(antwoorden, lijst) {
-  const uit = {}, schalen = [], alarmen = []; let nps = null, opmerking = '';
-  for (const v of lijst) {
+function valideer(antwoorden, lijst, ctx) {
+  const uit = {}, schalen = [], alarmen = []; let nps = null, opmerking = '', toel = '';
+  for (const v of zichtbaar(lijst, ctx)) {
+    if (v.toelichting && antwoorden && antwoorden[v.key + '__toelichting']) { const t = String(antwoorden[v.key + '__toelichting']).trim().slice(0, 1000); if (t) { uit[v.key + '__toelichting'] = t; if (!toel) toel = t; } }
     const a = antwoorden ? antwoorden[v.key] : undefined;
     if (a === undefined || a === null || a === '') continue;
     if (v.type === 'schaal') { const n = +a; if (!(n >= 1 && n <= 5)) throw new Error('Ongeldig antwoord bij ' + v.key); uit[v.key] = n; schalen.push({ key: v.key, vraag: v.nl, n }); }
@@ -50,7 +57,7 @@ function valideer(antwoorden, lijst) {
     else { const t = String(a).trim().slice(0, 2000); uit[v.key] = t; if (!opmerking) opmerking = t; }
   }
   if (!Object.keys(uit).length) throw new Error('Vul minimaal één vraag in.');
-  return { uit, nps, opmerking, schalen, alarmen };
+  return { uit, nps, opmerking: opmerking || toel, schalen, alarmen };
 }
 // Labels per antwoord (voor tabellen en exports): { vraagKey: optielabel }
 function labels(lijst, antwoorden) {
@@ -58,4 +65,4 @@ function labels(lijst, antwoorden) {
   for (const v of lijst || []) if (v.opties && antwoorden && antwoorden[v.key] != null) { const o = v.opties.find(x => x[0] === antwoorden[v.key]); if (o) uit[v.key] = o[1]; }
   return uit;
 }
-module.exports = { TYPES, normaliseer, vertaal, valideer, labels };
+module.exports = { TYPES, normaliseer, vertaal, valideer, labels, zichtbaar };

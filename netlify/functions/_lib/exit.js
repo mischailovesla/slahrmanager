@@ -37,10 +37,18 @@ function leesExitToken(t) {
   if ((Date.now() - verstuurd.getTime()) / 864e5 > C.EXIT_GELDIG_DAGEN) throw new Error(d.t === 'EN' ? 'This link has expired.' : 'Deze link is verlopen.');
   return d;
 }
-async function vragen(taal) { return V.vertaal(await vragenConfig(), taal); }
-const valideer = (antwoorden, lijst) => V.valideer(antwoorden, lijst);
+// Nam de medewerker zelf ontslag? Uit de bron in de link: 'ontslag' / 'proeftijd-wn' = ja; 'aanzegging' / 'proeftijd-wg' = nee;
+// handmatig/voorbeeld/oude proeftijd-links = onbekend (dan beslist de pagina op de gekozen vertrekreden).
+function eigenOntslag(bron) {
+  const b = String(bron || '');
+  if (b === 'ontslag' || b === 'proeftijd-wn') return true;
+  if (b === 'aanzegging' || b === 'proeftijd-wg') return false;
+  return null;
+}
+async function vragen(taal, bron) { return V.vertaal(await vragenConfig(), taal, { eigenOntslag: eigenOntslag(bron) }); }
+const valideer = (antwoorden, lijst, ctx) => V.valideer(antwoorden, lijst, ctx);
 async function opslaan(tok, antwoorden, meta) {
-  const { uit, nps, opmerking } = valideer(antwoorden, await vragenConfig());
+  const { uit, nps, opmerking } = valideer(antwoorden, await vragenConfig(), { eigenOntslag: eigenOntslag(tok.b) });
   const anoniem = !!(meta && meta.anoniem);
   const db = admin();
   if (!anoniem) {
@@ -75,4 +83,4 @@ async function samenvatting(vanIso, totIso, uitstroom) {
     opmerkingen: rijen.filter(r => r.opmerking).slice(0, 15).map(r => ({ op: String(r.ingevuld_op).slice(0, 10).split('-').reverse().join('-'), winkel: r.winkel, naam: r.anoniem ? '' : r.naam, tekst: r.opmerking, nps: r.nps, reden: redenKey ? (r.antwoorden && r.antwoorden[redenKey]) : '' }))
   };
 }
-module.exports = { TYPES, actief, vragenConfig, normaliseerVragen, exitLink, leesExitToken, vragen, valideer, opslaan, samenvatting };
+module.exports = { TYPES, actief, vragenConfig, normaliseerVragen, exitLink, leesExitToken, vragen, valideer, opslaan, samenvatting, eigenOntslag };

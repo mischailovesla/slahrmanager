@@ -96,8 +96,8 @@ module.exports = {
     { key: 'onboarding', type: 'schaal', nl: 'Mijn inwerkperiode en trainingen (SLA Academy) hebben me goed voorbereid.', en: 'My onboarding and training (SLA Academy) prepared me well.' },
     { key: 'rooster', type: 'schaal', nl: 'Het rooster en de uren pasten bij mijn situatie.', en: 'The schedule and hours fitted my situation.' },
     { key: 'nps', type: 'nps', nl: 'Hoe waarschijnlijk is het dat je SLA als werkgever aanbeveelt aan een vriend(in)?', en: 'How likely are you to recommend SLA as an employer to a friend?' },
-    { key: 'terug', type: 'keuze', nl: 'Zou je in de toekomst weer bij SLA willen werken?', en: 'Would you consider working at SLA again in the future?', opties: [['ja', 'Ja', 'Yes'], ['misschien', 'Misschien', 'Maybe'], ['nee', 'Nee', 'No']] },
-    { key: 'opmerking', type: 'tekst', nl: 'Wat had SLA anders kunnen doen om je te behouden, of wat wil je ons nog meegeven?', en: 'What could SLA have done differently to keep you, or what else would you like to tell us?' }
+    { key: 'terug', type: 'keuze', nl: 'Zou je in de toekomst weer bij SLA willen werken?', en: 'Would you consider working at SLA again in the future?', opties: [['ja', 'Ja', 'Yes'], ['misschien', 'Misschien', 'Maybe'], ['nee', 'Nee', 'No']], toelichting: true },
+    { key: 'opmerking', type: 'tekst', nl: 'Wat had SLA anders kunnen doen om je te behouden, of wat wil je ons nog meegeven?', en: 'What could SLA have done differently to keep you, or what else would you like to tell us?', alleenEigenOntslag: true }
   ],
   EXIT_GELDIG_DAGEN: 90,
   // Fase 3a: check-in na 30 en 60 dagen in dienst (vroege uitstroom voor zijn). Vragen + aan/uit in hr_instellingen
