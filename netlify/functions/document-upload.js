@@ -4,6 +4,7 @@
 // en uploadt het hier; daarna gaat → Salaris gewoon en staat het in de eigen opslag (bucket hr-documenten).
 //   { stap:'start', type:'loonheffing'|'ontslag'|'korting', rij, key, naam, mime, bytes } -> { pad, token, bucket }
 //   { stap:'klaar', type, rij, bestanden:[{key,pad,naam_orig,bytes,mime}] }               -> { id, refs }
+//   { stap:'info', type, rij }  -> { naam, bestanden:[{key,label}], link }  (persoonlijke uploadlink om zelf te sturen via Gmail/WhatsApp)
 // ============================================================
 const { beveiligd, body, logActie } = require('./_lib/auth');
 const U = require('./_lib/uploads');
@@ -19,6 +20,10 @@ exports.handler = beveiligd('document-upload', async (event, g) => {
   const lijst = type === 'loonheffing' ? await S.getLoonheffing() : type === 'ontslag' ? await S.getOntslag() : await S.getKorting();
   const row = lijst.find(r => r.rij === rij); if (!row) throw new Error('Dossier niet gevonden (rij ' + rij + ').');
   const tok = { s: SOORT[type], n: row.naam };
+  if (p.stap === 'info') {
+    await logActie({ door: g.email, actie: 'uploadlink', bron: type, rij, naam: row.naam, details: 'Persoonlijke uploadlink opgevraagd' });
+    return { naam: row.naam, email: row.email || '', bestanden: U.SOORTEN[tok.s].bestanden.map(b => ({ key: b.key, label: b.label })), link: U.uploadLink(tok.s, row.naam) };
+  }
   if (p.stap === 'start') return await U.startUpload(tok, p.key, { naam: p.naam, mime: p.mime, bytes: p.bytes });
   if (p.stap !== 'klaar') throw new Error('Onbekende stap');
   // e-mail van het dossier meegeven: anders wint een oude Drive-link die op e-mail gekoppeld is

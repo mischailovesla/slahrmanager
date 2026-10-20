@@ -64,6 +64,7 @@
     if (tab === 'exit' && !exData) laadExit(12);
     if (tab === 'checkin' && !ciData) laadCheckin(6);
     if (tab === 'scorekaart' && !skData) laadScorekaart(6);
+    if (tab === 'scorekaart') mrVulMaanden();
     if (tab === 'gesprekken' && !gsData) laadGesprekken(90);
     if (tab === 'training' && !trData) laadTraining(false);
     if (tab === 'toegang' && !tgData) laadToegang();
@@ -159,6 +160,24 @@
     if (!r.success) { b.textContent = op ? '✓ ' + op.split(' ')[0] : '→ Salaris'; if (r.upload) { openDocUpload(r.upload); return; } toast('Salaris: ' + r.bericht, 'err'); return; }
     salarisKlaar(type, rij, r);
   });
+  // Document ophalen zonder (werkende) mail: persoonlijke uploadlink kopiëren of HR uploadt het zelf
+  function bUp(type, r, heeftDoc) {
+    return '<button class="btn bd bsm" data-up-link="' + type + '" data-rij="' + r.rij + '" title="Kopieer de persoonlijke uploadlink om zelf te sturen (Gmail, WhatsApp)">🔗 Uploadlink</button> '
+      + '<button class="btn bd bsm" data-up-zelf="' + type + '" data-rij="' + r.rij + '" title="' + (heeftDoc ? 'Document vervangen' : 'Document dat je per mail/WhatsApp kreeg zelf uploaden') + '">⬆ Zelf uploaden</button> ';
+  }
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && (e.target.closest('button[data-up-link]') || e.target.closest('button[data-up-zelf]')); if (!b || b.disabled) return;
+    var isLink = b.hasAttribute('data-up-link'), type = b.getAttribute(isLink ? 'data-up-link' : 'data-up-zelf'), rij = parseInt(b.getAttribute('data-rij'), 10);
+    b.disabled = true; var r = await api('/api/document-upload', { stap: 'info', type: type, rij: rij }); b.disabled = false;
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    if (isLink) {
+      var tekst = 'Hoi ' + r.naam.split(' ')[0] + ',\n\nVia deze persoonlijke link kun je het ondertekende document uploaden (PDF of foto):\n' + r.link + '\n\nYou can upload the signed document (PDF or photo) via this personal link.\n\nGroet / Kind regards,\nSLA HR';
+      try { await navigator.clipboard.writeText(tekst); toast('Uploadlink + korte tekst gekopieerd voor ' + r.naam + ' — plak in Gmail of WhatsApp' + (r.email ? ' (' + r.email + ')' : ''), 'ok'); }
+      catch (x) { prompt('Kopieer de uploadlink:', r.link); }
+      return;
+    }
+    openDocUpload({ type: type, rij: rij, naam: r.naam, alleenUpload: true, bestanden: r.bestanden.map(function (x) { return { key: x.key, label: x.label, drive: '' }; }) });
+  });
   function salarisKlaar(type, rij, r) {
     toast(r.bericht, 'ok');
     document.querySelectorAll('button[data-sal="' + type + '"][data-rij="' + rij + '"]').forEach(function (x) { x.classList.add('ok'); x.textContent = '✓ ' + r.salaris.split(' ')[0]; x.setAttribute('data-sal-op', r.salaris); });
@@ -172,7 +191,9 @@
     g('du-lijst').innerHTML = info.bestanden.map(function (b) {
       return '<div class="fg"><label>' + esc(b.label) + '</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + (b.drive ? '<a class="btn bd bsm" href="' + esc(b.drive) + '" target="_blank" rel="noopener">1. Open in Drive ↗</a>' : '') + '<input type="file" data-du-key="' + esc(b.key) + '" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,application/pdf,image/*" style="flex:1;min-width:220px"></div></div>';
     }).join('');
-    g('du-melding').innerHTML = ''; g('du-btn').disabled = false; g('du-btn').textContent = 'Uploaden en naar salaris';
+    g('du-melding').innerHTML = ''; g('du-btn').disabled = false; g('du-btn').textContent = info.alleenUpload ? 'Uploaden' : 'Uploaden en naar salaris';
+    g('du-uitleg').innerHTML = info.alleenUpload ? 'Upload hier het ondertekende document dat je van de medewerker kreeg (mail, WhatsApp of op papier gescand). Het dossier gaat op <strong>Ondertekend</strong> en daarna kun je het met <strong>→ Salaris</strong> doorsturen.' : 'Dit document is ooit via het oude Google-formulier ingestuurd en staat in Google Drive. Het dashboard kan Drive niet uitlezen. <strong>1.</strong> Open het document in Drive en download het (PDF of foto). <strong>2.</strong> Kies het bestand hieronder. Daarna gaat het mee naar de salarisadministratie en staat het voortaan in de eigen opslag.';
+    g('du-zonder').style.display = info.alleenUpload ? 'none' : '';
     g('du-lijst').querySelectorAll('input[type=file]').forEach(function (inp) { inp.onchange = function () { if (inp.files[0]) duGekozen[inp.getAttribute('data-du-key')] = inp.files[0]; else delete duGekozen[inp.getAttribute('data-du-key')]; }; });
     g('du-modal').classList.add('open');
   };
@@ -193,11 +214,12 @@
       }
       var rg = await api('/api/document-upload', { stap: 'klaar', type: duInfo.type, rij: duInfo.rij, bestanden: klaar });
       if (!rg.success) throw new Error(rg.bericht);
+      if (duInfo.alleenUpload) { closeDocUpload(); toast(rg.bericht + (duInfo.type === 'ontslag' ? ' Dossier staat op Ondertekend.' : ' Dossier staat op Ontvangen.'), 'ok'); if (duInfo.type === 'ontslag' && window.laadOntslag) laadOntslag(); else if (window.laadLoonheffing) laadLoonheffing(); return; }
       btn.textContent = 'Naar salaris…';
       var r = await api('/api/salaris-mail', { type: duInfo.type, rij: duInfo.rij });
       if (!r.success) { if (r.upload) { duMelding('geel', 'Opgeslagen. ' + r.bericht); openDocUpload(r.upload); return; } throw new Error('Opgeslagen, maar versturen naar salaris mislukte: ' + r.bericht); }
       closeDocUpload(); salarisKlaar(duInfo.type, duInfo.rij, r);
-    } catch (e) { duMelding('rood', e.message); btn.disabled = false; btn.textContent = 'Uploaden en naar salaris'; }
+    } catch (e) { duMelding('rood', e.message); btn.disabled = false; btn.textContent = duInfo.alleenUpload ? 'Uploaden' : 'Uploaden en naar salaris'; }
   };
   window.duZonder = async function () {
     if (!confirm('Versturen naar de salarisadministratie zónder ' + duInfo.bestanden.map(function (b) { return b.label; }).join(' en ') + '?')) return;
@@ -269,7 +291,7 @@
 
     var rows = [];
     d.open.loonheffing.forEach(function (r) {
-      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bg">Loonheffing</span></td><td>' + esc(r.email) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('loonheffing', r.rij, r.naam) + '</td></tr>');
+      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bg">Loonheffing</span></td><td>' + esc(r.email) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>');
     });
     d.open.overplaatsing.forEach(function (r) {
       rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>-</td><td>' + opBtn(r) + ' ' + dosBtn(r.naam, r.email) + '</td></tr>');
@@ -426,7 +448,7 @@
     lhData = d.rijen; lhTemplates = d.templates;
     g('lh-count').textContent = lhData.length + ' dossiers';
     g('lh-body').innerHTML = lhData.map(function (r) {
-      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('lh-body');
   };
@@ -489,7 +511,7 @@
     omData = d.rijen; omTpl = d.templates;
     g('om-count').textContent = omData.length + ' dossiers';
     g('om-body').innerHTML = omData.map(function (r) {
-      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('ontslag', r, r.ondertekend === 'Ja') + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="12" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('om-body');
   };
@@ -1284,6 +1306,45 @@
     var p = e.target.closest && e.target.closest('button[data-sk-pdf]'); if (p) { e.stopPropagation(); skPdf(p.getAttribute('data-sk-pdf')); return; }
     var tr = e.target.closest && e.target.closest('#sk-body tr.sk-rij'); if (tr) { skDetail(tr.getAttribute('data-sk')); setTimeout(function () { g('sk-detail').scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 30); }
   });
+
+  // ---------- HR-maandrapport (fase 4b) ----------
+  var MR_MAAND = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'];
+  function mrVulMaanden() {
+    var sel = g('mr-maand'); if (!sel || sel.options.length) return;
+    var nu = new Date();
+    for (var i = 0; i <= 12; i++) { var d = new Date(nu.getFullYear(), nu.getMonth() - i, 1), o = document.createElement('option'); o.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); o.textContent = MR_MAAND[d.getMonth()] + ' ' + d.getFullYear() + (i === 0 ? ' (lopend)' : ''); if (i === 1) o.selected = true; sel.appendChild(o); }
+  }
+  window.laadMaandrapport = async function () {
+    mrVulMaanden(); var maand = g('mr-maand').value;
+    g('mr-body').innerHTML = '<div class="lay-sub">Maandrapport berekenen (Shiftbase + dashboard, 12 maanden)…</div>';
+    var d = await api('/api/maandrapport?maand=' + encodeURIComponent(maand));
+    if (!d.success) { g('mr-body').innerHTML = '<div class="alert rood" style="margin:0">' + esc(d.bericht) + '</div>'; return; }
+    var kl = { beter: 'bg', slechter: 'br', gelijk: 'boat' };
+    var tegel = function (w, l, s) { return '<div style="background:#f8f3f0;border-radius:8px;padding:10px 14px;min-width:120px"><div style="font-size:1.35rem;font-weight:700">' + esc(w) + '</div><div class="lay-sub" style="font-weight:600;color:#333d3a">' + esc(l) + '</div>' + (s ? '<div class="lay-sub">' + esc(s) + '</div>' : '') + '</div>'; };
+    var k = d.kern, h = '';
+    if (d.fouten && d.fouten.length) h += '<div class="alert geel" style="margin:0 0 10px">Niet alles kon worden opgehaald: ' + esc(d.fouten.join(' · ')) + '</div>';
+    h += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">' + tegel(k.bestand, 'In dienst eind maand', 'vorige maand ' + k.vorig.bestand) + tegel(k.instroom, 'Instroom', 'vorige maand ' + k.vorig.instroom) + tegel(k.uitstroom, 'Uitstroom', 'vorige maand ' + k.vorig.uitstroom) + tegel((k.netto > 0 ? '+' : '') + k.netto, 'Netto', '') + tegel(k.verloop12, 'Verloop 12 mnd', '') + tegel(k.nuZiek, 'Nu ziek', '') + '</div>';
+    h += '<div style="display:flex;gap:28px;flex-wrap:wrap"><div style="flex:1;min-width:300px"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">In het kort · ' + esc(d.label) + '</div><ul style="margin:0;padding-left:18px;font-size:.88rem;line-height:1.5">' + d.zinnen.map(function (z) { return '<li>' + esc(z) + '</li>'; }).join('') + '</ul></div>';
+    h += '<div style="flex:1.4;min-width:340px;overflow-x:auto"><table class="sk-tabel" style="width:100%"><thead><tr><th>Indicator</th><th>' + esc(d.label) + '</th><th>' + esc(d.labelVorig) + '</th><th>Verschil</th><th>12 mnd</th></tr></thead><tbody>' + d.kpis.map(function (x) { return '<tr><td title="' + esc(x.uitleg) + '">' + esc(x.label) + '</td><td><strong>' + esc(x.nu.f) + '</strong></td><td>' + esc(x.vorig.f) + '</td><td>' + (x.verschil.tekst ? '<span class="badge ' + (kl[x.verschil.oordeel] || 'boat') + '">' + esc(x.verschil.tekst) + '</span>' : '') + '</td><td>' + esc(x.jaar.f) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+    var rood = d.winkels.filter(function (w) { return w.rood; });
+    if (rood.length) h += '<div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Aandachtspunten per winkel · ' + esc(d.periodeWinkels) + '</div>' + rood.map(function (w) { return '<div class="alert rood" style="margin:0 0 6px;padding:8px 12px;font-size:.85rem"><strong>' + esc(w.naam) + ':</strong> ' + esc(w.aandacht.join(' · ')) + '</div>'; }).join('');
+    h += '<div class="lay-sub" style="margin-top:10px">Bijgewerkt ' + esc(d.bijgewerkt || '') + ' · de PDF bevat ook de trend over 12 maanden, uitstroomredenen, wat HR deed en de tabel per winkel.</div>';
+    g('mr-body').innerHTML = h;
+  };
+  window.mrPdf = async function () {
+    mrVulMaanden(); var maand = g('mr-maand').value;
+    toast('Maandrapport maken…', 'ok');
+    var r = await api('/api/maandrapport?maand=' + encodeURIComponent(maand) + '&pdf=1');
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam);
+  };
+  window.mrMail = async function () {
+    mrVulMaanden(); var sel = g('mr-maand'), lbl = sel.options[sel.selectedIndex].textContent;
+    if (!confirm('Maandrapport ' + lbl + ' nu mailen naar Mischa, Jodi en Ymke?')) return;
+    toast('Maandrapport mailen…', 'ok');
+    var r = await api('/api/maandrapport', { maand: sel.value, actie: 'mail' });
+    toast(r.success ? r.bericht : 'Mail: ' + r.bericht, r.success ? 'ok' : 'err');
+  };
 
   // ---------- Check-in 30/60 dagen (fase 3a) ----------
   var ciData = null, ciMaanden = 6, ciFilter = 'alle';

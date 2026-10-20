@@ -80,7 +80,9 @@ function bereken(inp) {
     }
   }
   // check-ins (verstuurd in de periode)
+  const inPeriode = ts => { const d = String(ts || '').slice(0, 10); return !d || (d >= vanIso && d <= totIsoVol); };
   for (const r of checkins || []) {
+    if (!inPeriode(r.verstuurd_op)) continue;
     const w = winkelVan(r.medewerker_id, r.naam, r.winkel);
     bij(w, x => {
       x.ciVerstuurd++;
@@ -91,7 +93,7 @@ function bereken(inp) {
     });
   }
   // exit-survey (ingevuld in de periode; ook anoniem — winkel komt uit Shiftbase bij het invullen)
-  for (const r of exits || []) { if (typeof r.nps !== 'number') continue; const w = winkelVan(r.medewerker_id, r.naam, r.winkel); bij(w, x => { x.ex.push(r.nps); }); }
+  for (const r of exits || []) { if (typeof r.nps !== 'number' || !inPeriode(r.ingevuld_op)) continue; const w = winkelVan(r.medewerker_id, r.naam, r.winkel); bij(w, x => { x.ex.push(r.nps); }); }
   // aanzeggingen met einddatum in de periode
   for (const r of aanzeggingen || []) {
     const eind = parseNLDatum(r.einddatum); if (!eind) continue; const ei = isoD(eind); if (ei < vanIso || ei > totIsoVol) continue;
@@ -135,7 +137,7 @@ function bereken(inp) {
   };
   const metFmt = ws => { KPIS.forEach(k => { ws[k.key].f = fmt(k, ws[k.key].v); }); return ws; };
   const totaalVr = verloop.totaal;
-  const totaal = { naam: 'SLA totaal', bestand: totaalVr.bestandNu, instroom: totaalVr.instroom, uitstroom: totaalVr.uitstroom, lopendVerzuim: tot0.lopend, waarden: metFmt(waarden(totaalVr, tot0)),
+  const totaal = { naam: 'SLA totaal', bestand: totaalVr.bestandNu, bestandEind: totaalVr.bestandEind, instroom: totaalVr.instroom, uitstroom: totaalVr.uitstroom, lopendVerzuim: tot0.lopend, waarden: metFmt(waarden(totaalVr, tot0)),
     trend: { uit: totaalVr.maandUit, in: totaalVr.maandIn, checkin: tot0.ciMaand.map(a => a.length ? r1(gem(a)) : null), meldingen: tot0.meldMaand },
     checkin: { verstuurd: tot0.ciVerstuurd, ingevuld: tot0.ciIngevuld, laag: tot0.ciLaag } };
   const winkels = verloop.winkels.filter(w => acc[w.naam]).map(vr => {
@@ -150,7 +152,7 @@ function bereken(inp) {
         aandacht.push({ key: k.key, tekst: k.label + ': ' + fmt(k, item.v) + ' (SLA ' + fmt(k, o) + ')' + extra });
       } else if (item.status === 'groen' && sterk(k, item.v, o)) goed.push({ key: k.key, tekst: k.label + ': ' + fmt(k, item.v) + ' (SLA ' + fmt(k, o) + ')' });
     }
-    return { naam: vr.naam, bestand: vr.bestandNu, instroom: vr.instroom, uitstroom: vr.uitstroom, lopendVerzuim: x.lopend, waarden: ws, aandacht, goed,
+    return { naam: vr.naam, bestand: vr.bestandNu, bestandEind: vr.bestandEind, instroom: vr.instroom, uitstroom: vr.uitstroom, lopendVerzuim: x.lopend, waarden: ws, aandacht, goed,
       rood: aandacht.length, oranje: KPIS.filter(k => ws[k.key].status === 'oranje').length,
       trend: { uit: vr.maandUit, in: vr.maandIn, checkin: x.ciMaand.map(a => a.length ? r1(gem(a)) : null), meldingen: x.meldMaand },
       checkin: { verstuurd: x.ciVerstuurd, ingevuld: x.ciIngevuld, laag: x.ciLaag } };
@@ -159,18 +161,17 @@ function bereken(inp) {
 }
 
 // ---- ophalen ----
-async function getScorekaart(maanden, ververs) {
-  maanden = [3, 6, 12].includes(Number(maanden)) ? Number(maanden) : 6;
+const nuNL = () => { const nu = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })); nu.setHours(0, 0, 0, 0); return nu; };
+// Alle bronnen voor de periode [vanIso, totIso] in één keer (ook gebruikt door het maandrapport, fase 4b).
+// Ontbrekende tabel/bron → melding in fouten, de rest werkt door. academy = null als de koppeling (nog) niet werkt.
+async function laadBronnen(vanIso, totIso, ververs) {
   const VR = require('./verloop'), SB = require('./shiftbase'), S = require('./sheets'), { admin } = require('./auth');
-  const nu = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })); nu.setHours(0, 0, 0, 0);
-  const med = await VR.laadMedewerkers(ververs);
-  const verloop = VR.berekenVerloop(med, new Date(nu.getFullYear(), nu.getMonth(), 1), maanden, nu);
-  const vanIso = verloop.maanden[0].vanIso, totIso = verloop.maanden[verloop.maanden.length - 1].totIso;
   const db = admin(), fouten = [];
   const veilig = async (naam, f) => { try { return await f(); } catch (e) { fouten.push(naam + ': ' + e.message); return []; } };
   const lijst = r => { if (r.error) throw new Error(r.error.message); return r.data || []; };
   const academyP = (async () => { try { const r = await require('./academy').laad(ververs); return r.lijst; } catch (e) { if (process.env.ACADEMY_HR_SLEUTEL) fouten.push('Academy: ' + e.message); return null; } })();
-  const [absences, checkins, exits, ontslag, checklists] = await Promise.all([
+  const [med, absences, checkins, exits, ontslag, checklists] = await Promise.all([
+    VR.laadMedewerkers(ververs),
     veilig('verzuim (Shiftbase)', async () => { const r = await SB.sbGet('absentees?min_date=' + isoD(new Date(dag(vanIso).getTime() - 60 * 864e5)) + '&max_date=' + totIso); return (r && r.data) || r || []; }),
     veilig('check-ins', async () => lijst(await db.from('hr_checkin').select('medewerker_id,naam,winkel,verstuurd_op,ingevuld_op,score,laag').gte('verstuurd_op', vanIso + 'T00:00:00').lte('verstuurd_op', totIso + 'T23:59:59'))),
     veilig('exit-survey', async () => lijst(await db.from('hr_exit').select('medewerker_id,naam,winkel,nps,ingevuld_op').gte('ingevuld_op', vanIso + 'T00:00:00').lte('ingevuld_op', totIso + 'T23:59:59'))),
@@ -178,10 +179,21 @@ async function getScorekaart(maanden, ververs) {
     veilig('checklists', async () => lijst(await db.from('hr_checklists').select('type,naam,winkel,medewerker_id,gestart_op,afgerond_op').eq('type', 'onboarding')))
   ]);
   const academy = await academyP;
-  const r = bereken({ med, verloop, absences, checkins, exits, aanzeggingen: ontslag, checklists, academy, vandaag: nu });
-  r.academy = !!academy;
-  r.maandenAantal = maanden; r.fouten = fouten; r.bijgewerkt = require('./datum').stempel();
+  return { med, absences, checkins, exits, aanzeggingen: ontslag, checklists, academy, fouten };
+}
+
+async function getScorekaart(maanden, ververs) {
+  maanden = [3, 6, 12].includes(Number(maanden)) ? Number(maanden) : 6;
+  const VR = require('./verloop');
+  const nu = nuNL();
+  const med = await VR.laadMedewerkers(ververs);
+  const verloop = VR.berekenVerloop(med, new Date(nu.getFullYear(), nu.getMonth(), 1), maanden, nu);
+  const vanIso = verloop.maanden[0].vanIso, totIso = verloop.maanden[verloop.maanden.length - 1].totIso;
+  const b = await laadBronnen(vanIso, totIso, ververs);
+  const r = bereken(Object.assign({}, b, { verloop, vandaag: nu }));
+  r.academy = !!b.academy;
+  r.maandenAantal = maanden; r.fouten = b.fouten; r.bijgewerkt = require('./datum').stempel();
   return r;
 }
 
-module.exports = { KPIS, MIN_N, bereken, getScorekaart, status, fmt };
+module.exports = { KPIS, MIN_N, bereken, getScorekaart, laadBronnen, nuNL, status, fmt, sterk };

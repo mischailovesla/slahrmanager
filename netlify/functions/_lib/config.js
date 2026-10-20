@@ -38,7 +38,8 @@ module.exports = {
     verzuim: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     jeugd: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     oproepaanbod: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
-    checkin: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
+    checkin: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    maandrapport: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
   },
 
   // ---- Fase 2: juridische checks (wettelijke defaults; CAO Horeca-afwijkingen hier aanpassen) ----

@@ -329,7 +329,7 @@
   <div class="mo" id="du-modal"><div class="modal" style="max-width:620px">
     <div class="mh" style="background:#333d3a"><div class="mti" id="du-titel">Document uploaden</div><button class="mc" onclick="closeDocUpload()">×</button></div>
     <div class="mb2">
-      <div class="alert geel" style="margin:0 0 14px;font-size:.84rem">Dit document is ooit via het oude Google-formulier ingestuurd en staat in Google Drive. Het dashboard kan Drive niet uitlezen. <strong>1.</strong> Open het document in Drive en download het (PDF of foto). <strong>2.</strong> Kies het bestand hieronder. Daarna gaat het mee naar de salarisadministratie en staat het voortaan in de eigen opslag.</div>
+      <div class="alert geel" id="du-uitleg" style="margin:0 0 14px;font-size:.84rem">Dit document is ooit via het oude Google-formulier ingestuurd en staat in Google Drive. Het dashboard kan Drive niet uitlezen. <strong>1.</strong> Open het document in Drive en download het (PDF of foto). <strong>2.</strong> Kies het bestand hieronder. Daarna gaat het mee naar de salarisadministratie en staat het voortaan in de eigen opslag.</div>
       <div id="du-lijst"></div>
       <div id="du-melding"></div>
     </div>
@@ -367,6 +367,12 @@
 
   <!-- SCOREKAART PER WINKEL (fase 3c) -->
   <div class="tc" id="tab-scorekaart">
+    <!-- HR-maandrapport (fase 4b) -->
+    <div class="sec" id="mr-sec">
+      <div class="sh"><div class="st">HR-maandrapport <span class="lay-sub" id="mr-sub" style="color:rgba(255,255,255,.6);margin-left:8px">automatisch op de 1e van de maand naar Mischa, Jodi en Ymke</span></div>
+        <div class="hr2"><select id="mr-maand" class="bsm" style="padding:5px 8px;border-radius:6px;border:1px solid #e8e2de"></select><button class="btn bd bsm" onclick="laadMaandrapport()">Bekijken</button><button class="btn bp bsm" onclick="mrPdf()">⬇ PDF</button><button class="btn bd bsm" onclick="mrMail()" title="Rapport van de gekozen maand nu mailen naar Mischa, Jodi en Ymke">✉ Mail naar HR</button></div></div>
+      <div id="mr-body" style="padding:12px 24px 16px"><div class="lay-sub">Kies een maand en klik op <strong>Bekijken</strong> (of direct <strong>⬇ PDF</strong>). Het rapport toont SLA totaal (deze maand vs vorige maand vs 12 maanden), uitstroomredenen, wat HR deed en per winkel de aandachtspunten over de laatste 3 maanden.</div></div>
+    </div>
     <div class="sec">
       <div class="sh"><div class="st">Scorekaart per winkel <span class="lay-sub" id="sk-periode" style="color:rgba(255,255,255,.6);margin-left:8px"></span></div>
         <div class="hr2"><button class="btn bd bsm" id="sk-b3" onclick="laadScorekaart(3)">3 mnd</button><button class="btn bd bsm" id="sk-b6" onclick="laadScorekaart(6)">6 mnd</button><button class="btn bd bsm" id="sk-b12" onclick="laadScorekaart(12)">12 mnd</button><button class="btn bd bsm" onclick="laadScorekaart(0, true)">↻ Vernieuwen</button></div></div>
