@@ -134,7 +134,7 @@ const BRIEF_TEMPLATES = [
       'Mocht je van gedachten zijn veranderd of is deze beslissing in een emotioneel moment genomen, neem dan zo snel mogelijk contact op met je Store Manager of met HR - dan kijken we samen naar de situatie.\n\n' +
       'Zonder tegenbericht gaan wij uit van beeindiging van jouw dienstverband bij {BV}. De niet-gewerkte dienst van {DATUM} wordt geregistreerd als ongeoorloofd verzuim en wordt niet uitbetaald.\n\n' +
       'Verder wijzen we je op het volgende:\n' +
-      '- De eindafrekening (loon, vakantiegeld en openstaande vakantie-uren) ontvang je bij de eerstvolgende loonrun.\n' +
+      '- De eindafrekening (loon over je laatst gewerkte uren) ontvang je bij de eerstvolgende loonrun. Vakantie-uren en vakantiegeld zitten bij je all-in contract al in je uurloon.\n' +
       '- Bedrijfseigendommen zoals kleding, sleutels en pas lever je in bij je Store Manager.\n' +
       '- Door zelf op te zeggen heb je in de regel geen recht op een WW-uitkering.' },
   { key: 'afspraken', label: 'Bevestiging gemaakte afspraken', subject: 'Bevestiging gemaakte afspraken - {NAAM}',

@@ -26,7 +26,7 @@ const ONTSLAG = `**BEVESTIGING OPZEGGING DIENSTVERBAND {{BV}}**
 
 Hierbij bevestigen wij dat je op {{DatumOpzegging}} jouw arbeidsovereenkomst hebt opgezegd per {{Einddatum}}.
 
-De laatste dag van je arbeidsovereenkomst is dus {{Einddatum}}. Uiterlijk deze dag lever je jouw eventuele sleutels in. De eindafrekening van salaris, eventueel niet genoten vrije dagen en vakantiegeld zal na afloop van jouw laatste maand plaatsvinden.
+De laatste dag van je arbeidsovereenkomst is dus {{Einddatum}}. Uiterlijk deze dag lever je jouw eventuele sleutels in. De eindafrekening van het loon over je laatst gewerkte uren vindt plaats na afloop van jouw laatste maand. Omdat je een all-in contract hebt, zijn vakantie-uren en vakantiegeld al in je uurloon inbegrepen; die worden niet apart uitbetaald.
 
 We horen graag hoe jij je tijd bij SLA hebt ervaren. Wil je daarvoor deze korte vragenlijst invullen (een paar vragen, ongeveer 2 minuten, desgewenst anoniem)? {{EXITLINK}}
 
@@ -67,12 +67,12 @@ Tot **{{Einddatum}}** blijf je gewoon in dienst bij **{{BV}}** onder de voorwaar
 
 • Je vervult jouw werkzaamheden zoals gebruikelijk en volgens het overeengekomen rooster.
 • Je werkt jouw lopende taken en verantwoordelijkheden netjes af en zorgt voor een zorgvuldige overdracht aan jouw collega's en leidinggevende.
-• Eventuele resterende vakantie-uren stem je tijdig af met jouw leidinggevende; niet opgenomen uren worden bij de eindafrekening uitbetaald.
+• Vakantie-uren en vakantiegeld zijn bij jouw all-in contract al in je uurloon inbegrepen en worden niet apart uitbetaald.
 • Je gedraagt je tot de laatste werkdag als een goed werknemer in de zin van artikel 7:611 BW.
 
 **Eindafrekening**
 
-Na jouw laatste werkdag ontvang je een eindafrekening met daarin het loon over de laatste periode, de uitbetaling van niet-opgenomen vakantie-uren en het opgebouwde vakantiegeld. De eindafrekening wordt uiterlijk bij de eerstvolgende loonbetaling na het einde van het dienstverband voldaan.
+Na jouw laatste werkdag ontvang je een eindafrekening met daarin het loon over de laatste periode. De eindafrekening wordt uiterlijk bij de eerstvolgende loonbetaling na het einde van het dienstverband voldaan.
 
 **Inleveren bedrijfseigendommen**
 
@@ -123,12 +123,12 @@ Until **{{Einddatum}}** you remain employed by **{{BV}}** under the conditions s
 
 • You will continue to perform your duties as usual and according to the agreed schedule.
 • You will complete your ongoing tasks and responsibilities properly and ensure a careful handover to your colleagues and supervisor.
-• Any remaining holiday hours should be discussed in advance with your supervisor; unused hours will be paid out in the final settlement.
+• With your all-in contract, holiday hours and holiday allowance are already included in your hourly wage and are not paid out separately.
 • Until your last working day you will conduct yourself as a good employee within the meaning of Article 7:611 of the Dutch Civil Code.
 
 **Final settlement**
 
-After your last working day you will receive a final settlement covering the salary for the final period, payment of unused holiday hours and accrued holiday allowance. The final settlement will be paid no later than at the next regular payroll run following the end of your employment.
+After your last working day you will receive a final settlement covering the wages for the final period. The final settlement will be paid no later than at the next regular payroll run following the end of your employment.
 
 **Returning company property**
 
@@ -339,7 +339,7 @@ Jouw dienstverband eindigt per {{Einddatum}}. Op grond van artikel 7:676 BW geld
 Op jouw verzoek geven wij de reden van de beëindiging schriftelijk op (artikel 7:676 lid 2 BW). Je kunt hiervoor contact opnemen via hr@ilovesla.com.
 
 **Eindafrekening**
-Bij de eerstvolgende salarisverwerking ontvang je de eindafrekening, waarin het resterende salaris, opgebouwd vakantiegeld en eventuele niet-genoten vakantiedagen worden verrekend.
+Bij de eerstvolgende salarisverwerking ontvang je de eindafrekening met het loon over je laatst gewerkte uren. Omdat je een all-in contract hebt, zijn vakantie-uren en vakantiegeld al in je uurloon inbegrepen; die worden niet apart uitbetaald.
 
 **Bedrijfseigendommen**
 Wij verzoeken je uiterlijk op jouw laatste werkdag alle bedrijfseigendommen (waaronder kleding, sleutels en pasjes) in te leveren bij jouw Store Manager.
@@ -378,7 +378,7 @@ Your employment ends on {{Einddatum}}. Pursuant to Article 7:676 of the Dutch Ci
 Upon your request, we will provide the reason for the termination in writing (Article 7:676 paragraph 2 of the Dutch Civil Code). You can contact us at hr@ilovesla.com.
 
 **Final settlement**
-With the next payroll run you will receive the final settlement, in which your remaining salary, accrued holiday allowance and any untaken holiday days will be settled.
+With the next payroll run you will receive the final settlement covering the wages for your last hours worked. Because you have an all-in contract, holiday hours and holiday allowance are already included in your hourly wage and are not paid out separately.
 
 **Company property**
 We kindly request that you return all company property (including clothing, keys and passes) to your Store Manager no later than your last working day.
@@ -414,7 +414,7 @@ Hierbij bevestigen wij de ontvangst van jouw opzegging op {{DatumOpzegging}}, wa
 Jouw dienstverband eindigt daarmee per {{Einddatum}}. Op grond van artikel 7:676 BW geldt tijdens de proeftijd geen opzegtermijn.
 
 **Eindafrekening**
-Bij de eerstvolgende salarisverwerking ontvang je de eindafrekening, waarin het resterende salaris, opgebouwd vakantiegeld en eventuele niet-genoten vakantiedagen worden verrekend.
+Bij de eerstvolgende salarisverwerking ontvang je de eindafrekening met het loon over je laatst gewerkte uren. Omdat je een all-in contract hebt, zijn vakantie-uren en vakantiegeld al in je uurloon inbegrepen; die worden niet apart uitbetaald.
 
 **Bedrijfseigendommen**
 Wij verzoeken je uiterlijk op jouw laatste werkdag alle bedrijfseigendommen (waaronder kleding, sleutels en pasjes) in te leveren bij jouw Store Manager.
@@ -452,7 +452,7 @@ We hereby confirm receipt of your resignation on {{DatumOpzegging}}, by which yo
 Your employment therefore ends on {{Einddatum}}. Pursuant to Article 7:676 of the Dutch Civil Code, no notice period applies during the probationary period.
 
 **Final settlement**
-With the next payroll run you will receive the final settlement, in which your remaining salary, accrued holiday allowance and any untaken holiday days will be settled.
+With the next payroll run you will receive the final settlement covering the wages for your last hours worked. Because you have an all-in contract, holiday hours and holiday allowance are already included in your hourly wage and are not paid out separately.
 
 **Company property**
 We kindly request that you return all company property (including clothing, keys and passes) to your Store Manager no later than your last working day.
@@ -666,7 +666,7 @@ Op {{DatumConstatering}} is het volgende geconstateerd:
 Deze gedraging(en) vormen, zowel afzonderlijk als in onderlinge samenhang bezien, een dringende reden die het ontslag op staande voet rechtvaardigt.
 {{Wederhoor}}
 **Gevolgen**
-Per de datum van dit ontslag wordt de loonbetaling stopgezet. U ontvangt binnen de wettelijke termijn een eindafrekening van het u nog toekomende salaris, opgebouwde vakantiedagen en vakantietoeslag tot en met heden. Wij verzoeken u alle bedrijfseigendommen (waaronder sleutels, kleding en pasjes) per omgaande in te leveren bij uw vestiging.
+Per de datum van dit ontslag wordt de loonbetaling stopgezet. U ontvangt binnen de wettelijke termijn een eindafrekening van het u nog toekomende loon tot en met heden. Vakantie-uren en vakantietoeslag zijn bij uw all-in contract al in het uurloon inbegrepen. Wij verzoeken u alle bedrijfseigendommen (waaronder sleutels, kleding en pasjes) per omgaande in te leveren bij uw vestiging.
 
 **Bezwaar**
 Indien u zich niet met dit ontslag kunt verenigen, kunt u binnen twee maanden na heden de kantonrechter verzoeken het ontslag te vernietigen dan wel om toekenning van een vergoeding (artikel 7:681 BW).

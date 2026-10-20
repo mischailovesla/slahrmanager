@@ -52,13 +52,13 @@ function teksten(r, soort) {
   const nl = {
     intro: grond.nl + ' We hebben die brief niet ondertekend terug ontvangen, maar dat is ook niet nodig.',
     eind: 'Je dienstverband met ' + bv + ' eindigt op ' + eind + '.',
-    punten: ['Je laatste werkdag is uiterlijk ' + eind + '. Lever eventuele sleutels en spullen van SLA uiterlijk die dag in bij je Store Manager.', 'Je eindafrekening (salaris, niet-opgenomen vakantie-uren en vakantiegeld) ontvang je met je laatste loonstrook.', 'Klopt er iets niet? Laat het ons binnen ' + REACTIE_DAGEN + ' dagen weten via hr@ilovesla.com. Horen we niets, dan gaan we ervan uit dat dit klopt.'],
+    punten: ['Je laatste werkdag is uiterlijk ' + eind + '. Lever eventuele sleutels en spullen van SLA uiterlijk die dag in bij je Store Manager.', 'Je eindafrekening (het loon over je laatst gewerkte uren) ontvang je met je laatste loonstrook. Omdat je een all-in contract hebt, zijn vakantie-uren en vakantiegeld al in je uurloon inbegrepen; die worden niet apart uitbetaald.', 'Klopt er iets niet? Laat het ons binnen ' + REACTIE_DAGEN + ' dagen weten via hr@ilovesla.com. Horen we niets, dan gaan we ervan uit dat dit klopt.'],
     slot: 'Je hoeft niets te ondertekenen of terug te sturen. Bedankt voor je inzet bij SLA en veel succes!'
   };
   const en = {
     intro: grond.en + ' We have not received the signed letter back, but that is not required.',
     eind: 'Your employment with ' + bv + ' ends on ' + eind + '.',
-    punten: ['Your last working day is ' + eind + ' at the latest. Please return any keys and SLA items to your Store Manager by then.', 'Your final settlement (salary, unused holiday hours and holiday allowance) will be paid with your last payslip.', 'Is anything incorrect? Let us know within ' + REACTIE_DAGEN + ' days at hr@ilovesla.com. If we do not hear from you, we will assume this is correct.'],
+    punten: ['Your last working day is ' + eind + ' at the latest. Please return any keys and SLA items to your Store Manager by then.', 'Your final settlement (wages for your last hours worked) will be paid with your last payslip. Because you have an all-in contract, holiday hours and holiday allowance are already included in your hourly wage and are not paid out separately.', 'Is anything incorrect? Let us know within ' + REACTIE_DAGEN + ' days at hr@ilovesla.com. If we do not hear from you, we will assume this is correct.'],
     slot: 'You do not need to sign or return anything. Thank you for your work at SLA and good luck!'
   };
   const subject = 'Bevestiging uitdiensttreding / Confirmation of end of employment - ' + bv;
