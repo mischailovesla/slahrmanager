@@ -91,7 +91,8 @@ async function loonHerinneringen(droog) {
 async function ontslagHerinneringen(droog) {
   const rap = { naam: 'ontslag-herinneringen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
   const vandaag = vandaag0(), id = C.SHEETS.ontslag.id;
-  rap.gearchiveerd = [];
+  rap.gearchiveerd = []; rap.bevestigd = [];
+  const UD = require('./uitdienst'), bevestigAan = await UD.actief();
   // rijen die HR zelf uit het archief heeft teruggezet niet opnieuw automatisch archiveren
   const teruggezet = {};
   try { const { data } = await admin().from('hr_acties').select('rij').eq('actie', 'herstel').eq('bron', 'ontslag').limit(1000); (data || []).forEach(a => { teruggezet[a.rij] = true; }); } catch (e) { /* tabel/kolom ontbreekt: dan niets uitzonderen */ }
@@ -115,7 +116,15 @@ async function ontslagHerinneringen(droog) {
     if (r.herinnering && sindsLaatste !== null && sindsLaatste < C.COOLDOWN_DAGEN) continue;
     const bv = r.bedrijf || C.BEDRIJFSNAAM;
     // na het maximum geen automatische mail meer (voorheen eindeloos: tot 53 herinneringen) — wel een (rode) taak voor HR
-    if ((r.aantalHer || 0) >= C.ONTSLAG_MAX_HERINNERINGEN) { rap.gevonden.push({ naam: r.naam, email: r.email, verzonden: r.verzenddatum, rij: r.rij, eerder: r.aantalHer, type: r.type, gestopt: true }); continue; }
+    if ((r.aantalHer || 0) >= C.ONTSLAG_MAX_HERINNERINGEN) {
+      // v0.19.4: na de laatste herinnering de uitdiensttreding bevestigen (geen handtekening nodig), salaris inlichten, archiveren
+      if (bevestigAan) {
+        if (rap.droog) { rap.bevestigd.push({ droog: true, naam: r.naam, rij: r.rij, type: r.type }); continue; }
+        try { rap.bevestigd.push(await UD.bevestig(r, 'signalering')); rap.verstuurd.push({ naam: r.naam, bevestiging: true }); continue; }
+        catch (e) { rap.fouten.push(r.naam + ' (bevestiging uitdiensttreding): ' + e.message); }
+      }
+      rap.gevonden.push({ naam: r.naam, email: r.email, verzonden: r.verzenddatum, rij: r.rij, eerder: r.aantalHer, type: r.type, gestopt: true }); continue;
+    }
     rap.gevonden.push({ naam: r.naam, email: r.email, verzonden: r.verzenddatum, rij: r.rij, eerder: r.aantalHer, type: r.type });
     await mailOfDroog(rap, {
       to: r.email, subject: 'Herinnering: ondertekend HR-document nog niet ontvangen',

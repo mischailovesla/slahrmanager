@@ -96,7 +96,7 @@
   }
   function toonLoginFout(t) { var el = g('login-fout'); el.textContent = t; el.classList.add('show'); }
   async function naLogin() {
-    var ik = await api('/api/ik');
+    var ik = await api('/api/ik'); window._ikRol = ik && ik.rol;
     if (!ik.success) { await sb.auth.signOut(); g('login').classList.add('show'); toonLoginFout(ik.bericht || 'Geen toegang.'); return; }
     g('login').classList.remove('show');
     g('top-wie').innerHTML = '<strong>' + esc(ik.naam) + '</strong>'; ikNaam = ik.naam || ik.email || '';
@@ -519,13 +519,43 @@
   // ---------- Ontslag & aanzegging (port van openM/apl/sendM uit de dashboard-UI) ----------
   var omData = null, omTpl = [], omKey = 'ontslag-pdf', omRij = null;
   function omBtn(r) { return '<button class="btn bp bsm" data-om-rij="' + r.rij + '">Mail</button>'; }
+  // ---------- Bevestiging uitdiensttreding zonder handtekening (v0.19.4) ----------
+  async function udStatus() {
+    var d = await api('/api/uitdienst'); if (!d.success) return;
+    var el = g('ud-balk'); if (!el) return;
+    el.style.display = '';
+    el.className = 'alert ' + (d.actief ? 'groen' : 'geel');
+    el.innerHTML = (d.actief ? '<strong>Automatisch afronden staat aan.</strong> Na de 3e herinnering krijgt de medewerker een bevestiging van de uitdiensttreding (NL/EN, PDF, niets te tekenen), gaat er een seintje naar salaris en wordt het dossier gearchiveerd.'
+      : '<strong>Automatisch afronden staat uit.</strong> Na 3 herinneringen stopt het dashboard; na 30 dagen wordt het dossier stil gearchiveerd. Per rij kun je de uitdiensttreding wel zelf bevestigen.')
+      + ' <button class="btn bd bsm" onclick="udVoorbeeld()">Voorbeeld mail + PDF</button>' + (window._ikRol === 'admin' ? ' <button class="btn ' + (d.actief ? 'bd' : 'bp') + ' bsm" onclick="udZet(' + (d.actief ? 'false' : 'true') + ')">' + (d.actief ? 'Uitzetten' : 'Aanzetten') + '</button>' : '');
+  }
+  window.udVoorbeeld = async function (rij) {
+    var r = await api('/api/uitdienst', { actie: 'voorbeeld', rij: rij || 0 });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    var w = window.open('', '_blank'); if (w) { w.document.write('<title>' + esc(r.subject) + '</title><div style="font-family:Arial;padding:10px 20px;color:#555">Onderwerp: <b>' + esc(r.subject) + '</b></div>' + r.html); w.document.close(); }
+    downloadB64(r.pdf, r.bestandsnaam);
+  };
+  window.udZet = async function (aan) {
+    if (aan && !confirm('Automatisch afronden aanzetten? Medewerkers die 3 herinneringen hebben gehad krijgen dan bij de volgende run (dagelijks 09:15) de bevestiging, en salaris krijgt een seintje.')) return;
+    var r = await api('/api/uitdienst', { actie: 'actief', aan: !!aan }); toast(r.success ? r.bericht : r.bericht, r.success ? 'ok' : 'err'); udStatus();
+  };
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-ud-rij]'); if (!b || b.disabled) return;
+    var rij = parseInt(b.getAttribute('data-ud-rij'), 10), naam = b.getAttribute('data-naam');
+    if (!confirm('Uitdiensttreding van ' + naam + ' bevestigen?\n\n- mail + PDF naar de medewerker (niets te ondertekenen)\n- seintje naar salaris (als dat nog niet is gebeurd)\n- dossier archiveren\n\nTip: bekijk eerst het voorbeeld (knop boven de tabel).')) return;
+    b.disabled = true; b.textContent = '…';
+    var r = await api('/api/uitdienst', { actie: 'bevestig', rij: rij });
+    toast(r.success ? r.bericht : 'Bevestiging: ' + r.bericht, r.success ? 'ok' : 'err');
+    if (r.success) laadOntslag(); else { b.disabled = false; b.textContent = '✓ Bevestig uitdiensttreding'; }
+  });
   window.laadOntslag = async function () {
+    udStatus();
     var d = await api('/api/ontslag');
     if (!d.success) { toast('Ontslag: ' + d.bericht, 'err'); return; }
     omData = d.rijen; omTpl = d.templates;
     g('om-count').textContent = omData.length + ' dossiers';
     g('om-body').innerHTML = omData.map(function (r) {
-      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('ontslag', r, r.ondertekend === 'Ja') + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('ontslag', r, r.ondertekend === 'Ja') + (r.ondertekend !== 'Ja' && r.verzenddatum ? '<button class="btn bd bsm" data-ud-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="Niet ondertekend? Bevestig de uitdiensttreding (niets te tekenen), licht salaris in en archiveer">✓ Bevestig uitdiensttreding</button> ' : '') + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="12" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('om-body');
   };
