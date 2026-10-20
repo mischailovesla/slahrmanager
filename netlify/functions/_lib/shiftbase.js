@@ -164,8 +164,14 @@ async function getVertrokken(maanden) {
     if (!e || e === '0000-00-00' || e >= vandaag || e < grensIso) continue;
     const naam = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
     if (!naam || UITGESLOTEN.has(normNaam(naam))) continue;
-    const t = (rec.Team || []).find(x => x && x.name) || {};
-    uit.push({ id: String(u.id), naam, email: String(u.email || '').trim().toLowerCase(), einddatum: ddmm(e), einddatumIso: e, winkelNaam: String(t.name || '').replace(/^SLA\s*/i, '').trim() });
+    // Zelfde winkelbepaling als getMedewerkers: eigen (niet-flex) team gaat vóór een flexpool-team;
+    // alleen als iemand uitsluitend in een flexpool zat, tonen we de flexpool.
+    const teams = (rec.Team || []).filter(x => x && x.name);
+    const eigen = teams.filter(t => !isFlexTeam(t)), basis = eigen.length ? eigen : teams;
+    let winkelNaam = '';
+    for (const t of basis) { const did = String(t.department_id || ''); if (eigen.length && SB_DEPT_CODE[did]) { winkelNaam = WINKEL_BV_MAP[SB_DEPT_CODE[did]].naam; break; } }
+    if (!winkelNaam && basis[0]) winkelNaam = String(basis[0].name).replace(/^SLA\s*/i, '').trim();
+    uit.push({ id: String(u.id), naam, email: String(u.email || '').trim().toLowerCase(), einddatum: ddmm(e), einddatumIso: e, winkelNaam });
   }
   return uit.sort((a, b) => a.einddatumIso < b.einddatumIso ? 1 : -1);
 }
