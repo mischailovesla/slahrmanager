@@ -26,6 +26,9 @@ module.exports = {
   COOLDOWN_DAGEN: 3,
   // Ontslag/aanzegging: na zoveel automatische herinneringen stopt de mail; de taak blijft rood staan (bellen, of zelf uploaden).
   ONTSLAG_MAX_HERINNERINGEN: 3,
+  // Na zoveel dagen zonder handtekening wordt de ontslagbevestiging/aanzegging automatisch gearchiveerd (Mischa, 20-10-2026:
+  // "wie na 30 dagen niet getekend heeft, doet dat ook niet meer"). Blijft zichtbaar in het archief, het dossier en de analyses.
+  ONTSLAG_ARCHIVEER_DAGEN: 30,
 
   // Signaleringen (uit Shiftbase.gs v9.4) — stap 4
   SIGNALERING_ONTVANGERS: {

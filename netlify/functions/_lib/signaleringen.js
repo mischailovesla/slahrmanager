@@ -91,9 +91,25 @@ async function loonHerinneringen(droog) {
 async function ontslagHerinneringen(droog) {
   const rap = { naam: 'ontslag-herinneringen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
   const vandaag = vandaag0(), id = C.SHEETS.ontslag.id;
+  rap.gearchiveerd = [];
+  // rijen die HR zelf uit het archief heeft teruggezet niet opnieuw automatisch archiveren
+  const teruggezet = {};
+  try { const { data } = await admin().from('hr_acties').select('rij').eq('actie', 'herstel').eq('bron', 'ontslag').limit(1000); (data || []).forEach(a => { teruggezet[a.rij] = true; }); } catch (e) { /* tabel/kolom ontbreekt: dan niets uitzonderen */ }
   for (const r of await S.getOntslag()) {
-    if (r.ondertekend === 'Ja' || !r.email || r.email.indexOf('@') === -1 || !r.verzenddatum) continue;
+    if (r.ondertekend === 'Ja' || !r.verzenddatum) continue;
     const sindsVerzonden = dagenSinds(r.verzenddatum, vandaag);
+    // na ONTSLAG_ARCHIVEER_DAGEN zonder handtekening: automatisch archiveren, geen herinneringen meer
+    if (sindsVerzonden !== null && sindsVerzonden >= C.ONTSLAG_ARCHIVEER_DAGEN && !teruggezet[r.rij]) {
+      const item = { naam: r.naam, rij: r.rij, type: r.type, verzonden: r.verzenddatum, herinneringen: r.aantalHer || 0 };
+      if (rap.droog) { rap.gearchiveerd.push(Object.assign({ droog: true }, item)); continue; }
+      try {
+        await S.archiveerRij(id, 'automatisch: niet ondertekend na ' + C.ONTSLAG_ARCHIVEER_DAGEN + ' dagen', r.rij, r.naam, 'signalering');
+        await require('./auth').logActie({ door: 'signalering', actie: 'archiveren', bron: 'ontslag', rij: r.rij, naam: r.naam, details: (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslagbevestiging') + ' niet ondertekend na ' + sindsVerzonden + ' dagen (' + (r.aantalHer || 0) + ' herinneringen) — automatisch gearchiveerd' });
+        rap.gearchiveerd.push(item);
+      } catch (e) { rap.fouten.push(r.naam + ' (archiveren): ' + e.message); }
+      continue;
+    }
+    if (!r.email || r.email.indexOf('@') === -1) continue;
     if (sindsVerzonden === null || sindsVerzonden < C.COOLDOWN_DAGEN) continue;
     const sindsLaatste = dagenSinds(r.herinnering, vandaag);
     if (r.herinnering && sindsLaatste !== null && sindsLaatste < C.COOLDOWN_DAGEN) continue;
@@ -177,7 +193,7 @@ function aanzegHtml(lijst) {
 }
 async function aanzegtermijnen(droog) {
   const rap = { naam: 'aanzegtermijnen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
-  const [med, cons, ontslag] = await Promise.all([SB.getMedewerkers(true), SB.sbGet('contracts').then(c => (c && c.data) || c || []), S.getOntslag()]);
+  const [med, cons, ontslag] = await Promise.all([SB.getMedewerkers(true), SB.sbGet('contracts').then(c => (c && c.data) || c || []), S.getOntslag(true)]); // incl. archief: een gearchiveerde aanzegging is wél verstuurd
   const verzE = {}, verzN = {};
   ontslag.forEach(r => { if (String(r.status || '').indexOf('Verzonden') !== 0) return; const e = r.email.toLowerCase(); if (e) verzE[e] = true; const n = normNaam(r.naam); if (n) verzN[n] = true; });
   const lijst = vindAflopendeContracten(med, cons, verzE, verzN, vandaag0(), C.AANZEG_VENSTER_DAGEN);

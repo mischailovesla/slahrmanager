@@ -23,7 +23,7 @@ async function laad(qs) {
   const match = r => (email && String(r.email || '').toLowerCase() === email) || (nn && normNaam(r.naam) === nn);
 
   const [loon, ontslag, som, opl, onb, extra, brieven, wrs, bsk, kort, notities] = await Promise.all([
-    S.getLoonheffing(), S.getOntslag(), S.getSommatie(), S.getOverplaatsing(), S.getOnboarding(), S.getExtraTabs(), S.getBrieven().catch(() => []),
+    S.getLoonheffing(), S.getOntslag(true).then(l => l.map(r => r.gearchiveerd ? Object.assign({}, r, { status: (r.status || '') + ' · gearchiveerd ' + String(r.gearchiveerd.op || '').slice(0, 10) + (r.gearchiveerd.bron ? ' (' + r.gearchiveerd.bron + ')' : '') }) : r)), S.getSommatie(), S.getOverplaatsing(), S.getOnboarding(), S.getExtraTabs(), S.getBrieven().catch(() => []),
     S.getWaarschuwingen().catch(() => []), S.getBeschikbaarheid().catch(() => []), S.getKorting().catch(() => []), S.getNotities().catch(() => [])
   ]);
 

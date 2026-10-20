@@ -60,7 +60,8 @@ async function sheetWeergave(tabel, metArchief) {
   const rijen = await alles(tabel, metArchief);
   const data = [T.koppen(tabel)];
   data.mid = {}; // rij -> medewerker_id (Shiftbase), fase 1: medewerker als kern
-  for (const r of rijen) { while (data.length < r.rij - 1) data.push([]); data[r.rij - 1] = naarArr(tabel, r); if (r.medewerker_id) data.mid[r.rij] = String(r.medewerker_id); }
+  data.arch = {}; // rij -> { op, bron } voor gearchiveerde rijen (alleen met metArchief)
+  for (const r of rijen) { while (data.length < r.rij - 1) data.push([]); data[r.rij - 1] = naarArr(tabel, r); if (r.medewerker_id) data.mid[r.rij] = String(r.medewerker_id); if (r.gearchiveerd_op) data.arch[r.rij] = { op: r.gearchiveerd_op, bron: r.gearchiveerd_bron || '' }; }
   return data;
 }
 // mid aan een gemapte rij hangen (alle getters): frontend gebruikt het voor winkel-filter en dossier
@@ -193,11 +194,14 @@ async function getLoonheffing() {
   }
   return out;
 }
-async function getOntslag() {
-  const data = await sheetWeergave('hr_ontslag'); const dl = await ontslagDocLinks(); const out = [];
+// metArchief = ook gearchiveerde rijen (met veld gearchiveerd {op, bron}) — voor checks/analyses die de historie nodig hebben
+async function getOntslag(metArchief) {
+  const data = await sheetWeergave('hr_ontslag', !!metArchief); const dl = await ontslagDocLinks(); const out = [];
   for (let i = 1; i < data.length; i++) {
     const r = data[i]; if (!cel(r, 0)) continue;
-    out.push(metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), opzegging: cel(r, 2), einddatum: cel(r, 3), bedrijf: cel(r, 5), adres: cel(r, 6), status: cel(r, 7), verzenddatum: cel(r, 8), ondertekend: isJa(r[9]) ? 'Ja' : 'Nee', herinnering: cel(r, 10), aantalHer: parseInt(cel(r, 11), 10) || 0, mahdia: isJa(r[13]) ? 'Ja' : 'Nee', salaris: cel(r, 14), docUrl: zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', briefUrl: cel(r, 15), uitstroomreden: cel(r, 16), type: (!cel(r, 2) && cel(r, 3)) ? 'aanzegging' : 'ontslag' }));
+    const rec = metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), opzegging: cel(r, 2), einddatum: cel(r, 3), bedrijf: cel(r, 5), adres: cel(r, 6), status: cel(r, 7), verzenddatum: cel(r, 8), ondertekend: isJa(r[9]) ? 'Ja' : 'Nee', herinnering: cel(r, 10), aantalHer: parseInt(cel(r, 11), 10) || 0, mahdia: isJa(r[13]) ? 'Ja' : 'Nee', salaris: cel(r, 14), docUrl: zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', briefUrl: cel(r, 15), uitstroomreden: cel(r, 16), type: (!cel(r, 2) && cel(r, 3)) ? 'aanzegging' : 'ontslag' });
+    if (data.arch[i + 1]) rec.gearchiveerd = data.arch[i + 1];
+    out.push(rec);
   }
   return out;
 }

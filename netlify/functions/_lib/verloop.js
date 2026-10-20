@@ -111,7 +111,7 @@ async function getVerloopData(maanden, ververs) {
 // Dossiers zonder reden tellen als 'Niet geregistreerd' — die verhouding is zelf een KPI (hoe compleet is de registratie).
 async function uitstroomredenen(vanIso, totIso) {
   let rijen = [];
-  try { rijen = await require('./sheets').getOntslag(); } catch (e) { console.warn('uitstroomredenen:', e.message); return { totaal: 0, lijst: [], zonder: 0 }; }
+  try { rijen = await require('./sheets').getOntslag(true); } catch (e) { console.warn('uitstroomredenen:', e.message); return { totaal: 0, lijst: [], zonder: 0 }; }
   const telling = {}; let totaal = 0, zonder = 0;
   for (const r of rijen || []) {
     const m = String(r.einddatum || '').match(/^(\d{1,2})-(\d{1,2})-(\d{4})/); if (!m) continue;

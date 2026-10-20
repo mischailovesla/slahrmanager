@@ -175,7 +175,7 @@ async function laadBronnen(vanIso, totIso, ververs) {
     veilig('verzuim (Shiftbase)', async () => { const r = await SB.sbGet('absentees?min_date=' + isoD(new Date(dag(vanIso).getTime() - 60 * 864e5)) + '&max_date=' + totIso); return (r && r.data) || r || []; }),
     veilig('check-ins', async () => lijst(await db.from('hr_checkin').select('medewerker_id,naam,winkel,verstuurd_op,ingevuld_op,score,laag').gte('verstuurd_op', vanIso + 'T00:00:00').lte('verstuurd_op', totIso + 'T23:59:59'))),
     veilig('exit-survey', async () => lijst(await db.from('hr_exit').select('medewerker_id,naam,winkel,nps,ingevuld_op').gte('ingevuld_op', vanIso + 'T00:00:00').lte('ingevuld_op', totIso + 'T23:59:59'))),
-    veilig('aanzeggingen', async () => (await S.getOntslag()).filter(r => r.type === 'aanzegging')),
+    veilig('aanzeggingen', async () => (await S.getOntslag(true)).filter(r => r.type === 'aanzegging')),
     veilig('checklists', async () => lijst(await db.from('hr_checklists').select('type,naam,winkel,medewerker_id,gestart_op,afgerond_op').eq('type', 'onboarding')))
   ]);
   const academy = await academyP;
