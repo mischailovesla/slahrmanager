@@ -55,6 +55,23 @@ exports.handler = beveiligd('exit-admin', async (event, g) => {
   const { data: uitn } = await db.from('hr_mails').select('naam,naar,taal,tijdstip,door').eq('bron', 'exit').order('tijdstip', { ascending: false }).limit(200);
   let vertrokken = [];
   try { vertrokken = await require('./_lib/shiftbase').getVertrokken(maanden); } catch (e) { console.warn('vertrokken:', e.message); }
+  // Aanvullen met de ontslag/aanzegging-dossiers van het dashboard (ook gearchiveerd): wie ontslag nam maar in Shiftbase
+  // (nog) geen einddatum heeft, moet ook een survey kunnen krijgen.
+  try {
+    const S = require('./_lib/sheets'); const { normNaam } = require('./_lib/util');
+    const vandaagIso = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+    const grensIso = van.toLocaleDateString('sv-SE');
+    const heb = new Set(); vertrokken.forEach(v => { if (v.email) heb.add('e:' + v.email.toLowerCase()); heb.add('n:' + normNaam(v.naam)); });
+    for (const r of await S.getOntslag(true)) {
+      const m = String(r.einddatum || '').match(/(\d{1,2})-(\d{1,2})-(\d{4})/); if (!m) continue;
+      const iso = m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); if (iso < grensIso) continue;
+      const em = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam);
+      if ((em && heb.has('e:' + em)) || heb.has('n:' + nn)) continue;
+      heb.add('e:' + em); heb.add('n:' + nn);
+      vertrokken.push({ id: '', naam: String(r.naam || '').trim(), email: em, einddatum: iso.split('-').reverse().join('-'), einddatumIso: iso, winkelNaam: String(r.bedrijf || '').replace(/^SLA\s*/i, '').replace(/\s*B\.?V\.?$/i, '').trim(), nogInDienst: iso >= vandaagIso, bron: 'dossier' });
+    }
+    vertrokken.sort((a, b) => a.einddatumIso < b.einddatumIso ? 1 : -1);
+  } catch (e) { console.warn('vertrokken (dossiers):', e.message); }
   const ddmm = s => String(s || '').slice(0, 10).split('-').reverse().join('-');
   const labels = {}; (await X.vragenConfig()).forEach(v => { if (v.opties) v.opties.forEach(o => { labels[v.key + ':' + o[0]] = o[1]; }); });
   const ingevuldNamen = new Set((rijen || []).map(r => String(r.naam || '').toLowerCase()).filter(Boolean));
