@@ -98,8 +98,11 @@ async function loonHerinneringen(droog) {
     const isEN = r.taal === 'EN';
     rap.gevonden.push({ naam: r.naam, email: r.email, deadline: r.deadline, rij: r.rij, taal: r.taal, eerder: r.aantalHer });
     const tpl = T.LOON_TEMPLATES.find(x => x.type === 'herinnering' && x.taal === (isEN ? 'EN' : 'NL'));
+    const tweetalig = /NL\s*\/\s*EN/i.test(r.taal || ''); // automatische uitnodiging was NL + EN → herinnering ook
     await mailOfDroog(rap, {
-      to: r.email, subject: tpl.subject, text: T.personaliseerUploadLinks(T.loonPlain('herinnering', r.naam, r.deadline, isEN), r.naam), html: T.loonHtml('herinnering', r.naam, r.deadline, isEN),
+      to: r.email, subject: tweetalig ? T.LOON_TWEETALIG_ONDERWERP.herinnering : tpl.subject,
+      text: T.personaliseerUploadLinks(tweetalig ? T.loonPlainTweetalig('herinnering', r.naam, r.deadline) : T.loonPlain('herinnering', r.naam, r.deadline, isEN), r.naam),
+      html: tweetalig ? T.loonHtmlTweetalig('herinnering', r.naam, r.deadline) : T.loonHtml('herinnering', r.naam, r.deadline, isEN),
       kort: { naam: r.naam, email: r.email, rij: r.rij, taal: r.taal }
     }, async () => { await S.zetCel(id, null, r.rij, 8, stempel()); await S.zetCel(id, null, r.rij, 9, String((r.aantalHer || 0) + 1)); });
   }
@@ -172,15 +175,62 @@ function nieuweMedewerkersHtml(nieuw) {
   const blokken = nieuw.map(p => '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px"><tr><td style="padding:14px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #009f4b"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 4px">' + esc(p.naam) + ' <span style="font-weight:400;color:#888078;font-size:12px">&middot; ' + esc(p.winkel) + ' &middot; start ' + esc(p.start) + '</span></p><p style="' + F + 'font-size:12px;color:#666;margin:0 0 6px">' + esc(p.email || '(geen e-mail in Shiftbase)') + '</p><p style="' + F + 'font-size:11px;color:#888078;margin:0">Nog te doen: <span style="display:inline-block;background:#fdf0e8;color:#9a4a1a;border-radius:12px;padding:2px 10px;font-size:11px;font-weight:700">loonheffingsuitnodiging</span></p></td></tr></table>').join('');
   return T.slaWrap(T.slaHead('#009f4b', 'HR &middot; Nieuwe medewerkers') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">Volgens Shiftbase zijn deze <strong>' + nieuw.length + ' medewerker(s)</strong> recent gestart of starten ze binnenkort, maar hebben nog geen loonheffingsuitnodiging ontvangen:</p>' + blokken + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0"><tr><td style="padding:12px 16px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + F + 'font-size:12px;color:#7a5c00;line-height:1.6">Zonder loonheffingsverklaring v&oacute;&oacute;r de eerste loonrun geldt het anoniementarief (52%). Verstuur de loonheffingsuitnodiging via het HR Dashboard (Instroom &rarr; Loonheffingsverklaring).</td></tr></table><p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch bericht - dagelijkse Shiftbase-check</p></td></tr>' + T.slaFoot());
 }
+// Deadline in de uitnodiging: de startdatum; ligt die al achter ons (of binnen 3 dagen), dan vandaag + 3 dagen.
+function loonDeadline(startTekst, vandaag) {
+  const st = parseNLDatum(startTekst), min = plusDagen(vandaag, C.LOON_AUTO_MIN_DAGEN || 3);
+  const d = st && st >= min ? st : min;
+  return String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear();
+}
+const loonAutoAan = async () => (await require('./instellingen').lees('loon_auto', false)) === true;
+// Uitnodiging versturen + vastleggen in hr_loonheffing (zelfde kolommen als loonheffing-mail.js), taal 'NL/EN'
+async function loonUitnodigen(p, deadline) {
+  const id = C.SHEETS.loonheffing.id, nu = stempel(), email = String(p.email).trim().toLowerCase();
+  const resendId = await M.verstuur({ to: email, subject: T.LOON_TWEETALIG_ONDERWERP.uitnodiging, text: T.personaliseerUploadLinks(T.loonPlainTweetalig('uitnodiging', p.naam, deadline), p.naam), html: T.loonHtmlTweetalig('uitnodiging', p.naam, deadline), tags: [{ name: 'bron', value: 'loonheffing' }, { name: 'type', value: 'uitnodiging-auto' }] });
+  let rij = await S.vindLoonRij(email);
+  if (!rij) {
+    rij = await S.eersteLegeLoonRij();
+    await S.zetCel(id, null, rij, 1, p.naam); await S.zetCel(id, null, rij, 2, email); await S.zetCel(id, null, rij, 7, 'NL/EN');
+  }
+  await S.zetCel(id, null, rij, 3, deadline);
+  await S.zetCel(id, null, rij, 4, 'Verzonden op ' + nu, S.KLEUR.groen);
+  await S.zetCel(id, null, rij, 5, nu);
+  await M.logMail({ door: 'signalering', bron: 'loonheffing', type: 'uitnodiging', naar: email, naam: p.naam, onderwerp: T.LOON_TWEETALIG_ONDERWERP.uitnodiging, taal: 'NL/EN', rij, resend_id: resendId });
+  return { rij, resendId };
+}
 async function nieuweMedewerkers(droog) {
   const rap = { naam: 'nieuwe-medewerkers', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
   const [med, loon] = await Promise.all([SB.getMedewerkers(true), S.getLoonheffing()]);
   const loonEmails = {}, loonNamen = {};
   loon.forEach(r => { const e = r.email.toLowerCase(); if (e) loonEmails[e] = true; const n = normNaam(r.naam); if (n) loonNamen[n] = true; });
-  const nieuw = vindNieuweMedewerkers(med, loonEmails, loonNamen, vandaag0());
+  const vandaag = vandaag0();
+  const nieuw = vindNieuweMedewerkers(med, loonEmails, loonNamen, vandaag);
   rap.gevonden = nieuw;
   if (!nieuw.length) return rap;
-  const plain = 'Hallo,\n\nDeze medewerkers zijn recent gestart (of starten binnenkort) volgens Shiftbase, maar hebben nog geen loonheffingsuitnodiging vanuit het HR Dashboard ontvangen:\n\n' + nieuw.map(p => '- ' + p.naam + ' (' + p.winkel + ', start ' + p.start + ')').join('\n') + '\n\n(Automatisch bericht van het SLA HR systeem - dagelijkse Shiftbase-check)';
+  // De check draait elke 4 uur; het HR-lijstje (schakelaar uit) of 'zonder e-mail' gaat alleen mee met de eerste run van de dag.
+  const eersteRun = Number(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam', hour: '2-digit', hour12: false })) < 11;
+  const auto = await loonAutoAan();
+  rap.automatisch = auto;
+  if (auto) {
+    const zonderMail = [], verstuurd = [];
+    for (const p of nieuw) {
+      if (!p.email || p.email.indexOf('@') === -1) { zonderMail.push(p); continue; }
+      const deadline = loonDeadline(p.start, vandaag);
+      if (rap.droog) { rap.verstuurd.push({ droog: true, naam: p.naam, email: p.email, deadline }); continue; }
+      try { const r = await loonUitnodigen(p, deadline); verstuurd.push(Object.assign({ deadline }, p)); rap.verstuurd.push({ naam: p.naam, email: p.email, deadline, rij: r.rij, resendId: r.resendId }); }
+      catch (e) { rap.fouten.push(p.naam + ': ' + e.message); zonderMail.push(Object.assign({ fout: e.message }, p)); }
+    }
+    rap.gevonden = zonderMail; // wat overblijft is nog een taak voor HR
+    const meld = zonderMail.filter(p => p.fout || eersteRun);
+    if (rap.droog || (!verstuurd.length && !meld.length)) return rap;
+    const regel = p => '- ' + p.naam + ' (' + p.winkel + ', start ' + p.start + (p.deadline ? ', deadline ' + p.deadline : '') + (p.fout ? ' — FOUT: ' + p.fout : '') + ')';
+    const plain = 'Hallo,\n\n' + (verstuurd.length ? 'Automatisch verstuurd (indiensttredings- en loonheffingsformulier, NL + EN):\n' + verstuurd.map(regel).join('\n') + '\n\n' : '') + (meld.length ? 'Kon NIET automatisch (geen e-mailadres in Shiftbase of fout) — handmatig versturen:\n' + meld.map(regel).join('\n') + '\n\n' : '') + '(Automatisch bericht van het SLA HR Dashboard)';
+    const html = T.slaWrap(T.slaHead('#009f4b', 'HR &middot; Nieuwe medewerkers') + '<tr><td style="padding:32px 36px 28px"><pre style="' + F + 'font-size:13px;color:#333d3a;white-space:pre-wrap;margin:0">' + esc(plain) + '</pre></td></tr>' + T.slaFoot());
+    const id = await M.verstuur({ to: ontvangers('nieuweMedewerkers'), subject: 'Nieuwe medewerkers: ' + verstuurd.length + ' uitnodiging(en) automatisch verstuurd' + (meld.length ? ', ' + meld.length + ' handmatig' : ''), text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'nieuwe-medewerkers' }] }).catch(e => { rap.fouten.push('HR-overzicht: ' + e.message); return null; });
+    if (id) await M.logMail({ door: 'signalering', bron: 'signalering', type: 'nieuwe-medewerkers', naar: ontvangers('nieuweMedewerkers').join(','), naam: 'HR-team', onderwerp: 'Nieuwe medewerkers (automatisch)', taal: 'NL', rij: 0, resend_id: id });
+    return rap;
+  }
+  if (!eersteRun) return rap; // schakelaar uit: HR-lijstje één keer per dag, zoals voorheen
+  const plain = 'Hallo,\n\nDeze medewerkers zijn recent gestart (of starten binnenkort) volgens Shiftbase, maar hebben nog geen loonheffingsuitnodiging vanuit het HR Dashboard ontvangen:\n\n' + nieuw.map(p => '- ' + p.naam + ' (' + p.winkel + ', start ' + p.start + ')').join('\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
   await mailOfDroog(rap, { to: ontvangers('nieuweMedewerkers'), subject: 'Nieuwe medewerkers gevonden in Shiftbase: ' + nieuw.length + ' zonder loonheffingsuitnodiging', text: plain, html: nieuweMedewerkersHtml(nieuw), kort: { naam: 'HR-team', aantal: nieuw.length } });
   return rap;
 }
@@ -653,4 +703,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan };

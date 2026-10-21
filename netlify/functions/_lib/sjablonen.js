@@ -94,6 +94,22 @@ const LOON_TEMPLATES = [
   { key: 'herinnering-nl', label: 'Herinnering NL', taal: 'NL', type: 'herinnering', subject: 'Herinnering: loonheffingsverklaring nog niet ontvangen' },
   { key: 'herinnering-en', label: 'Reminder EN', taal: 'EN', type: 'herinnering', subject: 'Reminder: wage tax form not yet received' }
 ];
+// Tweetalig (NL + EN in één mail) voor de automatische uitnodiging: taal van een nieuwe medewerker is niet bekend.
+// Haalt de inhoud uit beide eentalige versies en zet ze onder elkaar in één huisstijl-mail.
+function binnenInhoud(html) {
+  const a = '<tr><td style="padding:32px 36px 28px">', i = html.indexOf(a), j = html.lastIndexOf('</td></tr>' + slaFoot());
+  return i > -1 && j > i ? html.slice(i + a.length, j) : html;
+}
+const LOON_TWEETALIG_ONDERWERP = { uitnodiging: 'Actie vereist: jouw indiensttredingsformulieren / Action required: your employment forms - SLA', herinnering: 'Herinnering: loonheffingsverklaring nog niet ontvangen / Reminder: payroll tax form not yet received - SLA' };
+function loonHtmlTweetalig(type, naam, dl) {
+  const kop = type === 'herinnering' ? 'HR &middot; Herinnering / Reminder' : 'HR &middot; Indiensttreding / Employment registration';
+  return slaWrap(slaHead(type === 'herinnering' ? '#f5a623' : '#009f4b', kop) + '<tr><td style="padding:32px 36px 28px">'
+    + '<p style="' + F + 'font-size:11px;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px">Nederlands</p>' + binnenInhoud(loonHtml(type, naam, dl, false))
+    + '<hr style="border:none;border-top:1px solid #e8e2de;margin:26px 0">'
+    + '<p style="' + F + 'font-size:11px;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px">English</p>' + binnenInhoud(loonHtml(type, naam, dl, true))
+    + '</td></tr>' + slaFoot());
+}
+function loonPlainTweetalig(type, naam, dl) { return loonPlain(type, naam, dl, false) + '\n\n------------------------------\n\n' + loonPlain(type, naam, dl, true); }
 function loonPlain(type, naam, dl, isEN) { return type === 'herinnering' ? loonHerinneringPlain(naam, dl, isEN) : loonUitnodigingPlain(naam, dl, isEN); }
 function loonHtml(type, naam, dl, isEN) { return type === 'herinnering' ? loonHerinneringHtml(naam, dl, isEN) : loonUitnodigingHtml(naam, dl, isEN); }
 
@@ -595,7 +611,7 @@ function oproepHtml(naam, bv, uren, reactiedatum, isEN) {
     + '<p style="' + s + '">' + L.sign + '<br><strong>SLA HR Team</strong><br><span style="color:#888078">' + esc(bv) + '</span></p></td></tr>' + slaFoot());
 }
 
-module.exports = { oproepPlain, oproepHtml, KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
+module.exports = { loonHtmlTweetalig, loonPlainTweetalig, LOON_TWEETALIG_ONDERWERP, oproepPlain, oproepHtml, KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
   slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, overplaatsingUploadUrl, salarisOverplaatsingHtml, salarisOverplaatsingPlain, indienstLink, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, exitBlok, zonderExit, exitUitnodigingPlain, exitUitnodigingHtml, checkinOnderwerp, checkinPlain, checkinHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
   HUISREGELS, regelsById, wrsPlain, wrsHtml, beschikbPlain, beschikbHtml, oosvPlain, oosvHtml,
   SOM_TYPES, SOM_KLEUR, SOM_SHEETKLEUR, SOM_HINTS, sommatieSubject, sommatieHtml, sommatiePlain, overplaatsingSubject, overplaatsingPlain, overplaatsingHtml };

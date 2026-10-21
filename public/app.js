@@ -459,10 +459,23 @@
   // ---------- Loonheffing-tab ----------
   var lhData = null, lhTemplates = [];
   function lmBtn(r) { return '<button class="btn bp bsm" data-lm-rij="' + r.rij + '">Mail</button>'; }
+  var lhAuto = false;
+  window.lhAutoToggle = async function () {
+    if (!confirm(lhAuto ? 'Automatisch uitnodigen uitzetten?' : 'Automatisch uitnodigen aanzetten? Nieuwe medewerkers uit Shiftbase krijgen dan zonder tussenkomst van HR de uitnodiging (NL + EN).')) return;
+    var r = await api('/api/loonheffing', { actie: 'auto', aan: !lhAuto });
+    if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadLoonheffing();
+  };
+  window.lhAutoVoorbeeld = async function () {
+    var r = await api('/api/loonheffing', { actie: 'voorbeeld' }); if (!r.success) { toast(r.bericht, 'err'); return; }
+    var w = window.open('', '_blank'); if (w) { w.document.write(r.html); w.document.title = r.subject; w.document.close(); }
+  };
   window.laadLoonheffing = async function () {
     var d = await api('/api/loonheffing');
     if (!d.success) { toast('Loonheffing: ' + d.bericht, 'err'); return; }
-    lhData = d.rijen; lhTemplates = d.templates;
+    lhData = d.rijen; lhTemplates = d.templates; lhAuto = !!d.auto;
+    g('lh-auto').className = 'alert ' + (lhAuto ? 'groen' : 'geel');
+    g('lh-auto-tekst').innerHTML = lhAuto ? '<strong>Automatisch uitnodigen staat aan.</strong> Nieuwe medewerkers uit Shiftbase krijgen elke 4 uur automatisch de indiensttredings- en loonheffingsmail (NL + EN), met de startdatum als deadline. HR krijgt een overzicht.' : '<strong>Automatisch uitnodigen staat uit.</strong> HR krijgt één keer per dag een lijstje met nieuwe medewerkers zonder uitnodiging en verstuurt zelf.';
+    g('lh-auto-knop').textContent = lhAuto ? 'Uitzetten' : 'Aanzetten'; g('lh-auto-knop').className = 'btn bsm ' + (lhAuto ? 'bd' : 'bp');
     g('lh-count').textContent = lhData.length + ' dossiers';
     g('lh-body').innerHTML = lhData.map(function (r) {
       return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';

@@ -96,6 +96,7 @@
     <div class="sec">
       <div class="sh"><div class="st">Loonheffingsverklaring <span class="pill" id="lh-count">-</span></div>
         <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('lh-body',this.value)"><button class="btn bd bsm" data-srt-knop="lh-body" onclick="srtKnop('lh-body')" title="Sorteer op datum: nieuw → oud, oud → nieuw, uit">⇅ Sorteer op datum</button><button class="btn bd bsm" onclick="laadLoonheffing()">↻</button><button class="btn bp bsm" onclick="openLoonMail(null)">Nieuwe mail</button></div></div>
+      <div class="alert" id="lh-auto" style="margin:12px 24px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span id="lh-auto-tekst" style="flex:1;min-width:260px">-</span><button class="btn bd bsm" onclick="lhAutoVoorbeeld()">Voorbeeld mail</button><button class="btn bp bsm" id="lh-auto-knop" onclick="lhAutoToggle()">Aanzetten</button></div>
       <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Deadline</th><th>Mail verstuurd</th><th>Formulier</th><th>Documenten</th><th>Taal</th><th>Herinneringen</th><th>Naar salaris</th><th>Actie</th></tr></thead><tbody id="lh-body"></tbody></table></div>
     </div>
   </div>

@@ -136,6 +136,7 @@ module.exports = {
   ACADEMY_WELKOM_DAGEN: 21,            // welkomstcollectie af binnen zoveel dagen na de eerste werkdag (zelfde norm als de onboarding-checklist)
   ACADEMY_CERT_WAARSCHUW_DAGEN: 30,    // certificaat verloopt binnen zoveel dagen = oranje (Academy gebruikt dezelfde grens)
   UITSTROOMREDENEN: ['Eigen keuze: andere baan', 'Eigen keuze: studie/verhuizing', 'Eigen keuze: werk/privé of rooster', 'Einde tijdelijk contract (niet verlengd door SLA)', 'Proeftijd', 'Functioneren', 'Gedrag/huisregels', 'Ontslag op staande voet', 'Wederzijds goedvinden', 'Langdurig ziek', 'Overig/onbekend'],
+  LOON_AUTO_MIN_DAGEN: 3,          // automatische loonheffingsuitnodiging: deadline = startdatum, maar minstens vandaag + 3 dagen
   SB_NIEUW_DAGEN: 14,              // "nieuw" = gestart binnen 14 dagen of start in de toekomst
   SIGNALERING_NEGEREN_NAMEN: [     // Shiftbase-spelling; al afgehandeld onder andere naam
     'Hannah Frederique Maria Vos'
