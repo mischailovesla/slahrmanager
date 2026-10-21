@@ -1501,6 +1501,9 @@
     g('ci-pervraag').innerHTML = k.perVraag.length && k.ingevuld ? k.perVraag.map(function (v) { return bar(v.vraag, v.n, v.gem); }).join('') : '<div class="lay-sub">Nog geen ingevulde check-ins.</div>';
     g('ci-perwinkel').innerHTML = k.perWinkel.length ? k.perWinkel.map(function (w) { return bar(w.winkel, w.n, w.gem); }).join('') : '<div class="lay-sub">Nog geen ingevulde check-ins.</div>';
     var kom = d.nu.map(function (x) { return Object.assign({ wanneer: 'vandaag' + (x.zonderEmail ? ' — geen e-mail in Shiftbase' : '') }, x); }).concat(d.komende.map(function (x) { return Object.assign({ wanneer: x.op + ' (over ' + x.over + ' d)' }, x); }));
+    var gm = d.gemist || [];
+    g('ci-gcount').textContent = gm.length; g('ci-galle').checked = false;
+    g('ci-gbody').innerHTML = gm.length ? gm.map(function (x) { return '<tr><td>' + (x.zonderEmail ? '' : '<input type="checkbox" data-ci-g=\'' + esc(JSON.stringify({ medewerker_id: x.medewerker_id, moment: x.moment, naam: x.naam })) + '\'>') + '</td><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td>' + esc(x.indienst || '') + '</td><td>Dag ' + x.moment + '</td><td>' + esc(x.op) + (x.geleden ? ' (' + x.geleden + ' d geleden)' : ' (vandaag)') + '</td><td>' + (x.zonderEmail ? '<span class="badge br">geen e-mail in Shiftbase</span>' : esc(x.email)) + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="leeg grijs">Niemand gemist.</td></tr>';
     g('ci-kcount').textContent = kom.length;
     g('ci-kbody').innerHTML = kom.length ? kom.map(function (x) { return '<tr><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td>' + esc(x.indienst || '') + '</td><td>Dag ' + x.moment + '</td><td>' + esc(x.wanneer) + '</td><td>' + esc(x.email || '-') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="leeg grijs">Niemand in de komende 14 dagen.</td></tr>';
     ciEditor.zet(d.vragenConfig, d.types); g('ci-vragen-sub').textContent = d.standaard ? 'Standaardlijst (config.js)' : 'Eigen lijst (opgeslagen in het dashboard)';
@@ -1558,6 +1561,20 @@
     res.classList.add('open');
     res.querySelectorAll('button[data-id]').forEach(function (z) { z.onclick = function () { g('ci-naam').value = z.getAttribute('data-naam'); g('ci-email').value = z.getAttribute('data-email'); g('ci-mid').value = z.getAttribute('data-id'); res.classList.remove('open'); }; });
   });
+  window.ciGemistVerstuur = async function () {
+    var sel = Array.prototype.slice.call(document.querySelectorAll('#ci-gbody input[data-ci-g]:checked')).map(function (c) { return JSON.parse(c.getAttribute('data-ci-g')); });
+    if (!sel.length) { toast('Selecteer eerst medewerkers', 'err'); return; }
+    if (!confirm('Check-in versturen naar ' + sel.length + ' medewerker(s)?')) return;
+    var b = g('ci-gbtn'); b.disabled = true; var ok = 0, fout = [];
+    for (var i = 0; i < sel.length; i++) {
+      b.textContent = 'Versturen… ' + (i + 1) + '/' + sel.length;
+      var r = await api('/api/checkin-admin', { actie: 'versturen', medewerker_id: sel[i].medewerker_id, moment: sel[i].moment });
+      if (r.success) ok++; else fout.push(sel[i].naam + ': ' + r.bericht);
+    }
+    b.disabled = false; b.textContent = 'Verstuur geselecteerde';
+    toast(ok + ' verstuurd' + (fout.length ? ', ' + fout.length + ' mislukt: ' + fout.join('; ') : ''), fout.length ? 'err' : 'ok');
+    laadCheckin();
+  };
   window.ciVerstuur = async function () {
     var p = { actie: 'versturen', naam: g('ci-naam').value.trim(), email: g('ci-email').value.trim(), medewerker_id: g('ci-mid').value, moment: (document.querySelector('#ci-moment .tb.sel') || {}).getAttribute ? document.querySelector('#ci-moment .tb.sel').getAttribute('data-m') : '30' };
     if (!p.naam) { toast('Vul de naam in', 'err'); return; }

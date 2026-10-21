@@ -80,6 +80,24 @@ function komende(med, set, vandaag, dagenVooruit) {
   return uit.sort((a, b) => a.over - b.over);
 }
 
+// Gemist: moment (dag 30/60) viel in de laatste `dagenTerug` dagen (t/m vandaag) maar er is nog geen uitnodiging —
+// bijv. omdat de check-in toen nog uit stond. Voor handmatig nasturen vanuit het dashboard.
+function gemist(med, set, vandaag, dagenTerug) {
+  vandaag = vandaag || vandaag0(); dagenTerug = dagenTerug || 31;
+  const uit = [];
+  for (const m of med || []) {
+    const start = parseNLDatum(m.indienst); if (!start) continue;
+    const dagen = Math.floor((vandaag - start) / 864e5);
+    for (const moment of C.CHECKIN_MOMENTEN) {
+      const geleden = dagen - moment; // 0 = vandaag
+      if (geleden < 0 || geleden > dagenTerug || heeftAl(set, m, moment)) continue;
+      const op = new Date(start.getTime()); op.setDate(op.getDate() + moment);
+      uit.push({ medewerker_id: String(m.id), naam: m.naam, email: String(m.email || '').trim().toLowerCase(), winkel: m.winkelNaam || '', indienst: m.indienst, moment, geleden, op: ddmm(op), zonderEmail: !m.email });
+    }
+  }
+  return uit.sort((a, b) => a.geleden - b.geleden || a.naam.localeCompare(b.naam, 'nl'));
+}
+
 // Uitnodigen: rij aanmaken (id = token), mail sturen; mislukt de mail, dan rij weer weg
 async function uitnodigen(k, door, bron) {
   if (!k.email || k.email.indexOf('@') === -1) throw new Error('Geen geldig e-mailadres voor ' + k.naam);
@@ -136,4 +154,4 @@ async function meldLaag(r) {
   await M.logMail({ door: 'checkin', bron: 'checkin', type: 'laag', naar: ontvangers().join(','), naam: r.naam, onderwerp: subject, taal: 'NL', rij: 0, resend_id: resendId });
 }
 
-module.exports = { actief, vragenConfig, link, leesToken, bestaande, kandidaten, komende, uitnodigen, herinneren, rijVoor, opslaan, meldLaag, vandaag0 };
+module.exports = { actief, vragenConfig, link, leesToken, bestaande, kandidaten, komende, gemist, uitnodigen, herinneren, rijVoor, opslaan, meldLaag, vandaag0 };

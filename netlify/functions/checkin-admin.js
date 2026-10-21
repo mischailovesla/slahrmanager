@@ -80,11 +80,12 @@ exports.handler = beveiligd('checkin-admin', async (event, g) => {
   kpi.perVraag = lijst.filter(v => v.type === 'schaal').map(v => { const w = ingevuld.map(r => r.antwoorden[v.key]).filter(x => typeof x === 'number'); return { key: v.key, vraag: v.nl, n: w.length, gem: w.length ? Math.round(w.reduce((a, b) => a + b, 0) / w.length * 10) / 10 : null }; });
   const pw = {}; ingevuld.forEach(r => { if (r.score == null) return; const k = r.winkel || '-'; (pw[k] = pw[k] || []).push(r.score); });
   kpi.perWinkel = Object.keys(pw).map(w => ({ winkel: w, n: pw[w].length, gem: Math.round(pw[w].reduce((a, b) => a + b, 0) / pw[w].length * 10) / 10 })).sort((a, b) => a.gem - b.gem);
-  let komende = [], nu = [], medewerkers = [];
+  let komende = [], nu = [], gemist = [], medewerkers = [];
+  const gemistDagen = Math.min(Math.max(parseInt(q.gemistDagen, 10) || 31, 1), 90);
   try {
     const [med, set] = await Promise.all([SB.getMedewerkers(), CI.bestaande()]);
-    komende = CI.komende(med, set, CI.vandaag0(), 14); nu = CI.kandidaten(med, set, CI.vandaag0());
+    komende = CI.komende(med, set, CI.vandaag0(), 14); nu = CI.kandidaten(med, set, CI.vandaag0()); gemist = CI.gemist(med, set, CI.vandaag0(), gemistDagen);
     medewerkers = med.map(m => ({ id: String(m.id), naam: m.naam, email: m.email || '', winkel: m.winkelNaam || '', indienst: m.indienst || '' }));
   } catch (e) { console.warn('checkin komende:', e.message); }
-  return { maanden, actief: await CI.actief(), vragenConfig: lijst, standaard: !(Array.isArray(eigen) && eigen.length), types: V.TYPES, momenten: C.CHECKIN_MOMENTEN, laagGrens: C.CHECKIN_LAAG_SCHAAL, rijen, kpi, komende, nu, medewerkers };
+  return { maanden, actief: await CI.actief(), vragenConfig: lijst, standaard: !(Array.isArray(eigen) && eigen.length), types: V.TYPES, momenten: C.CHECKIN_MOMENTEN, laagGrens: C.CHECKIN_LAAG_SCHAAL, rijen, kpi, komende, nu, gemist, gemistDagen, medewerkers };
 });

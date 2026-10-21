@@ -436,6 +436,11 @@
       <div class="sh"><div class="st">Vandaag en komende 14 dagen <span class="pill" id="ci-kcount">-</span></div><div class="lay-sub" style="color:rgba(255,255,255,.6)">Op basis van de eerste werkdag (eerste contract in Shiftbase). Uitnodigen gebeurt automatisch rond 10:40.</div></div>
       <div class="tw"><table><thead><tr><th>Naam</th><th>Winkel</th><th>In dienst</th><th>Moment</th><th>Wanneer</th><th>Email</th></tr></thead><tbody id="ci-kbody"></tbody></table></div>
     </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Gemist: dag 30/60 in de afgelopen 31 dagen, nog niet uitgenodigd <span class="pill" id="ci-gcount">-</span></div><div class="hr2"><button class="btn bp bsm" id="ci-gbtn" onclick="ciGemistVerstuur()">Verstuur geselecteerde</button></div></div>
+      <div class="lay-sub" style="padding:8px 24px 0">Bijvoorbeeld omdat de check-in toen nog uit stond. Wie nog binnen 7 dagen na zijn moment zit, krijgt hem ook automatisch zodra de check-in aan staat.</div>
+      <div class="tw"><table><thead><tr><th style="width:30px"><input type="checkbox" id="ci-galle" onclick="document.querySelectorAll('#ci-gbody input[data-ci-g]').forEach(function(c){c.checked=document.getElementById('ci-galle').checked})"></th><th>Naam</th><th>Winkel</th><th>In dienst</th><th>Moment</th><th>Was op</th><th>Email</th></tr></thead><tbody id="ci-gbody"></tbody></table></div>
+    </div>
     <div class="sec" id="ci-instel">
       <div class="sh"><div class="st">Instellingen: aan/uit en vragen</div>
         <div class="hr2"><span id="ci-status" class="badge boat">-</span><button class="btn bsm bp" id="ci-toggle" onclick="ciToggle()">Aanzetten</button><button class="btn bd bsm" onclick="ciVoorbeeld('NL')">Voorbeeld NL</button><button class="btn bd bsm" onclick="ciVoorbeeld('EN')">Voorbeeld EN</button></div></div>
