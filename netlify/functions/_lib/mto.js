@@ -16,6 +16,7 @@ const M = require('./mail');
 const I = require('./instellingen');
 const Q = require('./mto-vragen');
 const { admin } = require('./auth');
+const gemL = l => l.length ? l.reduce((a, b) => a + b, 0) / l.length : null;
 
 const MIN_N = C.MTO_MIN_N || 4;
 const LOOPTIJD = C.MTO_LOOPTIJD_DAGEN || 21;
@@ -306,8 +307,83 @@ async function rapport(rondeId, groep, winkel) {
   const trend = alle.slice().reverse().map(r => { const a = aggregeer(filter(perRonde[r.id] || [], groep, winkel), false); return { id: r.id, naam: r.naam, n: a.n, verborgen: !!a.verborgen, totaal: a.totaal == null ? null : a.totaal, enps: a.enps == null ? null : a.enps }; }).filter(t => t.n);
   // open antwoorden: alleen als de selectie groot genoeg is; gesorteerd (niet in invulvolgorde)
   const opmerkingen = totaal.verborgen || sel.length < MIN_N ? [] : sel.map(r => r.opmerking).filter(Boolean).sort((a, b) => a.localeCompare(b, 'nl'));
-  return { ronde, rondes: alle, minN: MIN_N, filter: { groep: groep || 'alle', winkel: winkel || '' }, respons: respons(selU), totaal, vorige, perWinkel: perWinkelEcht, zonderWinkel, groepen, trend, opmerkingen,
+  let actiesLijst = [], actiesFout = '';
+  try { const vandaag = isoNL(new Date()); actiesLijst = (await acties()).map(a => actieUit(a, alle, perRonde, vandaag)); } catch (e) { actiesFout = e.message; }
+  return { acties: actiesLijst, actiesFout, ronde, rondes: alle, minN: MIN_N, filter: { groep: groep || 'alle', winkel: winkel || '' }, respons: respons(selU), totaal, vorige, perWinkel: perWinkelEcht, zonderWinkel, groepen, trend, opmerkingen,
     themas: Q.THEMAS.map(t => ({ key: t.key, nl: t.nl, vragen: t.vragen.map(v => ({ key: v[0], nl: v[1] })) })) };
+}
+
+// ---------- Fase 5b: actieplan na het MTO ----------
+const ACTIE_STATUS = ['open', 'bezig', 'klaar', 'vervallen'];
+async function acties() {
+  const { data, error } = await admin().from('hr_mto_actie').select('*').order('deadline', { ascending: true });
+  fout(error, 'Acties lezen');
+  return data || [];
+}
+async function actieOpslaan(p, door) {
+  const titel = String(p.titel || '').trim();
+  if (!titel) throw new Error('Geef de actie een titel.');
+  if (p.thema && !Q.THEMAS.some(t => t.key === p.thema)) throw new Error('Onbekend thema.');
+  const status = ACTIE_STATUS.includes(p.status) ? p.status : 'open';
+  const deadline = /^\d{4}-\d{2}-\d{2}$/.test(String(p.deadline || '')) ? p.deadline : null;
+  const rij = { ronde_id: p.ronde_id || null, winkel: String(p.winkel || '').trim(), thema: p.thema || '', titel: titel.slice(0, 200), toelichting: String(p.toelichting || '').slice(0, 2000),
+    eigenaar: String(p.eigenaar || '').trim().slice(0, 120), eigenaar_email: String(p.eigenaar_email || '').trim().toLowerCase().slice(0, 200), deadline, status, resultaat: String(p.resultaat || '').slice(0, 2000),
+    bijgewerkt_op: new Date().toISOString(), bijgewerkt_door: door || '' };
+  const db = admin();
+  if (p.id) {
+    const { data: oud } = await db.from('hr_mto_actie').select('status,afgerond_op').eq('id', p.id).limit(1);
+    const o = (oud || [])[0]; if (!o) throw new Error('Actie niet gevonden.');
+    rij.afgerond_op = status === 'klaar' ? (o.status === 'klaar' && o.afgerond_op ? o.afgerond_op : new Date().toISOString()) : null;
+    const { data, error } = await db.from('hr_mto_actie').update(rij).eq('id', p.id).select('*'); fout(error, 'Actie opslaan'); return data[0];
+  }
+  rij.aangemaakt_door = door || ''; if (status === 'klaar') rij.afgerond_op = new Date().toISOString();
+  const { data, error } = await db.from('hr_mto_actie').insert(rij).select('*'); fout(error, 'Actie opslaan (migratie 0016 gedraaid?)'); return data[0];
+}
+async function actieVerwijderen(id) {
+  const { error } = await admin().from('hr_mto_actie').delete().eq('id', id); fout(error, 'Actie verwijderen');
+}
+// Effect: themascore (of totaal) van de winkel in de aanleidingsronde vs de nieuwste latere ronde met genoeg reacties
+function effectVan(a, alle, perRonde) {
+  const sc = (rid) => { const l = filter(perRonde[rid] || [], 'alle', a.winkel || null); const g = aggregeer(l, false); if (g.verborgen || !g.n) return null; return a.thema ? g.perThema[a.thema] : g.totaal; };
+  const idx = alle.findIndex(r => r.id === a.ronde_id); if (idx < 0) return null;
+  const voor = sc(a.ronde_id); if (voor == null) return { voor: null };
+  for (let i = idx - 1; i >= 0; i--) { const na = sc(alle[i].id); if (na != null) return { voor, na, delta: r1(na - voor), naRonde: alle[i].naam }; }
+  return { voor };
+}
+function actieUit(a, alle, perRonde, vandaag) {
+  const thema = Q.THEMAS.find(t => t.key === a.thema), ronde = alle.find(r => r.id === a.ronde_id);
+  const overDagen = a.deadline ? Math.round((new Date(a.deadline) - new Date(vandaag)) / 864e5) : null;
+  return { id: a.id, ronde_id: a.ronde_id, ronde: ronde ? ronde.naam : '', winkel: a.winkel, thema: a.thema, themaNaam: thema ? thema.nl : 'Algemeen', titel: a.titel, toelichting: a.toelichting,
+    eigenaar: a.eigenaar, eigenaar_email: a.eigenaar_email, deadline: a.deadline || '', deadlineNL: a.deadline ? a.deadline.split('-').reverse().join('-') : '', overDagen,
+    teLaat: overDagen != null && overDagen < 0 && (a.status === 'open' || a.status === 'bezig'), status: a.status, resultaat: a.resultaat, afgerond: fmt(a.afgerond_op), door: a.aangemaakt_door, effect: effectVan(a, alle, perRonde) };
+}
+// Spearman-rangcorrelatie (gelijke waarden krijgen het gemiddelde rangnummer)
+function spearman(xs, ys) {
+  const n = xs.length; if (n < 3) return null;
+  const rang = v => { const s = v.map((x, i) => [x, i]).sort((a, b) => a[0] - b[0]), r = new Array(n); let i = 0; while (i < n) { let j = i; while (j + 1 < n && s[j + 1][0] === s[i][0]) j++; for (let k = i; k <= j; k++) r[s[k][1]] = (i + j) / 2 + 1; i = j + 1; } return r; };
+  const rx = rang(xs), ry = rang(ys), mx = gemL(rx), my = gemL(ry);
+  let a = 0, bx = 0, by = 0; for (let i = 0; i < n; i++) { a += (rx[i] - mx) * (ry[i] - my); bx += (rx[i] - mx) ** 2; by += (ry[i] - my) ** 2; }
+  return bx && by ? Math.round(a / Math.sqrt(bx * by) * 100) / 100 : null;
+}
+// MTO per winkel naast verloop / verzuim / vroege uitval uit de scorekaart (12 maanden t/m nu)
+async function koppeling(rondeId) {
+  const SK = require('./scorekaart');
+  const [rap, sk] = await Promise.all([rapport(rondeId, 'alle', ''), SK.getScorekaart(12)]);
+  const perSk = {}; sk.winkels.forEach(w => { perSk[normW(w.naam)] = w; });
+  const KP = [['verloop', 'Verloop', '%', 'laag'], ['verzuimPct', 'Verzuim', '%', 'laag'], ['uitval90', 'Nieuwe medewerkers weg binnen 90 dagen', '%', 'laag'], ['meldingsfreq', 'Ziekmeldingen per medewerker per jaar', '', 'laag']];
+  const rijen = rap.perWinkel.filter(w => !w.verborgen && w.n && w.totaal != null).map(w => {
+    const s = perSk[normW(w.winkel)], kp = {};
+    KP.forEach(k => { const x = s && s.waarden[k[0]]; kp[k[0]] = x && x.v != null && !x.klein ? Math.round(x.v * 10) / 10 : null; });
+    return { winkel: w.winkel, n: w.n, mto: w.totaal, enps: w.enps, bestand: s ? s.bestand : null, kp };
+  });
+  const verbanden = KP.map(k => {
+    const paren = rijen.filter(r => r.kp[k[0]] != null);
+    const rho = spearman(paren.map(r => r.mto), paren.map(r => r.kp[k[0]]));
+    const sterkte = rho == null ? 'te weinig winkels' : Math.abs(rho) >= 0.6 ? 'sterk' : Math.abs(rho) >= 0.3 ? 'matig' : 'geen duidelijk';
+    const richting = rho == null || Math.abs(rho) < 0.3 ? '' : rho < 0 ? 'hogere MTO-score gaat samen met lager ' + k[1].toLowerCase() : 'hogere MTO-score gaat samen met hoger ' + k[1].toLowerCase();
+    return { key: k[0], label: k[1], eenheid: k[2], n: paren.length, rho, sterkte, richting, sla: sk.totaal.waarden[k[0]] ? sk.totaal.waarden[k[0]].v : null };
+  });
+  return { ronde: rap.ronde, periode: sk.periode, rijen, verbanden, sla: { mto: rap.totaal.totaal, enps: rap.totaal.enps }, minN: MIN_N, fouten: sk.fouten || [] };
 }
 
 // ---------- PDF-rapporten (per winkel, SLA, of bundel) ----------
@@ -324,9 +400,11 @@ async function pdfSecties(rondeId, groep, winkel) {
   const hier = perRonde[ronde.id] || [], uitn = ui.data || [];
   const idx = alle.findIndex(r => r.id === ronde.id), vorigeR = alle.slice(idx + 1).find(r => (perRonde[r.id] || []).length);
   const respons = l => l.length ? { uitgenodigd: l.length, ingevuld: l.filter(x => x.ingevuld).length, pct: Math.round(l.filter(x => x.ingevuld).length / l.length * 100) } : null;
+  let alleActies = []; try { const vandaag = isoNL(new Date()); alleActies = (await acties()).map(a => actieUit(a, alle, perRonde, vandaag)); } catch (e) { /* migratie 0016 nog niet gedraaid */ }
+  const actiesVoor = w => alleActies.filter(a => a.winkel === (w || '') && (a.status === 'open' || a.status === 'bezig' || a.ronde_id === ronde.id));
   const sectie = w => {
     const lijst = filter(hier, groep, w || null), a = aggregeer(lijst, true);
-    return { winkel: w || '', a, respons: respons(filter(uitn, groep, w || null)), vorige: vorigeR ? aggregeer(filter(perRonde[vorigeR.id], groep, w || null), true) : null,
+    return { acties: actiesVoor(w), winkel: w || '', a, respons: respons(filter(uitn, groep, w || null)), vorige: vorigeR ? aggregeer(filter(perRonde[vorigeR.id], groep, w || null), true) : null,
       opmerkingen: a.verborgen || !a.n ? [] : lijst.map(r => r.opmerking).filter(Boolean).sort((p, q) => p.localeCompare(q, 'nl')) };
   };
   const res = { ronde, groep, minN: MIN_N, vorigeNaam: vorigeR ? vorigeR.naam : '', themas: Q.THEMAS.map(t => ({ key: t.key, nl: t.nl, vragen: t.vragen.map(v => ({ key: v[0], nl: v[1] })) })), sla: sectie('') };
@@ -357,4 +435,4 @@ async function exportCsv(rondeId) {
   return [kop].concat(rijen).map(r => r.map(q).join(';')).join('\n');
 }
 
-module.exports = { MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager };
+module.exports = { MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager, acties, actieOpslaan, actieVerwijderen, koppeling, spearman };

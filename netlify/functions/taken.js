@@ -104,6 +104,24 @@ async function uitCheckins() {
   return t;
 }
 
+// Fase 5b: MTO-acties met een deadline binnen 7 dagen (of over tijd)
+async function uitMtoActies() {
+  const t = [];
+  try {
+    const vandaag = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }), grens = new Date(Date.now() + 7 * 864e5).toLocaleDateString('sv-SE');
+    const { data } = await admin().from('hr_mto_actie').select('id,winkel,thema,titel,eigenaar,deadline,status').in('status', ['open', 'bezig']).not('deadline', 'is', null).lte('deadline', grens).limit(200);
+    const TH = {}; require('./_lib/mto-vragen').THEMAS.forEach(x => { TH[x.key] = x.nl; });
+    for (const a of data || []) {
+      const over = Math.round((new Date(vandaag) - new Date(a.deadline)) / 864e5);
+      t.push({ bron: 'mto-actie', urgentie: over > 0 ? 'rood' : 'oranje', sleutel: 'mto-actie|' + a.id,
+        titel: 'MTO-actie' + (over > 0 ? ' — ' + over + ' dagen over de deadline' : over === 0 ? ' — deadline vandaag' : ' — deadline over ' + (-over) + ' dagen') + ': ' + a.titel,
+        sub: (a.winkel || 'SLA-breed') + (a.thema ? ' · ' + (TH[a.thema] || a.thema) : '') + (a.eigenaar ? ' · eigenaar ' + a.eigenaar : '') + ' · ' + a.status,
+        winkel: a.winkel || '', actie: { soort: 'mto-actie', id: a.id, label: 'Bijwerken' }, extra: { soort: 'tab', tab: 'mto', label: 'MTO' } });
+    }
+  } catch (e) { /* tabel ontbreekt nog (migratie 0016) */ }
+  return t;
+}
+
 // Fase 3b: vervolggesprekken die (bijna) aan de beurt zijn
 async function uitGesprekken() {
   const t = [];
@@ -197,6 +215,7 @@ exports.handler = beveiligd('taken', async (event, g) => {
   taken.push(...await uitChecklists());
   taken.push(...await uitCheckins());
   taken.push(...await uitGesprekken());
+  taken.push(...await uitMtoActies());
   taken.push(...await uitAcademy());
   // afgehandelde items verbergen
   let verborgen = 0;

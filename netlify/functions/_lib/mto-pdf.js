@@ -173,6 +173,22 @@ async function maakMtoPdf(res, door) {
     }
   }
 
+  function actieplan(s) {
+    if (!s.acties || !s.acties.length) return;
+    kop('Actieplan' + (s.winkel ? ' ' + s.winkel : ' SLA-breed'), 40);
+    const STA = { open: ['Open', 'geen'], bezig: ['Bezig', 'Matig'], klaar: ['Klaar', 'Goed'], vervallen: ['Vervallen', 'geen'] };
+    tekst('Actie', L, y, 7, F.b, KL.grijs); tekst('Eigenaar', L + 300, y, 7, F.b, KL.grijs); tekst('Deadline', L + 390, y, 7, F.b, KL.grijs); tekst('Status', L + 448, y, 7, F.b, KL.grijs); y -= 5; lijn(0.6);
+    s.acties.forEach(a => {
+      const rs = regels(a.titel, 8.5, F.b, 290), sub = a.themaNaam + (a.resultaat ? ' · resultaat: ' + a.resultaat : ''), rs2 = regels(sub, 6.8, F.n, 290);
+      ruimte(rs.length * 10.5 + rs2.length * 8.5 + 14); y -= 12;
+      rs.forEach((rg, j) => tekst(rg, L, y - j * 10.5, 8.5, F.b)); rs2.forEach((rg, j) => tekst(rg, L, y - rs.length * 10.5 - j * 8.5 + 1, 6.8, F.n, KL.grijs));
+      tekst(a.eigenaar || '-', L + 300, y, 8); tekst(a.deadlineNL || '-', L + 390, y, 8, a.teLaat ? F.b : F.n, a.teLaat ? KL.rood : KL.donker);
+      const st = STA[a.status] || [a.status, 'geen']; badge(st[0], L + 448, y, st[1], 7);
+      y -= rs.length * 10.5 + rs2.length * 8.5 - 4; lijn(0.3);
+    });
+    y -= 12;
+  }
+
   // ---------- extra voor het SLA-rapport ----------
   function slaExtra() {
     kop('Per winkel', 80);
@@ -210,8 +226,8 @@ async function maakMtoPdf(res, door) {
   }
 
   // ---------- samenstellen ----------
-  if (!res.alleenWinkel) { deel(res.sla, true); slaExtra(); }
-  (res.winkels || []).forEach(w => deel(w, false));
+  if (!res.alleenWinkel) { deel(res.sla, true); actieplan(res.sla); slaExtra(); }
+  (res.winkels || []).forEach(w => { deel(w, false); actieplan(w); });
   if (res.bundel && res.overgeslagen && res.overgeslagen.length) { ruimte(40); y -= 10; alinea('Geen apart rapport (minder dan ' + res.minN + ' reacties): ' + res.overgeslagen.map(w => w.winkel + ' (' + w.n + ')').join(', ') + '. Hun antwoorden tellen wel mee in het SLA-totaal.', 8, KL.grijs, F.i); }
 
   // voet + paginanummers

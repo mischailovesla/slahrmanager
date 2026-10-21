@@ -9,6 +9,8 @@
 //   POST { actie:'sluiten', ronde }     -> ronde nu sluiten
 //   POST { actie:'nulmeting' }          -> Google-Forms-resultaten van februari 2026 importeren (één keer)
 //   POST { actie:'voorbeeld', taal, groep } -> voorbeeldlink (slaat niets op)
+//   POST { actie:'actie-opslaan', id?, winkel, thema, titel, ... } / { actie:'actie-verwijderen', id }  -> actieplan (fase 5b)
+//   GET  /api/mto-admin?koppeling=1&ronde=   -> MTO per winkel naast verloop/verzuim (scorekaart, 12 mnd)
 // ============================================================
 const { beveiligd, body, logActie } = require('./_lib/auth');
 const MTO = require('./_lib/mto');
@@ -18,6 +20,16 @@ exports.handler = beveiligd('mto-admin', async (event, g) => {
   if (event.httpMethod === 'POST') {
     const p = body(event);
     if (p.actie === 'voorbeeld') return { link: U.site() + '/mto.html?t=' + U.tekenToken({ s: 'mto', i: p.groep === 'manager' ? 'voorbeeld-manager' : 'voorbeeld' }) + (String(p.taal).toUpperCase() === 'EN' ? '&taal=en' : '') };
+    if (p.actie === 'actie-opslaan') {
+      const a = await MTO.actieOpslaan(p, g.email);
+      await logActie({ door: g.email, actie: 'mto-actie', bron: 'mto', veld: a.winkel || 'SLA', nieuw: a.status, details: a.titel });
+      return { bericht: 'Actie opgeslagen' + (a.winkel ? ' (' + a.winkel + ')' : ' (SLA-breed)') + '.', id: a.id };
+    }
+    if (p.actie === 'actie-verwijderen') {
+      if (!p.id) throw new Error('Geen actie opgegeven.');
+      await MTO.actieVerwijderen(p.id); await logActie({ door: g.email, actie: 'mto-actie', bron: 'mto', veld: 'verwijderd', details: String(p.id) });
+      return { bericht: 'Actie verwijderd.' };
+    }
     if (p.actie === 'testmail') {
       // echte mail naar jezelf, met een voorbeeldlink: je kunt alles invullen, er wordt niets opgeslagen en er start geen ronde
       const M = require('./_lib/mail');
@@ -55,6 +67,7 @@ exports.handler = beveiligd('mto-admin', async (event, g) => {
       managers: k.uit.filter(x => x.groep === 'manager').map(x => ({ naam: x.naam, winkel: x.winkel, functie: x.functie })) };
   }
   if (q.csv) return { csv: await MTO.exportCsv(q.csv) };
+  if (q.koppeling) return await MTO.koppeling(q.ronde || null);
   if (q.pdf) {
     const PDF = require('./_lib/mto-pdf');
     const res = await MTO.pdfSecties(q.ronde || null, q.groep || 'alle', q.pdf === 'sla' ? '' : q.pdf === 'bundel' ? '*' : String(q.winkel || ''));
@@ -65,6 +78,7 @@ exports.handler = beveiligd('mto-admin', async (event, g) => {
   const r = await MTO.rapport(q.ronde || null, q.groep || 'alle', q.winkel || '');
   r.open = r.rondes.find(x => x.status === 'open') || null;
   r.nulmetingGedaan = r.rondes.some(x => x.bron === 'import');
+  r.alleWinkels = Object.values(require('./_lib/config').WINKEL_BV_MAP).map(w => w.naam).sort((a, b) => a.localeCompare(b, 'nl'));
   r.instellingen = { minN: MTO.MIN_N, looptijd: MTO.LOOPTIJD, herinner: MTO.HERINNER, maanden: MTO.MAANDEN };
   return r;
 });

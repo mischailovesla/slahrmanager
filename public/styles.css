@@ -309,3 +309,8 @@ td .lay-sub.cel-kort{max-width:200px}
 @media (max-width:1000px){.mto-grid{grid-template-columns:1fr}}
 .mto-bar .mto-d{min-width:52px;display:inline-block}
 .sec:has(#mto-kpi){overflow:visible}
+.mto-vbs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.mto-vb{background:var(--zand);border-radius:10px;padding:12px 14px;border-top:3px solid #c9c2bc}.mto-vb.groen{border-top-color:var(--groen)}.mto-vb.rood{border-top-color:var(--rood)}
+.mto-vb-l{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--grijs)}.mto-vb-r{font-size:1.6rem;font-weight:700;color:var(--donker);margin:2px 0}
+.mto-sc{width:100%;height:auto;background:#fff}.mto-sc-kop{font-weight:700;font-size:.85rem;margin-bottom:4px}
+.mto-sc-g{stroke:#eee7e2;stroke-width:1}.mto-sc-t{font-size:9px;fill:#888078}.mto-sc-l{font-size:9px;fill:#333d3a}.mto-sc-p{fill:#009f4b;fill-opacity:.85}.mto-sc-sla{stroke:#e8824a;stroke-dasharray:4 3;stroke-width:1}
