@@ -296,13 +296,17 @@ async function rapport(rondeId, groep, winkel) {
     const vw = vorigeR ? aggregeer(filter(perRonde[vorigeR.id], groep, null).filter(r => normW(r.winkel) === normW(ww)), false) : null;
     return Object.assign({ winkel: w, respons: respons(lu), vorigeTotaal: vw && !vw.verborgen ? vw.totaal : null, vorigeEnps: vw && !vw.verborgen ? vw.enps : null }, a);
   }).filter(w => w.n || (w.respons && w.respons.uitgenodigd));
+  // reacties zonder winkel (nulmeting: de store-manager-formulieren vroegen niet naar de winkel) horen niet in de winkeltabel
+  const zw = perWinkel.find(w => w.winkel === '(geen winkel)');
+  const zonderWinkel = zw ? { n: zw.n, managers: filter(hier, 'manager', null).filter(r => !String(r.winkel || '').trim()).length } : null;
+  const perWinkelEcht = perWinkel.filter(w => w.winkel !== '(geen winkel)');
   // makers vs managers (met het gekozen winkelfilter)
   const groepen = ['medewerker', 'manager'].map(gp => Object.assign({ groep: gp, respons: respons(filter(uitn, gp, winkel)) }, aggregeer(filter(hier, gp, winkel), false)));
   // trend over alle rondes (oud → nieuw)
   const trend = alle.slice().reverse().map(r => { const a = aggregeer(filter(perRonde[r.id] || [], groep, winkel), false); return { id: r.id, naam: r.naam, n: a.n, verborgen: !!a.verborgen, totaal: a.totaal == null ? null : a.totaal, enps: a.enps == null ? null : a.enps }; }).filter(t => t.n);
   // open antwoorden: alleen als de selectie groot genoeg is; gesorteerd (niet in invulvolgorde)
   const opmerkingen = totaal.verborgen || sel.length < MIN_N ? [] : sel.map(r => r.opmerking).filter(Boolean).sort((a, b) => a.localeCompare(b, 'nl'));
-  return { ronde, rondes: alle, minN: MIN_N, filter: { groep: groep || 'alle', winkel: winkel || '' }, respons: respons(selU), totaal, vorige, perWinkel, groepen, trend, opmerkingen,
+  return { ronde, rondes: alle, minN: MIN_N, filter: { groep: groep || 'alle', winkel: winkel || '' }, respons: respons(selU), totaal, vorige, perWinkel: perWinkelEcht, zonderWinkel, groepen, trend, opmerkingen,
     themas: Q.THEMAS.map(t => ({ key: t.key, nl: t.nl, vragen: t.vragen.map(v => ({ key: v[0], nl: v[1] })) })) };
 }
 

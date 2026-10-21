@@ -2392,7 +2392,7 @@
     } else {
       var laatste = d.rondes.filter(function (r) { return r.bron === 'dashboard'; })[0];
       h = '<div class="sec mto-ronde-kaart"><div class="mto-rk"><div><div class="mto-rk-t">Nieuwe ronde starten</div><div class="lay-sub">' + (laatste ? 'Vorige ronde: ' + esc(laatste.naam) + ' (' + esc(laatste.gestart) + ', respons ' + (laatste.respons == null ? '-' : laatste.respons + '%') + '). ' : '') + 'Iedereen in dienst krijgt een uitnodiging; herinneringen na ' + d.instellingen.herinner.join(' en ') + ' dagen, dicht na ' + d.instellingen.looptijd + ' dagen.</div><div id="mto-kand" class="lay-sub" style="margin-top:6px"></div></div>'
-        + '<div class="mto-rk-r"><button class="btn bd bsm" onclick="mtoVoorbeeld(\'NL\',\'medewerker\')">Voorbeeld</button><button class="btn bd bsm" onclick="mtoVoorbeeld(\'EN\',\'manager\')">Voorbeeld manager (EN)</button><button class="btn bd bsm" onclick="mtoKandidaten()">Wie krijgt hem?</button>' + (d.nulmetingGedaan ? '' : '<button class="btn bd bsm" onclick="mtoNulmeting()">Nulmeting feb 2026 importeren</button>') + '<button class="btn bp bsm" onclick="mtoStart()">Ronde starten</button></div></div></div>';
+        + '<div class="mto-rk-r"><button class="btn bd bsm" onclick="mtoVoorbeeld(\'NL\',\'medewerker\')">Voorbeeld</button><button class="btn bd bsm" onclick="mtoVoorbeeld(\'EN\',\'manager\')">Voorbeeld manager (EN)</button><button class="btn bd bsm" onclick="mtoTestmail()">Testmail naar mij</button><button class="btn bd bsm" onclick="mtoKandidaten()">Wie krijgt hem?</button>' + (d.nulmetingGedaan ? '' : '<button class="btn bd bsm" onclick="mtoNulmeting()">Nulmeting feb 2026 importeren</button>') + '<button class="btn bp bsm" onclick="mtoStart()">Ronde starten</button></div></div></div>';
     }
     g('mto-status').innerHTML = h;
   }
@@ -2445,6 +2445,7 @@
       if (w.verborgen || !w.n || w.totaal == null) return '<tr class="mto-dicht"><td>' + naam + '</td><td>' + w.n + '</td><td>' + rsp + '</td><td colspan="' + (2 + d.themas.length) + '" class="lay-sub">🔒 minder dan ' + d.minN + ' reacties</td></tr>';
       return '<tr><td>' + naam + '</td><td>' + w.n + '</td><td>' + rsp + '</td><td><span class="mto-cel ' + mtoKl(w.totaal) + '">' + mtoGetal(w.totaal) + '</span> ' + mtoDelta(w.totaal, w.vorigeTotaal) + '</td><td>' + mtoEnps(w.enps) + ' ' + mtoDelta(w.enps, w.vorigeEnps, true) + '</td>' + d.themas.map(function (th) { var x = w.perThema[th.key]; return '<td><span class="mto-cel ' + mtoKl(x) + '">' + mtoGetal(x) + '</span></td>'; }).join('') + '</tr>';
     }).join('') : '<tr><td colspan="' + (5 + d.themas.length) + '" class="leeg grijs">Geen winkels in deze ronde.</td></tr>';
+    if (d.zonderWinkel && d.zonderWinkel.n) g('mto-wbody').insertAdjacentHTML('beforeend', '<tr class="mto-dicht"><td colspan="' + (5 + d.themas.length) + '" class="lay-sub">+ ' + d.zonderWinkel.n + ' reactie' + (d.zonderWinkel.n === 1 ? '' : 's') + ' zonder winkel' + (d.zonderWinkel.managers === d.zonderWinkel.n ? ' (store managers; het formulier van de nulmeting vroeg niet naar de winkel)' : '') + '. Die tellen mee in het totaal en bij SLA makers vs store managers.</td></tr>');
     // makers vs managers
     g('mto-ghead').innerHTML = '<tr><th>Groep</th><th>Reacties</th><th>Gem.</th><th>eNPS</th><th>Laagste thema</th><th>Hoogste thema</th></tr>';
     var naamV = {}; d.themas.forEach(function (th) { naamV[th.key] = th.nl; });
@@ -2470,6 +2471,7 @@
       + (d.managers.length ? ' <a href="#" onclick="event.preventDefault();this.nextElementSibling.style.display=\'block\'">(wie?)</a><span style="display:none">' + d.managers.map(function (m) { return esc(m.naam) + ' — ' + esc(m.functie) + (m.winkel ? ', ' + esc(m.winkel) : ''); }).join('<br>') + '</span>' : '')
       + (d.vertrekkers ? ' · ' + d.vertrekkers + ' vertrekker(s) overgeslagen' : '') + (d.zonderEmail.length ? ' · <span style="color:var(--rood)">' + d.zonderEmail.length + ' zonder e-mailadres: ' + d.zonderEmail.map(function (x) { return esc(x.naam); }).join(', ') + '</span>' : '');
   };
+  window.mtoTestmail = async function () { var r = await api('/api/mto-admin', { actie: 'testmail' }); toast(r.success ? r.bericht : r.bericht, r.success ? 'ok' : 'err'); };
   window.mtoVoorbeeld = async function (taal, groep) { var r = await api('/api/mto-admin', { actie: 'voorbeeld', taal: taal, groep: groep }); if (!r.success) { toast(r.bericht, 'err'); return; } window.open(r.link, '_blank'); };
   window.mtoNulmeting = async function () {
     if (!confirm('De resultaten van februari 2026 (Google Forms, 60 reacties) importeren als nulmeting?')) return;

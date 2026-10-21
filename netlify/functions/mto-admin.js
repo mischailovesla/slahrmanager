@@ -18,6 +18,15 @@ exports.handler = beveiligd('mto-admin', async (event, g) => {
   if (event.httpMethod === 'POST') {
     const p = body(event);
     if (p.actie === 'voorbeeld') return { link: U.site() + '/mto.html?t=' + U.tekenToken({ s: 'mto', i: p.groep === 'manager' ? 'voorbeeld-manager' : 'voorbeeld' }) + (String(p.taal).toUpperCase() === 'EN' ? '&taal=en' : '') };
+    if (p.actie === 'testmail') {
+      // echte mail naar jezelf, met een voorbeeldlink: je kunt alles invullen, er wordt niets opgeslagen en er start geen ronde
+      const M = require('./_lib/mail');
+      const url = U.site() + '/mto.html?t=' + U.tekenToken({ s: 'mto', i: p.groep === 'manager' ? 'voorbeeld-manager' : 'voorbeeld' });
+      const sluit = new Date(Date.now() + MTO.LOOPTIJD * 864e5).toISOString(), soort = ['herinnering1', 'herinnering2'].includes(p.soort) ? p.soort : 'uitnodiging';
+      await M.verstuur({ to: g.email, subject: '[TEST] ' + MTO.onderwerp(soort), html: MTO.mailHtml(g.naam || 'Test', url, soort, sluit), text: MTO.mailPlain(g.naam || 'Test', url, soort, sluit), tags: [{ name: 'bron', value: 'mto' }, { name: 'type', value: 'test' }] });
+      await logActie({ door: g.email, actie: 'mail', bron: 'mto', veld: 'test', nieuw: g.email, details: 'MTO-testmail (' + soort + ')' });
+      return { bericht: 'Testmail verstuurd naar ' + g.email + '. Invullen kan, maar er wordt niets opgeslagen.' };
+    }
     if (p.actie === 'start') {
       const r = await MTO.start(g.email, p.naam);
       await logActie({ door: g.email, actie: 'mto-start', bron: 'mto', veld: r.ronde.naam, nieuw: String(r.aantal), details: r.aantal + ' uitnodigingen' + (r.zonderEmail.length ? ', ' + r.zonderEmail.length + ' zonder e-mail' : '') + (r.vertrekkers ? ', ' + r.vertrekkers + ' vertrekkers overgeslagen' : '') });
