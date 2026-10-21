@@ -33,6 +33,7 @@ module.exports = {
   // Signaleringen (uit Shiftbase.gs v9.4) — stap 4
   SIGNALERING_ONTVANGERS: {
     nieuweMedewerkers: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    salaris: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com', // overzicht na de automatische run naar salaris (ma + do)
     aanzegtermijn: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     stilleAfwezigen: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     weekendBeschikbaarheid: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
@@ -158,6 +159,7 @@ module.exports = {
   KORT_HERINNER_DAGEN: 3,
   KORT_LB_NL: 'https://download.belastingdienst.nl/belastingdienst/docs/model_opgaaf_gegevens_loonheffingen_lh0082z11fol.pdf',
   KORT_LB_EN: 'https://download.belastingdienst.nl/belastingdienst/docs/stat-of-dat-payroll-taxes-lh0082z5foleng.pdf',
+  SALARIS_AUTO_DAGEN: 60,           // automatisch naar salaris: alleen dossiers met een verzenddatum in de laatste 60 dagen
   SALARIS_EMAIL: 'mafshari@hrmonline.nl',   // salarisadministratie (Mahdia / HRM Online)
   SALARIS_LOON_KOL: 11,            // K in de loonheffing-sheet: tijdstempel 'naar salaris gestuurd'
   SALARIS_ONTSLAG_KOL: 15,         // O in de ontslag-sheet

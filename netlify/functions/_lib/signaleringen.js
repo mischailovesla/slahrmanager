@@ -643,9 +643,61 @@ async function verlengingen(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey };
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
+// ---- Automatisch naar salaris (maandag + donderdag) ----
+// Alles wat klaar is maar nog niet naar de salarisadministratie is gestuurd, gaat in één run weg — precies zoals de
+// knop "→ Salaris" (één mail per dossier, documenten als bijlage). Alleen als de schakelaar 'salaris_auto' aan staat.
+//   loonheffing:   loonheffingsverklaring geüpload (indiensttredingsformulier gaat mee als het er is)
+//   ontslag:       ondertekende ontslagbevestiging/aanzegging geüpload (niet-ondertekend loopt via 'bevestiging uitdiensttreding')
+//   korting:       formulier loonheffingskorting geüpload
+//   overplaatsing: brief verstuurd; ondertekend document gaat mee als het er is (ondertekenen is niet verplicht)
+// Oude Google-Drive-uploads kunnen niet automatisch mee: die komen in het overzicht aan HR.
+async function salaris(droog) {
+  const rap = { naam: 'salaris', gevonden: [], verstuurd: [], fouten: [], handmatig: [], droog: !!droog || !actief() };
+  if ((await require('./instellingen').lees('salaris_auto', false)) !== true) { rap.gepauzeerd = true; return rap; }
+  const SAL = require('./salaris'), U = require('./uploads');
+  // Veiligheidsgrens: alleen dossiers van de laatste SALARIS_AUTO_DAGEN (verzenddatum), en niet al door Mahdia als verwerkt
+  // aangevinkt — zo gaan oude dossiers van vóór het stempel (Apps Script-tijd) niet alsnog dubbel naar salaris.
+  const grens = plusDagen(vandaag0(), -(C.SALARIS_AUTO_DAGEN || 60));
+  const recent = r => { const d = parseNLDatum(r.verzenddatum); return !!d && d >= grens && r.mahdia !== 'Ja'; };
+  const klaar = {
+    loonheffing: r => recent(r) && !r.salaris && !!r.docUrl,
+    ontslag: r => recent(r) && !r.salaris && r.ondertekend === 'Ja' && !!r.docUrl,
+    korting: r => recent(r) && !r.salaris && !!r.docUrl,
+    overplaatsing: r => recent(r) && !r.salaris && String(r.status || '').indexOf('Verstuurd') === 0
+  };
+  for (const type of Object.keys(klaar)) {
+    let lijst = [];
+    try { lijst = (await SAL.lijstVan(type)).filter(klaar[type]); } catch (e) { rap.fouten.push(type + ': ' + e.message); continue; }
+    for (const r of lijst) {
+      const item = { type, naam: r.naam, rij: r.rij };
+      const oud = [r.docUrl, r.docUrl2].filter(u => u && !U.isRef(u));
+      if (oud.length) { rap.handmatig.push(Object.assign({ reden: 'document staat nog in Google Drive (oud formulier)' }, item)); continue; }
+      rap.gevonden.push(item);
+      if (rap.droog) { rap.verstuurd.push(Object.assign({ droog: true }, item)); continue; }
+      try {
+        const uit = await SAL.stuur(type, r, 'signalering', { zonderDocument: true });
+        if (uit && uit.success === false) rap.handmatig.push(Object.assign({ reden: uit.bericht || 'niet verstuurd' }, item));
+        else rap.verstuurd.push(Object.assign({ resendId: uit && uit.resendId }, item));
+      } catch (e) { rap.fouten.push(type + ' ' + r.naam + ': ' + e.message); }
+    }
+  }
+  // Kort overzicht aan HR (alleen als er iets is gebeurd of handmatig moet)
+  if (!rap.droog && (rap.verstuurd.length || rap.handmatig.length || rap.fouten.length)) {
+    const lbl = { loonheffing: 'Loonheffing/indiensttreding', ontslag: 'Ontslag/aanzegging (ondertekend)', korting: 'Loonheffingskorting', overplaatsing: 'Overplaatsing' };
+    const regel = x => '- ' + (lbl[x.type] || x.type) + ': ' + x.naam + (x.reden ? ' — ' + x.reden : '');
+    const plain = 'Hallo,\n\nAutomatisch naar de salarisadministratie (' + C.SALARIS_EMAIL + ') gestuurd:\n' + (rap.verstuurd.length ? rap.verstuurd.map(regel).join('\n') : '- niets') + '\n\n'
+      + (rap.handmatig.length ? 'Kon niet automatisch — graag handmatig via de knop "→ Salaris":\n' + rap.handmatig.map(regel).join('\n') + '\n\n' : '')
+      + (rap.fouten.length ? 'Fouten:\n' + rap.fouten.map(f => '- ' + f).join('\n') + '\n\n' : '') + '(Automatisch bericht van het SLA HR Dashboard, maandag en donderdag)';
+    const html = T.slaWrap(T.slaHead('#2b6cb0', 'HR &middot; Naar salaris') + '<tr><td style="padding:32px 36px 28px"><pre style="' + F + 'font-size:13px;color:#333d3a;white-space:pre-wrap;margin:0">' + esc(plain) + '</pre></td></tr>' + T.slaFoot());
+    try { await M.verstuur({ to: ontvangers('salaris'), subject: 'Naar salaris: ' + rap.verstuurd.length + ' dossier(s) verstuurd' + (rap.handmatig.length ? ', ' + rap.handmatig.length + ' handmatig' : ''), text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'salaris' }] }); }
+    catch (e) { rap.fouten.push('HR-overzicht: ' + e.message); }
+  }
+  return rap;
+}
+
 // ---- Exit-survey na de laatste werkdag ----
 // Iedereen uit Ontslag & aanzegging (ook gearchiveerd) van wie de einddatum gisteren was — of tot EXIT_AUTO_INHAAL_DAGEN
 // terug, zodat een gemiste dag wordt ingehaald — krijgt automatisch de exit-survey, tenzij hij al is uitgenodigd of al
@@ -703,4 +755,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris };

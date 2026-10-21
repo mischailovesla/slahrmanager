@@ -459,7 +459,12 @@
   // ---------- Loonheffing-tab ----------
   var lhData = null, lhTemplates = [];
   function lmBtn(r) { return '<button class="btn bp bsm" data-lm-rij="' + r.rij + '">Mail</button>'; }
-  var lhAuto = false;
+  var lhAuto = false, lhSal = false;
+  window.lhSalToggle = async function () {
+    if (!confirm(lhSal ? 'Automatisch naar salaris uitzetten?' : 'Automatisch naar salaris aanzetten? Elke maandag en donderdag gaat dan alles wat klaar is (en nog niet verstuurd) naar de salarisadministratie.')) return;
+    var r = await api('/api/loonheffing', { actie: 'salaris-auto', aan: !lhSal });
+    if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadLoonheffing();
+  };
   window.lhAutoToggle = async function () {
     if (!confirm(lhAuto ? 'Automatisch uitnodigen uitzetten?' : 'Automatisch uitnodigen aanzetten? Nieuwe medewerkers uit Shiftbase krijgen dan zonder tussenkomst van HR de uitnodiging (NL + EN).')) return;
     var r = await api('/api/loonheffing', { actie: 'auto', aan: !lhAuto });
@@ -475,6 +480,9 @@
     lhData = d.rijen; lhTemplates = d.templates; lhAuto = !!d.auto;
     g('lh-auto').className = 'alert ' + (lhAuto ? 'groen' : 'geel');
     g('lh-auto-tekst').innerHTML = lhAuto ? '<strong>Automatisch uitnodigen staat aan.</strong> Nieuwe medewerkers uit Shiftbase krijgen elke 4 uur automatisch de indiensttredings- en loonheffingsmail (NL + EN), met de startdatum als deadline. HR krijgt een overzicht.' : '<strong>Automatisch uitnodigen staat uit.</strong> HR krijgt één keer per dag een lijstje met nieuwe medewerkers zonder uitnodiging en verstuurt zelf.';
+    lhSal = !!d.salarisAuto; g('lh-sal').className = 'alert ' + (lhSal ? 'groen' : 'geel');
+    g('lh-sal-tekst').innerHTML = lhSal ? '<strong>Automatisch naar salaris staat aan.</strong> Elke maandag en donderdag om 09:00 gaat alles wat klaar is naar Mahdia: loonheffing + indiensttreding, ondertekende ontslag/aanzegging, loonheffingskorting en overplaatsingen. HR krijgt een overzicht.' : '<strong>Automatisch naar salaris staat uit.</strong> Documenten gaan alleen naar Mahdia als je op "→ Salaris" klikt.';
+    g('lh-sal-knop').textContent = lhSal ? 'Uitzetten' : 'Aanzetten'; g('lh-sal-knop').className = 'btn bsm ' + (lhSal ? 'bd' : 'bp');
     g('lh-auto-knop').textContent = lhAuto ? 'Uitzetten' : 'Aanzetten'; g('lh-auto-knop').className = 'btn bsm ' + (lhAuto ? 'bd' : 'bp');
     g('lh-count').textContent = lhData.length + ' dossiers';
     g('lh-body').innerHTML = lhData.map(function (r) {
