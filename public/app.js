@@ -2294,7 +2294,11 @@
   document.addEventListener('click', function (e) {
     var k = e.target.closest && e.target.closest('button[data-meer]');
     document.querySelectorAll('.meer.open').forEach(function (m) { if (!k || m !== k.parentNode) m.classList.remove('open'); });
-    if (k) { k.parentNode.classList.toggle('open'); e.stopPropagation(); }
+    if (k) {
+      var w = k.parentNode; w.classList.toggle('open'); e.stopPropagation();
+      // menu past niet onder de knop (onderaan de pagina/sectie)? dan naar boven openklappen
+      var m = w.querySelector('.meer-menu'); if (m) { m.classList.remove('omhoog'); if (w.classList.contains('open')) { var r = m.getBoundingClientRect(); if (r.bottom > window.innerHeight - 8) m.classList.add('omhoog'); } }
+    }
   });
   // Na elke (her)render van een tabel: compacte acties + winkelfilter
   (function () {

@@ -260,3 +260,7 @@ tbody tr:hover td{background:#fdfaf8}
 @media (max-width:760px){.ov-stappen{grid-template-columns:1fr!important}}
 .ov-kaart-a>.mah-btn:not(.ok){background:var(--groen);color:#fff;border-color:var(--groen);font-weight:700}
 .ov-tegel.rustig.dos{opacity:1;border-top-color:var(--oranje)}
+/* ⋯-menu's op het Overzicht mogen buiten de sectie vallen (anders onderaan afgesneden) */
+#tk-sec,.sec:has(#ov-pijp){overflow:visible}
+#tk-sec>.sh,.sec:has(#ov-pijp)>.sh{border-radius:12px 12px 0 0}
+.meer-menu.omhoog{top:auto;bottom:calc(100% + 4px)}
