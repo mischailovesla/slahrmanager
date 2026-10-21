@@ -1462,9 +1462,10 @@
     skData = d;
     g('sk-periode').textContent = d.periode + ' · bijgewerkt ' + (d.bijgewerkt || '');
     g('sk-fout').style.display = d.fouten && d.fouten.length ? '' : 'none'; g('sk-fout').textContent = d.fouten && d.fouten.length ? 'Niet alles kon worden opgehaald: ' + d.fouten.join(' · ') : '';
-    g('sk-head').innerHTML = '<tr><th>Winkel</th><th>In dienst</th>' + d.kpis.map(function (k) { return '<th title="' + esc(k.label + ' — ' + k.uitleg) + '">' + esc(SK_KORT[k.key] || k.label) + '</th>'; }).join('') + '<th>Aandacht</th><th></th></tr>';
+    g('sk-head').innerHTML = '<tr><th>Winkel</th><th>In dienst</th>' + d.kpis.map(function (k) { return '<th title="' + esc(k.label + ' — ' + k.uitleg) + '">' + esc(SK_KORT[k.key] || k.label) + '</th>'; }).join('') + (d.mto ? '<th title="Medewerkertevredenheid, ' + esc(d.mto.ronde) + ' (gemiddeld 1–5)">MTO</th>' : '') + '<th>Aandacht</th><th></th></tr>';
+    var mtoCel = function (w, tot) { if (!d.mto) return ''; if (tot) return '<td><strong>' + mtoGetal(d.mto.totaal) + '</strong></td>'; var x = d.mto.perWinkel[String(w.naam).trim().toLowerCase()]; if (!x || x.verborgen) return '<td title="minder dan ' + d.mto.minN + ' reacties"><span class="no-doc">-</span></td>'; return '<td title="' + esc(d.mto.ronde) + ' · ' + x.n + ' reacties · eNPS ' + mtoEnps(x.enps) + '"><span class="mto-cel ' + mtoKl(x.totaal) + '">' + mtoGetal(x.totaal) + '</span></td>'; };
     var cel = function (it, tot) { if (!it || it.v === null || it.v === undefined) return '<td><span class="no-doc">-</span></td>'; return '<td' + (it.n ? ' title="n=' + Math.round(it.n) + '"' : '') + '>' + (tot ? '<strong>' + esc(it.f) + '</strong>' : '<span class="badge ' + (SK_KLS[it.status] || 'boat') + '">' + esc(it.f) + '</span>') + '</td>'; };
-    var rij = function (w, tot) { return '<tr class="' + (tot ? 'sk-tot' : 'sk-rij') + (skWinkel === w.naam ? ' sk-sel' : '') + '"' + (tot ? '' : ' data-sk="' + esc(w.naam) + '"') + '><td><strong>' + esc(w.naam) + '</strong></td><td>' + w.bestand + '</td>' + d.kpis.map(function (k) { return cel(w.waarden[k.key], tot); }).join('') + '<td>' + (tot ? '' : (w.rood ? '<span class="badge br">' + w.rood + '</span> ' : '') + (w.oranje ? '<span class="badge bo">' + w.oranje + '</span>' : (w.rood ? '' : '<span class="no-doc">-</span>'))) + '</td><td>' + (tot ? '' : '<button class="btn bd bsm" data-sk-pdf="' + esc(w.naam) + '" title="PDF voor het overleg met de Store Manager">⬇ PDF</button>') + '</td></tr>'; };
+    var rij = function (w, tot) { return '<tr class="' + (tot ? 'sk-tot' : 'sk-rij') + (skWinkel === w.naam ? ' sk-sel' : '') + '"' + (tot ? '' : ' data-sk="' + esc(w.naam) + '"') + '><td><strong>' + esc(w.naam) + '</strong></td><td>' + w.bestand + '</td>' + d.kpis.map(function (k) { return cel(w.waarden[k.key], tot); }).join('') + mtoCel(w, tot) + '<td>' + (tot ? '' : (w.rood ? '<span class="badge br">' + w.rood + '</span> ' : '') + (w.oranje ? '<span class="badge bo">' + w.oranje + '</span>' : (w.rood ? '' : '<span class="no-doc">-</span>'))) + '</td><td>' + (tot ? '' : '<button class="btn bd bsm" data-sk-pdf="' + esc(w.naam) + '" title="PDF voor het overleg met de Store Manager">⬇ PDF</button>') + '</td></tr>'; };
     g('sk-body').innerHTML = rij(d.totaal, true) + d.winkels.map(function (w) { return rij(w, false); }).join('');
     if (skWinkel && d.winkels.some(function (w) { return w.naam === skWinkel; })) skDetail(skWinkel); else g('sk-detail').style.display = 'none';
     renderVerloopKosten();
@@ -1478,7 +1479,7 @@
     var tegel = function (w, l, s, kl) { return '<div class="card ' + (kl || 'cd') + '"><div><div class="sv">' + w + '</div><div class="sl">' + l + '</div><div class="lay-sub" style="margin-top:3px">' + s + '</div></div></div>'; };
     var h = '<div class="stats" style="margin-bottom:18px">'
       + tegel(euro(t.perJaar), 'Kosten verloop per jaar', t.uitstroom + ' vertrekkers in ' + esc(k.periode) + jaar, 'cr')
-      + tegel(euro(k.perVervanging.totaal), 'Per vervanging', 'werving, inwerken, training, opstart')
+      + tegel(euro(k.perVervanging.totaal), 'Per vervanging', k.perVervanging.posten.filter(function (x) { return x.meegenomen; }).length + ' kostenposten · opbouw onderaan')
       + tegel(euro(t.vroegKosten * 12 / k.maanden), 'Vertrek binnen 90 dagen', t.vroeg + ' vroege vertrekkers: investering zonder opbrengst', 'cw')
       + tegel(euro(t.perMedewerker), 'Per medewerker in dienst', 'per jaar, ' + t.bestand + ' in dienst') + '</div>';
     h += '<div class="vk-scen"><div class="vk-scen-t">Wat levert minder verloop op?</div>'
@@ -1489,20 +1490,58 @@
     h += '<div class="tw"><table><thead><tr><th>Winkel</th><th>In dienst</th><th>Uitstroom</th><th>Verloop</th><th>Kosten per jaar</th><th>Per medewerker</th><th>Weg ≤ 90 d</th><th>Besparing naar SLA-gemiddelde</th></tr></thead><tbody id="vk-tbody">'
       + k.winkels.map(function (w) { return '<tr><td><strong>' + esc(w.naam) + '</strong></td><td>' + w.bestand + '</td><td>' + w.uitstroom + '</td><td>' + (w.verloop == null ? '-' : String(Math.round(w.verloop)) + '%') + '</td><td><div class="vk-bar"><div style="width:' + Math.round(w.perJaar / mx * 100) + '%"></div></div><strong>' + euro(w.perJaar) + '</strong></td><td>' + euro(w.perMedewerker) + '</td><td>' + (w.vroeg ? w.vroeg + ' <span class="lay-sub">(' + euro(w.vroegKosten * 12 / k.maanden) + ')</span>' : '-') + '</td><td>' + (w.besparingNaarGemiddelde ? '<strong style="color:var(--groen)">' + euro(w.besparingNaarGemiddelde) + '</strong> <span class="lay-sub">' + String(w.teveel).replace('.', ',') + ' vertrekkers minder</span>' : '<span class="lay-sub">zit op of onder het gemiddelde</span>') + '</td></tr>'; }).join('')
       + '<tr class="sk-tot"><td><strong>SLA totaal</strong></td><td>' + t.bestand + '</td><td>' + t.uitstroom + '</td><td>' + (t.verloop == null ? '-' : Math.round(t.verloop) + '%') + '</td><td><strong>' + euro(t.perJaar) + '</strong></td><td>' + euro(t.perMedewerker) + '</td><td>' + t.vroeg + '</td><td><strong>' + euro(k.scenario.naarGemiddelde) + '</strong></td></tr></tbody></table></div>';
-    // aannames
-    var pv = k.perVervanging.posten;
-    h += '<div class="vk-aan"><div class="vk-aan-kop"><div><strong>Aannames</strong> <span class="lay-sub">' + (d.kostenStandaard ? 'standaard schatting' : 'door HR ingesteld') + ' · één vervanging = ' + euro(k.perVervanging.totaal) + '</span></div><button class="btn bd bsm" type="button" id="vk-aan-knop">Aanpassen ▾</button></div>'
-      + '<div id="vk-aan-body" style="display:none"><table class="vk-aan-t"><thead><tr><th>Post</th><th>Aantal</th><th>Tarief</th><th>Bedrag</th></tr></thead><tbody>'
-      + pv.map(function (x) { return '<tr><td>' + esc(x.label) + '</td><td><input type="number" step="0.5" min="0" data-vk="' + x.key + '" value="' + x.aantal + '"> <span class="lay-sub">' + esc(x.eenheid === 'EUR' ? 'euro' : x.eenheid) + '</span></td><td>' + (x.tarief == null ? '' : '€ ' + Number(x.tarief).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '/u') + '</td><td>' + euro(x.bedrag) + '</td></tr>'; }).join('')
-      + (d.kostenTarieven || []).map(function (x) { return '<tr class="vk-tarief"><td>' + esc(x.label) + '</td><td><input type="number" step="0.5" min="0" data-vk="' + x.key + '" value="' + k.params[x.key] + '"> <span class="lay-sub">euro/uur</span></td><td></td><td></td></tr>'; }).join('')
-      + '</tbody></table><div style="display:flex;gap:8px;margin-top:10px"><button class="btn bp bsm" type="button" onclick="vkOpslaan(false)">Opslaan en herberekenen</button><button class="btn bd bsm" type="button" onclick="vkOpslaan(true)">Standaard terugzetten</button></div>'
-      + '<div class="lay-sub" style="margin-top:8px">Bewust voorzichtig gerekend: niet meegeteld zijn o.a. overuren van collega\'s bij onderbezetting, uitzendkrachten, fouten/derving en lagere klanttevredenheid. De echte kosten liggen dus eerder hoger.</div></div></div>';
+    h += vkOpbouwHtml(k, d);
     el.innerHTML = h;
   }
-  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#vk-aan-knop'); if (!b) return; var bd = g('vk-aan-body'), open = bd.style.display === 'none'; bd.style.display = open ? '' : 'none'; b.textContent = open ? 'Verbergen ▴' : 'Aanpassen ▾'; });
+  // Opbouw van de kosten per vervanging: elke post aan/uit, aantallen en tarieven aanpassen, eigen posten toevoegen
+  var VK_TARIEF = { 'uur medewerker': 'uurMedewerker', 'uur leiding': 'uurLeiding', 'uur HR': 'uurHR' };
+  function vkOpbouwHtml(k, d) {
+    var mag = window._ikRol === 'admin', dis = mag ? '' : ' disabled';
+    var rij = function (x) {
+      var tk = VK_TARIEF[x.eenheid];
+      return '<tr class="vk-post' + (x.meegenomen ? '' : ' vk-uit') + '"' + (x.extra ? ' data-vk-extra="1"' : ' data-vk-post="' + x.key + '"') + ' data-eenheid="' + esc(x.eenheid) + '">'
+        + '<td><input type="checkbox" class="vk-mee"' + (x.meegenomen ? ' checked' : '') + (x.extra ? ' disabled title="Eigen post: verwijderen met ×"' : '') + dis + '></td>'
+        + '<td>' + (x.extra ? '<input type="text" class="vk-label" value="' + esc(x.label) + '" maxlength="80"' + dis + '>' : '<strong>' + esc(x.label) + '</strong><div class="lay-sub">' + esc(x.uitleg || '') + '</div>') + '</td>'
+        + '<td><input type="number" step="0.5" min="0" class="vk-aantal" value="' + x.aantal + '"' + dis + '> <span class="lay-sub">' + (x.eenheid === 'EUR' ? 'euro' : esc(x.eenheid)) + '</span></td>'
+        + '<td class="vk-tar">' + (tk ? '× € ' + Number(k.params[tk]).toLocaleString('nl-NL', { minimumFractionDigits: 2 }) : '') + '</td>'
+        + '<td class="vk-bedrag"><strong>' + euro(x.bedrag) + '</strong></td>'
+        + '<td>' + (x.extra && mag ? '<button class="btn bd bsm vk-weg" type="button" title="Post verwijderen">×</button>' : '') + '</td></tr>';
+    };
+    return '<div class="vk-aan"><div class="vk-aan-kop"><div><strong>Opbouw: wat kost één vervanging?</strong> <span class="lay-sub">' + (d.kostenStandaard ? 'standaard schatting' : 'door HR ingesteld') + '</span></div><div class="vk-totaal">€ <span id="vk-k">' + k.perVervanging.totaal.toLocaleString('nl-NL') + '</span></div></div>'
+      + '<div class="lay-sub" style="margin:4px 0 10px">Vink aan welke kosten meetellen en pas aantallen en tarieven aan; het totaal rekent direct mee. ' + (mag ? 'Klik op <strong>Opslaan</strong> om alle cijfers op deze pagina en in het maandrapport met deze opbouw te berekenen.' : 'Alleen een beheerder kan de opbouw wijzigen.') + '</div>'
+      + '<table class="vk-aan-t"><thead><tr><th style="width:34px">Mee</th><th>Kostenpost</th><th>Aantal</th><th>Tarief</th><th>Bedrag</th><th></th></tr></thead><tbody id="vk-posten">' + k.perVervanging.posten.map(rij).join('') + '</tbody></table>'
+      + (mag ? '<button class="btn bd bsm" type="button" id="vk-extra-toe" style="margin-top:8px">+ Eigen kostenpost</button>' : '')
+      + '<div class="vk-tarieven"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-bottom:6px">Tarieven (incl. werkgeverslasten)</div>' + (d.kostenTarieven || []).map(function (x) { return '<label class="vk-tarief"><span>' + esc(x.label) + '</span><span>€ <input type="number" step="0.5" min="0" data-vk-tarief="' + x.key + '" value="' + k.params[x.key] + '"' + dis + '> /uur</span></label>'; }).join('') + '</div>'
+      + (mag ? '<div style="display:flex;gap:8px;margin-top:12px;align-items:center"><button class="btn bp bsm" type="button" onclick="vkOpslaan(false)">Opslaan en herberekenen</button><button class="btn bd bsm" type="button" onclick="vkOpslaan(true)">Standaard terugzetten</button><span class="lay-sub" id="vk-wijz"></span></div>' : '')
+      + '<div class="lay-sub" style="margin-top:10px">Bewust voorzichtig gerekend: niet meegeteld zijn o.a. overuren van collega\'s bij onderbezetting, uitzendkrachten, fouten/derving en lagere klanttevredenheid. Die kun je als eigen kostenpost toevoegen.</div></div>';
+  }
+  function vkTarieven() { var t = {}; document.querySelectorAll('#vk-body [data-vk-tarief]').forEach(function (i) { t[i.getAttribute('data-vk-tarief')] = Number(String(i.value).replace(',', '.')) || 0; }); return t; }
+  function vkHerreken() {
+    var t = vkTarieven(), tot = 0;
+    document.querySelectorAll('#vk-posten tr.vk-post').forEach(function (tr) {
+      var e = tr.getAttribute('data-eenheid'), tk = VK_TARIEF[e], aantal = Number(String(tr.querySelector('.vk-aantal').value).replace(',', '.')) || 0;
+      var bedrag = aantal * (tk ? t[tk] : 1), mee = tr.querySelector('.vk-mee').checked;
+      tr.querySelector('.vk-bedrag').innerHTML = '<strong>' + euro(bedrag) + '</strong>'; if (tk) tr.querySelector('.vk-tar').textContent = '× € ' + t[tk].toLocaleString('nl-NL', { minimumFractionDigits: 2 });
+      tr.classList.toggle('vk-uit', !mee); if (mee) tot += bedrag;
+    });
+    g('vk-k').textContent = Math.round(tot).toLocaleString('nl-NL');
+    var w = g('vk-wijz'); if (w && skData && skData.kosten) w.textContent = Math.round(tot) !== skData.kosten.perVervanging.totaal ? 'Nog niet opgeslagen: de cijfers hierboven gaan nog uit van € ' + skData.kosten.perVervanging.totaal.toLocaleString('nl-NL') + '.' : '';
+  }
+  document.addEventListener('input', function (e) { if (e.target.closest && e.target.closest('#vk-body .vk-aan')) vkHerreken(); });
+  document.addEventListener('change', function (e) { if (e.target.closest && e.target.closest('#vk-body .vk-aan')) vkHerreken(); });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('#vk-extra-toe');
+    if (t) { g('vk-posten').insertAdjacentHTML('beforeend', '<tr class="vk-post" data-vk-extra="1" data-eenheid="EUR"><td><input type="checkbox" class="vk-mee" checked disabled></td><td><input type="text" class="vk-label" placeholder="Bijv. overuren collega\'s bij onderbezetting" maxlength="80"></td><td><input type="number" step="0.5" min="0" class="vk-aantal" value="0"> <span class="lay-sub">euro</span></td><td class="vk-tar"></td><td class="vk-bedrag"><strong>€ 0</strong></td><td><button class="btn bd bsm vk-weg" type="button">×</button></td></tr>'); var inp = g('vk-posten').lastElementChild.querySelector('.vk-label'); inp.focus(); return; }
+    var w = e.target.closest && e.target.closest('#vk-posten .vk-weg'); if (w) { w.closest('tr').remove(); vkHerreken(); }
+  });
   window.vkOpslaan = async function (herstel) {
-    var p = {}; document.querySelectorAll('#vk-aan-body input[data-vk]').forEach(function (i) { p[i.getAttribute('data-vk')] = i.value; });
-    if (herstel && !confirm('Eigen aannames weggooien en de standaard terugzetten?')) return;
+    if (herstel && !confirm('Eigen opbouw weggooien en de standaard terugzetten?')) return;
+    var p = vkTarieven(); p.uit = []; p.extra = [];
+    document.querySelectorAll('#vk-posten tr.vk-post').forEach(function (tr) {
+      var aantal = tr.querySelector('.vk-aantal').value;
+      if (tr.getAttribute('data-vk-extra')) { var lb = tr.querySelector('.vk-label').value.trim(); if (lb) p.extra.push({ label: lb, bedrag: aantal }); return; }
+      var key = tr.getAttribute('data-vk-post'); p[key] = aantal; if (!tr.querySelector('.vk-mee').checked) p.uit.push(key);
+    });
     var r = await api('/api/verloopkosten', herstel ? { herstel: true } : { params: p });
     if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadScorekaart(skMaanden);
   };
@@ -1518,7 +1557,7 @@
     document.querySelectorAll('#sk-body tr.sk-rij').forEach(function (tr) { tr.classList.toggle('sk-sel', tr.getAttribute('data-sk') === naam); });
     g('sk-d-titel').textContent = 'Scorekaart ' + naam + ' · ' + d.periode;
     var lijst = function (titel, items, cls) { return '<div style="flex:1;min-width:280px"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">' + titel + '</div>' + (items.length ? items.map(function (a) { return '<div class="alert ' + cls + '" style="margin:0 0 6px;padding:8px 12px;font-size:.85rem">' + esc(a.tekst) + '</div>'; }).join('') : '<div class="lay-sub">—</div>') + '</div>'; };
-    var h = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"><span class="badge boat">In dienst ' + w.bestand + '</span><span class="badge boat">Instroom ' + w.instroom + '</span><span class="badge boat">Uitstroom ' + w.uitstroom + '</span><span class="badge ' + (w.lopendVerzuim ? 'bo' : 'boat') + '">Nu ziek ' + w.lopendVerzuim + '</span><span class="badge boat">Check-ins ' + w.checkin.ingevuld + '/' + w.checkin.verstuurd + ' ingevuld' + (w.checkin.laag ? ', ' + w.checkin.laag + ' laag' : '') + '</span></div>';
+    var h = '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"><span class="badge boat">In dienst ' + w.bestand + '</span><span class="badge boat">Instroom ' + w.instroom + '</span><span class="badge boat">Uitstroom ' + w.uitstroom + '</span><span class="badge ' + (w.lopendVerzuim ? 'bo' : 'boat') + '">Nu ziek ' + w.lopendVerzuim + '</span><span class="badge boat">Check-ins ' + w.checkin.ingevuld + '/' + w.checkin.verstuurd + ' ingevuld' + (w.checkin.laag ? ', ' + w.checkin.laag + ' laag' : '') + '</span>' + (function () { if (!d.mto) return ''; var x = d.mto.perWinkel[String(w.naam).trim().toLowerCase()]; return x && !x.verborgen ? '<span class="badge ' + (x.totaal >= 3.75 ? 'bg' : x.totaal >= 2.75 ? 'bo' : 'br') + '">MTO ' + mtoGetal(x.totaal) + ' (SLA ' + mtoGetal(d.mto.totaal) + ')</span>' : '<span class="badge boat">MTO: te weinig reacties</span>'; })() + (function () { var kw = d.kosten && d.kosten.winkels.filter(function (x) { return x.naam === w.naam; })[0]; return kw ? '<span class="badge bo">Verloop kost € ' + kw.perJaar.toLocaleString('nl-NL') + ' / jaar</span>' : ''; })() + '</div>';
     h += '<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:18px">' + lijst('Aandachtspunten', w.aandacht, 'rood') + lijst('Wat goed gaat', w.goed, 'groen') + '</div>';
     h += '<div style="display:flex;gap:36px;flex-wrap:wrap">'
       + '<div><div class="lay-sub" style="margin-bottom:4px">Instroom per maand</div>' + skSpark(w.trend.in, '#009f4b', null, d.maanden) + '</div>'

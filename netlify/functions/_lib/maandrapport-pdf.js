@@ -126,6 +126,32 @@ async function maakMaandrapportPdf(r, door) {
     y = Math.min(y1, y2) - 10;
   }
 
+  // kosten van verloop
+  if (r.kosten) {
+    const ko = r.kosten, eur = n => 'EUR ' + Math.round(n).toLocaleString('nl-NL');
+    kop('Kosten van verloop', 60);
+    const bl = [[eur(ko.jaar), 'laatste 12 maanden', ko.uitstroomJaar + ' vertrekkers'], [eur(ko.maand), Hoofd(r.label), 'vorige maand ' + eur(ko.vorig)], [eur(ko.vroegJaar), 'vertrek binnen 90 dagen', ko.vroeg + ' vertrekkers (12 mnd)'], [eur(ko.naarGemiddelde), 'besparing per jaar', 'winkels naar SLA-gemiddelde']];
+    const bb = (B - 3 * 8) / 4;
+    bl.forEach((x, i) => { const xx = L + i * (bb + 8); pg.drawRectangle({ x: xx, y: y - 40, width: bb, height: 40, color: i === 3 ? KL.groenL : KL.zand }); tekst(x[0], xx + 8, y - 15, 12, F.b, i === 3 ? KL.groen : KL.donker); tekst(x[1], xx + 8, y - 26, 7, F.b); tekst(x[2], xx + 8, y - 35, 6, F.n, KL.grijs); });
+    y -= 52;
+    if (ko.top.length) { tekst('Hoogste kosten: ' + ko.top.map(w => w.naam + ' ' + eur(w.perJaar)).join(' · '), L, y, 8, F.n); y -= 11; }
+    tekst('Per vervanging ' + eur(ko.perVervanging) + ' (' + (ko.standaard ? 'standaard schatting' : 'opbouw door HR ingesteld') + '; opbouw per kostenpost en aanpassen: Scorekaart > Kosten van verloop).', L, y, 6.8, F.i, KL.grijs);
+    y -= 20;
+  }
+  // medewerkertevredenheid (laatste MTO-ronde)
+  if (r.mto) {
+    const m = r.mto, sc = x => x == null ? '-' : Number(x).toFixed(1).replace('.', ','), ep = x => x == null ? '-' : (x > 0 ? '+' : '') + x;
+    kop('Medewerkertevredenheid · ' + m.ronde, 70);
+    const bl = [[sc(m.totaal) + ' / 5', 'gemiddelde score', m.vorige ? m.vorige.naam + ': ' + sc(m.vorige.totaal) : m.n + ' reacties'], [ep(m.enps), 'eNPS', m.vorige ? 'vorige: ' + ep(m.vorige.enps) : ''], [m.laagste ? sc(m.laagste.score) : '-', 'zwakste thema', m.laagste ? m.laagste.naam : ''], [String(m.acties.lopend), 'acties lopend', (m.acties.teLaat ? m.acties.teLaat + ' over de deadline · ' : '') + m.acties.klaar + ' afgerond']];
+    const bb = (B - 3 * 8) / 4;
+    bl.forEach((x, i) => { const xx = L + i * (bb + 8); pg.drawRectangle({ x: xx, y: y - 40, width: bb, height: 40, color: i === 3 && m.acties.teLaat ? KL.roodL : KL.zand }); tekst(x[0], xx + 8, y - 15, 12, F.b); tekst(x[1], xx + 8, y - 26, 7, F.b); tekst(x[2], xx + 8, y - 35, 6, F.n, KL.grijs); });
+    y -= 52;
+    const ws = Object.values(m.perWinkel).filter(w => !w.verborgen && w.winkel !== '(geen winkel)').sort((a, b) => a.totaal - b.totaal);
+    if (ws.length) { const rs = regels('Per winkel (laag naar hoog): ' + ws.map(w => w.winkel + ' ' + sc(w.totaal)).join(' · '), 8, F.n, B); rs.forEach(rg => { tekst(rg, L, y, 8); y -= 10.5; }); }
+    tekst('Winkels met minder dan ' + m.minN + ' reacties worden niet getoond (anonimiteit). Volledig rapport: In dienst > Tevredenheid (MTO).', L, y, 6.8, F.i, KL.grijs);
+    y -= 20;
+  }
+
   // ---------- per winkel ----------
   y -= 6; if (y < 300) nieuwePagina('HR-maandrapport ' + r.label);
   kop('Per winkel · laatste ' + r.winkelMaanden + ' maanden (' + r.periodeWinkels + ')', 120);

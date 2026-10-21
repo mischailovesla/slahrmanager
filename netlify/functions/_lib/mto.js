@@ -386,6 +386,25 @@ async function koppeling(rondeId) {
   return { ronde: rap.ronde, periode: sk.periode, rijen, verbanden, sla: { mto: rap.totaal.totaal, enps: rap.totaal.enps }, minN: MIN_N, fouten: sk.fouten || [] };
 }
 
+// Samenvatting van de laatste ronde met genoeg reacties (voor scorekaart en maandrapport). null = nog geen bruikbare ronde.
+async function samenvatting() {
+  const kand = (await rondes()).filter(r => r.reacties >= MIN_N).slice(0, 3);
+  for (const k of kand) {
+    const r = await rapport(k.id, 'alle', '');
+    if (!r.ronde || r.ronde.id !== k.id || !r.totaal || r.totaal.verborgen || !r.totaal.n) continue;
+    const naam = key => (Q.THEMAS.find(t => t.key === key) || {}).nl || key;
+    const th = Object.keys(r.totaal.perThema).filter(x => r.totaal.perThema[x] != null).sort((a, b) => r.totaal.perThema[a] - r.totaal.perThema[b]);
+    const pw = {}; r.perWinkel.forEach(w => { pw[normW(w.winkel)] = { winkel: w.winkel, n: w.n, verborgen: !!w.verborgen || w.totaal == null, totaal: w.totaal == null ? null : w.totaal, enps: w.enps == null ? null : w.enps }; });
+    const lop = (r.acties || []).filter(a => a.status === 'open' || a.status === 'bezig');
+    return { ronde: r.ronde.naam, rondeId: r.ronde.id, status: r.ronde.status, n: r.totaal.n, respons: r.respons ? r.respons.pct : null, totaal: r.totaal.totaal, enps: r.totaal.enps,
+      vorige: r.vorige && !r.vorige.verborgen && r.vorige.n ? { naam: r.vorige.naam, totaal: r.vorige.totaal, enps: r.vorige.enps } : null,
+      laagste: th.length ? { key: th[0], naam: naam(th[0]), score: r.totaal.perThema[th[0]] } : null, hoogste: th.length ? { key: th[th.length - 1], naam: naam(th[th.length - 1]), score: r.totaal.perThema[th[th.length - 1]] } : null,
+      perWinkel: pw, acties: { lopend: lop.length, teLaat: lop.filter(a => a.teLaat).length, klaar: (r.acties || []).filter(a => a.status === 'klaar').length }, minN: MIN_N };
+  }
+  return null;
+}
+function voorWinkel(sam, winkel) { return sam ? sam.perWinkel[normW(winkel)] || null : null; }
+
 // ---------- PDF-rapporten (per winkel, SLA, of bundel) ----------
 // winkel: '' = SLA-rapport · '*' = bundel (SLA + elke winkel met >= MIN_N reacties) · naam = één winkel
 async function pdfSecties(rondeId, groep, winkel) {
@@ -435,4 +454,4 @@ async function exportCsv(rondeId) {
   return [kop].concat(rijen).map(r => r.map(q).join(';')).join('\n');
 }
 
-module.exports = { MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager, acties, actieOpslaan, actieVerwijderen, koppeling, spearman };
+module.exports = { MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager, acties, actieOpslaan, actieVerwijderen, koppeling, spearman, samenvatting, voorWinkel };

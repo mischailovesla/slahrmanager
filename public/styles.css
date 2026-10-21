@@ -341,3 +341,10 @@ td .lay-sub.cel-kort{max-width:200px}
 .vk-aan-t{width:100%;margin-top:10px;font-size:.84rem;border-collapse:collapse}.vk-aan-t th{text-align:left;font-size:.7rem;text-transform:uppercase;color:var(--grijs);padding:6px 4px}
 .vk-aan-t td{padding:5px 4px;border-top:1px solid var(--lijn2)}.vk-aan-t input{width:80px;padding:5px 8px;border:1px solid var(--lijn);border-radius:6px;font:inherit}
 .vk-tarief td{background:var(--zand)}
+
+.vk-totaal{font-size:1.5rem;font-weight:700;color:var(--donker)}
+.vk-aan-t td{vertical-align:middle}.vk-aan-t td .lay-sub{margin-top:2px}
+.vk-aan-t tr.vk-uit td{opacity:.45}.vk-aan-t tr.vk-uit td:first-child{opacity:1}
+.vk-aan-t .vk-label{width:100%;max-width:340px;padding:5px 8px;border:1px solid var(--lijn);border-radius:6px;font:inherit}
+.vk-tarieven{margin-top:14px;background:var(--zand);border-radius:8px;padding:10px 14px;display:grid;gap:6px}
+.vk-tarief{display:flex;justify-content:space-between;align-items:center;font-size:.85rem;gap:10px}.vk-tarief input{width:80px;padding:5px 8px;border:1px solid var(--lijn);border-radius:6px;font:inherit}

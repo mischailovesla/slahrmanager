@@ -33,9 +33,13 @@ async function maakScorekaartPdf(sk, winkelNaam, door) {
 
   // kerngetallen
   const kern = [['In dienst nu', w.bestand], ['Instroom', w.instroom], ['Uitstroom', w.uitstroom], ['Nu ziek', w.lopendVerzuim]];
-  const kb = (B - 3 * 10) / 4;
-  kern.forEach((k, i) => { const x = L + i * (kb + 10); pg.drawRectangle({ x, y: y - 40, width: kb, height: 40, color: KL.zand }); tekst(String(k[1]), x + 10, y - 22, 16, F.b); tekst(k[0], x + 10, y - 34, 8, F.n, KL.grijs); });
-  y -= 58;
+  const mtoW = sk.mto ? sk.mto.perWinkel[String(winkelNaam).trim().toLowerCase()] : null;
+  if (sk.mto) kern.push(['MTO-score', mtoW && !mtoW.verborgen ? Number(mtoW.totaal).toFixed(1).replace('.', ',') + ' / 5' : '-', mtoW && !mtoW.verborgen ? 'SLA ' + String(sk.mto.totaal).replace('.', ',') + ' · eNPS ' + (mtoW.enps > 0 ? '+' : '') + mtoW.enps : 'minder dan ' + sk.mto.minN + ' reacties']);
+  const kwKost = sk.kosten ? sk.kosten.winkels.find(x => x.naam === winkelNaam) : null;
+  if (kwKost) kern.push(["Verloopkosten/jr EUR", kwKost.perJaar.toLocaleString('nl-NL'), kwKost.uitstroom + ' x EUR ' + sk.kosten.perVervanging.totaal]);
+  const kb = (B - (kern.length - 1) * 8) / kern.length;
+  kern.forEach((k, i) => { const x = L + i * (kb + 8); pg.drawRectangle({ x, y: y - 44, width: kb, height: 44, color: KL.zand }); tekst(String(k[1]), x + 8, y - 20, kern.length > 4 ? 13 : 16, F.b); tekst(k[0], x + 8, y - 31, 7, F.n, KL.grijs); if (k[2]) tekst(k[2], x + 8, y - 40, 6, F.n, KL.grijs); });
+  y -= 60;
 
   // aandachtspunten / wat goed gaat (privé-KPI's met te weinig reacties staan er nooit in: status 'klein')
   const blok = (titel, items, kleur, achter) => {

@@ -102,6 +102,14 @@ function bereken(inp) {
   const rodeWinkels = winkels.filter(w => w.rood > 0);
   if (rodeWinkels.length) zinnen.push('Winkels met de meeste aandachtspunten (laatste ' + WINKEL_MAANDEN + ' maanden): ' + rodeWinkels.slice(0, 3).map(w => w.naam + ' (' + w.rood + ')').join(', ') + '.');
   else if (winkels.length) zinnen.push('Geen winkel wijkt de laatste ' + WINKEL_MAANDEN + ' maanden duidelijk negatief af van het SLA-gemiddelde.');
+  let kosten = null;
+  if (inp.kostenParams) {
+    const VK = require('./verloopkosten'), k = VK.bereken(sk12, inp.kostenParams, 12), K = k.perVervanging.totaal;
+    kosten = { perVervanging: K, maand: T.uitstroom * K, vorig: TV.uitstroom * K, jaar: k.totaal.perJaar, vroegJaar: k.totaal.vroegKosten, vroeg: k.totaal.vroeg, uitstroomJaar: k.totaal.uitstroom,
+      naarGemiddelde: k.scenario.naarGemiddelde, top: k.winkels.slice(0, 3).map(w => ({ naam: w.naam, perJaar: w.perJaar, uitstroom: w.uitstroom })), standaard: !!inp.kostenStandaard };
+    const eur = n => 'EUR ' + Math.round(n).toLocaleString('nl-NL');
+    zinnen.push('Verloop kostte de afgelopen 12 maanden naar schatting ' + eur(kosten.jaar) + ' (' + kosten.uitstroomJaar + ' vertrekkers x ' + eur(K) + ' per vervanging); in ' + labelVan(maand) + ' ' + eur(kosten.maand) + '. Als de winkels met meer verloop dan gemiddeld naar het SLA-gemiddelde gaan, scheelt dat ' + eur(kosten.naarGemiddelde) + ' per jaar.');
+  }
   const red = inp.redenen;
   if (red && red.totaal && red.zonder) zinnen.push(red.zonder + ' van de ' + red.totaal + ' uitstroomdossiers met einddatum deze maand hebben geen uitstroomreden — vul die aan, anders weten we niet waarom mensen gaan.');
   if (training) {
@@ -114,7 +122,7 @@ function bereken(inp) {
     vanIso: skM.vanIso, totIso: skM.totIso, periodeJaar: sk12.periode, periodeWinkels: skW.periode, winkelMaanden: WINKEL_MAANDEN,
     kern: { bestand: T.bestandEind, instroom: T.instroom, uitstroom: T.uitstroom, netto, verloop12: TJ.waarden.verloop.f, nuZiek: T.lopendVerzuim,
       vorig: { bestand: TV.bestandEind, instroom: TV.instroom, uitstroom: TV.uitstroom } },
-    kpis, training, winkels, zinnen,
+    kpis, training, winkels, zinnen, kosten,
     trend: { maanden: sk12.maanden, in: TJ.trend.in, uit: TJ.trend.uit, checkin: TJ.trend.checkin, meldingen: TJ.trend.meldingen },
     redenen: red || null, activiteit: inp.activiteit || null, minN: SK.MIN_N
   };
@@ -154,7 +162,14 @@ async function laad(maandStr, ververs) {
   const c = bron.checkins.filter(r => String(r.verstuurd_op || '').slice(0, 10) >= vanM && String(r.verstuurd_op || '').slice(0, 10) <= totM);
   activiteit.checkinVerstuurd = c.length; activiteit.checkinIngevuld = c.filter(r => r.ingevuld_op).length;
   activiteit.exitIngevuld = bron.exits.filter(r => String(r.ingevuld_op || '').slice(0, 10) >= vanM && String(r.ingevuld_op || '').slice(0, 10) <= totM).length;
-  const r = bereken({ bron, maand, vandaag, activiteit, redenen });
+  let kostenParams = null, kostenStandaard = true;
+  try { const kp = await require('./verloopkosten').params(); kostenParams = kp.p; kostenStandaard = kp.standaard; } catch (e) { fouten.push('kosten verloop: ' + e.message); }
+  const r = bereken({ bron, maand, vandaag, activiteit, redenen, kostenParams, kostenStandaard });
+  try {
+    const m = await require('./mto').samenvatting();
+    r.mto = m;
+    if (m) r.zinnen.push('Medewerkertevredenheid (' + m.ronde + ', ' + m.n + ' reacties): gemiddeld ' + String(m.totaal).replace('.', ',') + ' / 5, eNPS ' + (m.enps > 0 ? '+' : '') + m.enps + (m.vorige ? ' (' + m.vorige.naam + ': ' + String(m.vorige.totaal).replace('.', ',') + ', eNPS ' + (m.vorige.enps > 0 ? '+' : '') + m.vorige.enps + ')' : '') + '. Grootste verbeterpunt: ' + (m.laagste ? m.laagste.naam + ' (' + String(m.laagste.score).replace('.', ',') + ')' : '-') + '. Actieplan: ' + m.acties.lopend + ' lopend' + (m.acties.teLaat ? ', waarvan ' + m.acties.teLaat + ' over de deadline' : '') + ', ' + m.acties.klaar + ' afgerond.');
+  } catch (e) { r.mto = null; }
   r.fouten = fouten; r.bijgewerkt = require('./datum').stempel();
   return r;
 }
