@@ -33,7 +33,7 @@ exports.handler = beveiligd('oproepaanbod-mail', async (event, g) => {
   if (!(aang > 0)) throw new Error('Vul het aantal aangeboden uren per week in.');
   if (gem > 0 && aang < gem - 0.05) throw new Error('Het aanbod (' + aang + ' u) mag niet lager zijn dan het gemiddelde (' + gem + ' u/week).');
   const uren = String(aang).replace('.', ',');
-  const subject = (isEN ? 'Offer of fixed working hours - ' : 'Aanbod vaste arbeidsomvang - ') + naam;
+  const subject = (isEN ? 'Good news: an offer of fixed hours - ' : 'Goed nieuws: een aanbod voor vaste uren - ') + naam;
   const link = U.uploadLink('oproep', naam);
   const text = T.oproepPlain(naam, w.bv, uren, p.reactiedatum || '', isEN).replace(/{{UPLOADLINK}}/g, link), html = T.oproepHtml(naam, w.bv, uren, p.reactiedatum || '', isEN).replace(/{{UPLOADLINK}}/g, link);
   if (p.preview) return { subject, text, html };

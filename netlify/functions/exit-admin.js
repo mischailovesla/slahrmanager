@@ -37,7 +37,7 @@ exports.handler = beveiligd('exit-admin', async (event, g) => {
     const isEN = String(p.taal || 'NL').toUpperCase() === 'EN';
     if (!naam) throw new Error('Vul de naam in.');
     const link = X.exitLink(naam, isEN ? 'EN' : 'NL', 'handmatig');
-    const subject = isEN ? 'How was it at SLA? Short exit survey' : 'Hoe was het bij SLA? Korte exit-survey';
+    const subject = isEN ? 'Thank you for your time at SLA! How was it?' : 'Bedankt voor je tijd bij SLA! Hoe was het?';
     const text = T.exitUitnodigingPlain(naam, isEN).split('{{EXITLINK}}').join(link), html = T.exitUitnodigingHtml(naam, isEN).split('{{EXITLINK}}').join(link);
     if (p.preview) return { subject, text, html, link };
     if (!to || to.indexOf('@') === -1) throw new Error('Ongeldig e-mailadres.');

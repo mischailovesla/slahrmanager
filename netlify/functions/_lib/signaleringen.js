@@ -149,8 +149,8 @@ async function ontslagHerinneringen(droog) {
     }
     rap.gevonden.push({ naam: r.naam, email: r.email, verzonden: r.verzenddatum, rij: r.rij, eerder: r.aantalHer, type: r.type });
     await mailOfDroog(rap, {
-      to: r.email, subject: 'Herinnering: ondertekend HR-document nog niet ontvangen',
-      text: 'Beste ' + r.naam + ',\n\nWe hebben het ondertekende HR-document nog niet retour ontvangen. Upload zo spoedig mogelijk via:\n' + T.prefillOntslagUrl(r.naam) + '\n\nMet vriendelijke groet,\n' + C.AFZENDER_NAAM + '\n' + bv,
+      to: r.email, subject: 'Even een herinnering: je ondertekende brief',
+      text: 'Beste ' + String(r.naam || '').split(' ')[0] + ',\n\nWe hebben de ondertekende brief nog niet van je terug ontvangen. Wil je hem nog even uploaden? Dat kan hier:\n' + T.prefillOntslagUrl(r.naam) + '\n\nLukt het niet of heb je een vraag? Mail ons gerust op hr@ilovesla.com.\n\nHartelijke groet,\n' + C.AFZENDER_NAAM + '\n' + bv,
       html: T.ontslagHerHtml(r.naam, bv), kort: { naam: r.naam, email: r.email, rij: r.rij }
     }, async () => { await S.zetCel(id, null, r.rij, 11, stempel()); await S.zetCel(id, null, r.rij, 12, String((r.aantalHer || 0) + 1)); });
   }
@@ -731,7 +731,7 @@ async function exitSurvey(droog) {
     const b = brief[nn] || {}, isEN = String(b.taal || '').toUpperCase() === 'EN', t = String(b.type || r.type || '');
     const soort = /^aanzegging/.test(t) ? 'aanzegging' : /^proeftijd/.test(t) ? (/opzegging|resignation/i.test(b.onderwerp || '') ? 'proeftijd-wn' : 'proeftijd-wg') : 'ontslag';
     const link = X.exitLink(r.naam, isEN ? 'EN' : 'NL', soort);
-    const subject = isEN ? 'How was it at SLA? Short exit survey' : 'Hoe was het bij SLA? Korte exit-survey';
+    const subject = isEN ? 'Thank you for your time at SLA! How was it?' : 'Bedankt voor je tijd bij SLA! Hoe was het?';
     const text = T.exitUitnodigingPlain(r.naam, isEN).split('{{EXITLINK}}').join(link), html = T.exitUitnodigingHtml(r.naam, isEN).split('{{EXITLINK}}').join(link);
     const item = { naam: r.naam, email, einddatum: r.einddatum, taal: isEN ? 'EN' : 'NL', soort };
     rap.gevonden.push(item);

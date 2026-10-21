@@ -69,10 +69,10 @@ function teksten(r, soort) {
     + '<ul style="' + P14 + 'line-height:1.7;margin:0 0 14px;padding-left:20px">' + L.punten.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul><p style="' + P14 + 'line-height:1.7;margin:0 0 6px">' + esc(L.slot) + '</p>';
   const html = T.slaWrap(T.slaHead('#333d3a', 'HR &middot; Uitdiensttreding') + '<tr><td style="padding:32px 36px 28px">' + blok(nl, 'Beste', 'Nederlands')
     + '<hr style="border:none;border-top:1px solid #e8e2de;margin:24px 0">' + blok(en, 'Dear', 'English')
-    + '<p style="' + P14 + 'margin:20px 0 0">Met vriendelijke groet / Kind regards,<br><br><strong>SLA HR Team</strong><br>' + esc(bv) + '</p></td></tr>' + T.slaFoot());
+    + '<p style="' + P14 + 'margin:20px 0 0">Hartelijke groet / Warm regards,<br><br><strong>Het HR-team van SLA</strong><br>' + esc(bv) + '</p></td></tr>' + T.slaFoot());
   const plain = 'Beste ' + voornaam + ',\n\n' + nl.intro + '\n\n' + nl.eind + '\n\n' + nl.punten.map(x => '- ' + x).join('\n') + '\n\n' + nl.slot
     + '\n\n------------------------------\n\nDear ' + voornaam + ',\n\n' + en.intro + '\n\n' + en.eind + '\n\n' + en.punten.map(x => '- ' + x).join('\n') + '\n\n' + en.slot
-    + '\n\nMet vriendelijke groet / Kind regards,\nSLA HR Team\n' + bv;
+    + '\n\nHartelijke groet / Warm regards,\nHet HR-team van SLA\n' + bv;
   const brief = '**BEVESTIGING UITDIENSTTREDING ' + bv + '**\n\n**Amsterdam, ' + briefDatum() + '**\n\n**' + naam + '**\n' + (r.adres ? '**' + r.adres + '**\n' : '') + '\n**Beste ' + naam + ',**\n\n'
     + nl.intro + '\n\n**' + nl.eind + '**\n\n' + nl.punten.join('\n\n') + '\n\n' + nl.slot + '\n\nMet vriendelijke groet,\n\n\n**' + bv + '**\n{{HANDTEKENING}}\n................................................\ni.o. ' + C.AFZENDER_NAAM
     + '\n\n\n**English**\n\n' + en.intro + '\n\n**' + en.eind + '**\n\n' + en.punten.join('\n\n') + '\n\n' + en.slot;
