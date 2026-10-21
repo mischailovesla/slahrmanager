@@ -330,3 +330,14 @@ td .lay-sub.cel-kort{max-width:200px}
 .ci-bar strong{min-width:28px;text-align:right}.ci-bar .lay-sub{min-width:30px}
 #ci-plan .tb .pill{margin-left:4px}
 @media (max-width:1000px){.ci-grid{grid-template-columns:1fr}}
+
+/* ---------- Kosten van verloop (v0.24) ---------- */
+.vk-scen{background:var(--zand);border-radius:10px;padding:14px 18px;margin-bottom:18px}
+.vk-scen-t{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grijs);margin-bottom:8px}
+.vk-s{font-size:.9rem;padding:3px 0}.vk-s strong{color:var(--groen);font-size:1rem;margin-right:4px}
+.vk-bar{display:inline-block;width:90px;height:8px;background:#f3eeea;border-radius:3px;margin-right:8px;vertical-align:middle}.vk-bar div{height:8px;background:var(--rood);border-radius:3px;opacity:.75}
+.vk-aan{margin-top:16px;border:1px solid var(--lijn);border-radius:10px;padding:12px 16px}
+.vk-aan-kop{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.vk-aan-t{width:100%;margin-top:10px;font-size:.84rem;border-collapse:collapse}.vk-aan-t th{text-align:left;font-size:.7rem;text-transform:uppercase;color:var(--grijs);padding:6px 4px}
+.vk-aan-t td{padding:5px 4px;border-top:1px solid var(--lijn2)}.vk-aan-t input{width:80px;padding:5px 8px;border:1px solid var(--lijn);border-radius:6px;font:inherit}
+.vk-tarief td{background:var(--zand)}

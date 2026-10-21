@@ -15,5 +15,7 @@ exports.handler = beveiligd('scorekaart', async (event, g) => {
     await logActie({ door: g.email, actie: 'export', bron: 'scorekaart', veld: 'pdf', naam: q.winkel, details: 'Scorekaart ' + q.winkel + ' · ' + sk.periode });
     return { pdf: pdf.toString('base64'), bestandsnaam: 'Scorekaart_' + String(q.winkel).replace(/[^\w]+/g, '_') + '_' + sk.maanden[sk.maanden.length - 1].replace(/\s+/g, '') + '.pdf' };
   }
+  try { const VK = require('./_lib/verloopkosten'), { p: kp, standaard } = await VK.params(); sk.kosten = VK.bereken(sk, kp, sk.maandenAantal); sk.kostenStandaard = standaard; sk.kostenTarieven = VK.TARIEVEN; }
+  catch (e) { sk.kostenFout = 'Kosten van verloop: ' + e.message; }
   return sk;
 });

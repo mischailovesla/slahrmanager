@@ -1467,6 +1467,44 @@
     var rij = function (w, tot) { return '<tr class="' + (tot ? 'sk-tot' : 'sk-rij') + (skWinkel === w.naam ? ' sk-sel' : '') + '"' + (tot ? '' : ' data-sk="' + esc(w.naam) + '"') + '><td><strong>' + esc(w.naam) + '</strong></td><td>' + w.bestand + '</td>' + d.kpis.map(function (k) { return cel(w.waarden[k.key], tot); }).join('') + '<td>' + (tot ? '' : (w.rood ? '<span class="badge br">' + w.rood + '</span> ' : '') + (w.oranje ? '<span class="badge bo">' + w.oranje + '</span>' : (w.rood ? '' : '<span class="no-doc">-</span>'))) + '</td><td>' + (tot ? '' : '<button class="btn bd bsm" data-sk-pdf="' + esc(w.naam) + '" title="PDF voor het overleg met de Store Manager">⬇ PDF</button>') + '</td></tr>'; };
     g('sk-body').innerHTML = rij(d.totaal, true) + d.winkels.map(function (w) { return rij(w, false); }).join('');
     if (skWinkel && d.winkels.some(function (w) { return w.naam === skWinkel; })) skDetail(skWinkel); else g('sk-detail').style.display = 'none';
+    renderVerloopKosten();
+  };
+  // ---------- Kosten van verloop (fase 5c) ----------
+  var euro = function (n) { return n == null ? '-' : '€ ' + Math.round(n).toLocaleString('nl-NL'); };
+  function renderVerloopKosten() {
+    var d = skData, el = g('vk-body'); if (!el || !d) return;
+    var k = d.kosten; if (!k) { el.innerHTML = '<div class="leeg grijs">' + esc(d.kostenFout || 'Geen kostenberekening.') + '</div>'; return; }
+    var t = k.totaal, jaar = k.maanden === 12 ? '' : ' (omgerekend naar 12 maanden)';
+    var tegel = function (w, l, s, kl) { return '<div class="card ' + (kl || 'cd') + '"><div><div class="sv">' + w + '</div><div class="sl">' + l + '</div><div class="lay-sub" style="margin-top:3px">' + s + '</div></div></div>'; };
+    var h = '<div class="stats" style="margin-bottom:18px">'
+      + tegel(euro(t.perJaar), 'Kosten verloop per jaar', t.uitstroom + ' vertrekkers in ' + esc(k.periode) + jaar, 'cr')
+      + tegel(euro(k.perVervanging.totaal), 'Per vervanging', 'werving, inwerken, training, opstart')
+      + tegel(euro(t.vroegKosten * 12 / k.maanden), 'Vertrek binnen 90 dagen', t.vroeg + ' vroege vertrekkers: investering zonder opbrengst', 'cw')
+      + tegel(euro(t.perMedewerker), 'Per medewerker in dienst', 'per jaar, ' + t.bestand + ' in dienst') + '</div>';
+    h += '<div class="vk-scen"><div class="vk-scen-t">Wat levert minder verloop op?</div>'
+      + '<div class="vk-s"><strong>' + euro(k.scenario.naarGemiddelde) + '</strong> per jaar als de winkels met meer verloop dan gemiddeld (' + String(Math.round(t.verloop)).replace('.', ',') + '%) naar het SLA-gemiddelde gaan</div>'
+      + '<div class="vk-s"><strong>' + euro(k.scenario.tienProcentMinder) + '</strong> per jaar bij 10% minder vertrekkers in heel SLA</div>'
+      + '<div class="vk-s"><strong>' + euro(k.scenario.halveVroeg) + '</strong> per jaar als we de helft van de vertrekkers binnen 90 dagen weten te houden</div></div>';
+    var mx = Math.max.apply(null, k.winkels.map(function (w) { return w.perJaar; }).concat([1]));
+    h += '<div class="tw"><table><thead><tr><th>Winkel</th><th>In dienst</th><th>Uitstroom</th><th>Verloop</th><th>Kosten per jaar</th><th>Per medewerker</th><th>Weg ≤ 90 d</th><th>Besparing naar SLA-gemiddelde</th></tr></thead><tbody id="vk-tbody">'
+      + k.winkels.map(function (w) { return '<tr><td><strong>' + esc(w.naam) + '</strong></td><td>' + w.bestand + '</td><td>' + w.uitstroom + '</td><td>' + (w.verloop == null ? '-' : String(Math.round(w.verloop)) + '%') + '</td><td><div class="vk-bar"><div style="width:' + Math.round(w.perJaar / mx * 100) + '%"></div></div><strong>' + euro(w.perJaar) + '</strong></td><td>' + euro(w.perMedewerker) + '</td><td>' + (w.vroeg ? w.vroeg + ' <span class="lay-sub">(' + euro(w.vroegKosten * 12 / k.maanden) + ')</span>' : '-') + '</td><td>' + (w.besparingNaarGemiddelde ? '<strong style="color:var(--groen)">' + euro(w.besparingNaarGemiddelde) + '</strong> <span class="lay-sub">' + String(w.teveel).replace('.', ',') + ' vertrekkers minder</span>' : '<span class="lay-sub">zit op of onder het gemiddelde</span>') + '</td></tr>'; }).join('')
+      + '<tr class="sk-tot"><td><strong>SLA totaal</strong></td><td>' + t.bestand + '</td><td>' + t.uitstroom + '</td><td>' + (t.verloop == null ? '-' : Math.round(t.verloop) + '%') + '</td><td><strong>' + euro(t.perJaar) + '</strong></td><td>' + euro(t.perMedewerker) + '</td><td>' + t.vroeg + '</td><td><strong>' + euro(k.scenario.naarGemiddelde) + '</strong></td></tr></tbody></table></div>';
+    // aannames
+    var pv = k.perVervanging.posten;
+    h += '<div class="vk-aan"><div class="vk-aan-kop"><div><strong>Aannames</strong> <span class="lay-sub">' + (d.kostenStandaard ? 'standaard schatting' : 'door HR ingesteld') + ' · één vervanging = ' + euro(k.perVervanging.totaal) + '</span></div><button class="btn bd bsm" type="button" id="vk-aan-knop">Aanpassen ▾</button></div>'
+      + '<div id="vk-aan-body" style="display:none"><table class="vk-aan-t"><thead><tr><th>Post</th><th>Aantal</th><th>Tarief</th><th>Bedrag</th></tr></thead><tbody>'
+      + pv.map(function (x) { return '<tr><td>' + esc(x.label) + '</td><td><input type="number" step="0.5" min="0" data-vk="' + x.key + '" value="' + x.aantal + '"> <span class="lay-sub">' + esc(x.eenheid === 'EUR' ? 'euro' : x.eenheid) + '</span></td><td>' + (x.tarief == null ? '' : '€ ' + Number(x.tarief).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '/u') + '</td><td>' + euro(x.bedrag) + '</td></tr>'; }).join('')
+      + (d.kostenTarieven || []).map(function (x) { return '<tr class="vk-tarief"><td>' + esc(x.label) + '</td><td><input type="number" step="0.5" min="0" data-vk="' + x.key + '" value="' + k.params[x.key] + '"> <span class="lay-sub">euro/uur</span></td><td></td><td></td></tr>'; }).join('')
+      + '</tbody></table><div style="display:flex;gap:8px;margin-top:10px"><button class="btn bp bsm" type="button" onclick="vkOpslaan(false)">Opslaan en herberekenen</button><button class="btn bd bsm" type="button" onclick="vkOpslaan(true)">Standaard terugzetten</button></div>'
+      + '<div class="lay-sub" style="margin-top:8px">Bewust voorzichtig gerekend: niet meegeteld zijn o.a. overuren van collega\'s bij onderbezetting, uitzendkrachten, fouten/derving en lagere klanttevredenheid. De echte kosten liggen dus eerder hoger.</div></div></div>';
+    el.innerHTML = h;
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#vk-aan-knop'); if (!b) return; var bd = g('vk-aan-body'), open = bd.style.display === 'none'; bd.style.display = open ? '' : 'none'; b.textContent = open ? 'Verbergen ▴' : 'Aanpassen ▾'; });
+  window.vkOpslaan = async function (herstel) {
+    var p = {}; document.querySelectorAll('#vk-aan-body input[data-vk]').forEach(function (i) { p[i.getAttribute('data-vk')] = i.value; });
+    if (herstel && !confirm('Eigen aannames weggooien en de standaard terugzetten?')) return;
+    var r = await api('/api/verloopkosten', herstel ? { herstel: true } : { params: p });
+    if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadScorekaart(skMaanden);
   };
   function skSpark(reeks, kleur, max, labels, dec) {
     var n = reeks.length, w = 18, h = 46, mx = max || Math.max.apply(null, reeks.map(function (v) { return v || 0; }).concat([1]));
@@ -2388,7 +2426,7 @@
     var tbodies = tbody ? [tbody] : Array.prototype.slice.call(document.querySelectorAll('.tc .tw table tbody'));
     tbodies.forEach(function (tb) {
       if (!tb.closest('.tc .tw')) return; // alleen tabellen in tabs (niet in modals)
-      if (tb.id.indexOf('mto-') === 0) return; // MTO: winkels/stellingen, geen personen
+      if (tb.id.indexOf('mto-') === 0 || tb.id === 'vk-tbody') return; // MTO: winkels/stellingen, geen personen
       if (tb.id === 'dos-lijst' || tb.id === 'tg-body' || tb.id === 'tg-mut-body' || tb.id === 'gv-body' || tb.id === 'gv-runs') return; // eigen filters / geen personen
       Array.prototype.forEach.call(tb.rows, function (tr) {
         if (!w) { tr.classList.remove('wf-verborgen'); return; }
