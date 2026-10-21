@@ -160,6 +160,7 @@ module.exports = {
   KORT_LB_NL: 'https://download.belastingdienst.nl/belastingdienst/docs/model_opgaaf_gegevens_loonheffingen_lh0082z11fol.pdf',
   KORT_LB_EN: 'https://download.belastingdienst.nl/belastingdienst/docs/stat-of-dat-payroll-taxes-lh0082z5foleng.pdf',
   SALARIS_AUTO_DAGEN: 60,           // automatisch naar salaris: alleen dossiers met een verzenddatum in de laatste 60 dagen
+  SALARIS_AUTO_VANAF: '2026-10-01', // ...en nooit van vóór deze datum: alles daarvoor is al (deels persoonlijk) bij Mahdia aangeleverd
   SALARIS_EMAIL: 'mafshari@hrmonline.nl',   // salarisadministratie (Mahdia / HRM Online)
   SALARIS_LOON_KOL: 11,            // K in de loonheffing-sheet: tijdstempel 'naar salaris gestuurd'
   SALARIS_ONTSLAG_KOL: 15,         // O in de ontslag-sheet

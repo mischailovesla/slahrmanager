@@ -660,7 +660,9 @@ async function salaris(droog) {
   const SAL = require('./salaris'), U = require('./uploads');
   // Veiligheidsgrens: alleen dossiers van de laatste SALARIS_AUTO_DAGEN (verzenddatum), en niet al door Mahdia als verwerkt
   // aangevinkt — zo gaan oude dossiers van vóór het stempel (Apps Script-tijd) niet alsnog dubbel naar salaris.
-  const grens = plusDagen(vandaag0(), -(C.SALARIS_AUTO_DAGEN || 60));
+  const vanaf = C.SALARIS_AUTO_VANAF ? new Date(C.SALARIS_AUTO_VANAF + 'T00:00:00') : null;
+  let grens = plusDagen(vandaag0(), -(C.SALARIS_AUTO_DAGEN || 60));
+  if (vanaf && vanaf > grens) grens = vanaf; // niet verder terug dan SALARIS_AUTO_VANAF (01-10-2026)
   const recent = r => { const d = parseNLDatum(r.verzenddatum); return !!d && d >= grens && r.mahdia !== 'Ja'; };
   const klaar = {
     loonheffing: r => recent(r) && !r.salaris && !!r.docUrl,
