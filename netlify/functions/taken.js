@@ -179,8 +179,14 @@ exports.handler = beveiligd('taken', async (event, g) => {
   let vertrek = null;
   try { vertrek = await require('./_lib/signaleringen').vertrekkers(); } catch (e) { fouten.push('ontslagdossiers: ' + e.message); }
   const VT = require('./_lib/signaleringen').vertrekt;
+  // De checks draaien een paar keer per dag; wat sindsdien al is afgehandeld mag niet als taak blijven staan.
+  // Nieuwe medewerkers: wie inmiddels in het loonheffingsoverzicht staat (uitnodiging verstuurd, handmatig of automatisch) valt weg.
+  let loonAl = null;
+  try { const { normNaam: nn } = require('./_lib/util'); loonAl = new Set(); (await S.getLoonheffing()).forEach(r => { if (r.email) loonAl.add('e:' + String(r.email).trim().toLowerCase()); if (r.naam) loonAl.add('n:' + nn(r.naam)); }); loonAl.nn = nn; } catch (e) { loonAl = null; }
+  const loonVerstuurd = x => loonAl && ((x.email && loonAl.has('e:' + String(x.email).trim().toLowerCase())) || (x.naam && loonAl.has('n:' + loonAl.nn(x.naam))));
   for (const naam of ALLE_CHECKS) if (runs[naam]) {
-    const items = vertrek && OVERBODIG_BIJ_ONTSLAG.has(naam) ? (runs[naam].gevonden || []).filter(x => !VT(vertrek, x)) : runs[naam].gevonden;
+    let items = vertrek && OVERBODIG_BIJ_ONTSLAG.has(naam) ? (runs[naam].gevonden || []).filter(x => !VT(vertrek, x)) : runs[naam].gevonden;
+    if (naam === 'nieuwe-medewerkers') items = (items || []).filter(x => !loonVerstuurd(x));
     taken.push(...uitCheck(naam, items, runs[naam].tijd));
   }
   // Fase 4c: wie een verlengingstaak heeft, krijgt geen losse aanzeg- of ketentaak meer (die info zit in de verlengingstaak)
