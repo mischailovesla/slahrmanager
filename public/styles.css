@@ -274,3 +274,11 @@ tbody tr:hover td{background:#fdfaf8}
 .sec>.alert+.alert{margin-top:8px}
 .sec>.alert:last-of-type{margin-bottom:12px}
 .tc>.alert:not(.grijs){border-radius:12px}
+/* Lange tekst in tabellen: één regel, klik = leesvenster */
+.cel-kort{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
+.cel-kort:hover{color:var(--groen)}
+td .lay-sub.cel-kort{max-width:200px}
+.lees-v{padding:12px 0;border-bottom:1px solid var(--lijn2)}.lees-v:last-child{border-bottom:none}
+.lees-vr{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--grijs);margin-bottom:4px}
+.lees-aw{font-weight:700;color:var(--donker);font-size:.92rem}
+.lees-tl{font-size:.9rem;line-height:1.65;color:var(--donker);white-space:pre-wrap;margin-top:4px}

@@ -74,6 +74,37 @@
     if (tab === 'oproepaanbod' && !oprData) laadOproep(false);
   }
   window.swT = swT;
+  // ---------- Leesvenster voor lange antwoorden (exit-survey, check-in) ----------
+  function leesVenster(titel, html) {
+    var m = g('lees-modal');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'mo'; m.id = 'lees-modal';
+      m.innerHTML = '<div class="modal" style="width:640px"><div class="mh"><div class="mti" id="lees-titel"></div><button class="mc" type="button">×</button></div><div class="mb2" id="lees-inhoud" style="padding:20px 28px 26px"></div></div>';
+      document.body.appendChild(m);
+      m.querySelector('.mc').onclick = function () { m.classList.remove('open'); };
+      m.onclick = function (e) { if (e.target === m) m.classList.remove('open'); };
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') m.classList.remove('open'); });
+    }
+    g('lees-titel').textContent = titel; g('lees-inhoud').innerHTML = html; m.classList.add('open');
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-ex-lees]');
+    if (b && exData) {
+      var r = exData.rijen[+b.getAttribute('data-ex-lees')]; if (!r) return;
+      var a = r.antwoorden || {}, lb = r.labels || {};
+      var h = (exData.vragenConfig || []).map(function (v) {
+        var x = a[v.key], t = a[v.key + '__toelichting'];
+        if ((x == null || x === '') && !t) return '';
+        var w = x == null || x === '' ? '' : v.type === 'schaal' ? x + ' / 5' : v.type === 'nps' ? x + ' / 10' : (lb[v.key] || x);
+        return '<div class="lees-v"><div class="lees-vr">' + esc(v.nl) + '</div>' + (w !== '' ? '<div class="lees-aw">' + esc(String(w)) + '</div>' : '') + (t ? '<div class="lees-tl">“' + esc(t) + '”</div>' : '') + '</div>';
+      }).join('');
+      if (r.opmerking) h += '<div class="lees-v"><div class="lees-vr">Opmerking</div><div class="lees-tl">' + esc(r.opmerking).replace(/\n/g, '<br>') + '</div></div>';
+      leesVenster('Exit-survey — ' + (r.anoniem ? 'anoniem' : r.naam) + (r.winkel ? ' · ' + r.winkel : '') + ' · ' + r.op, h || '<div class="lay-sub">Geen antwoorden.</div>');
+      return;
+    }
+    var k = e.target.closest && e.target.closest('.cel-kort[data-lees-titel]');
+    if (k) leesVenster(k.getAttribute('data-lees-titel'), '<div class="lees-tl">' + esc(k.textContent).replace(/\n/g, '<br>') + '</div>');
+  });
   // ---------- Paginakop per tab (v0.21.1): zelfde stijl als het Overzicht ----------
   // Titel + één regel uitleg; de vaste uitlegblokken (grijze alerts direct in de tab) gaan achter een ⓘ-knop.
   var PAGINA = {
@@ -1203,10 +1234,10 @@
     g('ex-toggle').textContent = d.actief ? 'Pauzeren' : 'Aanzetten'; g('ex-toggle').className = 'btn bsm ' + (d.actief ? 'bd' : 'bp');
     // kolommen volgen de vragenlijst (keuze/schaal/nps); tekstvragen in de laatste kolom
     var kol = (d.vragenConfig || []).filter(function (v) { return v.type !== 'tekst'; });
-    g('ex-head').innerHTML = '<tr><th>Ingevuld</th><th>Naam</th><th>Winkel</th>' + kol.map(function (v) { return '<th title="' + esc(v.nl) + '">' + esc(v.nl.length > 22 ? v.nl.slice(0, 20) + '…' : v.nl) + '</th>'; }).join('') + '<th>Opmerking</th></tr>';
-    var nk = 4 + kol.length;
+    g('ex-head').innerHTML = '<tr><th>Ingevuld</th><th>Naam</th><th>Winkel</th>' + kol.map(function (v) { return '<th title="' + esc(v.nl) + '">' + esc(v.nl.length > 22 ? v.nl.slice(0, 20) + '…' : v.nl) + '</th>'; }).join('') + '<th>Opmerking</th><th></th></tr>';
+    var nk = 5 + kol.length;
     g('ex-count').textContent = d.rijen.length;
-    g('ex-body').innerHTML = d.rijen.length ? d.rijen.map(function (r) { var a = r.antwoorden || {}, lb = r.labels || {}; return '<tr><td>' + esc(r.op) + '</td><td>' + (r.anoniem ? '<span class="badge boat">anoniem</span>' : '<strong>' + esc(r.naam) + '</strong>' + (r.email ? '<div class="lay-sub">' + esc(r.email) + '</div>' : '')) + '</td><td>' + esc(r.winkel || '-') + '</td>' + kol.map(function (v) { var x = a[v.key]; if (x == null || x === '') return '<td><span class="no-doc">-</span></td>'; if (v.type === 'schaal') return '<td>' + exScore(x) + '</td>'; if (v.type === 'nps') return '<td><span class="badge ' + (x >= 9 ? 'bg' : x >= 7 ? 'bo' : 'br') + '">' + x + '/10</span></td>'; return '<td>' + esc(lb[v.key] || x) + (a[v.key + '__toelichting'] ? '<div class="lay-sub" style="white-space:normal;max-width:220px">“' + esc(a[v.key + '__toelichting']) + '”</div>' : '') + '</td>'; }).join('') + '<td style="max-width:320px;white-space:normal;font-size:.82rem">' + esc(r.opmerking || '') + '</td></tr>'; }).join('') : '<tr><td colspan="' + nk + '" class="leeg grijs">Nog geen reacties in deze periode.</td></tr>';
+    g('ex-body').innerHTML = d.rijen.length ? d.rijen.map(function (r, i) { var a = r.antwoorden || {}, lb = r.labels || {}; return '<tr><td>' + esc(r.op) + '</td><td>' + (r.anoniem ? '<span class="badge boat">anoniem</span>' : '<strong>' + esc(r.naam) + '</strong>' + (r.email ? '<div class="lay-sub">' + esc(r.email) + '</div>' : '')) + '</td><td>' + esc(r.winkel || '-') + '</td>' + kol.map(function (v) { var x = a[v.key]; if (x == null || x === '') return '<td><span class="no-doc">-</span></td>'; if (v.type === 'schaal') return '<td>' + exScore(x) + '</td>'; if (v.type === 'nps') return '<td><span class="badge ' + (x >= 9 ? 'bg' : x >= 7 ? 'bo' : 'br') + '">' + x + '/10</span></td>'; return '<td>' + esc(lb[v.key] || x) + (a[v.key + '__toelichting'] ? '<div class="lay-sub cel-kort" data-ex-lees="' + i + '">“' + esc(a[v.key + '__toelichting']) + '”</div>' : '') + '</td>'; }).join('') + '<td>' + (r.opmerking ? '<div class="cel-kort" data-ex-lees="' + i + '">' + esc(r.opmerking) + '</div>' : '<span class="no-doc">-</span>') + '</td><td><button class="btn bd bsm" data-ex-lees="' + i + '">Bekijk</button></td></tr>'; }).join('') : '<tr><td colspan="' + nk + '" class="leeg grijs">Nog geen reacties in deze periode.</td></tr>';
     exVragenRender(d.vragenConfig || []); g('ex-vragen-sub').textContent = d.standaard ? 'Standaardlijst (config.js)' : 'Eigen lijst (opgeslagen in het dashboard)';
     g('ex-vcount').textContent = d.vertrokken.length;
     g('ex-vbody').innerHTML = d.vertrokken.length ? d.vertrokken.map(function (v) { var st = v.ingevuld ? '<span class="badge bg">ingevuld</span>' : v.uitgenodigd ? '<span class="badge bo">uitgenodigd</span>' : '<span class="badge boat">nog niet</span>'; return '<tr><td><strong>' + esc(v.naam) + '</strong></td><td>' + esc(v.email || '-') + '</td><td>' + esc(v.winkelNaam || '-') + '</td><td>' + esc(v.einddatum) + (v.nogInDienst ? '<div class="lay-sub">nog in opzegtermijn</div>' : '') + (v.type === 'aanzegging' ? '<div class="lay-sub">aanzegging</div>' : '') + '</td><td>' + st + '</td><td>' + (v.ingevuld ? '' : '<button class="btn bp bsm" data-ex-stuur=\'' + esc(JSON.stringify({ naam: v.naam, email: v.email })) + '\'>' + (v.uitgenodigd ? 'Opnieuw' : 'Verstuur') + '</button>') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="leeg grijs">Geen uitdiensttredingen in deze periode (of Shiftbase niet bereikbaar).</td></tr>';
@@ -1631,7 +1662,7 @@
     g('ci-body').innerHTML = rijen.length ? rijen.map(function (r) {
       var a = r.antwoorden || {}, lb = r.labels || {};
       var cellen = kol.map(function (v) { var x = a[v.key]; if (x == null || x === '') return '<td><span class="no-doc">-</span></td>'; if (v.type === 'schaal') return '<td>' + exScore(x) + '</td>'; if (v.type === 'nps') return '<td><span class="badge ' + (x >= 9 ? 'bg' : x >= 7 ? 'bo' : 'br') + '">' + x + '/10</span></td>'; var alarm = (v.opties || []).some(function (o) { return o[0] === x && o[3] === true; }); return '<td>' + (alarm ? '<span class="badge br">' + esc(lb[v.key] || x) + '</span>' : esc(lb[v.key] || x)) + '</td>'; }).join('');
-      var opm = (r.opmerking ? '<div>' + esc(r.opmerking) + '</div>' : '') + (r.opvolgNotitie || r.opgevolgd ? '<div class="lay-sub">Opgevolgd ' + esc(r.opgevolgd) + (r.opgevolgdDoor ? ' door ' + esc(r.opgevolgdDoor) : '') + (r.opvolgNotitie ? ': ' + esc(r.opvolgNotitie) : '') + '</div>' : '') + (!r.ingevuld && r.herinnerd ? '<div class="lay-sub">Herinnering ' + esc(r.herinnerd) + '</div>' : '');
+      var opm = (r.opmerking ? '<div class="cel-kort" data-lees-titel="Opmerking — ' + esc(r.naam) + ' (dag ' + r.moment + ')">' + esc(r.opmerking) + '</div>' : '') + (r.opvolgNotitie || r.opgevolgd ? '<div class="lay-sub">Opgevolgd ' + esc(r.opgevolgd) + (r.opgevolgdDoor ? ' door ' + esc(r.opgevolgdDoor) : '') + (r.opvolgNotitie ? ': ' + esc(r.opvolgNotitie) : '') + '</div>' : '') + (!r.ingevuld && r.herinnerd ? '<div class="lay-sub">Herinnering ' + esc(r.herinnerd) + '</div>' : '');
       return '<tr><td>' + esc(r.verstuurd) + '</td><td><strong>' + esc(r.naam) + '</strong><div class="lay-sub">' + esc(r.email || '') + '</div></td><td>' + esc(r.winkel || '-') + '</td><td>' + r.moment + '</td><td>' + (ciStatus[r.status] || '') + (r.ingevuld ? '<div class="lay-sub">' + esc(r.ingevuld) + '</div>' : '') + '</td><td>' + (r.score == null ? '<span class="no-doc">-</span>' : exScore(Math.round(r.score))) + '</td>' + cellen + '<td style="max-width:300px;white-space:normal;font-size:.82rem">' + opm + '</td><td>' + (r.status === 'laag' ? '<button class="btn bp bsm" data-ci-op="' + esc(r.id) + '">✓ Opgevolgd</button> ' : '') + dosBtn(r.naam, r.email) + '</td></tr>';
     }).join('') : '<tr><td colspan="' + (8 + kol.length) + '" class="leeg grijs">' + (d.rijen.length ? 'Niets in deze selectie.' : 'Nog geen check-ins verstuurd' + (d.actief ? '.' : ' (gepauzeerd).')) + '</td></tr>';
   }
