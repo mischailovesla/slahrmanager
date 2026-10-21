@@ -262,7 +262,8 @@ function aggregeer(lijst, metVragen) {
   const e = lijst.map(r => r.enps).filter(x => x != null && x >= 0);
   const pro = e.filter(x => x >= 9).length, det = e.filter(x => x <= 6).length;
   const prio = {}; Q.THEMAS.forEach(t => { prio[t.key] = 0; }); lijst.forEach(r => { if (prio[r.prioriteit] != null) prio[r.prioriteit]++; });
-  const uit = { n, totaal: r1(gem(Object.values(perThema).filter(x => x != null))), perThema, enps: e.length ? Math.round((pro - det) / e.length * 100) : null,
+  const taal = { NL: lijst.filter(r => r.taal !== 'EN').length, EN: lijst.filter(r => r.taal === 'EN').length };
+  const uit = { n, taal, totaal: r1(gem(Object.values(perThema).filter(x => x != null))), perThema, enps: e.length ? Math.round((pro - det) / e.length * 100) : null, enpsAantal: { promoter: pro, passief: e.length - pro - det, criticus: det },
     enpsVerdeling: e.length ? { promoter: Math.round(pro / e.length * 100), passief: Math.round((e.length - pro - det) / e.length * 100), criticus: Math.round(det / e.length * 100) } : null,
     prioriteit: Object.keys(prio).map(k => ({ key: k, n: prio[k], pct: Math.round(prio[k] / n * 100) })).sort((a, b) => b.n - a.n) };
   if (metVragen) uit.perVraag = perVraag;
@@ -276,7 +277,7 @@ async function rapport(rondeId, groep, winkel) {
   const ronde = alle.find(r => r.id === rondeId) || alle.find(r => r.reacties) || alle[0];
   if (!ronde) return { ronde: null, rondes: [], minN: MIN_N };
   const ids = alle.map(r => r.id);
-  const [re, ui] = await Promise.all([db.from('hr_mto_reactie').select('ronde_id,winkel,groep,antwoorden,enps,prioriteit,opmerking').in('ronde_id', ids), db.from('hr_mto_uitnodiging').select('ronde_id,winkel,groep,ingevuld').eq('ronde_id', ronde.id)]);
+  const [re, ui] = await Promise.all([db.from('hr_mto_reactie').select('ronde_id,winkel,groep,taal,antwoorden,enps,prioriteit,opmerking').in('ronde_id', ids), db.from('hr_mto_uitnodiging').select('ronde_id,winkel,groep,ingevuld').eq('ronde_id', ronde.id)]);
   fout(re.error, 'Reacties lezen'); fout(ui.error, 'Uitnodigingen lezen');
   const perRonde = {}; (re.data || []).forEach(r => { (perRonde[r.ronde_id] = perRonde[r.ronde_id] || []).push(r); });
   const hier = perRonde[ronde.id] || [], uitn = ui.data || [];
@@ -305,6 +306,41 @@ async function rapport(rondeId, groep, winkel) {
     themas: Q.THEMAS.map(t => ({ key: t.key, nl: t.nl, vragen: t.vragen.map(v => ({ key: v[0], nl: v[1] })) })) };
 }
 
+// ---------- PDF-rapporten (per winkel, SLA, of bundel) ----------
+// winkel: '' = SLA-rapport · '*' = bundel (SLA + elke winkel met >= MIN_N reacties) · naam = één winkel
+async function pdfSecties(rondeId, groep, winkel) {
+  groep = groep || 'alle';
+  const db = admin(), alle = await rondes();
+  const ronde = alle.find(r => r.id === rondeId) || alle.find(r => r.reacties);
+  if (!ronde) throw new Error('Geen MTO-ronde met reacties gevonden.');
+  const ids = alle.map(r => r.id);
+  const [re, ui] = await Promise.all([db.from('hr_mto_reactie').select('ronde_id,winkel,groep,taal,antwoorden,enps,prioriteit,opmerking').in('ronde_id', ids), db.from('hr_mto_uitnodiging').select('ronde_id,winkel,groep,ingevuld').eq('ronde_id', ronde.id)]);
+  fout(re.error, 'Reacties lezen'); fout(ui.error, 'Uitnodigingen lezen');
+  const perRonde = {}; (re.data || []).forEach(r => { (perRonde[r.ronde_id] = perRonde[r.ronde_id] || []).push(r); });
+  const hier = perRonde[ronde.id] || [], uitn = ui.data || [];
+  const idx = alle.findIndex(r => r.id === ronde.id), vorigeR = alle.slice(idx + 1).find(r => (perRonde[r.id] || []).length);
+  const respons = l => l.length ? { uitgenodigd: l.length, ingevuld: l.filter(x => x.ingevuld).length, pct: Math.round(l.filter(x => x.ingevuld).length / l.length * 100) } : null;
+  const sectie = w => {
+    const lijst = filter(hier, groep, w || null), a = aggregeer(lijst, true);
+    return { winkel: w || '', a, respons: respons(filter(uitn, groep, w || null)), vorige: vorigeR ? aggregeer(filter(perRonde[vorigeR.id], groep, w || null), true) : null,
+      opmerkingen: a.verborgen || !a.n ? [] : lijst.map(r => r.opmerking).filter(Boolean).sort((p, q) => p.localeCompare(q, 'nl')) };
+  };
+  const res = { ronde, groep, minN: MIN_N, vorigeNaam: vorigeR ? vorigeR.naam : '', themas: Q.THEMAS.map(t => ({ key: t.key, nl: t.nl, vragen: t.vragen.map(v => ({ key: v[0], nl: v[1] })) })), sla: sectie('') };
+  if (res.sla.a.verborgen || !res.sla.a.n) throw new Error('Te weinig reacties (' + res.sla.a.n + ') voor een rapport over ' + (groep === 'alle' ? 'deze ronde' : 'deze groep') + '.');
+  const namen = Array.from(new Set(hier.map(r => String(r.winkel || '').trim()).filter(Boolean))).sort((p, q) => p.localeCompare(q, 'nl'));
+  if (winkel && winkel !== '*') {
+    const s = sectie(winkel);
+    if (s.a.verborgen || !s.a.n) throw new Error(winkel + ' heeft ' + s.a.n + ' reactie' + (s.a.n === 1 ? '' : 's') + (groep !== 'alle' ? ' in deze groep' : '') + ': een rapport kan pas vanaf ' + MIN_N + ' reacties (anonimiteit).');
+    res.winkels = [s]; res.alleenWinkel = true; return res;
+  }
+  const perWinkel = namen.map(sectie);
+  res.perWinkel = perWinkel;
+  res.groepen = ['medewerker', 'manager'].map(gp => ({ groep: gp, a: aggregeer(filter(hier, gp, null), false), respons: respons(filter(uitn, gp, null)) }));
+  res.trend = alle.slice(idx).reverse().map(r => { const a = aggregeer(filter(perRonde[r.id] || [], groep, null), false); return { naam: r.naam, n: a.n, verborgen: !!a.verborgen, totaal: a.totaal, enps: a.enps }; }).filter(x => x.n);
+  if (winkel === '*') { res.bundel = true; res.winkels = perWinkel.filter(w => !w.a.verborgen && w.a.n); res.overgeslagen = perWinkel.filter(w => w.a.verborgen || !w.a.n).map(w => ({ winkel: w.winkel, n: w.a.n })); }
+  return res;
+}
+
 // CSV-export (anoniem: per reactie alleen winkel, groep, taal, scores) — alleen groepen met ≥ MIN_N reacties
 async function exportCsv(rondeId) {
   const { data, error } = await admin().from('hr_mto_reactie').select('winkel,groep,taal,antwoorden,enps,prioriteit').eq('ronde_id', rondeId);
@@ -317,4 +353,4 @@ async function exportCsv(rondeId) {
   return [kop].concat(rijen).map(r => r.map(q).join(';')).join('\n');
 }
 
-module.exports = { MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, exportCsv, isManager };
+module.exports = { MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager };

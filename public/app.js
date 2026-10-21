@@ -2363,7 +2363,7 @@
   // ---------- Tevredenheidsonderzoek (MTO, fase 5) ----------
   var mtoData = null, mtoGroep = 'alle', mtoSort = 'thema', mtoKand = null;
   var MTO_GROEP = { alle: 'Iedereen', medewerker: 'SLA makers', manager: 'Store managers' };
-  function mtoKl(x) { return x == null ? '' : x >= 4 ? 'mto-g' : x >= 3.5 ? 'mto-lg' : x >= 3 ? 'mto-o' : 'mto-r'; }
+  function mtoKl(x) { return x == null ? '' : x >= 3.75 ? 'mto-g' : x >= 2.75 ? 'mto-o' : 'mto-r'; } // zelfde grenzen als de PDF: Goed / Matig / Aandacht nodig
   function mtoGetal(x) { return x == null ? '-' : String(x).replace('.', ','); }
   function mtoEnps(x) { return x == null ? '-' : (x > 0 ? '+' : '') + x; }
   function mtoDelta(nu, oud, schaal) {
@@ -2499,6 +2499,23 @@
   window.mtoSluit = async function (ronde) {
     if (!confirm('Ronde nu sluiten? De links werken daarna niet meer en er gaan geen herinneringen meer uit.')) return;
     var r = await api('/api/mto-admin', { actie: 'sluiten', ronde: ronde }); if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadMto();
+  };
+  window.mtoPdf = async function (soort) {
+    if (!mtoData || !mtoData.ronde) return;
+    var basis = '/api/mto-admin?groep=' + mtoGroep + '&ronde=' + encodeURIComponent(mtoData.ronde.id), w = g('mto-winkel').value;
+    if (soort === 'winkel' && !w) { toast('Kies eerst een winkel in het filter (of gebruik "Heel SLA").', 'err'); return; }
+    if (soort === 'los') {
+      var namen = (mtoData.perWinkel || []).filter(function (x) { return !x.verborgen && x.n && x.winkel !== '(geen winkel)'; }).map(function (x) { return x.winkel; });
+      if (!namen.length) { toast('Geen winkel met ' + mtoData.minN + ' of meer reacties.', 'err'); return; }
+      for (var i = 0; i < namen.length; i++) { toast('PDF ' + (i + 1) + ' van ' + namen.length + ': ' + namen[i] + '…', 'ok'); var r1 = await api(basis + '&pdf=winkel&winkel=' + encodeURIComponent(namen[i])); if (!r1.success) { toast(namen[i] + ': ' + r1.bericht, 'err'); continue; } downloadB64(r1.pdf, r1.bestandsnaam); await new Promise(function (ok) { setTimeout(ok, 400); }); }
+      var over = (mtoData.perWinkel || []).filter(function (x) { return (x.verborgen || !x.n) && x.winkel !== '(geen winkel)'; }).map(function (x) { return x.winkel; });
+      toast(namen.length + ' rapporten gedownload' + (over.length ? '; geen rapport voor ' + over.join(', ') + ' (te weinig reacties)' : ''), 'ok'); return;
+    }
+    toast('PDF maken…', 'ok');
+    var r = await api(basis + '&pdf=' + soort + (soort === 'winkel' ? '&winkel=' + encodeURIComponent(w) : ''));
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam);
+    toast('Gedownload: ' + r.bestandsnaam + (r.overgeslagen && r.overgeslagen.length ? ' (zonder ' + r.overgeslagen.map(function (x) { return x.winkel; }).join(', ') + ': te weinig reacties)' : ''), 'ok');
   };
   window.mtoExport = async function () {
     if (!mtoData || !mtoData.ronde) return;

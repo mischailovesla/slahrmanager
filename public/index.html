@@ -552,7 +552,7 @@
     <div id="mto-status"></div>
     <div class="sec">
       <div class="sh"><div class="st">Rapport</div>
-        <div class="hr2"><select id="mto-ronde" class="sb" style="min-width:210px" onchange="laadMto()"></select><div class="tbar" id="mto-groep"><button type="button" class="tb sel" data-mg="alle">Iedereen</button><button type="button" class="tb" data-mg="medewerker">SLA makers</button><button type="button" class="tb" data-mg="manager">Store managers</button></div><select id="mto-winkel" class="sb" onchange="laadMto()"><option value="">Alle winkels</option></select><button class="btn bd bsm" onclick="mtoExport()">⬇ CSV</button></div></div>
+        <div class="hr2"><select id="mto-ronde" class="sb" style="min-width:210px" onchange="laadMto()"></select><div class="tbar" id="mto-groep"><button type="button" class="tb sel" data-mg="alle">Iedereen</button><button type="button" class="tb" data-mg="medewerker">SLA makers</button><button type="button" class="tb" data-mg="manager">Store managers</button></div><select id="mto-winkel" class="sb" onchange="laadMto()"><option value="">Alle winkels</option></select><span class="meer"><button class="btn bp bsm" data-meer="1" title="PDF-rapporten">⬇ PDF-rapport ▾</button><div class="meer-menu"><button class="btn bd bsm" onclick="mtoPdf('winkel')" id="mto-pdf-w">Deze winkel</button><button class="btn bd bsm" onclick="mtoPdf('sla')">Heel SLA</button><button class="btn bd bsm" onclick="mtoPdf('bundel')">SLA + alle winkels (één PDF)</button><button class="btn bd bsm" onclick="mtoPdf('los')">Alle winkels apart</button></div></span><button class="btn bd bsm" onclick="mtoExport()">⬇ CSV</button></div></div>
       <div id="mto-kpi" style="padding:18px 24px 0"></div>
       <div id="mto-leeg"></div>
     </div>

@@ -308,3 +308,4 @@ td .lay-sub.cel-kort{max-width:200px}
 .mto-opm{padding:9px 14px;background:var(--zand);border-radius:8px;margin-bottom:8px;font-size:.86rem;white-space:pre-wrap}
 @media (max-width:1000px){.mto-grid{grid-template-columns:1fr}}
 .mto-bar .mto-d{min-width:52px;display:inline-block}
+.sec:has(#mto-kpi){overflow:visible}
