@@ -140,7 +140,7 @@
     return '<span class="badge ' + c + '">' + lbl + '</span>' + (m ? '<div class="lay-sub">' + m[1] + '</div>' : '');
   }
   function bMah(v) { return v === 'Ja' ? '<span class="badge bg">✓ Verwerkt</span>' : '<span class="badge bdk">Open</span>'; }
-  // Klikbaar vinkje: schrijft naar de sheet via /api/toggle (zelfde cel als Code.gs)
+  // Klikbaar vinkje: schrijft via /api/toggle naar de database (Supabase)
   function bTog(type, v, rij, naam, aan, uit) {
     var ok = v === 'Ja';
     return '<button class="mah-btn' + (ok ? ' ok' : '') + '" data-tog="' + type + '" data-rij="' + rij + '" data-naam="' + esc(naam) + '">' + (ok ? '✓ ' + (aan || 'Verwerkt') : (uit || 'Aanvinken')) + '</button>';
@@ -231,7 +231,7 @@
     closeDocUpload(); salarisKlaar(duInfo.type, duInfo.rij, r);
   };
   function bArch(type, rij, naam) {
-    return '<button class="mah-btn arch" title="Archiveer ' + esc(naam) + ' — rij gaat naar tab Archief" data-arch="' + type + '" data-rij="' + rij + '" data-naam="' + esc(naam) + '">🗑</button>';
+    return '<button class="mah-btn arch" title="Archiveer ' + esc(naam) + ' — naar het archief (terugzetten via Beheer → Archief)" data-arch="' + type + '" data-rij="' + rij + '" data-naam="' + esc(naam) + '">🗑</button>';
   }
   var bezig = false, laatsteDossier = null, ikNaam = '';
   document.addEventListener('click', async function (e) {
@@ -239,7 +239,7 @@
     if (!b || bezig) return;
     var naam = b.getAttribute('data-naam'), rij = b.getAttribute('data-rij');
     var isArch = b.hasAttribute('data-arch');
-    if (isArch && !confirm('Uit het dashboard halen: ' + naam + '?\n\nDe rij wordt verplaatst naar de tab Archief in het Google Sheet (met datum en jouw naam). Er gaat niets verloren — terugzetten kan altijd.')) return;
+    if (isArch && !confirm('Uit het dashboard halen: ' + naam + '?\n\nHet dossier gaat naar het archief van het dashboard (met datum en jouw naam). Er gaat niets verloren — terugzetten kan via Beheer → Archief.')) return;
     bezig = true; b.disabled = true; var oud = b.innerHTML; b.innerHTML = '…';
     var r = isArch ? await api('/api/archiveer', { type: b.getAttribute('data-arch'), rij: rij, naam: naam })
                    : await api('/api/toggle', { type: b.getAttribute('data-tog'), rij: rij, naam: naam });
