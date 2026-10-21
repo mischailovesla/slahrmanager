@@ -74,6 +74,50 @@
     if (tab === 'oproepaanbod' && !oprData) laadOproep(false);
   }
   window.swT = swT;
+  // ---------- Paginakop per tab (v0.21.1): zelfde stijl als het Overzicht ----------
+  // Titel + één regel uitleg; de vaste uitlegblokken (grijze alerts direct in de tab) gaan achter een ⓘ-knop.
+  var PAGINA = {
+    dossier: ['Medewerkers', 'Alle medewerkers uit Shiftbase. Open een dossier voor contract, verlof, verzuim, gesprekken en documenten.'],
+    signalering: ['Signaleringen', 'De automatische checks: wat ze doen, wanneer ze draaien en wat ze de laatste keer vonden.'],
+    scorekaart: ['Scorekaart', 'HR-kerncijfers per winkel (verzuim, verloop, check-ins) en het maandrapport.'],
+    loonheffing: ['Loonheffingsverklaring', 'Uitnodigingen voor nieuwe medewerkers, ontvangen formulieren en doorsturen naar salaris.'],
+    contract: ['Contracten & starters', 'Nieuwe starters uit Shiftbase met hun contract- en formulierstatus.'],
+    checkin: ['Check-in 30/60', 'Korte check-in voor nieuwe medewerkers op dag 30 en 60; lage scores volg je hier op.'],
+    loonheffingskorting: ['Loonheffingskorting', 'Loonheffingskorting aan- of uitzetten voor bestaande medewerkers.'],
+    oproepaanbod: ['Oproepaanbod', 'Aanbod vaste arbeidsomvang na 12 maanden oproepwerk (art. 7:628a BW).'],
+    overplaatsing: ['Overplaatsing', 'Overplaatsing naar een andere BV of standplaatswijziging, met brief en doorgeven aan salaris.'],
+    vakantie: ['Vakantieplanner', 'Vakantie en afwezigheid per winkel per week.'],
+    vastloners: ['Vastloners', 'Maandmutaties salaris voor de vaste krachten en store managers.'],
+    training: ['Training & certificaten', 'Voortgang in SLA Academy per winkel en medewerker.'],
+    verlenging: ['Contractverlengingen', 'Aflopende tijdelijke contracten: besluit vastleggen, advies van de Store Manager en vervolg.'],
+    gesprekken: ['Gesprekken', 'Alle vastgelegde gesprekken en openstaande vervolgafspraken.'],
+    beschikbaarheid: ['Beschikbaarheid', 'Kennisgeving bij te weinig weekendbeschikbaarheid (huisregel 2).'],
+    waarschuwing: ['Waarschuwingen', 'Schriftelijke waarschuwing bij overtreding van de huisregels.'],
+    sommatie: ['Sommaties', 'Oproepbrief, sommaties en ontslag op staande voet bij afwezigheid zonder bericht.'],
+    brief: ['Vrije brieven', 'Zelf een brief opstellen in SLA-huisstijl, met of zonder PDF.'],
+    ontslag: ['Ontslag & aanzegging', 'Ontslagbevestigingen, aanzeggingen en proeftijdbrieven: versturen, ondertekening volgen en naar salaris.'],
+    verloopanalyse: ['Verloopanalyse', 'In- en uitstroom en verloop per winkel en periode.'],
+    exit: ['Exit-surveys', 'Reacties op de exit-survey en uitnodigingen voor vertrekkers.'],
+    toegang: ['Toegangslog', 'Wie heeft wanneer welke gegevens bekeken of gewijzigd (AVG-verantwoording).'],
+    archief: ['Archief', 'Gearchiveerde dossiers bekijken en terugzetten.'],
+    gegevens: ['Gegevens & export', 'Export van de HR-gegevens en de stand van de gegevensbron.']
+  };
+  function bouwPaginaKoppen() {
+    Object.keys(PAGINA).forEach(function (tab) {
+      var tc = g('tab-' + tab); if (!tc || tc.querySelector(':scope > .ov-kop')) return;
+      var uitleg = Array.prototype.filter.call(tc.children, function (c) { return c.classList.contains('alert') && c.classList.contains('grijs'); });
+      var kop = document.createElement('div'); kop.className = 'ov-kop pg-kop';
+      kop.innerHTML = '<div><div class="ov-groet">' + esc(PAGINA[tab][0]) + '</div><div class="ov-samen">' + esc(PAGINA[tab][1]) + '</div></div>'
+        + (uitleg.length ? '<div class="ov-kop-r"><button class="btn bd bsm ov-info" type="button" title="Uitleg en werkwijze">ⓘ Uitleg</button></div>' : '');
+      tc.insertBefore(kop, tc.firstChild);
+      if (uitleg.length) {
+        var box = document.createElement('div'); box.className = 'ov-uitleg pg-uitleg';
+        uitleg.forEach(function (u) { box.appendChild(u); });
+        kop.parentNode.insertBefore(box, kop.nextSibling);
+        kop.querySelector('.ov-info').onclick = function () { box.classList.toggle('open'); };
+      }
+    });
+  }
 
   // ---------- Auth ----------
   async function init() {
@@ -82,6 +126,7 @@
     if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) { toonLoginFout('Supabase is nog niet geconfigureerd (env vars ontbreken op Netlify).'); g('login').classList.add('show'); return; }
     sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
     bouwNav();
+    bouwPaginaKoppen();
     g('btn-login').onclick = login;
     g('btn-uit').onclick = async function () { await sb.auth.signOut(); location.reload(); };
     sb.auth.onAuthStateChange(function (ev, s) { sessie = s; });

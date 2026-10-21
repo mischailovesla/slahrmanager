@@ -264,3 +264,13 @@ tbody tr:hover td{background:#fdfaf8}
 #tk-sec,.sec:has(#ov-pijp){overflow:visible}
 #tk-sec>.sh,.sec:has(#ov-pijp)>.sh{border-radius:12px 12px 0 0}
 .meer-menu.omhoog{top:auto;bottom:calc(100% + 4px)}
+/* ---------- Eén stijl voor alle tabs (v0.21.1) ---------- */
+.pg-uitleg .alert{margin:0 0 10px}
+.pg-uitleg.open{display:block}
+.stats .card{border-top-width:4px;border-radius:12px;padding:18px 20px}
+.stats .card .sv{font-size:1.9rem;line-height:1.05}
+.stats .card .sl{font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--grijs)}
+.sec>.alert{margin:12px 24px 0;border-radius:10px;font-size:.84rem}
+.sec>.alert+.alert{margin-top:8px}
+.sec>.alert:last-of-type{margin-bottom:12px}
+.tc>.alert:not(.grijs){border-radius:12px}
