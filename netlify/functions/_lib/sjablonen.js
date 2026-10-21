@@ -33,7 +33,11 @@ function indienstLink() { return U.site() + '/Indiensttredingsformulier_SLA.xlsx
 // Generieke upload-links in een (door HR bewerkte) tekst vervangen door de persoonlijke
 function personaliseerUploadLinks(body, naam) {
   if (!body || !naam) return body;
-  return String(body).split(C.UPLOAD_LOON).join(prefillLoonUrl(naam)).split(C.UPLOAD_ONTSLAG).join(prefillOntslagUrl(naam));
+  let s = String(body);
+  const [oudLoon, oudOntslag] = C.UPLOAD_OUDE_LINKS || [];
+  if (oudLoon) s = s.split(oudLoon).join(C.UPLOAD_LOON);
+  if (oudOntslag) s = s.split(oudOntslag).join(C.UPLOAD_ONTSLAG);
+  return s.split(C.UPLOAD_LOON).join(prefillLoonUrl(naam)).split(C.UPLOAD_ONTSLAG).join(prefillOntslagUrl(naam));
 }
 
 // --- Loonheffing: uitnodiging ------------------------------------------------

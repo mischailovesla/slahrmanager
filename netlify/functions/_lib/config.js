@@ -245,10 +245,11 @@ module.exports = {
   BEDRIJFSNAAM: 'SLA',
 
   // Loonheffing-flow: links en prefill (v29.4)
-  UPLOAD_LOON: 'https://docs.google.com/forms/d/e/1FAIpQLSccn1Y4826aho-hIBSrbpw07BbCPAYmSVx2Fjlms08H8XNHgA/viewform?usp=header',
+  UPLOAD_LOON: '[persoonlijke upload-link]',            // placeholder; bij versturen vervangen door de persoonlijke link (personaliseerUploadLinks)
+  UPLOAD_OUDE_LINKS: ['https://docs.google.com/forms/d/e/1FAIpQLSccn1Y4826aho-hIBSrbpw07BbCPAYmSVx2Fjlms08H8XNHgA/viewform?usp=header', 'https://docs.google.com/forms/d/e/1FAIpQLSfI7REFmrvQFDBtfnGTbot_ra2RV6-w_g137FcnD7Dnaakgaw/viewform?usp=sf_link'], // oude Google Forms (in oude/bewerkte teksten): ook vervangen,
   PREFILL_LOON_ENTRY: 'entry.35290118',
   // Ontslag/aanzegging-flow (uit Code.gs): upload-formulier. De brieven zelf staan in _lib/brieftemplates.js
-  UPLOAD_ONTSLAG: 'https://docs.google.com/forms/d/e/1FAIpQLSfI7REFmrvQFDBtfnGTbot_ra2RV6-w_g137FcnD7Dnaakgaw/viewform?usp=sf_link',
+  UPLOAD_ONTSLAG: '[persoonlijke link om te ondertekenen]',
   PREFILL_ONTSLAG_ENTRY: 'entry.967349986',
   // INDIENSTLINK (Drive-export) is vervangen door public/Indiensttredingsformulier_SLA.xlsx (sjablonen.indienstLink) — 16-10-2026
   LB_FORMULIER_NL: 'https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/themaoverstijgend/programmas_en_formulieren/model_opgaaf_gegevens_voor_de_loonheffingen',
