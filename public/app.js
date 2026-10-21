@@ -52,7 +52,8 @@
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
     if (tab === 'brief' && !vbData) laadBrieven();
     if (tab === 'ontslag' && !omData) laadOntslag();
-    if (tab === 'ontslag') laadOndertekeningen();
+    if (tab === 'ontslag') { laadOndertekeningen(); htLaad(); }
+    if (tab === 'overplaatsing') htLaad();
     if (tab === 'sommatie' && !smData) laadSommaties();
     if (tab === 'overplaatsing' && !opData) laadOverplaatsingen();
     if (tab === 'signalering' && !sgData) laadSignaleringen();
@@ -2124,6 +2125,67 @@
     el.innerHTML = h;
   }
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#vrl-ctrl-f .tb'); if (!b) return; vrlCtrlFilter = b.getAttribute('data-vcf'); renderVrlControle(); });
+  // ---------- Mijn handtekening (fase 6b): brieven krijgen de handtekening van wie ze verstuurt ----------
+  var htData = null;
+  async function htLaad(forceer) {
+    if (htData && !forceer) { htToon(); return htData; }
+    var r = await api('/api/handtekening'); if (r.success) htData = r; htToon(); return htData;
+  }
+  function htToon() {
+    var tekst = !htData ? '' : htData.ingesteld ? '✍ Brief wordt ondertekend door <strong>' + esc(htData.naam) + '</strong>' + (htData.functie ? ', ' + esc(htData.functie) : '') + ' · <a href="#" onclick="event.preventDefault();htOpen()">wijzigen</a>'
+      : '<span style="color:var(--rood)">⚠ Je hebt nog geen handtekening ingesteld: de brief krijgt alleen je naam.</span> <a href="#" onclick="event.preventDefault();htOpen()">Handtekening instellen</a>';
+    ['om-afz', 'op-afz'].forEach(function (id) { var el = g(id); if (el) el.innerHTML = tekst; });
+  }
+  window.htOpen = async function () {
+    var m = g('ht-modal');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'mo'; m.id = 'ht-modal';
+      m.innerHTML = '<div class="modal" style="width:560px"><div class="mh"><div class="mti">Mijn handtekening</div><button class="mc" type="button">×</button></div><div class="mb2" style="padding:18px 28px">'
+        + '<div class="lay-sub" style="margin-bottom:12px">Ontslagbevestigingen, aanzeggingen, proeftijdbrieven en overplaatsingen die jij verstuurt, krijgen deze handtekening met je naam en functie eronder. Hij wordt veilig opgeslagen in het dashboard en alleen gebruikt voor brieven die jij zelf aanmaakt.</div>'
+        + '<div class="fr"><div class="fg"><label>Naam onder de brief</label><input type="text" id="ht-naam" maxlength="80"></div><div class="fg"><label>Functie</label><input type="text" id="ht-functie" maxlength="80" placeholder="Bijv. HR-adviseur"></div></div>'
+        + '<div class="fg"><label style="display:flex;justify-content:space-between"><span>Teken hieronder</span><a href="#" id="ht-wis" style="text-transform:none;letter-spacing:0">Wissen</a></label><canvas id="ht-doek" style="width:100%;height:160px;border:1.5px dashed var(--lijn);border-radius:8px;background:#fff;touch-action:none"></canvas></div>'
+        + '<div class="fg"><label>Of upload een scan (PNG met transparante of witte achtergrond)</label><input type="file" id="ht-file" accept="image/png"></div>'
+        + '<div class="lay-sub" id="ht-huidig"></div></div><div class="mf"><button class="btn bp" id="ht-ok" type="button">Opslaan</button></div></div>';
+      document.body.appendChild(m);
+      m.querySelector('.mc').onclick = function () { m.classList.remove('open'); };
+      m.onclick = function (e) { if (e.target === m) m.classList.remove('open'); };
+      g('ht-wis').onclick = function (e) { e.preventDefault(); htDoek(); };
+      g('ht-file').onchange = function () { var f = this.files[0]; if (!f) return; var rd = new FileReader(); rd.onload = function () { var img = new Image(); img.onload = function () { var c = g('ht-doek'), x = c.getContext('2d'); htDoek(); var dpr = window.devicePixelRatio || 1, W = c.width / dpr, H = c.height / dpr, s = Math.min(W / img.width, H / img.height) * 0.9; x.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s); htGetekend = true; }; img.src = rd.result; }; rd.readAsDataURL(f); };
+      g('ht-ok').onclick = htOpslaan;
+    }
+    m.classList.add('open');
+    await htLaad(true);
+    g('ht-naam').value = htData ? htData.naam : ''; g('ht-functie').value = htData ? htData.functie : '';
+    setTimeout(function () { htDoek(); if (htData && htData.png) { var img = new Image(); img.onload = function () { var c = g('ht-doek'), x = c.getContext('2d'), dpr = window.devicePixelRatio || 1, W = c.width / dpr, H = c.height / dpr, s = Math.min(W / img.width, H / img.height) * 0.9; x.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s); htGetekend = false; }; img.src = htData.png; } }, 60);
+    g('ht-huidig').textContent = htData && htData.ingesteld ? 'Je huidige handtekening staat hierboven. Teken opnieuw om hem te vervangen.' : 'Nog geen handtekening ingesteld.';
+  };
+  var htGetekend = false;
+  function htDoek() {
+    var c = g('ht-doek'), r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1; c.width = r.width * dpr; c.height = r.height * dpr;
+    var x = c.getContext('2d'); x.scale(dpr, dpr); x.lineWidth = 2.4; x.lineCap = 'round'; x.lineJoin = 'round'; x.strokeStyle = '#1a2a6c'; htGetekend = false;
+    var aan = false, pos = function (e) { var b = c.getBoundingClientRect(); return [e.clientX - b.left, e.clientY - b.top]; };
+    c.onpointerdown = function (e) { aan = true; c.setPointerCapture(e.pointerId); var p = pos(e); x.beginPath(); x.moveTo(p[0], p[1]); };
+    c.onpointermove = function (e) { if (!aan) return; var p = pos(e); x.lineTo(p[0], p[1]); x.stroke(); htGetekend = true; };
+    c.onpointerup = c.onpointercancel = function () { aan = false; };
+  }
+  // alleen het getekende deel bewaren (bijgesneden, transparante achtergrond)
+  function htPng() {
+    var c = g('ht-doek'), x = c.getContext('2d'), d = x.getImageData(0, 0, c.width, c.height).data, minX = c.width, minY = c.height, maxX = -1, maxY = -1;
+    for (var yy = 0; yy < c.height; yy++) for (var xx = 0; xx < c.width; xx++) { var a = d[(yy * c.width + xx) * 4 + 3]; if (a > 10) { if (xx < minX) minX = xx; if (xx > maxX) maxX = xx; if (yy < minY) minY = yy; if (yy > maxY) maxY = yy; } }
+    if (maxX < 0) return null;
+    var m = 6, w = Math.min(c.width, maxX - minX + 2 * m), h = Math.min(c.height, maxY - minY + 2 * m), o = document.createElement('canvas'); o.width = w; o.height = h;
+    o.getContext('2d').drawImage(c, Math.max(0, minX - m), Math.max(0, minY - m), w, h, 0, 0, w, h);
+    return o.toDataURL('image/png');
+  }
+  async function htOpslaan() {
+    var b = g('ht-ok'); b.disabled = true;
+    var p = { naam: g('ht-naam').value, functie: g('ht-functie').value };
+    if (htGetekend) { p.png = htPng(); if (!p.png) { toast('Teken eerst je handtekening.', 'err'); b.disabled = false; return; } }
+    else if (!(htData && htData.ingesteld)) { toast('Teken je handtekening of upload een scan.', 'err'); b.disabled = false; return; }
+    var r = await api('/api/handtekening', p); b.disabled = false;
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); g('ht-modal').classList.remove('open'); htData = null; htLaad(true);
+  }
   // ---------- Digitaal ondertekenen (fase 6) ----------
   var tkOnd = null;
   var OND_ST = { wacht: ['Wacht op handtekening', 'bo'], getekend: ['Ondertekend', 'bg'], vervangen: ['Vervangen door nieuwere brief', 'boat'], ingetrokken: ['Ingetrokken', 'boat'] };

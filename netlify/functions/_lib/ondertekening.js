@@ -96,7 +96,8 @@ async function maakOndertekend(origBuf, r, s) {
   t(en ? 'Audit trail' : 'Bewijsspoor', L, y, 11, F.b, groen); y -= 18;
   const rijen = [
     [en ? 'Document' : 'Document', r.titel],
-    [en ? 'Sent to' : 'Verstuurd naar', r.email + (en ? ' on ' : ' op ') + stempel(r.aangemaakt_op)],
+    [en ? 'Sent on behalf of SLA by' : 'Namens SLA verstuurd door', (r.aangemaakt_door || '-') + (en ? ' on ' : ' op ') + stempel(r.aangemaakt_op)],
+    [en ? 'Sent to' : 'Verstuurd naar', r.email],
     [en ? 'Identity check' : 'Identiteitscontrole', (en ? 'one-time code by e-mail to ' : 'eenmalige code per mail naar ') + r.email + (en ? ', requested ' : ', aangevraagd ') + stempel(r.code_verstuurd_op)],
     [en ? 'Signed on' : 'Ondertekend op', s.tijd + ' (Europe/Amsterdam)'],
     [en ? 'Typed name' : 'Getypte naam', s.naam],

@@ -141,7 +141,7 @@
       <div class="fg"><label>Begeleidende mail (platte tekst — de medewerker krijgt daarnaast de opgemaakte SLA-versie)</label><textarea id="om-tekst" rows="10"></textarea></div>
       <div class="lay-sub"><code>[persoonlijke link om te ondertekenen]</code> wordt bij versturen vervangen door de persoonlijke link van de medewerker. Daarmee ondertekent hij de brief digitaal (of uploadt hij toch een geprinte versie).</div>
     </div>
-    <div class="mf"><button class="btn bd" onclick="omKopieer()">Kopieer</button><button class="btn bd" id="om-pdfbtn" onclick="omPdf()">⬇ PDF bekijken</button><button class="btn bp" id="om-sbtn" onclick="omVerstuur()"><span id="om-slbl">Verstuur mail</span></button></div>
+    <div class="mf"><span class="lay-sub" id="om-afz" style="margin-right:auto;align-self:center"></span><button class="btn bd" onclick="omKopieer()">Kopieer</button><button class="btn bd" id="om-pdfbtn" onclick="omPdf()">⬇ PDF bekijken</button><button class="btn bp" id="om-sbtn" onclick="omVerstuur()"><span id="om-slbl">Verstuur mail</span></button></div>
   </div></div>
 
   <!-- SOMMATIES -->
@@ -199,7 +199,7 @@
       <div class="fg"><label>Privéadres medewerker</label><input type="text" id="op-adres" placeholder="Straat 1, 1234AB Amsterdam"></div>
       <div class="lay-sub" id="op-pn">PDF-brief gaat als bijlage mee; de medewerker ondertekent en uploadt via de link in de mail.</div>
     </div>
-    <div class="mf"><button class="btn bd" id="op-pdfbtn" onclick="opPdf()">⬇ PDF bekijken</button><button class="btn bp" id="op-sbtn" onclick="opVerstuur()"><span id="op-slbl">Verstuur + PDF</span></button></div>
+    <div class="mf"><span class="lay-sub" id="op-afz" style="margin-right:auto;align-self:center"></span><button class="btn bd" id="op-pdfbtn" onclick="opPdf()">⬇ PDF bekijken</button><button class="btn bp" id="op-sbtn" onclick="opVerstuur()"><span id="op-slbl">Verstuur + PDF</span></button></div>
   </div></div>
 
   <!-- VRIJE BRIEVEN -->

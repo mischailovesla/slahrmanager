@@ -35,6 +35,7 @@ exports.handler = beveiligd('overplaatsing-mail', async (event, g) => {
   if (p.huidigeWinkel === p.nieuweWinkel) throw new Error('Van en naar zijn dezelfde winkel.');
   const isStandpl = huidig.bv === nieuw.bv, isEN = p.taal === 'EN';
   const naam = String(p.naam || '').trim(), to = String(p.to || '').trim(), ingangsdatum = String(p.ingangsdatum || '').trim();
+  const afz = await require('./_lib/handtekening').van(g.email, g.naam && g.naam !== g.email ? g.naam : '');
   const subject = T.overplaatsingSubject(naam, isStandpl, isEN);
   const text = T.personaliseerUploadLinks(T.overplaatsingPlain(naam, huidig, nieuw, ingangsdatum, isStandpl, isEN), naam);
   const html = T.overplaatsingHtml(naam, huidig, nieuw, ingangsdatum, isStandpl, isEN);
@@ -49,13 +50,13 @@ exports.handler = beveiligd('overplaatsing-mail', async (event, g) => {
   });
   const typeLabel = isStandpl ? 'Standplaatswijziging' : 'Overplaatsing';
   const bestandsnaam = (isStandpl ? (isEN ? 'Change_of_workplace_' : 'Standplaatswijziging_') : (isEN ? 'Transfer_' : 'Overplaatsing_')) + veiligeNaam(naam) + '.pdf';
-  const pdf = await P.maakOpgemaakteBrief(tekst, { titel: typeLabel + ' - ' + naam });
+  const pdf = await P.maakOpgemaakteBrief(B.ondertekenaar(tekst, afz), { titel: typeLabel + ' - ' + naam, handtekening: afz.png || null });
   if (p.alleenPdf) return { pdf: pdf.toString('base64'), bestandsnaam, isStandpl };
 
   if (!to || to.indexOf('@') === -1) throw new Error('Ongeldig e-mailadres.');
   const resendId = await M.verstuur({ to, subject, text, html, attachments: [{ filename: bestandsnaam, content: pdf.toString('base64') }], tags: [{ name: 'bron', value: 'overplaatsing' }, { name: 'type', value: isStandpl ? 'standplaats' : 'overplaatsing' }] });
   const rij = await S.logOverplaatsing({ rij: p.rij, naam, to, adres: p.adres, datumIndienst: p.datumIndienst, ingangsdatum, functie: p.functie, taal: isEN ? 'EN' : 'NL' }, huidig, nieuw, isStandpl, stempel());
-  try { await require('./_lib/ondertekening').aanmaken({ soort: 'overplaatsing', type: isStandpl ? 'standplaats' : 'overplaatsing', titel: typeLabel + ' - ' + naam, naam, email: to, rij, taal: isEN ? 'EN' : 'NL', pdf, door: g.email }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); }
+  try { await require('./_lib/ondertekening').aanmaken({ soort: 'overplaatsing', type: isStandpl ? 'standplaats' : 'overplaatsing', titel: typeLabel + ' - ' + naam, naam, email: to, rij, taal: isEN ? 'EN' : 'NL', pdf, door: (afz.naam ? afz.naam + ' (' + g.email + ')' : g.email) }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); }
   await M.logMail({ door: g.email, bron: 'overplaatsing', type: isStandpl ? 'standplaats-pdf' : 'overplaatsing-pdf', naar: to, naam, onderwerp: subject, taal: isEN ? 'EN' : 'NL', rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'overplaatsing', veld: typeLabel, rij, naam, nieuw: to, details: subject + ' (+PDF) ' + huidig.naam + ' → ' + nieuw.naam });
   return { bericht: typeLabel + (isEN ? ' (EN)' : '') + ' + PDF verstuurd naar ' + to + ' (rij ' + rij + ')', rij, resendId, isStandpl };

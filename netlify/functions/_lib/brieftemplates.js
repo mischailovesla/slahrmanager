@@ -187,7 +187,7 @@ Concreet houdt dit het volgende in:
 - Jouw arbeidsvoorwaarden (salaris, contracturen, contracttype, opgebouwde vakantiedagen en overige toezeggingen) blijven ongewijzigd.
 - De ketenregeling en eventuele lopende termijnen lopen door alsof er geen werkgeverswissel heeft plaatsgevonden.
 
-Voor de goede orde merken wij op dat contractsoverneming alleen rechtsgeldig is wanneer alle drie de partijen - jij, {{HuidigeBV}} en {{NieuweBV}} - hiermee schriftelijk akkoord gaan. Wij vragen je daarom dit document te ondertekenen voor akkoord en te uploaden via de link in de begeleidende e-mail.
+Voor de goede orde merken wij op dat contractsoverneming alleen rechtsgeldig is wanneer alle drie de partijen - jij, {{HuidigeBV}} en {{NieuweBV}} - hiermee schriftelijk akkoord gaan. Wij vragen je daarom dit document voor akkoord te ondertekenen via de link in de begeleidende e-mail.
 
 Heb je vragen over deze overplaatsing of de gevolgen daarvan, neem dan gerust contact op via hr@ilovesla.com.
 
@@ -225,7 +225,7 @@ Specifically, this means the following:
 - Your employment conditions (salary, contracted hours, contract type, accrued holiday days and any other commitments) remain unchanged.
 - The chain rule and any ongoing terms continue as if no change of employer had taken place.
 
-For the sake of clarity, contract assumption is only legally valid when all three parties - you, {{HuidigeBV}} and {{NieuweBV}} - agree to it in writing. We therefore ask you to sign this document for approval and upload it via the link in the accompanying email.
+For the sake of clarity, contract assumption is only legally valid when all three parties - you, {{HuidigeBV}} and {{NieuweBV}} - agree to it in writing. We therefore ask you to sign this document for approval via the link in the accompanying email.
 
 If you have any questions about this transfer or its implications, please feel free to contact us at hr@ilovesla.com.
 
@@ -263,7 +263,7 @@ Concreet houdt dit het volgende in:
 - Jouw arbeidsvoorwaarden (salaris, contracturen, contracttype, opgebouwde vakantiedagen en overige toezeggingen) blijven ongewijzigd.
 - De wijziging betreft uitsluitend de fysieke werkplek; alle overige afspraken uit jouw arbeidsovereenkomst blijven onverkort van kracht.
 
-Op grond van artikel 7:613 BW respectievelijk de wijzigingsclausule in jouw arbeidsovereenkomst vragen wij je deze standplaatswijziging schriftelijk te bevestigen. Wij verzoeken je dit document te ondertekenen voor akkoord en te uploaden via de link in de begeleidende e-mail.
+Op grond van artikel 7:613 BW respectievelijk de wijzigingsclausule in jouw arbeidsovereenkomst vragen wij je deze standplaatswijziging schriftelijk te bevestigen. Wij verzoeken je dit document voor akkoord te ondertekenen via de link in de begeleidende e-mail.
 
 Heb je vragen over deze wijziging, neem dan gerust contact op via hr@ilovesla.com.
 
@@ -301,7 +301,7 @@ Specifically, this means the following:
 - Your employment conditions (salary, contracted hours, contract type, accrued holiday days and any other commitments) remain unchanged.
 - This change concerns only the physical place of work; all other agreements in your employment contract remain fully in force.
 
-Pursuant to article 7:613 of the Dutch Civil Code and the modification clause in your employment contract, we ask you to confirm this change of workplace in writing. We kindly request that you sign this document for approval and upload it via the link in the accompanying email.
+Pursuant to article 7:613 of the Dutch Civil Code and the modification clause in your employment contract, we ask you to confirm this change of workplace in writing. We kindly request that you sign this document for approval via the link in the accompanying email.
 
 If you have any questions about this change, please feel free to contact us at hr@ilovesla.com.
 
@@ -344,7 +344,7 @@ Bij de eerstvolgende salarisverwerking ontvang je de eindafrekening met het loon
 **Bedrijfseigendommen**
 Wij verzoeken je uiterlijk op jouw laatste werkdag alle bedrijfseigendommen (waaronder kleding, sleutels en pasjes) in te leveren bij jouw Store Manager.
 
-Wij verzoeken je deze brief voor ontvangst te ondertekenen en te uploaden via de link in de begeleidende e-mail.
+Wij verzoeken je deze brief voor ontvangst te ondertekenen via de link in de begeleidende e-mail.
 
 Met vriendelijke groet,
 
@@ -383,7 +383,7 @@ With the next payroll run you will receive the final settlement covering the wag
 **Company property**
 We kindly request that you return all company property (including clothing, keys and passes) to your Store Manager no later than your last working day.
 
-Please sign this letter for receipt and upload it via the link in the accompanying email.
+Please sign this letter for receipt via the link in the accompanying email.
 
 Kind regards,
 
@@ -421,7 +421,7 @@ Wij verzoeken je uiterlijk op jouw laatste werkdag alle bedrijfseigendommen (waa
 
 Met het ondertekenen van deze brief bevestig je dat je zelf, uit vrije wil en ondubbelzinnig, de arbeidsovereenkomst tijdens de proeftijd hebt opgezegd.
 
-Wij verzoeken je deze brief voor akkoord te ondertekenen en te uploaden via de link in de begeleidende e-mail. Wij danken je voor jouw inzet en wensen je veel succes.
+Wij verzoeken je deze brief voor akkoord te ondertekenen via de link in de begeleidende e-mail. Wij danken je voor jouw inzet en wensen je veel succes.
 
 Met vriendelijke groet,
 
@@ -459,7 +459,7 @@ We kindly request that you return all company property (including clothing, keys
 
 By signing this letter you confirm that you yourself, voluntarily and unambiguously, terminated the employment agreement during the probationary period.
 
-Please sign this letter for approval and upload it via the link in the accompanying email. We thank you for your efforts and wish you all the best.
+Please sign this letter for approval via the link in the accompanying email. We thank you for your efforts and wish you all the best.
 
 Kind regards,
 
@@ -765,5 +765,16 @@ I accept the offer of {{AangebodenUren}} hours per week  /  I prefer to continue
 
 Date: ____________________   Signature: ____________________`;
 
-module.exports = { ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, OVERPL_NL, OVERPL_EN, STANDPL_NL, STANDPL_EN,
+// Fase 6b: onder de brief de handtekening, naam en functie van de HR-medewerker die hem aanmaakt (i.p.v. AFZENDER_NAAM)
+function ondertekenaar(tekst, a) {
+  if (!a || !a.naam) return tekst;
+  const N = AFZENDER_NAAM, blok = '**' + a.naam + '**' + (a.functie ? '\n' + a.functie : '');
+  let t = String(tekst);
+  if (t.includes('i.o. ' + N)) return t.replace('i.o. ' + N, blok);                                   // ontslagbevestiging ({{HANDTEKENING}} staat er al)
+  if (t.includes('**' + N + '**')) return t.replace('**' + N + '**', '{{HANDTEKENING}}\n' + blok);   // aanzegging
+  if (t.includes('\n' + N + '\n')) return t.replace('\n' + N + '\n', '\n{{HANDTEKENING}}\n' + blok + '\n'); // proeftijdbrieven
+  return t.replace(/(Met vriendelijke groet,|Kind regards,)\n\n/, '$1\n\n{{HANDTEKENING}}\n' + blok + '\n'); // overplaatsing / standplaats
+}
+
+module.exports = { ondertekenaar, ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, OVERPL_NL, OVERPL_EN, STANDPL_NL, STANDPL_EN,
   PROEFTIJD_WG_NL, PROEFTIJD_WG_EN, PROEFTIJD_WN_NL, PROEFTIJD_WN_EN, WRS_NL, WRS_EN, BESCHIKB_NL, BESCHIKB_EN, OOSV, OOSV_WEDERHOOR, OPROEP_NL, OPROEP_EN, vul, handtekening };

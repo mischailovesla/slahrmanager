@@ -58,10 +58,12 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
   const exitLink = exitAan ? X.exitLink(naam || 'medewerker', tpl.taal, tpl.type + (tpl.variant ? '-' + tpl.variant : '')) : '';
   // Survey aan: alleen de aankondiging blijft staan (de survey zelf gaat ná de laatste werkdag, sched-exit-survey); pauze: weglaten
   const metExit = s => exitAan ? String(s || '').split('{{EXITMELDING}}').join('').split('{{EXITLINK}}').join(exitLink) : T.zonderExit(s);
-  const text = metExit(T.personaliseerUploadLinks(String(p.body || tpl.body(naam, bv)), naam));
-  const html = metExit(T.ontslagMailHtml(tpl, naam, bv, einddatum));
+  const afz = await require('./_lib/handtekening').van(g.email, g.naam && g.naam !== g.email ? g.naam : '');
+  const metAfz = x => afz.naam ? String(x).split(C.AFZENDER_NAAM).join(afz.naam) : x; // groet in de mail = de afzender
+  const text = metAfz(metExit(T.personaliseerUploadLinks(String(p.body || tpl.body(naam, bv)), naam)));
+  const html = metAfz(metExit(T.ontslagMailHtml(tpl, naam, bv, einddatum)));
   const AI = require('./_lib/allin'); const manager = await AI.isManager({ email: to, naam }); // managers: geen all-in-tekst
-  if (p.preview) return { subject, text, html, manager };
+  if (p.preview) return { subject, text, html, manager, afzender: { naam: afz.naam, functie: afz.functie, handtekening: afz.ingesteld } };
   if (!naam) throw new Error('Naam ontbreekt.');
 
   // --- PDF uit de code-template ---
@@ -74,9 +76,9 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
       : B.ONTSLAG;
     const tekst = B.vul(sjabloon, { '{{Naam}}': naam, '{{Adres}}': adres, '{{DatumOpzegging}}': datumOpzegging, '{{Einddatum}}': einddatum, '{{BV}}': bv, '{{HuidigeDatum}}': briefDatum(isEN), '{{EXITLINK}}': exitAan ? exitLink : '{{EXITLINK}}', '{{EXITMELDING}}': exitAan ? '' : '{{EXITMELDING}}' });
     const tekst1 = manager ? AI.voorManager(tekst) : tekst;
-    const tekstDef = exitAan ? tekst1 : T.zonderExit(tekst1); // placeholder blijft staan tot zonderExit de regel weghaalt
+    const tekstDef = B.ondertekenaar(exitAan ? tekst1 : T.zonderExit(tekst1), afz); // placeholder blijft staan tot zonderExit de regel weghaalt; handtekening van de afzender
     const titel = tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : isProef ? proefLabel : 'Ontslagbevestiging';
-    return P.maakOpgemaakteBrief(tekstDef, { titel: titel + ' - ' + naam, handtekening: tpl.type === 'ontslag' ? B.handtekening() : null });
+    return P.maakOpgemaakteBrief(tekstDef, { titel: titel + ' - ' + naam, handtekening: afz.png || null });
   };
   const prefix = tpl.type === 'aanzegging' ? (isEN ? 'Notice_non_renewal_' : 'Aanzegging_')
     : isProef ? (isWG ? (isEN ? 'Probation_termination_' : 'Proeftijdontslag_') : (isEN ? 'Confirmation_resignation_probation_' : 'Bevestiging_ontslagname_proeftijd_'))
@@ -125,7 +127,7 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
     }
   }
   if (p.uitstroomreden && tpl.type !== 'herinnering' && C.UITSTROOMREDENEN.includes(p.uitstroomreden)) await S.zetUitstroomreden(rij, p.uitstroomreden);
-  if (pdf && tpl.type !== 'herinnering') { try { await require('./_lib/ondertekening').aanmaken({ soort: 'ontslag', type: tpl.type, titel: (tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : isProef ? proefLabel : 'Ontslagbevestiging') + ' - ' + naam, naam, email: to, rij, taal: tpl.taal, pdf, door: g.email }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); } }
+  if (pdf && tpl.type !== 'herinnering') { try { await require('./_lib/ondertekening').aanmaken({ soort: 'ontslag', type: tpl.type, titel: (tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : isProef ? proefLabel : 'Ontslagbevestiging') + ' - ' + naam, naam, email: to, rij, taal: tpl.taal, pdf, door: (afz.naam ? afz.naam + ' (' + g.email + ')' : g.email) }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); } }
   await M.logMail({ door: g.email, bron: 'ontslag', type: tpl.type + (pdf ? '-pdf' : ''), naar: to, naam, onderwerp: subject, taal: tpl.taal, rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'ontslag', veld: tpl.type, rij, naam, nieuw: to, details: subject + (pdf ? ' (+PDF)' : '') });
   const wat = tpl.type === 'aanzegging' ? 'Aanzegging' + (isEN ? ' (EN)' : '') : tpl.type === 'herinnering' ? 'Herinnering' : isProef ? proefLabel : 'Ontslagbevestiging';
