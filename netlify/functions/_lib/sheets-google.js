@@ -119,9 +119,9 @@ async function leesCel(spreadsheetId, tabNaam, rij, kol) {
 
 // Rij archiveren: kopie naar tab "Archief" (met Gearchiveerd op / Door / Bron),
 // daarna de rij uit de brontab verwijderen. Port van archiveerRij in Code.gs v29.5.
-async function archiveerRij(spreadsheetId, label, rij, naamCheck, wie, isOnboarding) {
+async function archiveerRij(spreadsheetId, label, rij, naamCheck, wie, isOnboarding, tabNaam) {
   const tabs = await tabNamen(spreadsheetId);
-  const bron = tabs[0];
+  const bron = (tabNaam && tabs.find(t => t.title === tabNaam)) || tabs[0];
   const data = await lees(spreadsheetId, q(bron.title), 1);
   if (rij < 2 || rij > data.length) throw new Error('Rij bestaat niet meer. Ververs het dashboard.');
   const rowVals = data[rij - 1] || [];

@@ -120,8 +120,8 @@ const eersteLegeOntslagRij = () => volgendeRij('hr_ontslag');
 
 // Archiveren = markeren (rij blijft bestaan, verdwijnt uit alle lijsten)
 function stempelNu() { return new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).replace('T', ' ').slice(0, 16); }
-async function archiveerRij(id, label, rij, naamCheck, wie, isOnboarding) {
-  const tabel = tabelOf(id, null);
+async function archiveerRij(id, label, rij, naamCheck, wie, isOnboarding, tabNaam) {
+  const tabel = tabelOf(id, tabNaam || null); // tabNaam: bijv. 'Overplaatsing' (tab in de ontslag-sheet)
   const r = await eenRij(tabel, parseInt(rij, 10));
   if (!r || r.gearchiveerd_op) throw new Error('Rij bestaat niet meer. Ververs het dashboard.');
   let naam = isOnboarding ? ((r.voornaam || '') + ' ' + (r.achternaam || '')).trim() : String(r.naam || '').trim();
