@@ -35,7 +35,7 @@ function verwerkVerloopData(usersLijst, contractsLijst) {
     if (!start || start === '0000-00-00') continue;
     let eind = String(u.enddate || '').trim(); if (eind === '0000-00-00') eind = '';
     const winkelNaam = winkel || '(geen winkel)'; if (uitgesloten(winkelNaam)) continue;
-    out.push({ id: String(u.id || ''), naam: geanon ? '(geanonimiseerd)' : (naam || '(naamloos)'), winkel: winkelNaam, start, eind });
+    out.push({ id: String(u.id || ''), naam: geanon ? '(geanonimiseerd)' : (naam || '(naamloos)'), email: geanon ? '' : String(u.email || '').trim().toLowerCase(), winkel: winkelNaam, start, eind });
   }
   return out;
 }
@@ -126,4 +126,54 @@ async function uitstroomredenen(vanIso, totIso) {
   const eigen = lijst.filter(x => /^eigen keuze/i.test(x.reden)).reduce((a, x) => a + x.aantal, 0);
   return { totaal, lijst, zonder, eigenKeuze: eigen, eigenKeuzePct: totaal ? Math.round(eigen / totaal * 100) : 0 };
 }
-module.exports = { verwerkVerloopData, berekenVerloop, getVerloopData, uitstroomredenen, laadMedewerkers };
+// Controle van de uitstroom (fase 5d): klopt het verloopcijfer? Per vertrekker in de periode signalen die wijzen op een
+// telling die geen echt vertrek is:
+//   dubbel   — dezelfde naam komt binnen 31 dagen na het einde terug met een nieuw Shiftbase-account (herintreding/nieuw account)
+//   wissel   — idem, maar in een andere winkel (overplaatsing via een nieuw account)
+//   kort     — binnen 14 dagen na de start weer weg (no-show, proefdag, verkeerd aangemaakt account)
+//   geenDossier — geen ontslag-/aanzeggingsdossier gevonden (informatief: lang niet iedereen vertrekt via een dossier)
+// gecorrigeerd verloop = uitstroom zonder dubbel/wissel ÷ gemiddeld bestand (kort telt wel mee als vertrek, maar staat apart).
+function controleUitstroom(med, verloopResultaat, ontslagRijen, vandaag) {
+  const { normNaam } = require('./util');
+  const iso = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  const parse = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+  const vandaagIso = iso(vandaag || new Date());
+  const mnd = verloopResultaat.maanden, vanIso = mnd[0].vanIso, totIso = mnd[mnd.length - 1].totIso;
+  const perNaam = {}; med.forEach(m => { if (m.naam && m.naam !== '(geanonimiseerd)') (perNaam[normNaam(m.naam)] = perNaam[normNaam(m.naam)] || []).push(m); });
+  const dossier = new Set(); (ontslagRijen || []).forEach(r => { if (r.naam) dossier.add('n:' + normNaam(r.naam)); if (r.email) dossier.add('e:' + String(r.email).trim().toLowerCase()); });
+  const lijst = [];
+  for (const m of med) {
+    if (!m.eind || m.eind > vandaagIso || m.eind < vanIso || m.eind > totIso) continue;
+    const ds = parse(m.start), de = parse(m.eind), dagen = ds && de ? Math.round((de - ds) / 864e5) : null;
+    const signalen = [];
+    let terug = null;
+    if (m.naam && m.naam !== '(geanonimiseerd)') {
+      const anderen = (perNaam[normNaam(m.naam)] || []).filter(x => x !== m && x.start >= m.start);
+      for (const x of anderen) { const dx = parse(x.start); if (dx && de && (dx - de) / 864e5 <= 31 && (dx - de) / 864e5 >= -31) { terug = x; break; } }
+    }
+    if (terug) signalen.push(terug.winkel !== m.winkel ? 'wissel' : 'dubbel');
+    if (dagen != null && dagen <= 14) signalen.push('kort');
+    const heeftDossier = (m.naam && dossier.has('n:' + normNaam(m.naam))) || (m.email && dossier.has('e:' + m.email));
+    if (!heeftDossier) signalen.push('geenDossier');
+    lijst.push({ naam: m.naam, winkel: m.winkel, start: m.start, eind: m.eind, dagen, signalen, terug: terug ? { winkel: terug.winkel, start: terug.start, eind: terug.eind || '' } : null });
+  }
+  lijst.sort((a, b) => b.signalen.filter(s => s !== 'geenDossier').length - a.signalen.filter(s => s !== 'geenDossier').length || a.eind.localeCompare(b.eind));
+  const tel = k => lijst.filter(x => x.signalen.includes(k)).length;
+  const t = verloopResultaat.totaal, gemB = t.gemBestand || ((t.bestandStart + t.bestandEind) / 2);
+  const echt = lijst.filter(x => !x.signalen.includes('dubbel') && !x.signalen.includes('wissel')).length;
+  // per winkel
+  const pw = {};
+  lijst.forEach(x => { const w = pw[x.winkel] = pw[x.winkel] || { winkel: x.winkel, uitstroom: 0, dubbel: 0, wissel: 0, kort: 0, geenDossier: 0 }; w.uitstroom++; x.signalen.forEach(s => { w[s]++; }); });
+  const winkels = Object.values(pw).map(w => { const vr = verloopResultaat.winkels.find(v => v.naam === w.winkel) || {}; const g = vr.gemBestand || 0; return Object.assign(w, { gemBestand: g, bestandStart: vr.bestandStart, bestandEind: vr.bestandEind, verloop: vr.verloop, verloopGecorr: g >= 3 ? Math.round((w.uitstroom - w.dubbel - w.wissel) / g * 1000) / 10 : null }); }).sort((a, b) => b.uitstroom - a.uitstroom);
+  // korte dienstverbanden per duur
+  const duur = { '≤ 14 dagen': 0, '15–90 dagen': 0, '3–6 maanden': 0, '6–12 maanden': 0, '> 1 jaar': 0 };
+  lijst.forEach(x => { const d = x.dagen; if (d == null) return; duur[d <= 14 ? '≤ 14 dagen' : d <= 90 ? '15–90 dagen' : d <= 182 ? '3–6 maanden' : d <= 365 ? '6–12 maanden' : '> 1 jaar']++; });
+  return {
+    periode: verloopResultaat.periode || (mnd[0].label + ' t/m ' + mnd[mnd.length - 1].label), vanIso, totIso,
+    totaal: { uitstroom: lijst.length, instroom: t.instroom, bestandStart: t.bestandStart, bestandEind: t.bestandEind, gemBestand: gemB, verloop: t.verloop,
+      dubbel: tel('dubbel'), wissel: tel('wissel'), kort: tel('kort'), geenDossier: tel('geenDossier'), echt, verloopGecorr: gemB ? Math.round(echt / gemB * 1000) / 10 : null },
+    duur, winkels, lijst
+  };
+}
+
+module.exports = { verwerkVerloopData, berekenVerloop, getVerloopData, uitstroomredenen, laadMedewerkers, controleUitstroom };

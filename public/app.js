@@ -2092,6 +2092,37 @@
 
   // ---------- Verloopanalyse (port van Verloop.gs v1.3) ----------
   var vrlData = null, vrlMaanden = 12;
+  // ---------- Controle uitstroom (fase 5d): klopt het verloopcijfer? ----------
+  var vrlCtrl = null, vrlCtrlFilter = 'signaal';
+  var VRL_SIG = { dubbel: ['Nieuw account', 'br', 'Komt binnen 31 dagen terug met een nieuw Shiftbase-account: waarschijnlijk geen echt vertrek'], wissel: ['Winkelwissel', 'br', 'Komt binnen 31 dagen terug in een andere winkel: overplaatsing via een nieuw account'], kort: ['≤ 14 dagen', 'bo', 'Binnen 2 weken na de start weer weg: no-show, proefdag of verkeerd aangemaakt account?'], geenDossier: ['Geen dossier', 'boat', 'Geen ontslag-/aanzeggingsdossier in het dashboard'] };
+  window.vrlControle = async function () {
+    var el = g('vrl-ctrl'); el.innerHTML = '<div class="lay-sub">Alle vertrekkers uit Shiftbase controleren…</div>';
+    var r = await api('/api/verloop?controle=1&maanden=' + (typeof vrlMaanden !== 'undefined' ? vrlMaanden : 12));
+    if (!r.success) { el.innerHTML = '<div class="leeg grijs">' + esc(r.bericht) + '</div>'; return; }
+    vrlCtrl = r; renderVrlControle();
+  };
+  function renderVrlControle() {
+    var r = vrlCtrl, t = r.totaal, el = g('vrl-ctrl'); if (!r) return;
+    var tegel = function (w, l, s, kl) { return '<div class="card ' + (kl || 'cd') + '"><div><div class="sv">' + w + '</div><div class="sl">' + l + '</div><div class="lay-sub" style="margin-top:3px">' + s + '</div></div></div>'; };
+    var h = '<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:16px">'
+      + tegel(t.uitstroom, 'Vertrekkers volgens Shiftbase', esc(r.periode))
+      + tegel(t.dubbel + t.wissel, 'Mogelijk geen echt vertrek', t.dubbel + ' nieuw account · ' + t.wissel + ' winkelwissel', t.dubbel + t.wissel ? 'cr' : 'cg')
+      + tegel(t.kort, 'Binnen 14 dagen weg', 'no-show / proefdag?', t.kort ? 'cw' : 'cd')
+      + tegel(t.geenDossier, 'Zonder ontslagdossier', 'van de ' + t.uitstroom + ' vertrekkers')
+      + tegel(String(t.verloop).replace('.', ',') + '% → ' + String(t.verloopGecorr).replace('.', ',') + '%', 'Verloop → gecorrigeerd', 'zonder nieuw account / winkelwissel', 'cd') + '</div>';
+    h += '<div class="lay-sub" style="margin-bottom:12px">Gemiddeld bestand ' + String(t.gemBestand).replace('.', ',') + ' (' + t.bestandStart + ' aan het begin, ' + t.bestandEind + ' aan het eind van de periode) · instroom ' + t.instroom + '. Verloop = vertrekkers ÷ gemiddeld bestand.</div>';
+    h += '<div class="vrl-duur">' + Object.keys(r.duur).map(function (k) { var n = r.duur[k], pct = t.uitstroom ? Math.round(n / t.uitstroom * 100) : 0; return '<div class="vrl-duur-i"><div class="vrl-duur-b"><div style="height:' + Math.max(2, pct) + '%"></div></div><strong>' + n + '</strong><span class="lay-sub">' + esc(k) + '</span></div>'; }).join('') + '<div class="lay-sub vrl-duur-t">Hoe lang waren de vertrekkers in dienst?</div></div>';
+    h += '<div class="tw"><table><thead><tr><th>Winkel</th><th>Bestand begin → eind</th><th>Vertrekkers</th><th>Nieuw account</th><th>Winkelwissel</th><th>≤ 14 dagen</th><th>Zonder dossier</th><th>Verloop</th><th>Gecorrigeerd</th></tr></thead><tbody id="vrl-ctrl-w">'
+      + r.winkels.map(function (w) { return '<tr><td><strong>' + esc(w.winkel) + '</strong></td><td>' + (w.bestandStart != null ? w.bestandStart + ' → ' + w.bestandEind : '-') + '</td><td>' + w.uitstroom + '</td><td>' + (w.dubbel || '-') + '</td><td>' + (w.wissel || '-') + '</td><td>' + (w.kort || '-') + '</td><td>' + (w.geenDossier || '-') + '</td><td>' + (w.verloop == null ? '-' : String(w.verloop).replace('.', ',') + '%') + '</td><td>' + (w.verloopGecorr == null ? '-' : '<strong>' + String(w.verloopGecorr).replace('.', ',') + '%</strong>') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    h += '<div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 6px;gap:10px;flex-wrap:wrap"><strong>Vertrekkers</strong><div class="tbar" id="vrl-ctrl-f"><button type="button" class="tb' + (vrlCtrlFilter === 'signaal' ? ' sel' : '') + '" data-vcf="signaal">Met signaal</button><button type="button" class="tb' + (vrlCtrlFilter === 'kort' ? ' sel' : '') + '" data-vcf="kort">≤ 14 dagen</button><button type="button" class="tb' + (vrlCtrlFilter === 'alle' ? ' sel' : '') + '" data-vcf="alle">Alle ' + t.uitstroom + '</button></div></div>';
+    var l = r.lijst.filter(function (x) { return vrlCtrlFilter === 'alle' || (vrlCtrlFilter === 'kort' ? x.signalen.indexOf('kort') > -1 : x.signalen.some(function (s) { return s === 'dubbel' || s === 'wissel' || s === 'kort'; })); });
+    h += '<div class="tw"><table><thead><tr><th>Naam</th><th>Winkel</th><th>Start</th><th>Einde</th><th>Dagen</th><th>Signalen</th></tr></thead><tbody id="vrl-ctrl-l">' + (l.length ? l.map(function (x) {
+      var d = function (s) { return s ? s.split('-').reverse().join('-') : '-'; };
+      return '<tr><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel) + '</td><td>' + d(x.start) + '</td><td>' + d(x.eind) + '</td><td>' + (x.dagen == null ? '-' : x.dagen) + '</td><td>' + x.signalen.map(function (s) { var v = VRL_SIG[s] || [s, 'boat', '']; return '<span class="badge ' + v[1] + '" title="' + esc(v[2]) + '">' + esc(v[0]) + '</span>'; }).join(' ') + (x.terug ? '<div class="lay-sub">terug per ' + d(x.terug.start) + ' in ' + esc(x.terug.winkel) + (x.terug.eind ? ' (tot ' + d(x.terug.eind) + ')' : '') + '</div>' : '') + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="leeg grijs">Geen vertrekkers in deze selectie.</td></tr>') + '</tbody></table></div>';
+    el.innerHTML = h;
+  }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#vrl-ctrl-f .tb'); if (!b) return; vrlCtrlFilter = b.getAttribute('data-vcf'); renderVrlControle(); });
   window.laadVerloop = async function (mnd, vers) {
     if (mnd) vrlMaanden = mnd;
     g('vrl-b12').className = 'btn bsm ' + (vrlMaanden === 12 ? 'bp' : 'bd'); g('vrl-b24').className = 'btn bsm ' + (vrlMaanden === 24 ? 'bp' : 'bd');
@@ -2465,7 +2496,7 @@
     var tbodies = tbody ? [tbody] : Array.prototype.slice.call(document.querySelectorAll('.tc .tw table tbody'));
     tbodies.forEach(function (tb) {
       if (!tb.closest('.tc .tw')) return; // alleen tabellen in tabs (niet in modals)
-      if (tb.id.indexOf('mto-') === 0 || tb.id === 'vk-tbody') return; // MTO: winkels/stellingen, geen personen
+      if (tb.id.indexOf('mto-') === 0 || tb.id === 'vk-tbody' || tb.id === 'vrl-ctrl-w') return; // MTO: winkels/stellingen, geen personen
       if (tb.id === 'dos-lijst' || tb.id === 'tg-body' || tb.id === 'tg-mut-body' || tb.id === 'gv-body' || tb.id === 'gv-runs') return; // eigen filters / geen personen
       Array.prototype.forEach.call(tb.rows, function (tr) {
         if (!w) { tr.classList.remove('wf-verborgen'); return; }
