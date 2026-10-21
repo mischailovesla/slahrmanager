@@ -84,7 +84,7 @@ async function uitDatabase() {
   const t = [];
   const [som, opl] = await Promise.all([S.getSommatie(), S.getOverplaatsing()]);
   for (const r of som) if (r.verwerkt !== 'Ja' && /finale|staande voet|oproep/i.test(r.type || '')) t.push({ bron: 'dossier', urgentie: 'oranje', sleutel: 'som|' + r.rij, titel: r.type + ' afhandelen (gesprek gepland ' + (r.datumAfspraak || '?') + ')', sub: r.naam + ' · ' + (r.bv || '') + ' · verstuurd ' + (r.verzenddatum || '?'), naam: r.naam, email: r.email, actie: { soort: 'tab', tab: 'sommatie', zoek: r.naam, label: 'Sommaties' }, extra: { soort: 'dossier', label: 'Dossier' } });
-  for (const r of opl) if (String(r.status || '').indexOf('Verstuurd') === 0 && r.ondertekend !== 'Ja') { const d = parseNLDatum(r.verzenddatum), dagen = d ? -dagenTot(d) : 0; if (dagen >= 7) t.push({ bron: 'dossier', urgentie: 'grijs', sleutel: 'opl|' + r.rij, titel: 'Overplaatsing nog niet ondertekend', sub: r.naam + ' · ' + r.huidigeBV + ' → ' + r.nieuweBV + ' · verstuurd ' + r.verzenddatum, naam: r.naam, email: r.email, actie: { soort: 'tab', tab: 'overplaatsing', zoek: r.naam, label: 'Overplaatsing' } }); }
+  for (const r of opl) if (String(r.status || '').indexOf('Verstuurd') === 0 && r.ondertekend !== 'Ja') { const d = parseNLDatum(r.verzenddatum), dagen = d ? -dagenTot(d) : 0; if (dagen >= 7) t.push({ bron: 'dossier', urgentie: 'grijs', sleutel: 'opl|' + r.rij, titel: 'Overplaatsing nog niet ondertekend (niet verplicht)', sub: r.naam + ' · ' + r.huidigeBV + ' → ' + r.nieuweBV + ' · verstuurd ' + r.verzenddatum, naam: r.naam, email: r.email, actie: { soort: 'archiveer', type: 'overplaatsing', rij: r.rij, label: 'Archiveren' }, extra: { soort: 'tab', tab: 'overplaatsing', zoek: r.naam, label: 'Overplaatsing' } }); }
   return t;
 }
 

@@ -1,4 +1,4 @@
-// GET /api/archief?type=loonheffing|ontslag|sommatie|onboarding  -> gearchiveerde rijen (tab 'Archief')
+// GET /api/archief?type=loonheffing|ontslag|sommatie|onboarding|overplaatsing  -> gearchiveerde rijen (tab 'Archief')
 // POST /api/archief { type, rij }  -> terugzetten (herstelUitArchief in Code.gs v29.5)
 const { beveiligd, body, logActie } = require('./_lib/auth');
 const S = require('./_lib/sheets');

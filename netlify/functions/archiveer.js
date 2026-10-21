@@ -12,7 +12,8 @@ const BRONNEN = {
   loonheffing: { id: SHEETS.loonheffing.id, label: 'Loonheffing' },
   ontslag:     { id: SHEETS.ontslag.id,     label: 'Ontslag' },
   sommatie:    { id: SHEETS.sommatie.id,    label: 'Sommatie' },
-  onboarding:  { id: SHEETS.onboarding.id,  label: 'Onboarding', isOnboarding: true }
+  onboarding:  { id: SHEETS.onboarding.id,  label: 'Onboarding', isOnboarding: true },
+  overplaatsing: { id: SHEETS.overplaatsing.id, label: 'Overplaatsing' } // ondertekenen is niet verplicht: na versturen mag het dossier weg
 };
 
 exports.handler = beveiligd('archiveer', async (event, g) => {

@@ -247,6 +247,7 @@
     if (r.success) {
       toast(r.bericht, 'ok');
       await laadOverzicht();
+      if (b.getAttribute('data-arch') === 'overplaatsing' && typeof laadOverplaatsingen === 'function') laadOverplaatsingen();
       if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier);
     } else { toast('Fout: ' + r.bericht, 'err'); b.disabled = false; b.innerHTML = oud; }
   });
@@ -760,7 +761,7 @@
     opData = d.rijen; opWinkels = d.winkels;
     g('op-count').textContent = opData.length + ' dossiers';
     g('op-body').innerHTML = opData.map(function (r) {
-      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.standplaats || '-') + '</td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td><div class="vb-knoppen">' + opBtn(r) + bDoc(r.briefUrl, '⬇ Brief') + bDoc(r.docUrl, 'Getekend') + bSal('overplaatsing', r) + bUp('overplaatsing', r, !!r.docUrl) + dosBtn(r.naam, r.email) + '</div></td></tr>';
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.standplaats || '-') + '</td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td><div class="vb-knoppen">' + opBtn(r) + bDoc(r.briefUrl, '⬇ Brief') + bDoc(r.docUrl, 'Getekend') + bSal('overplaatsing', r) + bUp('overplaatsing', r, !!r.docUrl) + dosBtn(r.naam, r.email) + bArch('overplaatsing', r.rij, r.naam) + '</div></td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen overplaatsingen</td></tr>';
   };
   document.addEventListener('click', function (e) {
@@ -2002,7 +2003,7 @@
     if (!a) return '';
     var attrs = ' data-tk-actie="' + esc(a.soort) + '" data-tk-naam="' + esc(t.naam || '') + '" data-tk-email="' + esc(t.email || '') + '"';
     if (a.persoon) attrs += ' data-tk-persoon="' + esc(JSON.stringify(a.persoon)) + '"';
-    if (a.tab) attrs += ' data-tk-tab="' + esc(a.tab) + '"'; if (a.zoek) attrs += ' data-tk-zoek="' + esc(a.zoek) + '"'; if (a.id) attrs += ' data-tk-id="' + esc(a.id) + '"'; if (a.url) attrs += ' data-tk-url="' + esc(a.url) + '"'; if (a.gs) attrs += ' data-tk-gs="' + esc(a.gs) + '"'; if (a.aanleiding) attrs += ' data-tk-aanleiding="' + esc(a.aanleiding) + '"'; attrs += ' data-tk-sleutel="' + esc(t.sleutel || '') + '"' + (t.winkel ? ' data-tk-winkel="' + esc(t.winkel) + '"' : '');
+    if (a.tab) attrs += ' data-tk-tab="' + esc(a.tab) + '"'; if (a.zoek) attrs += ' data-tk-zoek="' + esc(a.zoek) + '"'; if (a.id) attrs += ' data-tk-id="' + esc(a.id) + '"'; if (a.url) attrs += ' data-tk-url="' + esc(a.url) + '"'; if (a.type) attrs += ' data-tk-type="' + esc(a.type) + '"'; if (a.rij) attrs += ' data-tk-rij="' + esc(a.rij) + '"'; if (a.gs) attrs += ' data-tk-gs="' + esc(a.gs) + '"'; if (a.aanleiding) attrs += ' data-tk-aanleiding="' + esc(a.aanleiding) + '"'; attrs += ' data-tk-sleutel="' + esc(t.sleutel || '') + '"' + (t.winkel ? ' data-tk-winkel="' + esc(t.winkel) + '"' : '');
     return '<button class="btn ' + (a === t.actie ? 'bp' : 'bd') + ' bsm"' + attrs + '>' + esc(a.label) + '</button>';
   }
   // Taak ter plekke weghalen (geen herlaad = geen springend beeld); tellers bijwerken
@@ -2064,6 +2065,13 @@
     else if (soort === 'checklist') openChecklist(b.getAttribute('data-tk-id'));
     else if (soort === 'tab') { var tab = b.getAttribute('data-tk-tab'); swT(tab, tab); var z = b.getAttribute('data-tk-zoek'); if (z) setTimeout(function () { var inp = document.querySelector('#tab-' + tab + ' input.sb'); if (inp) { inp.value = z; inp.dispatchEvent(new Event('input')); } }, 400); }
     else if (soort === 'link') window.open(b.getAttribute('data-tk-url'), '_blank');
+    else if (soort === 'archiveer') {
+      if (!confirm('Dossier van ' + naam + ' archiveren? Ondertekenen is niet verplicht; terugzetten kan via Beheer → Archief.')) return;
+      b.disabled = true;
+      api('/api/archiveer', { type: b.getAttribute('data-tk-type'), rij: b.getAttribute('data-tk-rij'), naam: naam }).then(function (r) {
+        if (r.success) { toast(r.bericht, 'ok'); tkWeg(b.closest('.tk'), b.getAttribute('data-tk-sleutel'), false); } else { b.disabled = false; toast('Fout: ' + r.bericht, 'err'); }
+      });
+    }
   });
 
   // ---------- Checklists (dossier + takenlijst) ----------

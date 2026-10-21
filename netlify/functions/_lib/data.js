@@ -131,7 +131,7 @@ async function archiveerRij(id, label, rij, naamCheck, wie, isOnboarding) {
   if (error) fout(error, tabel + ' archiveren');
   return naam;
 }
-const ARCHIEF_TABEL = { loonheffing: 'hr_loonheffing', ontslag: 'hr_ontslag', sommatie: 'hr_sommatie', onboarding: 'hr_onboarding' };
+const ARCHIEF_TABEL = { loonheffing: 'hr_loonheffing', ontslag: 'hr_ontslag', sommatie: 'hr_sommatie', onboarding: 'hr_onboarding', overplaatsing: 'hr_overplaatsing' };
 async function getArchief(type) {
   const tabel = ARCHIEF_TABEL[type]; if (!tabel) throw new Error('Onbekend type: ' + type);
   const { data, error } = await db().from(tabel).select('*').not('gearchiveerd_op', 'is', null).order('gearchiveerd_op', { ascending: false }).limit(2000);
