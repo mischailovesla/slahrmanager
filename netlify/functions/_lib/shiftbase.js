@@ -151,7 +151,7 @@ async function getContractenPerUser(forceer) {
   return per;
 }
 
-// Uit dienst (getreden of gaande) medewerkers: einddatum in de laatste `maanden` maanden óf in de toekomst (opzegtermijn loopt), niet geanonimiseerd — voor het handmatig versturen van de exit-survey
+// Uit dienst getreden medewerkers (einddatum in de laatste `maanden` maanden, niet geanonimiseerd) — voor het handmatig versturen van de exit-survey
 async function getVertrokken(maanden) {
   const users = await module.exports.sbGet('users'); // via exports: mockbaar in tests
   const vandaag = isoVandaag(), grens = new Date(); grens.setMonth(grens.getMonth() - (Number(maanden) || 12));
@@ -161,7 +161,7 @@ async function getVertrokken(maanden) {
     const u = (rec && rec.User) || rec || {};
     if (u.anonymized === true || u.anonymized === '1' || u.anonymized === 1) continue;
     const e = String(u.enddate || '').trim();
-    if (!e || e === '0000-00-00' || e < grensIso) continue; // ook toekomstige einddatum: wie ontslag nam, staat al in de lijst
+    if (!e || e === '0000-00-00' || e >= vandaag || e < grensIso) continue;
     const naam = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
     if (!naam || UITGESLOTEN.has(normNaam(naam))) continue;
     // Zelfde winkelbepaling als getMedewerkers: eigen (niet-flex) team gaat vóór een flexpool-team;

@@ -53,22 +53,26 @@ exports.handler = beveiligd('exit-admin', async (event, g) => {
   const { data: rijen, error } = await db.from('hr_exit').select('*').gte('ingevuld_op', van.toISOString()).order('ingevuld_op', { ascending: false });
   if (error) throw new Error(error.message + ' (migratie 0009 gedraaid?)');
   const { data: uitn } = await db.from('hr_mails').select('naam,naar,taal,tijdstip,door').eq('bron', 'exit').order('tijdstip', { ascending: false }).limit(200);
+  // Alleen medewerkers met een ontslag/aanzegging-dossier in het dashboard (ook gearchiveerd), einddatum in de gekozen periode
+  // of later. Shiftbase wordt alleen gebruikt om de winkel op te zoeken (de einddatum daar is vaak gewoon het contracteinde).
   let vertrokken = [];
-  try { vertrokken = await require('./_lib/shiftbase').getVertrokken(maanden); } catch (e) { console.warn('vertrokken:', e.message); }
-  // Aanvullen met de ontslag/aanzegging-dossiers van het dashboard (ook gearchiveerd): wie ontslag nam maar in Shiftbase
-  // (nog) geen einddatum heeft, moet ook een survey kunnen krijgen.
   try {
-    const S = require('./_lib/sheets'); const { normNaam } = require('./_lib/util');
+    const S = require('./_lib/sheets'), SB = require('./_lib/shiftbase'); const { normNaam } = require('./_lib/util');
     const vandaagIso = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
     const grensIso = van.toLocaleDateString('sv-SE');
-    const heb = new Set(); vertrokken.forEach(v => { if (v.email) heb.add('e:' + v.email.toLowerCase()); heb.add('n:' + normNaam(v.naam)); });
+    const winkelOp = {};
+    try {
+      const [act, weg] = await Promise.all([SB.getMedewerkers(), SB.getVertrokken(36)]);
+      [...weg, ...act].forEach(m => { const w = m.winkelNaam || ''; if (!w) return; if (m.email) winkelOp['e:' + String(m.email).toLowerCase()] = w; winkelOp['n:' + normNaam(m.naam)] = w; });
+    } catch (e) { console.warn('winkels (Shiftbase):', e.message); }
+    const heb = new Set();
     for (const r of await S.getOntslag(true)) {
       const m = String(r.einddatum || '').match(/(\d{1,2})-(\d{1,2})-(\d{4})/); if (!m) continue;
       const iso = m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); if (iso < grensIso) continue;
-      const em = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam);
-      if ((em && heb.has('e:' + em)) || heb.has('n:' + nn)) continue;
-      heb.add('e:' + em); heb.add('n:' + nn);
-      vertrokken.push({ id: '', naam: String(r.naam || '').trim(), email: em, einddatum: iso.split('-').reverse().join('-'), einddatumIso: iso, winkelNaam: String(r.bedrijf || '').replace(/^SLA\s*/i, '').replace(/\s*B\.?V\.?$/i, '').trim(), nogInDienst: iso >= vandaagIso, bron: 'dossier' });
+      const em = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam), sleutel = em || nn;
+      if (heb.has(sleutel)) continue; heb.add(sleutel);
+      const winkel = winkelOp['e:' + em] || winkelOp['n:' + nn] || String(r.bedrijf || '').replace(/^SLA\s*/i, '').replace(/\s*B\.?V\.?$/i, '').trim();
+      vertrokken.push({ naam: String(r.naam || '').trim(), email: em, einddatum: iso.split('-').reverse().join('-'), einddatumIso: iso, winkelNaam: winkel, nogInDienst: iso >= vandaagIso, type: r.type || '' });
     }
     vertrokken.sort((a, b) => a.einddatumIso < b.einddatumIso ? 1 : -1);
   } catch (e) { console.warn('vertrokken (dossiers):', e.message); }
