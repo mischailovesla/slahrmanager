@@ -605,13 +605,18 @@
     g('lm-tbar').innerHTML = lhTemplates.map(function (t) { return '<button type="button" class="tb' + (t.key === lmTpl ? ' sel' : '') + '" data-tpl="' + t.key + '">' + esc(t.label) + '</button>'; }).join('');
     g('lm-tbar').querySelectorAll('[data-tpl]').forEach(function (b) { b.onclick = function () { lmTpl = b.getAttribute('data-tpl'); lmBouwTbar(); lmHerbouw(); }; });
   }
-  window.lmHerbouw = async function () {
+  // Tekst opnieuw opbouwen na typen in naam/deadline: even wachten (debounce) en alleen het laatste antwoord tonen,
+  // anders kan een trager eerder antwoord een halve datum laten staan ("Uiterlijk 25-10-20.").
+  var lmVolgnr = 0, lmTimer = null;
+  window.lmHerbouw = function () { clearTimeout(lmTimer); g('lm-body').value = 'Tekst laden…'; lmTimer = setTimeout(lmHerbouwNu, 350); };
+  async function lmHerbouwNu() {
     var t = lhTemplates.find(function (x) { return x.key === lmTpl; }); if (!t) return;
+    var nr = ++lmVolgnr;
     g('lm-subj').value = t.subject;
-    g('lm-body').value = 'Tekst laden…';
     var r = await api('/api/loonheffing-mail', { template: lmTpl, naam: g('lm-naam').value.trim(), deadline: g('lm-dl').value.trim(), preview: true });
+    if (nr !== lmVolgnr) return; // er is intussen verder getypt
     if (r.success) g('lm-body').value = r.text; else g('lm-body').value = '(kon template niet laden: ' + r.bericht + ')';
-  };
+  }
   window.lmKopieer = function () {
     navigator.clipboard.writeText('Onderwerp: ' + g('lm-subj').value + '\n\n' + g('lm-body').value).then(function () { toast('Gekopieerd', 'ok'); });
   };
