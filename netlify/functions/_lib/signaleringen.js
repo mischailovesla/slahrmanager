@@ -32,6 +32,25 @@ const ontvangers = k => (C.SIGNALERING_ONTVANGERS[k] || C.HR_EMAIL).split(',').m
 const F = 'font-family:Arial,sans-serif;';
 const esc = T.esc;
 
+// Wie staat er bij Ontslag & aanzegging (ook gearchiveerd) met een einddatum vandaag of later? Voor die mensen zijn
+// contract-, keten-, proeftijd-, oproep- en aanwezigheidssignalen overbodig: ze vertrekken al.
+async function vertrekkers() {
+  const set = new Set(), vandaag = vandaag0();
+  for (const r of await S.getOntslag(true)) {
+    const d = parseNLDatum(r.einddatum);
+    if (d ? d < vandaag : !!r.gearchiveerd) continue; // al weg (of oud gearchiveerd dossier zonder datum)
+    if (r.email) set.add('e:' + String(r.email).trim().toLowerCase());
+    if (r.naam) set.add('n:' + normNaam(r.naam));
+  }
+  return set;
+}
+const vertrekt = (set, x) => !!x && ((x.email && set.has('e:' + String(x.email).trim().toLowerCase())) || (x.naam && set.has('n:' + normNaam(x.naam))));
+async function zonderVertrekkers(lijst, rap) {
+  if (!lijst || !lijst.length) return lijst || [];
+  try { const set = await vertrekkers(); const uit = lijst.filter(x => !vertrekt(set, x)); if (rap) rap.overgeslagenOntslag = lijst.length - uit.length; return uit; }
+  catch (e) { if (rap) rap.fouten.push('ontslagdossiers lezen: ' + e.message); return lijst; }
+}
+
 // Verzendhulp: in droogloop alleen registreren
 async function mailOfDroog(rap, opts, doen) {
   if (!actief() || rap.droog) { rap.verstuurd.push(Object.assign({ droog: true }, opts.kort)); return; }
@@ -263,7 +282,7 @@ async function stilleAfwezigen(droog) {
     SB.sbGet('rosters?min_date=' + isoDag(plusDagen(vandaag, -C.STIL_LOOKBACK_DAGEN)) + '&max_date=' + isoDag(plusDagen(vandaag, C.STIL_TOEKOMST_DAGEN))).then(r => (r && r.data) || r || []),
     SB.sbGet('absentees?min_date=' + isoDag(plusDagen(vandaag, -C.STIL_VENSTER_DAGEN)) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || [])
   ]);
-  const lijst = bepaalStilleAfwezigen(med, ros, abs, vandaag, C.STIL_VENSTER_DAGEN, C.STIL_UITGESLOTEN_WINKELS);
+  const lijst = await zonderVertrekkers(bepaalStilleAfwezigen(med, ros, abs, vandaag, C.STIL_VENSTER_DAGEN, C.STIL_UITGESLOTEN_WINKELS), rap);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
   let plain = 'Hallo,\n\nDeze actieve medewerkers hadden de afgelopen ' + C.STIL_VENSTER_DAGEN + ' dagen geen enkele ingeroosterde dienst, zonder goedgekeurd verlof en zonder toekomstige dienst in het rooster:\n', vorige = '';
@@ -294,7 +313,7 @@ async function weekendBeschikbaarheid(droog) {
     SB.sbGet('rosters?min_date=' + isoDag(plusDagen(vandaag, -(weken * 7 + 56))) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || []),
     SB.sbGet('absentees?min_date=' + isoDag(plusDagen(vandaag, -(weken * 7 + 7))) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || [])
   ]);
-  const lijst = W.bepaalWeekendOntwijkers(med, ros, abs, vandaag, weken, C.WEEKEND_UITGESLOTEN_WINKELS);
+  const lijst = await zonderVertrekkers(W.bepaalWeekendOntwijkers(med, ros, abs, vandaag, weken, C.WEEKEND_UITGESLOTEN_WINKELS), rap);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
   let plain = 'Hallo,\n\nDeze medewerkers hadden de afgelopen ' + weken + ' volledige weekenden (vr t/m zo) geen enkele weekenddienst, terwijl ze in dezelfde periode wel doordeweeks werkten. Goedgekeurd verlof en net gestarte medewerkers zijn uitgefilterd:\n', vorige = '';
@@ -442,7 +461,7 @@ function blokMail(kleur, kop, intro, items, tip, voet) {
 async function contractketen(droog) {
   const rap = { naam: 'contractketen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
   const [med, per, corr] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true), require('./instellingen').lees('keten_correcties', {})]);
-  const lijst = KT.contractSignalen(med, per, vandaag0(), corr || {});
+  const lijst = await zonderVertrekkers(KT.contractSignalen(med, per, vandaag0(), corr || {}), rap);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
   const items = lijst.map(x => x.soort === 'vast'
@@ -504,7 +523,7 @@ async function oproepaanbod(droog) {
   const ros = await SB.sbGet('rosters?min_date=' + isoDag(plusDagen(vandaag, -400)) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || []).catch(e => { rap.fouten.push('roosters: ' + e.message); return []; });
   const laatste = {};
   for (const r of aanbod) { const d = parseNLDatum(r.verzenddatum); if (!d) continue; const isoD = isoDag(d); const e = String(r.email || '').toLowerCase(), n = normNaam(r.naam); if (e && (!laatste[e] || laatste[e] < isoD)) laatste[e] = isoD; if (n && (!laatste[n] || laatste[n] < isoD)) laatste[n] = isoD; }
-  const lijst = OP.oproepSignalen(med, per, ros, laatste, vandaag);
+  const lijst = await zonderVertrekkers(OP.oproepSignalen(med, per, ros, laatste, vandaag), rap);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
   const items = lijst.map(x => ({ kleur: x.teLaat ? '#c0392b' : '#e8824a', titel: x.naam, sub: x.winkel + ' · oproep sinds ' + x.sinds + ' (' + x.contractType + ')', html: '12-maandsgrens <strong>' + esc(x.grens) + '</strong>' + (x.teLaat ? ' — <strong style="color:#c0392b">' + (-x.over) + ' dagen verstreken</strong>; de medewerker kan loon claimen over niet-aangeboden uren' : ' — over ' + x.over + ' dagen') + '. Gemiddeld <strong>' + x.gemPerWeek + ' u/week</strong> (' + x.diensten + ' diensten, ' + esc(x.periode) + ').' + (x.laatsteAanbod ? ' Laatste aanbod: ' + esc(x.laatsteAanbod) + ' (herhaling na 12 maanden).' : '') }));
@@ -634,4 +653,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt };

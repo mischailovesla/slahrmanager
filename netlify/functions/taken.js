@@ -174,7 +174,15 @@ exports.handler = beveiligd('taken', async (event, g) => {
     const sig = require('./_lib/signaleringen');
     await Promise.all(LIVE_CHECKS.map(async naam => { try { const rap = await sig.CHECKS[naam](true); runs[naam] = { tijd: new Date().toISOString(), gevonden: rap.gevonden || [] }; } catch (e) { fouten.push(naam + ': ' + e.message); } }));
   }
-  for (const naam of ALLE_CHECKS) if (runs[naam]) taken.push(...uitCheck(naam, runs[naam].gevonden, runs[naam].tijd));
+  // Wie al bij Ontslag & aanzegging staat (einddatum vandaag of later) krijgt geen contract-/keten-/proeftijd-/oproep-/aanwezigheidstaken meer
+  const OVERBODIG_BIJ_ONTSLAG = new Set(['contractketen', 'aanzegtermijnen', 'oproepaanbod', 'stille-afwezigen', 'weekend-beschikbaarheid']);
+  let vertrek = null;
+  try { vertrek = await require('./_lib/signaleringen').vertrekkers(); } catch (e) { fouten.push('ontslagdossiers: ' + e.message); }
+  const VT = require('./_lib/signaleringen').vertrekt;
+  for (const naam of ALLE_CHECKS) if (runs[naam]) {
+    const items = vertrek && OVERBODIG_BIJ_ONTSLAG.has(naam) ? (runs[naam].gevonden || []).filter(x => !VT(vertrek, x)) : runs[naam].gevonden;
+    taken.push(...uitCheck(naam, items, runs[naam].tijd));
+  }
   // Fase 4c: wie een verlengingstaak heeft, krijgt geen losse aanzeg- of ketentaak meer (die info zit in de verlengingstaak)
   const { normNaam } = require('./_lib/util');
   const metVerlenging = new Set(taken.filter(t => t.verlenging).map(t => normNaam(t.naam)));
