@@ -33,7 +33,8 @@ module.exports = {
   // Signaleringen (uit Shiftbase.gs v9.4) — stap 4
   SIGNALERING_ONTVANGERS: {
     nieuweMedewerkers: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
-    salaris: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com', // overzicht na de automatische run naar salaris (ma + do)
+    salaris: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    mto: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',     // herinnering in feb/sep: tijd voor een MTO-ronde // overzicht na de automatische run naar salaris (ma + do)
     aanzegtermijn: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     stilleAfwezigen: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     weekendBeschikbaarheid: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
@@ -112,6 +113,11 @@ module.exports = {
     { key: 'blijven', type: 'keuze', nl: 'Zie je jezelf over een halfjaar nog bij SLA werken?', en: 'Do you see yourself still working at SLA in six months?', opties: [['ja', 'Ja', 'Yes'], ['misschien', 'Misschien', 'Maybe'], ['nee', 'Nee', 'No', true]] },
     { key: 'hulpvraag', type: 'tekst', nl: 'Is er iets waar we je mee kunnen helpen?', en: 'Is there anything we can help you with?' }
   ],
+  // Medewerkertevredenheidsonderzoek (fase 5); vragen in _lib/mto-vragen.js
+  MTO_MIN_N: 4,                      // een winkel/groep pas tonen vanaf zoveel reacties (anonimiteit)
+  MTO_LOOPTIJD_DAGEN: 21,            // ronde sluit na zoveel dagen
+  MTO_HERINNERING_DAGEN: [7, 14],    // herinneringen aan wie nog niet invulde
+  MTO_MAANDEN: [2, 9],               // in deze maanden een seintje aan HR om een ronde te starten
   CHECKIN_MOMENTEN: [30, 60],          // dagen na de eerste werkdag (eerste contract in Shiftbase)
   CHECKIN_VENSTER_DAGEN: 7,            // uitnodigen tot zoveel dagen na het moment (vangt gemiste dagen op; oudere medewerkers krijgen er geen)
   CHECKIN_HERINNERING_DAGEN: 5,        // één herinnering als er na zoveel dagen nog niets is ingevuld

@@ -46,4 +46,17 @@ async function logMail(rec) {
   catch (e) { console.warn('hr_mails log mislukt:', e.message); }
 }
 
-module.exports = { verstuur, logMail, afzender };
+// Tot 100 losse mails in één call (Resend /emails/batch; geen bijlagen). mails: [{ to, subject, text, html, tags? }] -> [id]
+async function verstuurBatch(mails) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) throw new Error('RESEND_API_KEY ontbreekt (Netlify env var)');
+  if (!mails.length) return [];
+  if (mails.length > 100) throw new Error('Maximaal 100 mails per batch.');
+  const payload = mails.map(m => ({ from: afzender(), to: [String(m.to).trim()], reply_to: m.replyTo || HR_EMAIL, subject: m.subject, text: m.text || '', html: m.html || undefined, tags: m.tags || undefined }));
+  const r = await fetch('https://api.resend.com/emails/batch', { method: 'POST', headers: { Authorization: 'Bearer ' + key, 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error('Resend batch: HTTP ' + r.status + (j.message ? ' - ' + j.message : ''));
+  return ((j && j.data) || []).map(x => x.id || '');
+}
+
+module.exports = { verstuur, verstuurBatch, logMail, afzender };

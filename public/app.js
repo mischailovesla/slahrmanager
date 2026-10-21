@@ -8,13 +8,13 @@
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['checkin', 'Check-in 30/60']] },
-    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging']] },
+    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -66,6 +66,7 @@
     if (tab === 'scorekaart' && !skData) laadScorekaart(6);
     if (tab === 'scorekaart') mrVulMaanden();
     if (tab === 'verlenging' && !vlData) laadVerlenging();
+    if (tab === 'mto' && !mtoData) laadMto();
     if (tab === 'gesprekken' && !gsData) laadGesprekken(90);
     if (tab === 'training' && !trData) laadTraining(false);
     if (tab === 'toegang' && !tgData) laadToegang();
@@ -128,6 +129,7 @@
     brief: ['Vrije brieven', 'Zelf een brief opstellen in SLA-huisstijl, met of zonder PDF.'],
     ontslag: ['Ontslag & aanzegging', 'Ontslagbevestigingen, aanzeggingen en proeftijdbrieven: versturen, ondertekening volgen en naar salaris.'],
     verloopanalyse: ['Verloopanalyse', 'In- en uitstroom en verloop per winkel en periode.'],
+    mto: ['Tevredenheidsonderzoek (MTO)', 'Twee keer per jaar een anonieme vragenlijst voor iedereen; rapport per winkel en voor SLA makers en store managers apart.'],
     exit: ['Exit-surveys', 'Reacties op de exit-survey en uitnodigingen voor vertrekkers.'],
     toegang: ['Toegangslog', 'Wie heeft wanneer welke gegevens bekeken of gewijzigd (AVG-verantwoording).'],
     archief: ['Archief', 'Gearchiveerde dossiers bekijken en terugzetten.'],
@@ -2343,6 +2345,7 @@
     var tbodies = tbody ? [tbody] : Array.prototype.slice.call(document.querySelectorAll('.tc .tw table tbody'));
     tbodies.forEach(function (tb) {
       if (!tb.closest('.tc .tw')) return; // alleen tabellen in tabs (niet in modals)
+      if (tb.id.indexOf('mto-') === 0) return; // MTO: winkels/stellingen, geen personen
       if (tb.id === 'dos-lijst' || tb.id === 'tg-body' || tb.id === 'tg-mut-body' || tb.id === 'gv-body' || tb.id === 'gv-runs') return; // eigen filters / geen personen
       Array.prototype.forEach.call(tb.rows, function (tr) {
         if (!w) { tr.classList.remove('wf-verborgen'); return; }
@@ -2355,8 +2358,154 @@
     if (tkData) renderTaken();
     if (ovData && window.renderOvDelen) renderOvDelen();
   }
-  document.addEventListener('change', function (e) { if (e.target && e.target.id === 'winkel-filter') { try { localStorage.setItem('hr-winkel', e.target.value); } catch (err) { /* noop */ } pasWinkelFilterToe(); } });
+  document.addEventListener('change', function (e) { if (e.target && e.target.id === 'winkel-filter') { try { localStorage.setItem('hr-winkel', e.target.value); } catch (err) { /* noop */ } pasWinkelFilterToe(); if (window.mtoWinkelSync) mtoWinkelSync(); } });
 
+  // ---------- Tevredenheidsonderzoek (MTO, fase 5) ----------
+  var mtoData = null, mtoGroep = 'alle', mtoSort = 'thema', mtoKand = null;
+  var MTO_GROEP = { alle: 'Iedereen', medewerker: 'SLA makers', manager: 'Store managers' };
+  function mtoKl(x) { return x == null ? '' : x >= 4 ? 'mto-g' : x >= 3.5 ? 'mto-lg' : x >= 3 ? 'mto-o' : 'mto-r'; }
+  function mtoGetal(x) { return x == null ? '-' : String(x).replace('.', ','); }
+  function mtoEnps(x) { return x == null ? '-' : (x > 0 ? '+' : '') + x; }
+  function mtoDelta(nu, oud, schaal) {
+    if (nu == null || oud == null) return '';
+    var d = Math.round((nu - oud) * (schaal ? 1 : 10)) / (schaal ? 1 : 10); if (!d) return '<span class="mto-d nul">=</span>';
+    return '<span class="mto-d ' + (d > 0 ? 'op' : 'neer') + '">' + (d > 0 ? '▲ +' : '▼ ') + String(d).replace('.', ',') + '</span>';
+  }
+  function mtoVerborgen(n, wat) { return '<div class="mto-verb">🔒 ' + (n ? n + ' reactie' + (n === 1 ? '' : 's') : 'Geen reacties') + (wat ? ' ' + wat : '') + ' — pas zichtbaar vanaf ' + (mtoData ? mtoData.minN : 4) + ' reacties (anonimiteit).</div>'; }
+  window.laadMto = async function () {
+    var sel = g('mto-ronde'), ws = g('mto-winkel');
+    var qs = '?groep=' + mtoGroep + (sel && sel.value ? '&ronde=' + encodeURIComponent(sel.value) : '') + ((ws && ws.value) || (!mtoData && winkelFilter()) ? '&winkel=' + encodeURIComponent((ws && ws.value) || winkelFilter()) : '');
+    g('mto-kpi').innerHTML = '<div class="lay-sub" style="padding-bottom:16px">Laden…</div>';
+    var d = await api('/api/mto-admin' + qs);
+    if (!d.success) { g('mto-kpi').innerHTML = '<div class="leeg grijs" style="padding-bottom:16px">' + esc(d.bericht) + '</div>'; return; }
+    mtoData = d; renderMto();
+  };
+  function renderMtoStatus() {
+    var d = mtoData, o = d.open, h = '';
+    if (o) {
+      var pct = o.uitgenodigd ? Math.round(o.ingevuld / o.uitgenodigd * 100) : 0;
+      h = '<div class="sec mto-ronde-kaart"><div class="mto-rk"><div><div class="mto-rk-t">' + esc(o.naam) + ' <span class="badge bg">LOOPT</span></div>'
+        + '<div class="lay-sub">Gestart ' + esc(o.gestart) + (o.gestartDoor ? ' door ' + esc(o.gestartDoor) : '') + ' · sluit ' + esc(o.sluit) + ' · dag ' + (o.dagOpen + 1) + ' van ' + d.instellingen.looptijd
+        + ' · herinneringen: ' + (o.herinnerd1 ? o.herinnerd1 + 'x na ' + d.instellingen.herinner[0] + ' d' : 'na ' + d.instellingen.herinner[0] + ' d') + ', ' + (o.herinnerd2 ? o.herinnerd2 + 'x na ' + d.instellingen.herinner[1] + ' d' : 'na ' + d.instellingen.herinner[1] + ' d') + '</div></div>'
+        + '<div class="mto-rk-r">' + (o.teVersturen ? '<button class="btn bp bsm" onclick="mtoVerder(\'' + o.id + '\')">Nog ' + o.teVersturen + ' versturen</button>' : '') + '<button class="btn bd bsm" onclick="mtoSluit(\'' + o.id + '\')">Ronde nu sluiten</button></div></div>'
+        + '<div class="mto-balk"><div style="width:' + pct + '%"></div></div><div class="mto-rk-c"><span><strong>' + o.ingevuld + '</strong> van ' + o.uitgenodigd + ' ingevuld (' + pct + '%)</span><span>' + o.verstuurd + ' verstuurd' + (o.mislukt ? ' · <span style="color:var(--rood)">' + o.mislukt + ' mislukt</span>' : '') + '</span></div></div>';
+    } else {
+      var laatste = d.rondes.filter(function (r) { return r.bron === 'dashboard'; })[0];
+      h = '<div class="sec mto-ronde-kaart"><div class="mto-rk"><div><div class="mto-rk-t">Nieuwe ronde starten</div><div class="lay-sub">' + (laatste ? 'Vorige ronde: ' + esc(laatste.naam) + ' (' + esc(laatste.gestart) + ', respons ' + (laatste.respons == null ? '-' : laatste.respons + '%') + '). ' : '') + 'Iedereen in dienst krijgt een uitnodiging; herinneringen na ' + d.instellingen.herinner.join(' en ') + ' dagen, dicht na ' + d.instellingen.looptijd + ' dagen.</div><div id="mto-kand" class="lay-sub" style="margin-top:6px"></div></div>'
+        + '<div class="mto-rk-r"><button class="btn bd bsm" onclick="mtoVoorbeeld(\'NL\',\'medewerker\')">Voorbeeld</button><button class="btn bd bsm" onclick="mtoVoorbeeld(\'EN\',\'manager\')">Voorbeeld manager (EN)</button><button class="btn bd bsm" onclick="mtoKandidaten()">Wie krijgt hem?</button>' + (d.nulmetingGedaan ? '' : '<button class="btn bd bsm" onclick="mtoNulmeting()">Nulmeting feb 2026 importeren</button>') + '<button class="btn bp bsm" onclick="mtoStart()">Ronde starten</button></div></div></div>';
+    }
+    g('mto-status').innerHTML = h;
+  }
+  function renderMto() {
+    var d = mtoData; renderMtoStatus();
+    var sel = g('mto-ronde'), huidig = d.ronde ? d.ronde.id : '';
+    sel.innerHTML = d.rondes.map(function (r) { return '<option value="' + r.id + '"' + (r.id === huidig ? ' selected' : '') + '>' + esc(r.naam) + (r.status === 'open' ? ' (loopt)' : '') + ' · ' + r.reacties + ' reacties</option>'; }).join('') || '<option value="">Nog geen rondes</option>';
+    var ws = g('mto-winkel'), wv = d.filter ? d.filter.winkel : '';
+    var namen = (d.perWinkel || []).map(function (w) { return w.winkel; }).filter(function (w) { return w !== '(geen winkel)'; });
+    if (wv && namen.indexOf(wv) === -1) namen.push(wv);
+    ws.innerHTML = '<option value="">Alle winkels</option>' + namen.map(function (w) { return '<option' + (w === wv ? ' selected' : '') + '>' + esc(w) + '</option>'; }).join('');
+    document.querySelectorAll('#mto-groep .tb').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-mg') === mtoGroep); });
+    var blokken = ['mto-blok1', 'mto-blok2', 'mto-blok3', 'mto-blok4', 'mto-blok5'];
+    if (!d.ronde) { g('mto-kpi').innerHTML = ''; g('mto-leeg').innerHTML = '<div class="leeg grijs" style="padding:18px 24px">Nog geen MTO-rondes. Importeer de nulmeting van februari 2026 of start een ronde.</div>'; blokken.forEach(function (b) { g(b).style.display = 'none'; }); return; }
+    var t = d.totaal, v = d.vorige && !d.vorige.verborgen && d.vorige.n ? d.vorige : null, rs = d.respons;
+    var wat = (MTO_GROEP[mtoGroep] || '') + (wv ? ' · ' + wv : '');
+    g('mto-kpi').innerHTML = '<div class="stats" style="margin-bottom:18px">'
+      + '<div class="card cd"><div class="si sid">✉</div><div><div class="sv">' + (rs ? rs.pct + '%' : '-') + '</div><div class="sl">Respons' + (rs ? ' (' + rs.ingevuld + ' / ' + rs.uitgenodigd + ')' : ' (onbekend bij import)') + '</div></div></div>'
+      + '<div class="card cd"><div class="si sid">#</div><div><div class="sv">' + t.n + '</div><div class="sl">Reacties · ' + esc(wat) + '</div></div></div>'
+      + '<div class="card ' + (t.totaal == null ? 'cd' : t.totaal >= 4 ? 'cg' : t.totaal >= 3 ? 'cw' : 'cr') + '"><div class="si sid">★</div><div><div class="sv">' + mtoGetal(t.totaal) + ' ' + (v ? mtoDelta(t.totaal, v.totaal) : '') + '</div><div class="sl">Gemiddeld (1–5)</div></div></div>'
+      + '<div class="card ' + (t.enps == null ? 'cd' : t.enps >= 20 ? 'cg' : t.enps >= 0 ? 'cw' : 'cr') + '"><div class="si sid">♥</div><div><div class="sv">' + mtoEnps(t.enps) + ' ' + (v ? mtoDelta(t.enps, v.enps, true) : '') + '</div><div class="sl">eNPS' + (t.enpsVerdeling ? ' · ' + t.enpsVerdeling.promoter + '% fan, ' + t.enpsVerdeling.criticus + '% criticus' : '') + '</div></div></div></div>';
+    if (t.verborgen || !t.n) {
+      g('mto-leeg').innerHTML = '<div style="padding:0 24px 18px">' + mtoVerborgen(t.n, 'in deze selectie') + '</div>';
+      blokken.forEach(function (b) { g(b).style.display = b === 'mto-blok2' || b === 'mto-blok3' ? '' : 'none'; });
+    } else { g('mto-leeg').innerHTML = ''; blokken.forEach(function (b) { g(b).style.display = ''; }); }
+    g('mto-vgl').textContent = v ? 'Pijltje = verschil met ' + v.naam : '';
+    // thema's
+    if (!t.verborgen && t.n) {
+      g('mto-themas').innerHTML = d.themas.map(function (th) {
+        var x = t.perThema[th.key], o = v ? v.perThema[th.key] : null, pct = x == null ? 0 : Math.round((x - 1) / 4 * 100), op = o == null ? null : Math.round((o - 1) / 4 * 100);
+        return '<div class="mto-bar"><span class="mto-bar-l">' + esc(th.nl) + '</span><div class="mto-bar-b"><div class="' + mtoKl(x) + '" style="width:' + pct + '%"></div>' + (op != null ? '<i style="left:' + op + '%" title="' + esc(v.naam) + ': ' + mtoGetal(o) + '"></i>' : '') + '</div><strong>' + mtoGetal(x) + '</strong>' + mtoDelta(x, o) + '</div>';
+      }).join('');
+      var naamVan = {}; d.themas.forEach(function (th) { naamVan[th.key] = th.nl; });
+      var max = Math.max.apply(null, t.prioriteit.map(function (p) { return p.pct; }).concat([1]));
+      g('mto-prio').innerHTML = t.prioriteit.map(function (p) { return '<div class="mto-bar"><span class="mto-bar-l">' + esc(naamVan[p.key] || p.key) + '</span><div class="mto-bar-b"><div class="mto-p" style="width:' + Math.round(p.pct / max * 100) + '%"></div></div><strong>' + p.pct + '%</strong><span class="lay-sub" style="min-width:34px">(' + p.n + ')</span></div>'; }).join('');
+      var rijen = [];
+      d.themas.forEach(function (th) { th.vragen.forEach(function (q) { var a = t.perVraag[q.key] || {}, b = v && v.perVraag ? v.perVraag[q.key] : null; rijen.push({ th: th.nl, q: q.nl, a: a, b: b }); }); });
+      if (mtoSort === 'laag') rijen.sort(function (x, y) { return (x.a.gem || 9) - (y.a.gem || 9); });
+      g('mto-vbody').innerHTML = rijen.map(function (r) { return '<tr><td class="lay-sub">' + esc(r.th) + '</td><td style="white-space:normal;max-width:460px">' + esc(r.q) + '</td><td><span class="mto-cel ' + mtoKl(r.a.gem) + '">' + mtoGetal(r.a.gem) + '</span></td><td>' + (r.a.pos == null ? '-' : r.a.pos + '%') + '</td><td>' + (r.a.neg == null ? '-' : (r.a.neg >= 25 ? '<strong style="color:var(--rood)">' + r.a.neg + '%</strong>' : r.a.neg + '%')) + '</td><td>' + (r.b && r.b.gem != null ? mtoGetal(r.b.gem) + ' ' + mtoDelta(r.a.gem, r.b.gem) : '-') + '</td></tr>'; }).join('');
+      g('mto-ocount').textContent = d.opmerkingen.length;
+      g('mto-open').innerHTML = d.opmerkingen.length ? d.opmerkingen.map(function (o) { return '<div class="mto-opm">“' + esc(o) + '”</div>'; }).join('') : '<div class="lay-sub">Geen open antwoorden in deze selectie' + (d.ronde.bron === 'import' ? ' (de nulmeting had geen open vraag)' : '') + '.</div>';
+    }
+    // per winkel
+    var kop = '<tr><th>Winkel</th><th>Reacties</th><th>Respons</th><th>Gem.</th><th>eNPS</th>' + d.themas.map(function (th) { return '<th title="' + esc(th.nl) + '">' + esc(th.nl.split(' ')[0]) + '</th>'; }).join('') + '</tr>';
+    g('mto-whead').innerHTML = kop;
+    g('mto-wcount').textContent = d.perWinkel.length;
+    g('mto-wbody').innerHTML = d.perWinkel.length ? d.perWinkel.map(function (w) {
+      var rsp = w.respons ? w.respons.pct + '% <span class="lay-sub">(' + w.respons.ingevuld + '/' + w.respons.uitgenodigd + ')</span>' : '-';
+      var naam = w.winkel === '(geen winkel)' ? '<span class="lay-sub">(geen winkel)</span>' : '<button class="ov-kaart-naam" data-mto-w="' + esc(w.winkel) + '">' + esc(w.winkel) + '</button>';
+      if (w.verborgen || !w.n || w.totaal == null) return '<tr class="mto-dicht"><td>' + naam + '</td><td>' + w.n + '</td><td>' + rsp + '</td><td colspan="' + (2 + d.themas.length) + '" class="lay-sub">🔒 minder dan ' + d.minN + ' reacties</td></tr>';
+      return '<tr><td>' + naam + '</td><td>' + w.n + '</td><td>' + rsp + '</td><td><span class="mto-cel ' + mtoKl(w.totaal) + '">' + mtoGetal(w.totaal) + '</span> ' + mtoDelta(w.totaal, w.vorigeTotaal) + '</td><td>' + mtoEnps(w.enps) + ' ' + mtoDelta(w.enps, w.vorigeEnps, true) + '</td>' + d.themas.map(function (th) { var x = w.perThema[th.key]; return '<td><span class="mto-cel ' + mtoKl(x) + '">' + mtoGetal(x) + '</span></td>'; }).join('') + '</tr>';
+    }).join('') : '<tr><td colspan="' + (5 + d.themas.length) + '" class="leeg grijs">Geen winkels in deze ronde.</td></tr>';
+    // makers vs managers
+    g('mto-ghead').innerHTML = '<tr><th>Groep</th><th>Reacties</th><th>Gem.</th><th>eNPS</th><th>Laagste thema</th><th>Hoogste thema</th></tr>';
+    var naamV = {}; d.themas.forEach(function (th) { naamV[th.key] = th.nl; });
+    g('mto-gbody').innerHTML = d.groepen.map(function (x) {
+      var lbl = '<strong>' + MTO_GROEP[x.groep] + '</strong>' + (x.respons ? '<div class="lay-sub">respons ' + x.respons.pct + '%</div>' : '');
+      if (x.verborgen || !x.n || x.totaal == null) return '<tr><td>' + lbl + '</td><td>' + x.n + '</td><td colspan="4" class="lay-sub">🔒 minder dan ' + d.minN + ' reacties</td></tr>';
+      var ks = Object.keys(x.perThema).filter(function (k) { return x.perThema[k] != null; }).sort(function (a, b) { return x.perThema[a] - x.perThema[b]; });
+      return '<tr><td>' + lbl + '</td><td>' + x.n + '</td><td><span class="mto-cel ' + mtoKl(x.totaal) + '">' + mtoGetal(x.totaal) + '</span></td><td>' + mtoEnps(x.enps) + '</td><td>' + esc(naamV[ks[0]]) + ' <span class="lay-sub">' + mtoGetal(x.perThema[ks[0]]) + '</span></td><td>' + esc(naamV[ks[ks.length - 1]]) + ' <span class="lay-sub">' + mtoGetal(x.perThema[ks[ks.length - 1]]) + '</span></td></tr>';
+    }).join('');
+    // trend
+    g('mto-trend').innerHTML = d.trend.length ? d.trend.map(function (r) { var pct = r.totaal == null ? 0 : Math.round((r.totaal - 1) / 4 * 100); return '<div class="mto-bar"><span class="mto-bar-l">' + esc(r.naam) + '</span>' + (r.verborgen ? '<span class="lay-sub" style="flex:1">🔒 ' + r.n + ' reacties</span>' : '<div class="mto-bar-b"><div class="' + mtoKl(r.totaal) + '" style="width:' + pct + '%"></div></div><strong>' + mtoGetal(r.totaal) + '</strong><span class="lay-sub" style="min-width:74px">eNPS ' + mtoEnps(r.enps) + '</span>') + '</div>'; }).join('') + (d.trend.length < 2 ? '<div class="lay-sub" style="margin-top:8px">Na de volgende ronde zie je hier de ontwikkeling.</div>' : '') : '<div class="lay-sub">Nog geen gegevens.</div>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('#mto-groep .tb'); if (b) { mtoGroep = b.getAttribute('data-mg'); laadMto(); return; }
+    var s = e.target.closest && e.target.closest('#mto-sort .tb'); if (s) { mtoSort = s.getAttribute('data-ms'); document.querySelectorAll('#mto-sort .tb').forEach(function (x) { x.classList.toggle('sel', x === s); }); renderMto(); return; }
+    var w = e.target.closest && e.target.closest('[data-mto-w]'); if (w) { var ws = g('mto-winkel'); ws.value = w.getAttribute('data-mto-w'); laadMto(); g('tab-mto').scrollIntoView({ behavior: 'smooth' }); }
+  });
+  window.mtoKandidaten = async function () {
+    var el = g('mto-kand'); el.textContent = 'Shiftbase ophalen…';
+    var d = await api('/api/mto-admin?kandidaten=1'); if (!d.success) { el.textContent = d.bericht; return; }
+    mtoKand = d;
+    el.innerHTML = '<strong>' + d.aantal + '</strong> uitnodigingen: ' + (d.perGroep.medewerker || 0) + ' SLA makers en ' + (d.perGroep.manager || 0) + ' store managers'
+      + (d.managers.length ? ' <a href="#" onclick="event.preventDefault();this.nextElementSibling.style.display=\'block\'">(wie?)</a><span style="display:none">' + d.managers.map(function (m) { return esc(m.naam) + ' — ' + esc(m.functie) + (m.winkel ? ', ' + esc(m.winkel) : ''); }).join('<br>') + '</span>' : '')
+      + (d.vertrekkers ? ' · ' + d.vertrekkers + ' vertrekker(s) overgeslagen' : '') + (d.zonderEmail.length ? ' · <span style="color:var(--rood)">' + d.zonderEmail.length + ' zonder e-mailadres: ' + d.zonderEmail.map(function (x) { return esc(x.naam); }).join(', ') + '</span>' : '');
+  };
+  window.mtoVoorbeeld = async function (taal, groep) { var r = await api('/api/mto-admin', { actie: 'voorbeeld', taal: taal, groep: groep }); if (!r.success) { toast(r.bericht, 'err'); return; } window.open(r.link, '_blank'); };
+  window.mtoNulmeting = async function () {
+    if (!confirm('De resultaten van februari 2026 (Google Forms, 60 reacties) importeren als nulmeting?')) return;
+    var r = await api('/api/mto-admin', { actie: 'nulmeting' }); if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); g('mto-ronde').innerHTML = '<option value="' + r.ronde + '" selected></option>'; laadMto();
+  };
+  async function mtoVerstuurRest(ronde, gedaan) {
+    for (var i = 0; i < 40; i++) {
+      var r = await api('/api/mto-admin', { actie: 'versturen', ronde: ronde });
+      if (!r.success) { toast('Versturen gestopt: ' + r.bericht + ' (de dagelijkse run pakt de rest op)', 'err'); break; }
+      gedaan += r.verstuurd; toast(gedaan + ' uitnodigingen verstuurd' + (r.rest ? ', nog ' + r.rest + '…' : ' ✓'), 'ok');
+      if (!r.rest || !r.verstuurd) break;
+    }
+    laadMto();
+  }
+  window.mtoStart = async function () {
+    var k = mtoKand ? mtoKand.aantal + ' medewerkers' : 'iedereen in dienst';
+    if (!confirm('MTO-ronde starten? ' + k + ' krijgt nu een mail met een persoonlijke link. Herinneringen gaan automatisch na 7 en 14 dagen.')) return;
+    toast('Ronde starten en uitnodigingen versturen…', 'ok');
+    var r = await api('/api/mto-admin', { actie: 'start' });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.naam + ': ' + r.verstuurd + ' van ' + r.aantal + ' verstuurd' + (r.rest ? ', de rest volgt…' : ' ✓'), 'ok');
+    g('mto-ronde').innerHTML = '<option value="' + r.ronde + '" selected></option>';
+    if (r.rest) await mtoVerstuurRest(r.ronde, r.verstuurd); else laadMto();
+  };
+  window.mtoVerder = function (ronde) { toast('Versturen…', 'ok'); mtoVerstuurRest(ronde, 0); };
+  window.mtoSluit = async function (ronde) {
+    if (!confirm('Ronde nu sluiten? De links werken daarna niet meer en er gaan geen herinneringen meer uit.')) return;
+    var r = await api('/api/mto-admin', { actie: 'sluiten', ronde: ronde }); if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadMto();
+  };
+  window.mtoExport = async function () {
+    if (!mtoData || !mtoData.ronde) return;
+    var r = await api('/api/mto-admin?csv=' + encodeURIComponent(mtoData.ronde.id)); if (!r.success) { toast(r.bericht, 'err'); return; }
+    var url = URL.createObjectURL(new Blob(['﻿' + r.csv], { type: 'text/csv;charset=utf-8' })), a = document.createElement('a'); a.href = url; a.download = 'mto_' + mtoData.ronde.naam.replace(/\W+/g, '_').toLowerCase() + '.csv'; document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  };
+  window.mtoWinkelSync = function () { if (!mtoData) return; var ws = g('mto-winkel'), w = winkelFilter(); if (w && !Array.prototype.some.call(ws.options, function (o) { return o.value === w; })) ws.insertAdjacentHTML('beforeend', '<option>' + esc(w) + '</option>'); ws.value = w; laadMto(); };
   // ---------- Compacte rijacties: eerste knop blijft, de rest in een ⋯-menu ----------
   function compactActies(tbody) {
     if (!tbody || tbody.id === 'dos-lijst') return;

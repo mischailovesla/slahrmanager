@@ -643,7 +643,42 @@ async function verlengingen(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris };
+// ---- MTO (fase 5): restant uitnodigingen, herinneringen na 7 + 14 dagen, sluiten na 21 dagen, HR-seintje in feb/sep ----
+async function mto(droog) {
+  const MTO = require('./mto');
+  const rap = { naam: 'mto', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  let ronde = null;
+  try { ronde = await MTO.openRonde(); } catch (e) { rap.fouten.push(e.message); return rap; }
+  if (ronde) {
+    const dagen = Math.floor((Date.now() - new Date(ronde.gestart_op).getTime()) / 864e5);
+    rap.ronde = { naam: ronde.naam, dagen };
+    if (ronde.sluit_op && new Date(ronde.sluit_op) < new Date()) {
+      rap.gevonden.push({ soort: 'sluiten', naam: ronde.naam });
+      if (rap.droog) rap.verstuurd.push({ droog: true, naam: ronde.naam + ' sluiten' });
+      else { try { await MTO.sluiten(ronde.id, 'signalering'); rap.verstuurd.push({ naam: ronde.naam + ' gesloten' }); } catch (e) { rap.fouten.push('sluiten: ' + e.message); } }
+    } else {
+      if (!rap.droog) { try { const d = await MTO.versturenDeel(ronde.id, 'signalering', 20000); if (d.verstuurd) rap.verstuurd.push({ naam: d.verstuurd + ' uitnodigingen (restant)' }); if (d.rest) rap.fouten.push(d.rest + ' uitnodigingen nog niet verstuurd'); } catch (e) { rap.fouten.push('uitnodigingen: ' + e.message); } }
+      try {
+        for (const h of await MTO.herinneringen(ronde, rap.droog, 'signalering')) {
+          if (!h.aantal) continue;
+          rap.gevonden.push({ soort: h.soort, naam: ronde.naam, aantal: h.aantal });
+          rap.verstuurd.push(Object.assign({ naam: h.aantal + 'x ' + h.soort }, h.droog ? { droog: true } : {}));
+        }
+      } catch (e) { rap.fouten.push('herinneringen: ' + e.message); }
+    }
+  }
+  try {
+    const sleutel = ronde ? null : await MTO.hrHerinneringNodig();
+    if (sleutel) {
+      rap.gevonden.push({ soort: 'hr-herinnering', naam: 'MTO-ronde starten (' + sleutel + ')' });
+      if (rap.droog) rap.verstuurd.push({ droog: true, naam: 'HR-herinnering MTO' });
+      else { await MTO.hrHerinnering(sleutel); rap.verstuurd.push({ naam: 'HR-herinnering MTO' }); }
+    }
+  } catch (e) { rap.fouten.push('hr-herinnering: ' + e.message); }
+  return rap;
+}
+
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 // ---- Automatisch naar salaris (maandag + donderdag) ----
@@ -757,4 +792,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };

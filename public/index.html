@@ -547,6 +547,36 @@
 
   <!-- VERLOOPANALYSE (Verloop.gs v1.3) -->
   <!-- EXIT-SURVEYS (fase 2f) -->
+  <div class="tc" id="tab-mto">
+    <div class="alert grijs"><strong>Zo werkt het MTO.</strong> Twee keer per jaar (februari en september krijgen jullie een seintje) start je hier een ronde. Iedereen die in Shiftbase in dienst is krijgt een persoonlijke link (NL/EN), behalve wie al bij Ontslag &amp; aanzegging staat. Wie niet invult krijgt na 7 en 14 dagen een herinnering; na 21 dagen sluit de ronde vanzelf. Groep <em>Store managers</em> = iedereen met "manager" in de functie in Shiftbase (junior en store managers); de rest valt onder <em>SLA makers</em>.<br><br><strong>Anoniem.</strong> Antwoorden worden opgeslagen met alleen winkel en groep, zonder naam en zonder tijdstip. Het dashboard weet wel <em>wie</em> er heeft ingevuld (voor de herinneringen), maar niet <em>wat</em>. Een winkel of groep met minder dan <strong>4</strong> reacties wordt niet getoond; open antwoorden ook niet.</div>
+    <div id="mto-status"></div>
+    <div class="sec">
+      <div class="sh"><div class="st">Rapport</div>
+        <div class="hr2"><select id="mto-ronde" class="sb" style="min-width:210px" onchange="laadMto()"></select><div class="tbar" id="mto-groep"><button type="button" class="tb sel" data-mg="alle">Iedereen</button><button type="button" class="tb" data-mg="medewerker">SLA makers</button><button type="button" class="tb" data-mg="manager">Store managers</button></div><select id="mto-winkel" class="sb" onchange="laadMto()"><option value="">Alle winkels</option></select><button class="btn bd bsm" onclick="mtoExport()">⬇ CSV</button></div></div>
+      <div id="mto-kpi" style="padding:18px 24px 0"></div>
+      <div id="mto-leeg"></div>
+    </div>
+    <div class="mto-grid" id="mto-blok1">
+      <div class="sec"><div class="sh"><div class="st">Score per thema</div><div class="lay-sub" style="color:rgba(255,255,255,.6)" id="mto-vgl"></div></div><div id="mto-themas" style="padding:12px 24px 16px"></div></div>
+      <div class="sec"><div class="sh"><div class="st">Wat moet als eerste beter?</div></div><div id="mto-prio" style="padding:12px 24px 16px"></div></div>
+    </div>
+    <div class="sec" id="mto-blok2">
+      <div class="sh"><div class="st">Per winkel <span class="pill" id="mto-wcount">-</span></div><div class="lay-sub" style="color:rgba(255,255,255,.6)">Gemiddelde per thema (1–5). Klik op een winkel voor het detail.</div></div>
+      <div class="tw"><table><thead id="mto-whead"></thead><tbody id="mto-wbody"></tbody></table></div>
+    </div>
+    <div class="mto-grid" id="mto-blok3">
+      <div class="sec"><div class="sh"><div class="st">SLA makers vs store managers</div></div><div class="tw"><table><thead id="mto-ghead"></thead><tbody id="mto-gbody"></tbody></table></div></div>
+      <div class="sec"><div class="sh"><div class="st">Verloop per ronde</div></div><div id="mto-trend" style="padding:12px 24px 16px"></div></div>
+    </div>
+    <div class="sec" id="mto-blok4">
+      <div class="sh"><div class="st">Alle stellingen</div><div class="hr2"><div class="tbar" id="mto-sort"><button type="button" class="tb sel" data-ms="thema">Per thema</button><button type="button" class="tb" data-ms="laag">Laagste eerst</button></div></div></div>
+      <div class="tw"><table><thead><tr><th>Thema</th><th>Stelling</th><th>Gemiddeld</th><th>Eens (4–5)</th><th>Oneens (1–2)</th><th>Vorige</th></tr></thead><tbody id="mto-vbody"></tbody></table></div>
+    </div>
+    <div class="sec" id="mto-blok5">
+      <div class="sh"><div class="st">Open antwoorden <span class="pill" id="mto-ocount">-</span></div><div class="lay-sub" style="color:rgba(255,255,255,.6)">"Wat zou jouw werk bij SLA nog beter maken?" — alfabetisch, niet in invulvolgorde.</div></div>
+      <div id="mto-open" style="padding:12px 24px 16px"></div>
+    </div>
+  </div>
   <div class="tc" id="tab-exit">
     <div class="alert geel" id="ex-pauze" style="display:none"><strong>⏸ Exit-survey staat op pauze.</strong> Er gaat géén link mee in ontslagbevestigingen, aanzeggingen en proeftijdbrieven, de survey-pagina is gesloten en uitnodigingen kunnen niet verstuurd worden. Zet hem aan bij <em>Instellingen</em> onderaan zodra de vragen zijn doorgenomen.</div>
     <div class="sec">
