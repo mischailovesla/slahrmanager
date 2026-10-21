@@ -1629,45 +1629,87 @@
   window.laadCheckin = async function (mnd) {
     if (mnd) ciMaanden = mnd;
     g('ci-b6').className = 'btn bsm ' + (ciMaanden === 6 ? 'bp' : 'bd'); g('ci-b24').className = 'btn bsm ' + (ciMaanden === 24 ? 'bp' : 'bd');
-    g('ci-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">Laden…</td></tr>';
+    g('ci-body').innerHTML = '<tr><td colspan="8" class="leeg grijs">Laden…</td></tr>';
     var d = await api('/api/checkin-admin?maanden=' + ciMaanden);
-    if (!d.success) { g('ci-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    if (!d.success) { g('ci-body').innerHTML = '<tr><td colspan="8" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
     ciData = d;
     g('ci-pauze').style.display = d.actief ? 'none' : '';
     g('ci-status').className = 'badge ' + (d.actief ? 'bg' : 'bo'); g('ci-status').textContent = d.actief ? 'ACTIEF — uitnodigingen gaan automatisch' : 'GEPAUZEERD — er gaat niets uit';
     g('ci-toggle').textContent = d.actief ? 'Pauzeren' : 'Aanzetten'; g('ci-toggle').className = 'btn bsm ' + (d.actief ? 'bd' : 'bp');
     g('ci-grens').textContent = d.laagGrens;
-    var k = d.kpi;
-    g('ci-kpi').innerHTML = '<div class="card cg"><div class="si sig">✉</div><div><div class="sv">' + k.verstuurd + '</div><div class="sl">Verstuurd (' + ciMaanden + ' mnd)</div></div></div>'
-      + '<div class="card cd"><div class="si sid">%</div><div><div class="sv">' + (k.respons == null ? '-' : k.respons + '%') + '</div><div class="sl">Respons (' + k.ingevuld + ' ingevuld)</div></div></div>'
+    var k = d.kpi, wacht = d.rijen.filter(function (r) { return r.status === 'wacht'; }).length;
+    g('ci-kpi').innerHTML = '<div class="card ' + (k.laagOpen ? 'cr' : 'cg') + '"><div class="si ' + (k.laagOpen ? 'siw' : 'sig') + '">!</div><div><div class="sv">' + k.laagOpen + '</div><div class="sl">Op te volgen (' + k.laag + ' laag in ' + ciMaanden + ' mnd)</div></div></div>'
       + '<div class="card ' + (k.gemScore == null ? 'cd' : k.gemScore >= 4 ? 'cg' : k.gemScore >= 3 ? 'cw' : 'cr') + '"><div class="si sid">★</div><div><div class="sv">' + (k.gemScore == null ? '-' : String(k.gemScore).replace('.', ',')) + '</div><div class="sl">Gemiddelde score (1–5)</div></div></div>'
-      + '<div class="card ' + (k.laagOpen ? 'cr' : 'cd') + '"><div class="si ' + (k.laagOpen ? 'siw' : 'sid') + '">!</div><div><div class="sv">' + k.laagOpen + '</div><div class="sl">Laag, nog opvolgen (' + k.laag + ' totaal)</div></div></div>';
-    ciRender();
-    var bar = function (label, n, gem) { var pct = gem == null ? 0 : Math.round((gem - 1) / 4 * 100), kl = gem == null ? '#c9c2bc' : gem >= 4 ? '#009f4b' : gem >= 3 ? '#e8824a' : '#c0392b'; return '<div style="display:flex;gap:12px;align-items:center;padding:5px 0;font-size:.85rem"><span style="min-width:200px;flex:1.2">' + esc(label) + '</span><div style="flex:1;background:#f3eeea;border-radius:3px;height:12px"><div style="width:' + pct + '%;background:' + kl + ';height:12px;border-radius:3px"></div></div><strong style="min-width:76px;text-align:right">' + (gem == null ? '-' : String(gem).replace('.', ',')) + ' <span style="color:#888078;font-weight:400">(' + n + ')</span></strong></div>'; };
+      + '<div class="card cd"><div class="si sid">%</div><div><div class="sv">' + (k.respons == null ? '-' : k.respons + '%') + '</div><div class="sl">Respons (' + k.ingevuld + ' van ' + k.verstuurd + ')</div></div></div>'
+      + '<div class="card cd"><div class="si sid">✉</div><div><div class="sv">' + wacht + '</div><div class="sl">Wacht op antwoord</div></div></div>';
+    ciRenderOpvolgen(); ciRender(); ciRenderPlanning();
+    var bar = function (label, n, gem) { var pct = gem == null ? 0 : Math.round((gem - 1) / 4 * 100), kl = gem == null ? '#c9c2bc' : gem >= 4 ? '#009f4b' : gem >= 3 ? '#e8824a' : '#c0392b'; return '<div class="ci-bar"><span class="ci-bar-l">' + esc(label) + '</span><div class="ci-bar-b"><div style="width:' + pct + '%;background:' + kl + '"></div></div><strong>' + (gem == null ? '-' : String(gem).replace('.', ',')) + '</strong><span class="lay-sub">(' + n + ')</span></div>'; };
     g('ci-pervraag').innerHTML = k.perVraag.length && k.ingevuld ? k.perVraag.map(function (v) { return bar(v.vraag, v.n, v.gem); }).join('') : '<div class="lay-sub">Nog geen ingevulde check-ins.</div>';
     g('ci-perwinkel').innerHTML = k.perWinkel.length ? k.perWinkel.map(function (w) { return bar(w.winkel, w.n, w.gem); }).join('') : '<div class="lay-sub">Nog geen ingevulde check-ins.</div>';
-    var kom = d.nu.map(function (x) { return Object.assign({ wanneer: 'vandaag' + (x.zonderEmail ? ' — geen e-mail in Shiftbase' : '') }, x); }).concat(d.komende.map(function (x) { return Object.assign({ wanneer: x.op + ' (over ' + x.over + ' d)' }, x); }));
-    var gm = d.gemist || [];
-    g('ci-gcount').textContent = gm.length; g('ci-galle').checked = false;
-    g('ci-gbody').innerHTML = gm.length ? gm.map(function (x) { return '<tr><td>' + (x.zonderEmail ? '' : '<input type="checkbox" data-ci-g=\'' + esc(JSON.stringify({ medewerker_id: x.medewerker_id, moment: x.moment, naam: x.naam })) + '\'>') + '</td><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td>' + esc(x.indienst || '') + '</td><td>Dag ' + x.moment + '</td><td>' + esc(x.op) + (x.geleden ? ' (' + x.geleden + ' d geleden)' : ' (vandaag)') + '</td><td>' + (x.zonderEmail ? '<span class="badge br">geen e-mail in Shiftbase</span>' : esc(x.email)) + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="leeg grijs">Niemand gemist.</td></tr>';
-    g('ci-kcount').textContent = kom.length;
-    g('ci-kbody').innerHTML = kom.length ? kom.map(function (x) { return '<tr><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td>' + esc(x.indienst || '') + '</td><td>Dag ' + x.moment + '</td><td>' + esc(x.wanneer) + '</td><td>' + esc(x.email || '-') + '</td></tr>'; }).join('') : '<tr><td colspan="6" class="leeg grijs">Niemand in de komende 14 dagen.</td></tr>';
     ciEditor.zet(d.vragenConfig, d.types); g('ci-vragen-sub').textContent = d.standaard ? 'Standaardlijst (config.js)' : 'Eigen lijst (opgeslagen in het dashboard)';
   };
+  // Blijven-vraag (keuze met een alarm-optie) als kernantwoord in de tabel
+  function ciKern(d) { return (d.vragenConfig || []).filter(function (v) { return v.type === 'keuze'; })[0] || null; }
+  function ciKernCel(v, r) {
+    if (!v) return '';
+    var x = (r.antwoorden || {})[v.key]; if (x == null || x === '') return '<span class="no-doc">-</span>';
+    var alarm = (v.opties || []).some(function (o) { return o[0] === x && o[3] === true; }), lb = (r.labels || {})[v.key] || x;
+    return '<span class="badge ' + (alarm ? 'br' : x === 'ja' ? 'bg' : 'bo') + '">' + esc(lb) + '</span>';
+  }
+  // Bovenaan: wie moet er gebeld worden
+  function ciRenderOpvolgen() {
+    var d = ciData, l = d.rijen.filter(function (r) { return r.status === 'laag'; });
+    g('ci-ocount').textContent = l.length;
+    g('ci-op-sec').classList.toggle('ci-leeg', !l.length);
+    g('ci-op').innerHTML = l.length ? l.map(function (r) {
+      var redenen = String(r.laagReden || '').split(' · ').filter(Boolean);
+      return '<div class="ci-kaart"><div class="ci-kaart-t"><div><strong>' + esc(r.naam) + '</strong><div class="lay-sub">' + esc(r.winkel || '-') + ' · dag ' + r.moment + ' · ingevuld ' + esc(r.ingevuld) + '</div></div>' + (r.score == null ? '' : exScore(Math.round(r.score))) + '</div>'
+        + '<ul class="ci-redenen">' + redenen.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>'
+        + (r.opmerking ? '<div class="ci-citaat">“' + esc(r.opmerking) + '”</div>' : '')
+        + '<div class="ci-kaart-a"><button class="btn bp bsm" data-ci-op="' + esc(r.id) + '">Gesprek / opgevolgd</button><button class="btn bd bsm" data-ci-lees="' + esc(r.id) + '">Alle antwoorden</button>' + dosBtn(r.naam, r.email) + '</div></div>';
+    }).join('') : '<div class="leeg grijs" style="padding:14px 24px">✓ Niemand om op te volgen.</div>';
+  }
   function ciRender() {
     var d = ciData; if (!d) return;
     document.querySelectorAll('#ci-filter .tb').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-ci') === ciFilter); });
-    var kol = (d.vragenConfig || []).filter(function (v) { return v.type !== 'tekst'; });
-    g('ci-head').innerHTML = '<tr><th>Verstuurd</th><th>Naam</th><th>Winkel</th><th>Dag</th><th>Status</th><th>Score</th>' + kol.map(function (v) { return '<th title="' + esc(v.nl) + '">' + esc(v.nl.length > 18 ? v.nl.slice(0, 16) + '…' : v.nl) + '</th>'; }).join('') + '<th>Opmerking / opvolging</th><th>Actie</th></tr>';
-    var rijen = d.rijen.filter(function (r) { return ciFilter === 'alle' || r.status === ciFilter; });
+    var kern = ciKern(d);
+    g('ci-head').innerHTML = '<tr><th>Medewerker</th><th>Dag</th><th>Verstuurd</th><th>Status</th><th>Score</th>' + (kern ? '<th title="' + esc(kern.nl) + '">Blijven?</th>' : '') + '<th>Opmerking</th><th></th></tr>';
+    var rijen = d.rijen.filter(function (r) { return ciFilter === 'alle' || r.status === ciFilter || (ciFilter === 'ingevuld' && r.status === 'opgevolgd'); });
     g('ci-count').textContent = rijen.length;
     g('ci-body').innerHTML = rijen.length ? rijen.map(function (r) {
-      var a = r.antwoorden || {}, lb = r.labels || {};
-      var cellen = kol.map(function (v) { var x = a[v.key]; if (x == null || x === '') return '<td><span class="no-doc">-</span></td>'; if (v.type === 'schaal') return '<td>' + exScore(x) + '</td>'; if (v.type === 'nps') return '<td><span class="badge ' + (x >= 9 ? 'bg' : x >= 7 ? 'bo' : 'br') + '">' + x + '/10</span></td>'; var alarm = (v.opties || []).some(function (o) { return o[0] === x && o[3] === true; }); return '<td>' + (alarm ? '<span class="badge br">' + esc(lb[v.key] || x) + '</span>' : esc(lb[v.key] || x)) + '</td>'; }).join('');
-      var opm = (r.opmerking ? '<div class="cel-kort" data-lees-titel="Opmerking — ' + esc(r.naam) + ' (dag ' + r.moment + ')">' + esc(r.opmerking) + '</div>' : '') + (r.opvolgNotitie || r.opgevolgd ? '<div class="lay-sub">Opgevolgd ' + esc(r.opgevolgd) + (r.opgevolgdDoor ? ' door ' + esc(r.opgevolgdDoor) : '') + (r.opvolgNotitie ? ': ' + esc(r.opvolgNotitie) : '') + '</div>' : '') + (!r.ingevuld && r.herinnerd ? '<div class="lay-sub">Herinnering ' + esc(r.herinnerd) + '</div>' : '');
-      return '<tr><td>' + esc(r.verstuurd) + '</td><td><strong>' + esc(r.naam) + '</strong><div class="lay-sub">' + esc(r.email || '') + '</div></td><td>' + esc(r.winkel || '-') + '</td><td>' + r.moment + '</td><td>' + (ciStatus[r.status] || '') + (r.ingevuld ? '<div class="lay-sub">' + esc(r.ingevuld) + '</div>' : '') + '</td><td>' + (r.score == null ? '<span class="no-doc">-</span>' : exScore(Math.round(r.score))) + '</td>' + cellen + '<td style="max-width:300px;white-space:normal;font-size:.82rem">' + opm + '</td><td>' + (r.status === 'laag' ? '<button class="btn bp bsm" data-ci-op="' + esc(r.id) + '">✓ Opgevolgd</button> ' : '') + dosBtn(r.naam, r.email) + '</td></tr>';
-    }).join('') : '<tr><td colspan="' + (8 + kol.length) + '" class="leeg grijs">' + (d.rijen.length ? 'Niets in deze selectie.' : 'Nog geen check-ins verstuurd' + (d.actief ? '.' : ' (gepauzeerd).')) + '</td></tr>';
+      var st = (ciStatus[r.status] || '') + '<div class="lay-sub">' + (r.ingevuld ? esc(r.ingevuld) : r.herinnerd ? 'herinnerd ' + esc(r.herinnerd) : '') + '</div>';
+      var opm = r.opmerking ? '<div class="cel-kort" data-lees-titel="Opmerking — ' + esc(r.naam) + ' (dag ' + r.moment + ')">' + esc(r.opmerking) + '</div>' : r.opvolgNotitie ? '<div class="lay-sub">Opgevolgd: ' + esc(r.opvolgNotitie) + '</div>' : '<span class="no-doc">-</span>';
+      return '<tr><td><strong>' + esc(r.naam) + '</strong><div class="lay-sub">' + esc(r.winkel || '-') + '</div></td><td>' + r.moment + '</td><td>' + esc(r.verstuurd) + '</td><td>' + st + '</td><td>' + (r.score == null ? '<span class="no-doc">-</span>' : exScore(Math.round(r.score))) + '</td>' + (kern ? '<td>' + ciKernCel(kern, r) + '</td>' : '') + '<td style="max-width:280px">' + opm + '</td><td style="white-space:nowrap">' + (r.status === 'laag' ? '<button class="btn bp bsm" data-ci-op="' + esc(r.id) + '">Opgevolgd</button> ' : '') + (r.ingevuld ? '<button class="btn bd bsm" data-ci-lees="' + esc(r.id) + '">Antwoorden</button> ' : '') + dosBtn(r.naam, r.email) + '</td></tr>';
+    }).join('') : '<tr><td colspan="8" class="leeg grijs">' + (d.rijen.length ? 'Niets in deze selectie.' : 'Nog geen check-ins verstuurd' + (d.actief ? '.' : ' (gepauzeerd).')) + '</td></tr>';
   }
+  var ciPlan = 'komend';
+  function ciRenderPlanning() {
+    var d = ciData;
+    var kom = d.nu.map(function (x) { return Object.assign({ wanneer: 'vandaag' + (x.zonderEmail ? ' — geen e-mail in Shiftbase' : ''), vandaag: true }, x); }).concat(d.komende.map(function (x) { return Object.assign({ wanneer: x.op + ' (over ' + x.over + ' d)' }, x); }));
+    var gm = d.gemist || [];
+    g('ci-kcount').textContent = kom.length; g('ci-gcount').textContent = gm.length;
+    document.querySelectorAll('#ci-plan .tb').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-cp') === ciPlan); });
+    g('ci-plan-komend').style.display = ciPlan === 'komend' ? '' : 'none'; g('ci-plan-gemist').style.display = ciPlan === 'gemist' ? '' : 'none'; g('ci-gbtn').style.display = ciPlan === 'gemist' && gm.length ? '' : 'none';
+    g('ci-kbody').innerHTML = kom.length ? kom.map(function (x) { return '<tr><td><strong>' + esc(x.naam) + '</strong><div class="lay-sub">' + esc(x.winkel || '-') + ' · in dienst ' + esc(x.indienst || '?') + '</div></td><td>Dag ' + x.moment + '</td><td>' + (x.vandaag ? '<span class="badge bg">vandaag</span>' : esc(x.wanneer)) + '</td><td>' + (x.zonderEmail ? '<span class="badge br">geen e-mail in Shiftbase</span>' : esc(x.email || '-')) + '</td></tr>'; }).join('') : '<tr><td colspan="4" class="leeg grijs">Niemand in de komende 14 dagen.</td></tr>';
+    g('ci-galle').checked = false;
+    g('ci-gbody').innerHTML = gm.length ? gm.map(function (x) { return '<tr><td>' + (x.zonderEmail ? '' : '<input type="checkbox" data-ci-g=\'' + esc(JSON.stringify({ medewerker_id: x.medewerker_id, moment: x.moment, naam: x.naam })) + '\'>') + '</td><td><strong>' + esc(x.naam) + '</strong><div class="lay-sub">' + esc(x.winkel || '-') + ' · in dienst ' + esc(x.indienst || '?') + '</div></td><td>Dag ' + x.moment + '</td><td>' + esc(x.op) + (x.geleden ? ' <span class="lay-sub">(' + x.geleden + ' d geleden)</span>' : ' <span class="lay-sub">(vandaag)</span>') + '</td><td>' + (x.zonderEmail ? '<span class="badge br">geen e-mail in Shiftbase</span>' : esc(x.email)) + '</td></tr>'; }).join('') : '<tr><td colspan="5" class="leeg grijs">Niemand gemist.</td></tr>';
+  }
+  document.addEventListener('click', function (e) {
+    var p = e.target.closest && e.target.closest('#ci-plan .tb'); if (p) { ciPlan = p.getAttribute('data-cp'); ciRenderPlanning(); return; }
+    var i = e.target.closest && e.target.closest('#ci-instel-knop'); if (i) { var bd = g('ci-instel-body'), open = bd.style.display === 'none'; bd.style.display = open ? '' : 'none'; i.textContent = open ? 'Vragen verbergen ▴' : 'Vragen aanpassen ▾'; return; }
+    var l = e.target.closest && e.target.closest('[data-ci-lees]'); if (!l || !ciData) return;
+    var r = ciData.rijen.filter(function (x) { return x.id === l.getAttribute('data-ci-lees'); })[0]; if (!r) return;
+    var a = r.antwoorden || {}, lb = r.labels || {};
+    var h = (ciData.vragenConfig || []).map(function (v) {
+      var x = a[v.key]; if (x == null || x === '') return '';
+      var w = v.type === 'schaal' ? x + ' / 5' : v.type === 'nps' ? x + ' / 10' : (lb[v.key] || x);
+      var laag = (v.type === 'schaal' && x <= ciData.laagGrens) || (v.opties || []).some(function (o) { return o[0] === x && o[3] === true; });
+      return '<div class="lees-v"><div class="lees-vr">' + esc(v.nl) + '</div><div class="lees-aw"' + (laag ? ' style="color:var(--rood)"' : '') + '>' + esc(String(w)) + '</div></div>';
+    }).join('');
+    if (r.opmerking && !(ciData.vragenConfig || []).some(function (v) { return v.type === 'tekst' && a[v.key]; })) h += '<div class="lees-v"><div class="lees-vr">Opmerking</div><div class="lees-tl">' + esc(r.opmerking) + '</div></div>';
+    if (r.opgevolgd) h += '<div class="lees-v"><div class="lees-vr">Opgevolgd</div><div class="lees-tl">' + esc(r.opgevolgd) + (r.opgevolgdDoor ? ' door ' + esc(r.opgevolgdDoor) : '') + (r.opvolgNotitie ? ': ' + esc(r.opvolgNotitie) : '') + '</div></div>';
+    leesVenster('Check-in dag ' + r.moment + ' — ' + r.naam + ' · ' + (r.winkel || '-') + ' · ' + r.ingevuld, h || '<div class="lay-sub">Geen antwoorden.</div>');
+  });
   document.addEventListener('click', async function (e) {
     var f = e.target.closest && e.target.closest('#ci-filter .tb'); if (f) { ciFilter = f.getAttribute('data-ci'); ciRender(); return; }
     var m = e.target.closest && e.target.closest('#ci-moment .tb'); if (m) { document.querySelectorAll('#ci-moment .tb').forEach(function (x) { x.classList.toggle('sel', x === m); }); return; }

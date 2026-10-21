@@ -414,30 +414,32 @@
   <div class="tc" id="tab-checkin">
     <div class="alert geel" id="ci-pauze" style="display:none"><strong>⏸ Check-in staat op pauze.</strong> Er gaan geen uitnodigingen uit en de check-in-pagina is gesloten. Hieronder zie je wie er vandaag en de komende 14 dagen een uitnodiging zou krijgen. Zet hem aan bij <em>Instellingen</em> onderaan zodra de vragen zijn doorgenomen.</div>
     <div class="stats" id="ci-kpi"></div>
+    <div class="sec" id="ci-op-sec">
+      <div class="sh"><div class="st">Op te volgen <span class="pill" id="ci-ocount">-</span></div><div class="lay-sub" style="color:rgba(255,255,255,.6)">Lage score of een alarm-antwoord. Bel even en zet daarna op Opgevolgd.</div></div>
+      <div id="ci-op" class="ci-kaarten"></div>
+    </div>
     <div class="sec">
       <div class="sh"><div class="st">Check-ins <span class="pill" id="ci-count">-</span></div>
-        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam, winkel..." oninput="flt('ci-body',this.value)"><div class="tbar" id="ci-filter"><button type="button" class="tb sel" data-ci="alle">Alle</button><button type="button" class="tb" data-ci="laag">Laag, open</button><button type="button" class="tb" data-ci="wacht">Wacht op antwoord</button></div><button class="btn bd bsm" id="ci-b6" onclick="laadCheckin(6)">6 mnd</button><button class="btn bd bsm" id="ci-b24" onclick="laadCheckin(24)">24 mnd</button><button class="btn bd bsm" onclick="ciExport()">⬇ CSV</button><button class="btn bp bsm" onclick="openCiModal(null)">Handmatig versturen</button></div></div>
-      <div class="tw"><table><thead id="ci-head"><tr><th>Verstuurd</th><th>Naam</th></tr></thead><tbody id="ci-body"></tbody></table></div>
-    </div>
-    <div class="fr" style="gap:24px;align-items:flex-start">
-      <div class="sec" style="flex:1"><div class="sh"><div class="st">Gemiddeld per vraag</div></div><div id="ci-pervraag" style="padding:10px 24px 14px"></div></div>
-      <div class="sec" style="flex:1"><div class="sh"><div class="st">Gemiddeld per winkel</div></div><div id="ci-perwinkel" style="padding:10px 24px 14px"></div></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam, winkel..." oninput="flt('ci-body',this.value)"><div class="tbar" id="ci-filter"><button type="button" class="tb sel" data-ci="alle">Alle</button><button type="button" class="tb" data-ci="laag">Op te volgen</button><button type="button" class="tb" data-ci="wacht">Wacht op antwoord</button><button type="button" class="tb" data-ci="ingevuld">Ingevuld</button></div><button class="btn bd bsm" id="ci-b6" onclick="laadCheckin(6)">6 mnd</button><button class="btn bd bsm" id="ci-b24" onclick="laadCheckin(24)">24 mnd</button><button class="btn bd bsm" onclick="ciExport()">⬇ CSV</button><button class="btn bp bsm" onclick="openCiModal(null)">Handmatig versturen</button></div></div>
+      <div class="tw"><table><thead id="ci-head"></thead><tbody id="ci-body"></tbody></table></div>
     </div>
     <div class="sec">
-      <div class="sh"><div class="st">Vandaag en komende 14 dagen <span class="pill" id="ci-kcount">-</span></div><div class="lay-sub" style="color:rgba(255,255,255,.6)">Op basis van de eerste werkdag (eerste contract in Shiftbase). Uitnodigen gebeurt automatisch rond 10:40.</div></div>
-      <div class="tw"><table><thead><tr><th>Naam</th><th>Winkel</th><th>In dienst</th><th>Moment</th><th>Wanneer</th><th>Email</th></tr></thead><tbody id="ci-kbody"></tbody></table></div>
+      <div class="sh"><div class="st">Planning</div><div class="hr2"><div class="tbar" id="ci-plan"><button type="button" class="tb sel" data-cp="komend">Komende 14 dagen <span class="pill" id="ci-kcount">-</span></button><button type="button" class="tb" data-cp="gemist">Gemist <span class="pill" id="ci-gcount">-</span></button></div><button class="btn bp bsm" id="ci-gbtn" onclick="ciGemistVerstuur()" style="display:none">Verstuur geselecteerde</button></div></div>
+      <div id="ci-plan-komend"><div class="lay-sub" style="padding:8px 24px 0">Op basis van de eerste werkdag (eerste contract in Shiftbase). Uitnodigen gaat automatisch rond 10:40.</div><div class="tw"><table><thead><tr><th>Medewerker</th><th>Moment</th><th>Wanneer</th><th>Email</th></tr></thead><tbody id="ci-kbody"></tbody></table></div></div>
+      <div id="ci-plan-gemist" style="display:none"><div class="lay-sub" style="padding:8px 24px 0">Dag 30/60 viel in de afgelopen 31 dagen, maar er ging nog geen uitnodiging uit (bijvoorbeeld omdat de check-in toen uit stond). Wie nog binnen 7 dagen na zijn moment zit, krijgt hem ook automatisch.</div><div class="tw"><table><thead><tr><th style="width:30px"><input type="checkbox" id="ci-galle" onclick="document.querySelectorAll('#ci-gbody input[data-ci-g]').forEach(function(c){c.checked=document.getElementById('ci-galle').checked})"></th><th>Medewerker</th><th>Moment</th><th>Was op</th><th>Email</th></tr></thead><tbody id="ci-gbody"></tbody></table></div></div>
     </div>
-    <div class="sec">
-      <div class="sh"><div class="st">Gemist: dag 30/60 in de afgelopen 31 dagen, nog niet uitgenodigd <span class="pill" id="ci-gcount">-</span></div><div class="hr2"><button class="btn bp bsm" id="ci-gbtn" onclick="ciGemistVerstuur()">Verstuur geselecteerde</button></div></div>
-      <div class="lay-sub" style="padding:8px 24px 0">Bijvoorbeeld omdat de check-in toen nog uit stond. Wie nog binnen 7 dagen na zijn moment zit, krijgt hem ook automatisch zodra de check-in aan staat.</div>
-      <div class="tw"><table><thead><tr><th style="width:30px"><input type="checkbox" id="ci-galle" onclick="document.querySelectorAll('#ci-gbody input[data-ci-g]').forEach(function(c){c.checked=document.getElementById('ci-galle').checked})"></th><th>Naam</th><th>Winkel</th><th>In dienst</th><th>Moment</th><th>Was op</th><th>Email</th></tr></thead><tbody id="ci-gbody"></tbody></table></div>
+    <div class="ci-grid">
+      <div class="sec"><div class="sh"><div class="st">Gemiddeld per vraag</div></div><div id="ci-pervraag" style="padding:12px 24px 16px"></div></div>
+      <div class="sec"><div class="sh"><div class="st">Gemiddeld per winkel</div></div><div id="ci-perwinkel" style="padding:12px 24px 16px"></div></div>
     </div>
     <div class="sec" id="ci-instel">
       <div class="sh"><div class="st">Instellingen: aan/uit en vragen</div>
-        <div class="hr2"><span id="ci-status" class="badge boat">-</span><button class="btn bsm bp" id="ci-toggle" onclick="ciToggle()">Aanzetten</button><button class="btn bd bsm" onclick="ciVoorbeeld('NL')">Voorbeeld NL</button><button class="btn bd bsm" onclick="ciVoorbeeld('EN')">Voorbeeld EN</button></div></div>
+        <div class="hr2"><span id="ci-status" class="badge boat">-</span><button class="btn bsm bp" id="ci-toggle" onclick="ciToggle()">Aanzetten</button><button class="btn bd bsm" onclick="ciVoorbeeld('NL')">Voorbeeld NL</button><button class="btn bd bsm" onclick="ciVoorbeeld('EN')">Voorbeeld EN</button><button class="btn bd bsm" type="button" id="ci-instel-knop">Vragen aanpassen ▾</button></div></div>
+      <div id="ci-instel-body" style="display:none">
       <div style="padding:14px 24px 6px" class="lay-sub">Pas de vragen aan (volgorde, tekst NL/EN, type, opties). Een check-in is <strong>laag</strong> als een schaalvraag met <strong id="ci-grens">2</strong> of lager is beantwoord, of als iemand een antwoord kiest dat met <code>| !</code> is gemarkeerd. Dan krijgen jullie direct een mail en staat er een taak op het Overzicht. Eerder ingevulde check-ins houden hun eigen antwoorden.</div>
       <div id="ci-vragen" style="padding:0 24px 8px"></div>
       <div style="padding:6px 24px 18px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn bd bsm" onclick="ciEditor.toe()">+ Vraag toevoegen</button><button class="btn bp bsm" onclick="ciVragenOpslaan()">Vragen opslaan</button><button class="btn bd bsm" onclick="ciVragenHerstel()">Standaardlijst terugzetten</button><span class="lay-sub" id="ci-vragen-sub" style="align-self:center"></span></div>
+    </div>
     </div>
     <div class="alert grijs"><strong>Zo werkt het:</strong> op dag 30 en dag 60 na de eerste werkdag krijgt een nieuwe medewerker automatisch een tweetalige mail (NL/EN) met een persoonlijke link, en na 5 dagen één herinnering. De check-in is niet anoniem, maar de Store Manager ziet de antwoorden niet. Wie op het moment van aanzetten al voorbij dag 37 of dag 67 is, krijgt er geen; die kun je handmatig versturen.</div>
   </div>

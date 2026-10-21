@@ -314,3 +314,19 @@ td .lay-sub.cel-kort{max-width:200px}
 .mto-vb-l{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--grijs)}.mto-vb-r{font-size:1.6rem;font-weight:700;color:var(--donker);margin:2px 0}
 .mto-sc{width:100%;height:auto;background:#fff}.mto-sc-kop{font-weight:700;font-size:.85rem;margin-bottom:4px}
 .mto-sc-g{stroke:#eee7e2;stroke-width:1}.mto-sc-t{font-size:9px;fill:#888078}.mto-sc-l{font-size:9px;fill:#333d3a}.mto-sc-p{fill:#009f4b;fill-opacity:.85}.mto-sc-sla{stroke:#e8824a;stroke-dasharray:4 3;stroke-width:1}
+
+/* ---------- Check-in 30/60 (v0.23.1) ---------- */
+#ci-op-sec.ci-leeg .sh{opacity:.85}
+.ci-kaarten{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;padding:16px 24px 18px}
+.ci-leeg .ci-kaarten{display:block;padding:0}
+.ci-kaart{border:1px solid var(--lijn);border-left:4px solid var(--rood);border-radius:10px;padding:14px 16px;background:#fff}
+.ci-kaart-t{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ci-redenen{margin:10px 0 0;padding-left:18px;font-size:.84rem;color:var(--donker)}.ci-redenen li{margin-bottom:3px}
+.ci-citaat{margin-top:8px;padding:8px 12px;background:var(--zand);border-radius:6px;font-size:.84rem;font-style:italic}
+.ci-kaart-a{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.ci-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}.ci-grid>.sec{margin-bottom:22px}
+.ci-bar{display:flex;gap:10px;align-items:center;padding:5px 0;font-size:.85rem}
+.ci-bar-l{flex:1.3;min-width:0}.ci-bar-b{flex:1;background:#f3eeea;border-radius:3px;height:10px}.ci-bar-b>div{height:10px;border-radius:3px}
+.ci-bar strong{min-width:28px;text-align:right}.ci-bar .lay-sub{min-width:30px}
+#ci-plan .tb .pill{margin-left:4px}
+@media (max-width:1000px){.ci-grid{grid-template-columns:1fr}}
