@@ -273,43 +273,84 @@
 
   window.laadOverzicht = async function () {
     laadTaken(false);
-    g('lo').classList.add('show'); g('lo-txt').textContent = 'Overzicht laden...';
     var d = await api('/api/overzicht');
-    g('lo').classList.remove('show');
-    if (!d.success) { toast('Overzicht: ' + d.bericht, 'err'); return; }
+    if (!d.success) { toast('Overzicht: ' + d.bericht, 'err'); g('ov-pijp').innerHTML = '<div class="leeg grijs" style="padding:18px 24px">' + esc(d.bericht) + '</div>'; return; }
     ovData = d;
-    var s = d.stats;
-    g('s-lt').textContent = s.loonTotaal; g('s-lok').textContent = s.loonOntvangen; g('s-lno').textContent = s.loonTotaal - s.loonOntvangen; g('s-ot').textContent = s.ontslagTotaal;
-    ['instroom', 'indienst', 'dossier', 'uitstroom'].forEach(function (k) {
-      var chip = document.querySelector('.lay-chip[data-chip="' + k + '"]'), n = d.werklijst[k] || 0;
-      chip.querySelector('.lay-tel').textContent = n;
-      chip.classList.toggle('lay-open-acties', n > 0); chip.classList.toggle('lay-klaar', n === 0);
-    });
-    g('lay-comp').textContent = 'bijgewerkt ' + d.bijgewerkt;
-    document.querySelectorAll('.lay-chip').forEach(function (c) { c.onclick = function () { flt('ov-body', c.getAttribute('data-doel')); }; });
-
-    // Aanzeg-alerts
-    var a = d.aanzegAlerts || [];
-    g('aanzeg-sec').innerHTML = a.length ? '<div class="alert geel"><strong>Aanzegtermijn (art. 7:668 BW):</strong> ' + a.length + ' contract(en) lopen binnen 42 dagen af zonder ondertekende aanzegging/bevestiging: ' +
-      a.map(function (x) { return '<strong>' + esc(x.naam) + '</strong> (' + esc(x.bedrijf || '-') + ', ' + esc(x.einddatum) + ', nog ' + x.dagen + ' dagen' + (isVerz(x.status) ? ', verstuurd' : ', <span style="color:#c0392b">niet verstuurd</span>') + ')' + (isVerz(x.status) ? '' : ' <button class="btn bp bsm" data-om-aanzeg="1" data-naam="' + esc(x.naam) + '" data-email="' + esc(x.email || '') + '" data-bv="' + esc(x.bedrijf || '') + '" data-eind="' + esc(x.einddatum) + '">Aanzegging</button>'); }).join(' · ') + '</div>' : '';
-
-    var rows = [];
-    d.open.loonheffing.forEach(function (r) {
-      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bg">Loonheffing</span></td><td>' + esc(r.email) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>');
-    });
-    d.open.overplaatsing.forEach(function (r) {
-      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bo">' + esc(r.type || 'Overplaatsing') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.huidigeBV) + '</span> → <span class="badge boat">' + esc(r.nieuweBV) + '</span></td><td>' + esc(r.ingangsdatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ondertekend', 'Aanvinken') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>-</td><td>' + opBtn(r) + ' ' + dosBtn(r.naam, r.email) + '</td></tr>');
-    });
-    var somK = { '1e Sommatie': '#009f4b', '2e Sommatie': '#e8824a', 'Finale Sommatie': '#c0392b', 'Ontslag op Staande Voet': '#333d3a', 'Oproepbrief': '#2980b9' };
-    d.open.sommatie.forEach(function (r) {
-      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge" style="background:' + (somK[r.type] || '#333d3a') + ';color:#fff">' + esc(r.type) + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.datumAfspraak || '-') + '</td><td>' + bSent(r.verzenddatum ? 'Verstuurd ' + r.verzenddatum : '') + '</td><td><span class="badge boat">' + esc(r.status || '-') + '</span></td><td>-</td><td>' + bTog('som-verwerkt', r.verwerkt, r.rij, r.naam) + '</td><td>' + smBriefBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('sommatie', r.rij, r.naam) + '</td></tr>');
-    });
-    d.open.ontslag.forEach(function (r) {
-      rows.push('<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span> ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bArch('ontslag', r.rij, r.naam) + '</td></tr>');
-    });
-    g('ov-open-count').textContent = rows.length + ' open';
-    g('ov-body').innerHTML = rows.length ? rows.join('') : '<tr><td colspan="10" class="leeg">✓ Alle taken verwerkt — geen open dossiers</td></tr>';
+    renderOvDelen();
   };
+  // Overzicht v2 (v0.21): week-tijdlijn + dossier-pijplijn (tegels en takenlijst: renderTaken)
+  window.renderOvDelen = function () { renderWeek(); renderPijp(); renderKop(); if (tkData) renderTegels(tkZichtbaar()); };
+  function ovDatum(s) { var m = String(s || '').match(/(\d{1,2})-(\d{1,2})-(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; }
+  function dagenSinds(s) { var d = ovDatum(s); if (!d) return null; var n = new Date(); n.setHours(0, 0, 0, 0); return Math.round((n - d) / 864e5); }
+  function inWinkel(naam, email, winkel) { var w = winkelFilter(); if (!w) return true; if (winkel) return normN(winkel) === normN(w); return hoortBijWinkel(naam, email, w); }
+  var WEEK_SOORT = { start: ['Start', 'bg'], laatste: ['Laatste werkdag', 'bdk'], proeftijd: ['Proeftijd eindigt', 'bb'], contract: ['Contract eindigt', 'bo'] };
+  function renderWeek() {
+    var el = g('ov-week'); if (!el || !ovData) return;
+    var items = (ovData.week || []).filter(function (x) { return inWinkel(x.naam, x.email, x.winkel); });
+    if (!items.length) { el.innerHTML = '<div class="leeg grijs" style="padding:18px 20px">Rustige week: geen starters, vertrekkers of aflopende proeftijden/contracten.</div>'; return; }
+    var vandaag = ovData.vandaag, dagen = {}, volgorde = [];
+    items.forEach(function (x) { if (!dagen[x.datum]) { dagen[x.datum] = []; volgorde.push(x.datum); } dagen[x.datum].push(x); });
+    var dn = ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'];
+    var v0 = new Date(+vandaag.slice(0, 4), +vandaag.slice(5, 7) - 1, +vandaag.slice(8, 10));
+    el.innerHTML = volgorde.map(function (iso) {
+      var p = iso.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]), verschil = Math.round((d - v0) / 864e5);
+      var kop = verschil === 0 ? 'Vandaag' : verschil === 1 ? 'Morgen' : dn[d.getDay()] + ' ' + p[2] + '-' + p[1];
+      return '<div class="ov-dag"><div class="ov-dag-kop' + (verschil === 0 ? ' nu' : '') + '">' + kop + '</div>' + dagen[iso].map(function (x) {
+        var s = WEEK_SOORT[x.soort] || [x.soort, 'boat'];
+        return '<div class="ov-wk"><span class="badge ' + s[1] + '">' + s[0] + '</span><button class="ov-wk-naam" data-dos-naam="' + esc(x.naam) + '" data-dos-email="' + esc(x.email || '') + '">' + esc(x.naam) + '</button><span class="ov-wk-w">' + esc(x.winkel || '') + '</span></div>';
+      }).join('') + '</div>';
+    }).join('');
+  }
+  // Pijplijn: per proces de stappen, met kaarten (naam, dagen in deze stap, één hoofdactie + ⋯)
+  function meerMenu(knoppen) { knoppen = knoppen.filter(Boolean); return knoppen.length ? '<span class="meer"><button class="btn bd bsm" data-meer="1" title="Meer acties">⋯</button><div class="meer-menu">' + knoppen.join('') + '</div></span>' : ''; }
+  function kaart(r, sub, dagen, hoofd, meer, wachtStap) {
+    var kl = dagen == null ? '' : wachtStap && dagen > 14 ? 'br' : wachtStap && dagen > 7 ? 'bo' : 'boat';
+    return '<div class="ov-kaart' + (kl === 'br' ? ' laat' : kl === 'bo' ? ' traag' : '') + '"><div class="ov-kaart-t"><button class="ov-kaart-naam" data-dos-naam="' + esc(r.naam) + '" data-dos-email="' + esc(r.email || '') + '">' + esc(r.naam) + '</button>'
+      + (dagen != null ? '<span class="badge ' + kl + '" title="Dagen sinds versturen">' + dagen + ' d</span>' : '') + '</div><div class="ov-kaart-s">' + sub + '</div><div class="ov-kaart-a">' + (hoofd || '') + meerMenu(meer) + '</div></div>';
+  }
+  function renderPijp() {
+    var el = g('ov-pijp'); if (!el || !ovData) return;
+    var o = ovData.open, f = function (lijst) { return (lijst || []).filter(function (r) { return inWinkel(r.naam, r.email); }); };
+    var proc = [];
+    var loon = f(o.loonheffing);
+    proc.push({ naam: 'Instroom · loonheffing', stappen: [
+      { naam: 'Wacht op formulier', items: loon.filter(function (r) { return r.ontvangen !== 'Ja'; }).map(function (r) { return kaart(r, 'deadline ' + esc(r.deadline || '-') + ' · ' + (r.aantalHer || 0) + 'x herinnerd', dagenSinds(r.status), lmBtn(r).replace('>Mail<', '>Herinner<'), [bUp('loonheffing', r, false), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)], true); }) },
+      { naam: 'Klaar voor salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && !r.salaris; }).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst'), dagenSinds(r.status), bSal('loonheffing', r), [bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam), lmBtn(r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)]); }) },
+      { naam: 'Bij salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && r.salaris; }).map(function (r) { return kaart(r, 'verstuurd ' + esc(String(r.salaris).split(' ')[0]), null, bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam, 'Verwerkt', 'Verwerkt ✓'), [bSal('loonheffing', r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)]); }) }
+    ] });
+    var ont = f(o.ontslag), tp = function (r) { return (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + ' · ' + esc(r.bedrijf || '-') + ' · einde ' + esc(r.einddatum || '-'); };
+    proc.push({ naam: 'Uitstroom', stappen: [
+      { naam: 'Wacht op handtekening', items: ont.filter(function (r) { return r.ondertekend !== 'Ja'; }).map(function (r) { return kaart(r, tp(r), dagenSinds(r.status), omBtn(r).replace('>Mail<', '>Herinner<'), [bUp('ontslag', r, false), bDoc(r.briefUrl, '⬇ Brief'), dosBtn(r.naam, r.email), bArch('ontslag', r.rij, r.naam)], true); }) },
+      { naam: 'Klaar voor salaris', items: ont.filter(function (r) { return r.ondertekend === 'Ja' && !r.salaris; }).map(function (r) { return kaart(r, tp(r), dagenSinds(r.status), bSal('ontslag', r), [bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam), bDoc(r.briefUrl, '⬇ Brief'), dosBtn(r.naam, r.email), bArch('ontslag', r.rij, r.naam)]); }) },
+      { naam: 'Bij salaris', items: ont.filter(function (r) { return r.ondertekend === 'Ja' && r.salaris; }).map(function (r) { return kaart(r, tp(r), null, bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam, 'Verwerkt', 'Verwerkt ✓'), [bSal('ontslag', r), dosBtn(r.naam, r.email), bArch('ontslag', r.rij, r.naam)]); }) }
+    ] });
+    var opl = f(o.overplaatsing), ot = function (r) { return esc(r.huidigeBV || '?') + ' → ' + esc(r.nieuweBV || '?') + ' · per ' + esc(r.ingangsdatum || '-'); };
+    proc.push({ naam: 'Overplaatsing', stappen: [
+      { naam: 'Verstuurd', items: opl.filter(function (r) { return !r.salaris; }).map(function (r) { return kaart(r, ot(r), dagenSinds(r.status), bSal('overplaatsing', r), [opBtn(r), dosBtn(r.naam, r.email), bArch('overplaatsing', r.rij, r.naam)]); }) },
+      { naam: 'Bij salaris', items: opl.filter(function (r) { return !!r.salaris; }).map(function (r) { return kaart(r, ot(r), null, bArch('overplaatsing', r.rij, r.naam).replace('>🗑<', '>Archiveren<'), [dosBtn(r.naam, r.email)]); }) }
+    ] });
+    var som = f(o.sommatie);
+    proc.push({ naam: 'Sommaties', stappen: [
+      { naam: 'Lopend', items: som.map(function (r) { return kaart(r, esc(r.type) + (r.datumAfspraak ? ' · gesprek ' + esc(r.datumAfspraak) : ''), dagenSinds(r.verzenddatum), bTog('som-verwerkt', r.verwerkt, r.rij, r.naam, 'Verwerkt', 'Afgerond ✓'), [smBriefBtn(r), dosBtn(r.naam, r.email), bArch('sommatie', r.rij, r.naam)], true); }) }
+    ] });
+    var totaal = 0, h = '';
+    proc.forEach(function (p) {
+      var n = p.stappen.reduce(function (s, st) { return s + st.items.length; }, 0); totaal += n; if (!n) return;
+      h += '<div class="ov-proc"><div class="ov-proc-naam">' + esc(p.naam) + ' <span class="pill">' + n + '</span></div><div class="ov-stappen" style="grid-template-columns:repeat(' + p.stappen.length + ',minmax(0,1fr))">'
+        + p.stappen.map(function (st, i) { return '<div class="ov-stap"><div class="ov-stap-kop"><span class="ov-stap-nr">' + (i + 1) + '</span>' + esc(st.naam) + ' <span class="ov-stap-n">' + st.items.length + '</span></div>' + (st.items.join('') || '<div class="ov-leeg">—</div>') + '</div>'; }).join('') + '</div></div>';
+    });
+    g('ov-open-count').textContent = totaal;
+    el.innerHTML = h || '<div class="leeg" style="padding:18px 24px">✓ Geen lopende dossiers</div>';
+  }
+  function renderKop() {
+    if (!g('ov-groet')) return;
+    var u = new Date().getHours(), groet = u < 12 ? 'Goedemorgen' : u < 18 ? 'Goedemiddag' : 'Goedenavond';
+    g('ov-groet').textContent = groet + (ikNaam ? ', ' + String(ikNaam).split(' ')[0] : '');
+    var delen = [];
+    if (tkData) { var a = tkTellen(); delen.push('<strong>' + a.rood + '</strong> ' + (a.rood === 1 ? 'taak' : 'taken') + ' voor vandaag', '<strong>' + a.oranje + '</strong> deze week'); }
+    if (ovData) { var w = (ovData.week || []).filter(function (x) { return inWinkel(x.naam, x.email, x.winkel); }); var st = w.filter(function (x) { return x.soort === 'start'; }).length, la = w.filter(function (x) { return x.soort === 'laatste'; }).length; delen.push(st + ' starter' + (st === 1 ? '' : 's') + ' en ' + la + ' vertrekker' + (la === 1 ? '' : 's') + ' deze week'); }
+    g('ov-samen').innerHTML = delen.join(' · ') || 'Laden…';
+  }
 
   window.flt = function (id, q) {
     q = String(q || '').toLowerCase();
@@ -2032,17 +2073,74 @@
     if (tkData) { var idx = tkData.taken.findIndex(function (x) { return x.sleutel === sleutel; }); if (idx > -1) { tkData.aantallen[tkData.taken[idx].urgentie]--; tkData.taken.splice(idx, 1); if (verborgen) tkData.verborgen = (tkData.verborgen || 0) + 1; } }
       if (rij) { rij.style.transition = 'opacity .25s, max-height .3s'; rij.style.overflow = 'hidden'; rij.style.maxHeight = rij.offsetHeight + 'px'; requestAnimationFrame(function () { rij.style.opacity = '0'; rij.style.maxHeight = '0'; rij.style.paddingTop = '0'; rij.style.paddingBottom = '0'; }); setTimeout(function () { renderTaken(); }, 320); }
   }
+  // Onderwerp (tegel) per taak — op basis van de bron van de taak
+  var TK_THEMA = [
+    { k: 'contract', l: 'Contracten & verlengingen', i: '📄' },
+    { k: 'proeftijd', l: 'Proeftijd', i: '⏱' },
+    { k: 'instroom', l: 'Instroom', i: '👋' },
+    { k: 'mensen', l: 'Mensen & verzuim', i: '💬' },
+    { k: 'uitstroom', l: 'Uitstroom & dossiers', i: '📦' },
+    { k: 'overig', l: 'Training & beheer', i: '⚙' }
+  ];
+  var tkThemaSel = null, tkOpenGroep = {};
+  function tkThemaVan(t) {
+    var b = t.bron || '', s = t.sleutel || '';
+    if (b === 'contractketen') return /^contractketen\|pr/.test(s) ? 'proeftijd' : 'contract';
+    if (b === 'verlengingen' || b === 'aanzegtermijnen' || b === 'oproepaanbod') return 'contract';
+    if (b === 'nieuwe-medewerkers' || b === 'loonheffing-herinneringen' || b === 'korting-herinneringen' || (b === 'checklist' && /^Onboarding/.test(t.titel || ''))) return 'instroom';
+    if (b === 'checkin' || b === 'verzuim' || b === 'gesprek' || b === 'stille-afwezigen' || b === 'weekend-beschikbaarheid' || b === 'jeugd') return 'mensen';
+    if (b === 'ontslag-herinneringen' || b === 'dossier' || b === 'checklist') return 'uitstroom';
+    return 'overig';
+  }
+  window.tkThema = function (k) { tkThemaSel = (!k || tkThemaSel === k) ? null : k; renderTaken(); var s = g('tk-sec'); if (tkThemaSel && s) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+  function tkZichtbaar() { var d = tkData, w = winkelFilter(); return d ? d.taken.filter(function (t) { return !w || !t.winkel || normN(t.winkel) === normN(w) || hoortBijWinkel(t.naam, t.email, w); }) : []; }
+  function tkTellen() { var a = { rood: 0, oranje: 0, grijs: 0 }; tkZichtbaar().forEach(function (t) { a[t.urgentie] = (a[t.urgentie] || 0) + 1; }); return a; }
+  function tkNaam(t) { return t.naam || String(t.sub || '').split(' · ')[0]; }
+  var RANG = { rood: 0, oranje: 1, grijs: 2 };
+  function renderTegels(alle) {
+    var el = g('ov-tegels'); if (!el) return;
+    el.innerHTML = TK_THEMA.map(function (th) {
+      var lijst = alle.filter(function (t) { return tkThemaVan(t) === th.k; }).sort(function (a, b) { return RANG[a.urgentie] - RANG[b.urgentie]; });
+      if (th.k === 'overig' && !lijst.length) return '';
+      var rood = lijst.filter(function (t) { return t.urgentie === 'rood'; }).length, eerste = lijst[0];
+      // lopende dossiers (pijplijn) tellen mee in het onderschrift van Instroom en Uitstroom
+      var dos = 0, f = function (l) { return (l || []).filter(function (r) { return inWinkel(r.naam, r.email); }).length; };
+      if (ovData && th.k === 'instroom') dos = f(ovData.open.loonheffing);
+      if (ovData && th.k === 'uitstroom') dos = f(ovData.open.ontslag) + f(ovData.open.overplaatsing) + f(ovData.open.sommatie);
+      return '<button type="button" class="ov-tegel' + (rood ? ' heet' : lijst.length ? '' : dos ? ' rustig dos' : ' rustig') + (tkThemaSel === th.k ? ' sel' : '') + '" onclick="tkThema(\'' + th.k + '\')">'
+        + '<div class="ov-tegel-kop"><span class="ov-tegel-i">' + th.i + '</span>' + esc(th.l) + '</div>'
+        + '<div class="ov-tegel-n">' + lijst.length + (rood ? '<span class="ov-tegel-rood">' + rood + ' urgent</span>' : '') + '</div>'
+        + '<div class="ov-tegel-s">' + (eerste ? esc(tkNaam(eerste)) + ' — ' + esc(String(eerste.titel).replace(/ — .*/, '')) : (dos ? '' : 'Geen taken')) + (dos ? (eerste ? ' · ' : '') + dos + ' lopende dossier' + (dos === 1 ? '' : 's') : '') + '</div></button>';
+    }).join('');
+  }
+  function tkRij(t) {
+    var meer = [tkKnop(t.extra, t)];
+    if (t.naam && !(t.actie && t.actie.soort === 'dossier') && !(t.extra && t.extra.soort === 'dossier')) meer.push(dosBtn(t.naam, t.email));
+    if (t.afhandelbaar) (t.afhandelOpties || [{ label: 'Afgehandeld (7 dagen verbergen)', dagen: 7 }]).forEach(function (o) { meer.push('<button class="btn bd bsm" data-tk-af="' + esc(t.sleutel) + '" data-tk-dagen="' + (o.dagen || 7) + '" data-tk-opm="' + esc(o.opmerking || '') + '">✓ ' + esc(o.label) + '</button>'); });
+    return '<div class="tk ' + t.urgentie + '" title="' + esc((t.bron || '') + (t.stand ? ' · stand ' + t.stand : '')) + '"><span class="tk-dot"></span><div class="tk-t"><strong>' + esc(t.titel) + '</strong><span title="' + esc(t.sub || '') + '">' + esc(t.sub || '') + '</span></div><div class="tk-a">' + tkKnop(t.actie, t) + meerMenu(meer) + '</div></div>';
+  }
   function renderTaken() {
     var d = tkData, el = g('tk-lijst'); if (!d || !el) return;
-    var w = winkelFilter();
-    var lijst = d.taken.filter(function (t) { return (tkFilter === 'alle' || t.urgentie === tkFilter) && (!w || !t.winkel || normN(t.winkel) === normN(w) || hoortBijWinkel(t.naam, t.email, w)); });
+    var alle = tkZichtbaar();
+    renderTegels(alle); renderKop();
+    var lijst = alle.filter(function (t) { return (tkFilter === 'alle' || t.urgentie === tkFilter) && (!tkThemaSel || tkThemaVan(t) === tkThemaSel); });
     document.querySelectorAll('#tk-filter .tb').forEach(function (b) { b.classList.toggle('sel', b.getAttribute('data-tk') === tkFilter); });
-    g('tk-count').textContent = d.aantallen.rood + ' nu · ' + d.aantallen.oranje + ' deze week · ' + d.aantallen.grijs + ' info';
-    el.innerHTML = lijst.length ? lijst.map(function (t) {
-      return '<div class="tk ' + t.urgentie + '"><div class="tk-t"><strong>' + esc(t.titel) + '</strong><span>' + esc(t.sub || '') + '</span></div><div class="tk-a">' + tkKnop(t.actie, t) + tkKnop(t.extra, t) + (t.naam && !(t.actie && t.actie.soort === 'dossier') && !(t.extra && t.extra.soort === 'dossier') ? dosBtn(t.naam, t.email) : '') + (t.afhandelbaar ? (t.afhandelOpties ? '<span class="meer"><button class="btn bd bsm" data-meer="1">✓ Afgehandeld ▾</button><div class="meer-menu">' + t.afhandelOpties.map(function (o) { return '<button class="btn bd bsm" data-tk-af="' + esc(t.sleutel) + '" data-tk-dagen="' + (o.dagen || 7) + '" data-tk-opm="' + esc(o.opmerking || '') + '">' + esc(o.label) + '</button>'; }).join('') + '</div></span>' : '<button class="btn bd bsm" data-tk-af="' + esc(t.sleutel) + '" data-tk-dagen="7" title="Verbergen tot de volgende check (7 dagen)">✓ Afgehandeld</button>') : '') + '<span class="tk-bron">' + esc(t.bron) + (t.stand ? ' · ' + esc(t.stand) : '') + '</span></div></div>';
-    }).join('') : '<div class="leeg grijs">✓ Niets te doen' + (tkFilter !== 'alle' || w ? ' in deze selectie' : '') + '</div>';
+    var th = TK_THEMA.filter(function (x) { return x.k === tkThemaSel; })[0];
+    g('tk-titel').textContent = th ? th.l : 'Te doen'; g('tk-thema-wis').style.display = th ? '' : 'none';
+    g('tk-count').textContent = lijst.length;
+    var h = '';
+    TK_THEMA.forEach(function (tt) {
+      var groep = lijst.filter(function (t) { return tkThemaVan(t) === tt.k; }).sort(function (a, b) { return RANG[a.urgentie] - RANG[b.urgentie]; });
+      if (!groep.length) return;
+      var max = th ? groep.length : 4, open = tkOpenGroep[tt.k];
+      if (!th) h += '<div class="tk-groep">' + tt.i + ' ' + esc(tt.l) + ' <span class="pill">' + groep.length + '</span></div>';
+      h += groep.slice(0, open ? groep.length : max).map(tkRij).join('');
+      if (groep.length > max) h += '<button type="button" class="tk-meer" data-tk-groep="' + tt.k + '">' + (open ? 'Minder tonen' : 'Toon alle ' + groep.length + ' (' + (groep.length - max) + ' meer)') + '</button>';
+    });
+    el.innerHTML = h || '<div class="leeg grijs">✓ Niets te doen' + (tkFilter !== 'alle' || tkThemaSel || winkelFilter() ? ' in deze selectie' : '') + '</div>';
     g('tk-voet').textContent = (d.live ? 'Verse stand uit de checks. ' : 'Stand van de laatste automatische checks (↻ Verse stand draait ze nu). ') + (d.verborgen ? d.verborgen + ' afgehandeld verborgen. ' : '') + (d.fouten && d.fouten.length ? 'Fouten: ' + d.fouten.join('; ') : '');
   }
+  document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('button[data-tk-groep]'); if (!b) return; var k = b.getAttribute('data-tk-groep'); tkOpenGroep[k] = !tkOpenGroep[k]; renderTaken(); });
   document.addEventListener('click', async function (e) {
     var f = e.target.closest && e.target.closest('#tk-filter .tb'); if (f) { tkFilter = f.getAttribute('data-tk'); renderTaken(); return; }
     var af = e.target.closest && e.target.closest('button[data-tk-af]');
@@ -2174,6 +2272,7 @@
       });
     });
     if (tkData) renderTaken();
+    if (ovData && window.renderOvDelen) renderOvDelen();
   }
   document.addEventListener('change', function (e) { if (e.target && e.target.id === 'winkel-filter') { try { localStorage.setItem('hr-winkel', e.target.value); } catch (err) { /* noop */ } pasWinkelFilterToe(); } });
 

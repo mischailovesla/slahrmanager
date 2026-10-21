@@ -42,38 +42,27 @@
 
   <!-- OVERZICHT -->
   <div class="tc active" id="tab-overview">
-    <div class="sec" id="tk-sec">
-      <div class="sh"><div class="st">Vandaag te doen <span class="pill" id="tk-count">-</span></div>
-        <div class="hr2"><div class="tbar" id="tk-filter"><button type="button" class="tb sel" data-tk="alle">Alles</button><button type="button" class="tb" data-tk="rood">Nu</button><button type="button" class="tb" data-tk="oranje">Deze week</button><button type="button" class="tb" data-tk="grijs">Ter info</button></div><button class="btn bd bsm" onclick="laadTaken(true)" title="Draait de dagelijkse checks opnieuw (Shiftbase) in plaats van de laatste stand te tonen">↻ Verse stand</button></div></div>
-      <div id="tk-lijst" class="tk-lijst"><div class="leeg grijs">Taken laden…</div></div>
-      <div id="tk-voet" class="lay-sub" style="padding:8px 24px 14px"></div>
+    <div class="ov-kop">
+      <div><div class="ov-groet" id="ov-groet">Overzicht</div><div class="ov-samen" id="ov-samen">Laden…</div></div>
+      <div class="ov-kop-r"><div class="tbar" id="tk-filter"><button type="button" class="tb sel" data-tk="alle">Alles</button><button type="button" class="tb" data-tk="rood">Nu</button><button type="button" class="tb" data-tk="oranje">Deze week</button><button type="button" class="tb" data-tk="grijs">Ter info</button></div><button class="btn bd bsm" onclick="laadTaken(true)" title="Draait de dagelijkse checks opnieuw (Shiftbase) in plaats van de laatste stand te tonen">↻ Verse stand</button><button class="btn bd bsm ov-info" onclick="document.getElementById('ov-uitleg').classList.toggle('open')" title="Hoe werkt dit overzicht?">ⓘ</button></div>
     </div>
-
-    <div class="lay-wl" id="lay-wl">
-      <span class="lay-wl-titel">Openstaande acties</span>
-      <button class="lay-chip" data-chip="instroom" data-doel="loonheffing">Instroom <span class="lay-tel">-</span></button>
-      <button class="lay-chip" data-chip="indienst" data-doel="overplaatsing">In dienst <span class="lay-tel">-</span></button>
-      <button class="lay-chip" data-chip="dossier" data-doel="sommatie">Dossier <span class="lay-tel">-</span></button>
-      <button class="lay-chip" data-chip="uitstroom" data-doel="ontslag">Uitstroom <span class="lay-tel">-</span></button>
-      <div class="lay-comp" id="lay-comp"></div>
+    <div class="alert grijs ov-uitleg" id="ov-uitleg"><strong>Zo werkt het:</strong> de <em>tegels</em> tellen per onderwerp wat er openstaat (rood = vandaag/te laat). Klik op een tegel om alleen die taken te zien. Elke taak heeft één groene knop die direct het juiste scherm opent; de rest zit onder ⋯. Rechts staat wie er deze week start, stopt of een proeftijd/contract heeft dat afloopt. Onderaan zie je per proces in welke stap de lopende dossiers staan. De winkelkeuze rechtsboven filtert alles.</div>
+    <div class="ov-tegels" id="ov-tegels"></div>
+    <div class="ov-grid">
+      <div class="sec ov-taken" id="tk-sec">
+        <div class="sh"><div class="st"><span id="tk-titel">Te doen</span> <span class="pill" id="tk-count">-</span></div><div class="hr2"><button class="btn bd bsm" id="tk-thema-wis" style="display:none" onclick="tkThema(null)">× Alle onderwerpen</button></div></div>
+        <div id="tk-lijst" class="tk-lijst"><div class="leeg grijs">Taken laden…</div></div>
+        <div id="tk-voet" class="lay-sub" style="padding:8px 24px 14px"></div>
+      </div>
+      <div class="sec ov-week">
+        <div class="sh"><div class="st">Deze week</div></div>
+        <div id="ov-week"><div class="leeg grijs" style="padding:18px 20px">Laden…</div></div>
+      </div>
     </div>
-
-    <div class="stats">
-      <div class="card cg"><div class="si sig">📄</div><div><div class="sv" id="s-lt">-</div><div class="sl">Loonheffingsdossiers</div></div></div>
-      <div class="card cd"><div class="si sid">✓</div><div><div class="sv" id="s-lok">-</div><div class="sl">Formulieren ontvangen</div></div></div>
-      <div class="card cw"><div class="si siw">⏳</div><div><div class="sv" id="s-lno">-</div><div class="sl">Nog niet ontvangen</div></div></div>
-      <div class="card co"><div class="si sio">▤</div><div><div class="sv" id="s-ot">-</div><div class="sl">Ontslagzaken</div></div></div>
-    </div>
-
-    <div id="aanzeg-sec"></div>
-
     <div class="sec">
-      <div class="sh"><div class="st">Actieve dossiers <span class="pill" id="ov-open-count">-</span></div>
-        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('ov-body',this.value)"><button class="btn bd bsm" onclick="laadOverzicht()">↻ Vernieuwen</button></div></div>
-      <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV / Info</th><th>Einddatum</th><th>Mail verstuurd</th><th>Status</th><th>Herinneringen</th><th>Naar salaris</th><th>Dossier</th></tr></thead><tbody id="ov-body"></tbody></table></div>
+      <div class="sh"><div class="st">Lopende dossiers <span class="pill" id="ov-open-count">-</span></div><div class="hr2"><button class="btn bd bsm" onclick="laadOverzicht()">↻ Vernieuwen</button></div></div>
+      <div id="ov-pijp" class="ov-pijp"><div class="leeg grijs" style="padding:18px 24px">Laden…</div></div>
     </div>
-
-    <div class="alert grijs"><strong>Zo werkt het:</strong> <em>Vandaag te doen</em> bovenaan is je werklijst — elke regel heeft één knop die direct het juiste scherm opent. Hieronder staan alle open dossiers; afvinken (Naar salaris, Verwerkt, Ondertekend) en archiveren (🗑, via ⋯) kan daar direct. Met de winkelkeuze rechtsboven filter je alles op één winkel.</div>
   </div>
 
   <!-- DOSSIER -->

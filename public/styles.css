@@ -205,3 +205,58 @@ tbody tr:hover td{background:#fdfaf8}
 #gs-modal .fg textarea{min-height:0;height:auto}
 #gs-modal #gs-besproken{min-height:110px}
 #gs-fsoort{padding:6px 10px;border-radius:8px;border:1.5px solid #e8e2de;font-family:inherit;font-size:.8rem}
+
+/* ---------- Overzicht v2 (v0.21): kop, tegels per onderwerp, takenlijst + week, dossier-pijplijn ---------- */
+.ov-kop{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap}
+.ov-groet{font-size:1.5rem;font-weight:700;color:var(--donker);letter-spacing:-.3px}
+.ov-samen{font-size:.88rem;color:var(--grijs);margin-top:4px}.ov-samen strong{color:var(--donker)}
+.ov-kop-r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.ov-uitleg{display:none;margin-bottom:16px}.ov-uitleg.open{display:block}
+.ov-tegels{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px}
+.ov-tegel{text-align:left;background:#fff;border:1.5px solid transparent;border-radius:12px;padding:16px 18px;box-shadow:0 1px 4px rgba(51,61,58,.08);cursor:pointer;font-family:inherit;border-top:4px solid var(--oranje);transition:all .15s}
+.ov-tegel:hover{border-color:var(--lijn);transform:translateY(-1px);box-shadow:0 4px 12px rgba(51,61,58,.1)}
+.ov-tegel.heet{border-top-color:var(--rood)}.ov-tegel.rustig{border-top-color:var(--groen);opacity:.7}
+.ov-tegel.sel{border-color:var(--donker);box-shadow:0 0 0 2px var(--donker) inset}
+.ov-tegel-kop{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grijs);display:flex;gap:6px;align-items:center}
+.ov-tegel-i{font-size:.95rem}
+.ov-tegel-n{font-size:2rem;font-weight:700;color:var(--donker);margin:6px 0 4px;display:flex;align-items:center;gap:10px;line-height:1}
+.ov-tegel-rood{font-size:.7rem;font-weight:700;background:var(--rood-l);color:var(--rood-t);padding:3px 8px;border-radius:10px}
+.ov-tegel-s{font-size:.76rem;color:#7a6f68;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-grid{display:grid;grid-template-columns:minmax(0,2fr) minmax(280px,1fr);gap:22px;align-items:start}
+.ov-grid>.sec{margin-bottom:22px}
+.tk-groep{padding:12px 24px 6px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--grijs);background:var(--zand);border-bottom:1px solid var(--lijn2)}
+.tk{padding:10px 20px 10px 16px;gap:12px;border-left:none}
+.tk.rood,.tk.oranje,.tk.grijs{border-left:none;background:#fff}
+.tk-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:#d8d2cc}
+.tk.rood .tk-dot{background:var(--rood)}.tk.oranje .tk-dot{background:var(--oranje)}
+.tk .tk-t span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk .tk-t strong{font-size:.86rem}
+.tk-meer{display:block;width:100%;border:none;background:#fff;color:var(--groen);font-weight:700;font-size:.78rem;padding:9px 24px;text-align:left;cursor:pointer;border-bottom:1px solid var(--lijn2);font-family:inherit}
+.tk-meer:hover{background:var(--zand)}
+.ov-week #ov-week{padding:6px 0 10px}
+.ov-dag{padding:8px 20px}
+.ov-dag-kop{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--grijs);margin-bottom:6px}
+.ov-dag-kop.nu{color:var(--groen)}
+.ov-wk{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:.84rem;flex-wrap:wrap}
+.ov-wk .badge{min-width:112px;text-align:center}
+.ov-wk-naam,.ov-kaart-naam{border:none;background:none;padding:0;font-family:inherit;font-weight:700;color:var(--donker);cursor:pointer;font-size:inherit;text-align:left}
+.ov-wk-naam:hover,.ov-kaart-naam:hover{color:var(--groen);text-decoration:underline}
+.ov-wk-w{color:var(--grijs);font-size:.76rem}
+.ov-pijp{padding:6px 0}
+.ov-proc{padding:14px 24px;border-bottom:1px solid var(--lijn2)}.ov-proc:last-child{border-bottom:none}
+.ov-proc-naam{font-weight:700;font-size:.9rem;margin-bottom:10px;color:var(--donker)}
+.ov-stappen{display:grid;gap:12px}
+.ov-stap{background:var(--zand);border-radius:10px;padding:10px;min-height:60px}
+.ov-stap-kop{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--grijs);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ov-stap-nr{width:18px;height:18px;border-radius:50%;background:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:.66rem;color:var(--donker)}
+.ov-stap-n{margin-left:auto;background:#fff;border-radius:10px;padding:1px 8px;color:var(--donker)}
+.ov-leeg{color:var(--grijs-l);font-size:.8rem;padding:4px 2px}
+.ov-kaart{background:#fff;border-radius:8px;padding:10px 12px;margin-bottom:8px;box-shadow:0 1px 3px rgba(51,61,58,.08);border-left:3px solid transparent}
+.ov-kaart.traag{border-left-color:var(--oranje)}.ov-kaart.laat{border-left-color:var(--rood)}
+.ov-kaart-t{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:.86rem}
+.ov-kaart-s{font-size:.75rem;color:#7a6f68;margin:3px 0 8px}
+.ov-kaart-a{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+@media (max-width:1100px){.ov-grid{grid-template-columns:1fr}}
+@media (max-width:760px){.ov-stappen{grid-template-columns:1fr!important}}
+.ov-kaart-a>.mah-btn:not(.ok){background:var(--groen);color:#fff;border-color:var(--groen);font-weight:700}
+.ov-tegel.rustig.dos{opacity:1;border-top-color:var(--oranje)}
