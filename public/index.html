@@ -137,6 +137,11 @@
       <div class="lay-sub">De upload-link wordt bij versturen automatisch persoonlijk gemaakt (naam voor-ingevuld).</div>
     </div>
     <div class="mf"><button class="btn bd" onclick="omKopieer()">Kopieer</button><button class="btn bd" id="om-pdfbtn" onclick="omPdf()">⬇ PDF bekijken</button><button class="btn bp" id="om-sbtn" onclick="omVerstuur()"><span id="om-slbl">Verstuur mail</span></button></div>
+    <div class="sec" id="ond-sec">
+      <div class="sh"><div class="st">Digitaal ondertekenen <span class="pill" id="ond-count">-</span></div><div class="hr2"><label class="btn bd bsm" style="cursor:pointer">Controleer een PDF<input type="file" accept="application/pdf" style="display:none" onchange="ondControleer(this)"></label><button class="btn bd bsm" onclick="laadOndertekeningen()">↻</button></div></div>
+      <div class="lay-sub" style="padding:10px 24px 0">Ontslagbevestigingen, aanzeggingen, proeftijdbrieven en overplaatsingen kan de medewerker via de link in de mail digitaal ondertekenen: code per mail, naam typen en akkoord, eventueel met de vinger tekenen. De ondertekende PDF (met bewijsspoor op een extra pagina) komt automatisch in het dossier en gaat mee naar salaris. <span id="ond-ctrl"></span></div>
+      <div class="tw"><table><thead><tr><th>Medewerker</th><th>Document</th><th>Verstuurd</th><th>Status</th><th>Vingerafdruk</th><th></th></tr></thead><tbody id="ond-body"><tr><td colspan="6" class="leeg grijs">Laden…</td></tr></tbody></table></div>
+    </div>
   </div></div>
 
   <!-- SOMMATIES -->

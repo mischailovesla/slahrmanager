@@ -52,6 +52,7 @@
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
     if (tab === 'brief' && !vbData) laadBrieven();
     if (tab === 'ontslag' && !omData) laadOntslag();
+    if (tab === 'ontslag') laadOndertekeningen();
     if (tab === 'sommatie' && !smData) laadSommaties();
     if (tab === 'overplaatsing' && !opData) laadOverplaatsingen();
     if (tab === 'signalering' && !sgData) laadSignaleringen();
@@ -2123,6 +2124,36 @@
     el.innerHTML = h;
   }
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#vrl-ctrl-f .tb'); if (!b) return; vrlCtrlFilter = b.getAttribute('data-vcf'); renderVrlControle(); });
+  // ---------- Digitaal ondertekenen (fase 6) ----------
+  var tkOnd = null;
+  var OND_ST = { wacht: ['Wacht op handtekening', 'bo'], getekend: ['Ondertekend', 'bg'], vervangen: ['Vervangen door nieuwere brief', 'boat'], ingetrokken: ['Ingetrokken', 'boat'] };
+  window.laadOndertekeningen = async function () {
+    var el = g('ond-body'); if (!el) return;
+    var d = await api('/api/ondertekening-admin');
+    if (!d.success) { el.innerHTML = '<tr><td colspan="6" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    tkOnd = d.rijen; g('ond-count').textContent = d.rijen.filter(function (r) { return r.status === 'wacht'; }).length;
+    el.innerHTML = d.rijen.length ? d.rijen.map(function (r) {
+      var st = OND_ST[r.status] || [r.status, 'boat'];
+      var extra = r.status === 'getekend' ? '<div class="lay-sub">' + esc(r.getekend) + ' · als "' + esc(r.getekend_naam) + '"' + (r.met_handtekening ? ' · met getekende handtekening' : '') + (r.getekend_ip ? ' · IP ' + esc(r.getekend_ip) : '') + '</div>' : r.status === 'wacht' ? '<div class="lay-sub">' + (r.codeAangevraagd ? 'code aangevraagd, nog niet getekend' : 'link nog niet gebruikt') + '</div>' : '';
+      return '<tr><td><strong>' + esc(r.naam) + '</strong><div class="lay-sub">' + esc(r.email) + '</div></td><td>' + esc(r.titel) + '</td><td>' + esc(r.aangemaakt) + '<div class="lay-sub">' + esc(r.aangemaakt_door || '') + '</div></td><td><span class="badge ' + st[1] + '">' + st[0] + '</span>' + extra + '</td><td style="font-family:monospace;font-size:.72rem;color:var(--grijs)" title="SHA-256 ' + esc(r.getekend_hash || r.origineel_hash) + '">' + esc(String(r.getekend_hash || r.origineel_hash || '').slice(0, 12)) + '…</td><td>' + (r.status === 'wacht' ? '<button class="btn bd bsm" data-ond-in="' + esc(r.id) + '">Intrekken</button>' : '') + '</td></tr>';
+    }).join('') : '<tr><td colspan="6" class="leeg grijs">Nog geen brieven verstuurd met digitaal ondertekenen.</td></tr>';
+  };
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('[data-ond-in]'); if (!b) return;
+    if (!confirm('Deze ondertekening intrekken? De medewerker kan de brief daarna niet meer digitaal ondertekenen.')) return;
+    var r = await api('/api/ondertekening-admin', { actie: 'intrekken', id: b.getAttribute('data-ond-in') }); toast(r.success ? r.bericht : r.bericht, r.success ? 'ok' : 'err'); laadOndertekeningen();
+  });
+  // Controle: hoort deze PDF bij een ondertekend document? (vingerafdruk wordt in de browser berekend, het bestand gaat niet naar de server)
+  window.ondControleer = async function (inp) {
+    var f = inp.files && inp.files[0], el = g('ond-ctrl'); if (!f) return;
+    el.innerHTML = '<span class="lay-sub">Vingerafdruk berekenen…</span>';
+    var buf = await f.arrayBuffer(), h = await crypto.subtle.digest('SHA-256', buf);
+    var hex = Array.prototype.map.call(new Uint8Array(h), function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    var r = await api('/api/ondertekening-admin', { actie: 'controleer', hash: hex });
+    inp.value = '';
+    if (!r.success) { el.innerHTML = '<span class="badge br">' + esc(r.bericht) + '</span>'; return; }
+    el.innerHTML = r.gevonden ? (r.soort === 'ondertekend' ? '<span class="badge bg">✓ Echt en ongewijzigd</span> ' + esc(r.titel) + ', ondertekend door ' + esc(r.naam) + ' op ' + esc(r.getekend) : '<span class="badge bo">Origineel (nog niet ondertekend)</span> ' + esc(r.titel) + ' · ' + esc(r.naam)) : '<span class="badge br">✗ Niet gevonden</span> Dit bestand is niet door het dashboard ondertekend, of het is na ondertekening gewijzigd.';
+  };
   window.laadVerloop = async function (mnd, vers) {
     if (mnd) vrlMaanden = mnd;
     g('vrl-b12').className = 'btn bsm ' + (vrlMaanden === 12 ? 'bp' : 'bd'); g('vrl-b24').className = 'btn bsm ' + (vrlMaanden === 24 ? 'bp' : 'bd');
@@ -2496,7 +2527,7 @@
     var tbodies = tbody ? [tbody] : Array.prototype.slice.call(document.querySelectorAll('.tc .tw table tbody'));
     tbodies.forEach(function (tb) {
       if (!tb.closest('.tc .tw')) return; // alleen tabellen in tabs (niet in modals)
-      if (tb.id.indexOf('mto-') === 0 || tb.id === 'vk-tbody' || tb.id === 'vrl-ctrl-w') return; // MTO: winkels/stellingen, geen personen
+      if (tb.id.indexOf('mto-') === 0 || tb.id === 'vk-tbody' || tb.id === 'vrl-ctrl-w' || tb.id === 'ond-body') return; // MTO: winkels/stellingen, geen personen
       if (tb.id === 'dos-lijst' || tb.id === 'tg-body' || tb.id === 'tg-mut-body' || tb.id === 'gv-body' || tb.id === 'gv-runs') return; // eigen filters / geen personen
       Array.prototype.forEach.call(tb.rows, function (tr) {
         if (!w) { tr.classList.remove('wf-verborgen'); return; }

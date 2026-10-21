@@ -83,6 +83,7 @@
       cfg = await (await fetch('/api/config')).json();
       var r = await post({});
       if (!r.success) throw new Error(r.bericht);
+      if (r.teken && !new URLSearchParams(location.search).get('upload')) { location.replace('/teken.html?t=' + encodeURIComponent(t)); return; }
       info = r; document.querySelectorAll('[data-taal]').forEach(function (x) { x.classList.toggle('sel', x.getAttribute('data-taal') === taal); }); render();
     } catch (e) { g('card').innerHTML = '<div class="melding rood">' + esc(tx('ongeldig')) + '</div>'; }
   })();

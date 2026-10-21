@@ -125,6 +125,7 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
     }
   }
   if (p.uitstroomreden && tpl.type !== 'herinnering' && C.UITSTROOMREDENEN.includes(p.uitstroomreden)) await S.zetUitstroomreden(rij, p.uitstroomreden);
+  if (pdf && tpl.type !== 'herinnering') { try { await require('./_lib/ondertekening').aanmaken({ soort: 'ontslag', type: tpl.type, titel: (tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : isProef ? proefLabel : 'Ontslagbevestiging') + ' - ' + naam, naam, email: to, rij, taal: tpl.taal, pdf, door: g.email }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); } }
   await M.logMail({ door: g.email, bron: 'ontslag', type: tpl.type + (pdf ? '-pdf' : ''), naar: to, naam, onderwerp: subject, taal: tpl.taal, rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'ontslag', veld: tpl.type, rij, naam, nieuw: to, details: subject + (pdf ? ' (+PDF)' : '') });
   const wat = tpl.type === 'aanzegging' ? 'Aanzegging' + (isEN ? ' (EN)' : '') : tpl.type === 'herinnering' ? 'Herinnering' : isProef ? proefLabel : 'Ontslagbevestiging';

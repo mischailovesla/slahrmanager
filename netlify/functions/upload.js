@@ -17,7 +17,10 @@ exports.handler = async (event) => {
     const p = body(event);
     const tok = U.leesToken(p.t);
     const soort = U.SOORTEN[tok.s];
-    if (!p.stap) return json(200, { success: true, soort: tok.s, naam: tok.n, label: soort.label, labelEN: soort.labelEN, bestanden: soort.bestanden });
+    if (!p.stap) {
+      let teken = false; try { if (['ontslag', 'overplaatsing'].includes(tok.s)) { const o = await require('./_lib/ondertekening').openVoor(tok); teken = !!o; } } catch (e) { /* migratie 0017 nog niet gedraaid */ }
+      return json(200, { success: true, soort: tok.s, naam: tok.n, label: soort.label, labelEN: soort.labelEN, bestanden: soort.bestanden, teken });
+    }
     if (p.stap === 'start') return json(200, Object.assign({ success: true }, await U.startUpload(tok, p.key, { naam: p.naam, mime: p.mime, bytes: p.bytes })));
     if (p.stap === 'klaar') {
       const ip = (event.headers || {})['x-nf-client-connection-ip'] || (event.headers || {})['client-ip'] || null;

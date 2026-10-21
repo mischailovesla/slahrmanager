@@ -55,6 +55,7 @@ exports.handler = beveiligd('overplaatsing-mail', async (event, g) => {
   if (!to || to.indexOf('@') === -1) throw new Error('Ongeldig e-mailadres.');
   const resendId = await M.verstuur({ to, subject, text, html, attachments: [{ filename: bestandsnaam, content: pdf.toString('base64') }], tags: [{ name: 'bron', value: 'overplaatsing' }, { name: 'type', value: isStandpl ? 'standplaats' : 'overplaatsing' }] });
   const rij = await S.logOverplaatsing({ rij: p.rij, naam, to, adres: p.adres, datumIndienst: p.datumIndienst, ingangsdatum, functie: p.functie, taal: isEN ? 'EN' : 'NL' }, huidig, nieuw, isStandpl, stempel());
+  try { await require('./_lib/ondertekening').aanmaken({ soort: 'overplaatsing', type: isStandpl ? 'standplaats' : 'overplaatsing', titel: typeLabel + ' - ' + naam, naam, email: to, rij, taal: isEN ? 'EN' : 'NL', pdf, door: g.email }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); }
   await M.logMail({ door: g.email, bron: 'overplaatsing', type: isStandpl ? 'standplaats-pdf' : 'overplaatsing-pdf', naar: to, naam, onderwerp: subject, taal: isEN ? 'EN' : 'NL', rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'overplaatsing', veld: typeLabel, rij, naam, nieuw: to, details: subject + ' (+PDF) ' + huidig.naam + ' → ' + nieuw.naam });
   return { bericht: typeLabel + (isEN ? ' (EN)' : '') + ' + PDF verstuurd naar ' + to + ' (rij ' + rij + ')', rij, resendId, isStandpl };
