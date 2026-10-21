@@ -28,7 +28,7 @@ Hierbij bevestigen wij dat je op {{DatumOpzegging}} jouw arbeidsovereenkomst heb
 
 De laatste dag van je arbeidsovereenkomst is dus {{Einddatum}}. Uiterlijk deze dag lever je jouw eventuele sleutels in. De eindafrekening van het loon over je laatst gewerkte uren vindt plaats na afloop van jouw laatste maand. Omdat je een all-in contract hebt, zijn vakantie-uren en vakantiegeld al in je uurloon inbegrepen; die worden niet apart uitbetaald.
 
-We horen graag hoe jij je tijd bij SLA hebt ervaren. Wil je daarvoor deze korte vragenlijst invullen (een paar vragen, ongeveer 2 minuten, desgewenst anoniem)? {{EXITLINK}}
+We horen graag hoe jij je tijd bij SLA hebt ervaren. Na je laatste werkdag ontvang je daarvoor van ons per mail een korte vragenlijst (een paar vragen, ongeveer 2 minuten, desgewenst anoniem).{{EXITMELDING}}
 
 Wij wensen je veel succes met je verdere toekomstplannen!
 
@@ -84,7 +84,7 @@ Voor informatie over een eventuele WW-uitkering verwijzen wij je naar het UWV. H
 
 **Exit-survey**
 
-We waarderen jouw eerlijke feedback. In plaats van een exitgesprek vragen we je een korte online vragenlijst in te vullen (een paar vragen, ongeveer 2 minuten, desgewenst anoniem). Zo kunnen we SLA als werkgever blijven verbeteren: {{EXITLINK}}
+We waarderen jouw eerlijke feedback. In plaats van een exitgesprek ontvang je na je laatste werkdag per mail een korte online vragenlijst (een paar vragen, ongeveer 2 minuten, desgewenst anoniem). Zo kunnen we SLA als werkgever blijven verbeteren.{{EXITMELDING}}
 
 Mocht je vragen hebben over deze brief of de afhandeling van het dienstverband, neem dan gerust contact op via hr@ilovesla.com.
 
@@ -140,7 +140,7 @@ For information about a possible unemployment benefit (WW-uitkering) we refer yo
 
 **Exit survey**
 
-We value your honest feedback. Instead of an exit interview we ask you to fill in a short online questionnaire (a few questions, about 2 minutes, anonymously if you prefer). It helps us keep improving SLA as an employer: {{EXITLINK}}
+We value your honest feedback. Instead of an exit interview, you will receive a short online questionnaire by email after your last working day (a few questions, about 2 minutes, anonymously if you prefer). It helps us keep improving SLA as an employer.{{EXITMELDING}}
 
 Should you have any questions about this letter or the handling of your employment, please feel free to contact us at hr@ilovesla.com.
 

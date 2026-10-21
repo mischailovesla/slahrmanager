@@ -56,7 +56,8 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
   const X = require('./_lib/exit');
   const exitAan = tpl.type !== 'herinnering' && await X.actief(); // gepauzeerd (Uitstroom → Exit-surveys) = alinea/blok/zin weglaten
   const exitLink = exitAan ? X.exitLink(naam || 'medewerker', tpl.taal, tpl.type + (tpl.variant ? '-' + tpl.variant : '')) : '';
-  const metExit = s => exitAan ? String(s || '').split('{{EXITLINK}}').join(exitLink) : T.zonderExit(s);
+  // Survey aan: alleen de aankondiging blijft staan (de survey zelf gaat ná de laatste werkdag, sched-exit-survey); pauze: weglaten
+  const metExit = s => exitAan ? String(s || '').split('{{EXITMELDING}}').join('').split('{{EXITLINK}}').join(exitLink) : T.zonderExit(s);
   const text = metExit(T.personaliseerUploadLinks(String(p.body || tpl.body(naam, bv)), naam));
   const html = metExit(T.ontslagMailHtml(tpl, naam, bv, einddatum));
   const AI = require('./_lib/allin'); const manager = await AI.isManager({ email: to, naam }); // managers: geen all-in-tekst
@@ -71,7 +72,7 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
     const sjabloon = tpl.type === 'aanzegging' ? (isEN ? B.AANZEGGING_EN : B.AANZEGGING_NL)
       : isProef ? (isWG ? (isEN ? B.PROEFTIJD_WG_EN : B.PROEFTIJD_WG_NL) : (isEN ? B.PROEFTIJD_WN_EN : B.PROEFTIJD_WN_NL))
       : B.ONTSLAG;
-    const tekst = B.vul(sjabloon, { '{{Naam}}': naam, '{{Adres}}': adres, '{{DatumOpzegging}}': datumOpzegging, '{{Einddatum}}': einddatum, '{{BV}}': bv, '{{HuidigeDatum}}': briefDatum(isEN), '{{EXITLINK}}': exitAan ? exitLink : '{{EXITLINK}}' });
+    const tekst = B.vul(sjabloon, { '{{Naam}}': naam, '{{Adres}}': adres, '{{DatumOpzegging}}': datumOpzegging, '{{Einddatum}}': einddatum, '{{BV}}': bv, '{{HuidigeDatum}}': briefDatum(isEN), '{{EXITLINK}}': exitAan ? exitLink : '{{EXITLINK}}', '{{EXITMELDING}}': exitAan ? '' : '{{EXITMELDING}}' });
     const tekst1 = manager ? AI.voorManager(tekst) : tekst;
     const tekstDef = exitAan ? tekst1 : T.zonderExit(tekst1); // placeholder blijft staan tot zonderExit de regel weghaalt
     const titel = tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : isProef ? proefLabel : 'Ontslagbevestiging';

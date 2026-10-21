@@ -100,6 +100,7 @@ module.exports = {
     { key: 'opmerking', type: 'tekst', nl: 'Wat had SLA anders kunnen doen om je te behouden, of wat wil je ons nog meegeven?', en: 'What could SLA have done differently to keep you, or what else would you like to tell us?', alleenEigenOntslag: true }
   ],
   EXIT_GELDIG_DAGEN: 90,
+  EXIT_AUTO_INHAAL_DAGEN: 7,        // exit-survey automatisch de dag na de laatste werkdag; gemiste dagen tot 7 dagen terug inhalen
   // Fase 3a: check-in na 30 en 60 dagen in dienst (vroege uitstroom voor zijn). Vragen + aan/uit in hr_instellingen
   // ('checkin_vragen', 'checkin_actief'); dit is de standaardlijst. Een keuze-optie met alarm=true (4e element) maakt de check-in 'laag'.
   CHECKIN_VRAGEN: [

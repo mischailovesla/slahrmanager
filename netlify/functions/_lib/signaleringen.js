@@ -574,9 +574,54 @@ async function verlengingen(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen };
+const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
+// ---- Exit-survey na de laatste werkdag ----
+// Iedereen uit Ontslag & aanzegging (ook gearchiveerd) van wie de einddatum gisteren was — of tot EXIT_AUTO_INHAAL_DAGEN
+// terug, zodat een gemiste dag wordt ingehaald — krijgt automatisch de exit-survey, tenzij hij al is uitgenodigd of al
+// heeft ingevuld. Alleen als de survey aan staat (Uitstroom → Exit-surveys). In de brief/mail stond al de aankondiging.
+async function exitSurvey(droog) {
+  const rap = { naam: 'exit-survey', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const X = require('./exit');
+  if (!(await X.actief())) { rap.gepauzeerd = true; return rap; }
+  const vandaag = vandaag0(), van = isoDag(plusDagen(vandaag, -(C.EXIT_AUTO_INHAAL_DAGEN || 7))), tot = isoDag(plusDagen(vandaag, -1));
+  const db = admin();
+  const [rijen, { data: exitMails }, { data: ingevuld }, { data: ontslagMails }] = await Promise.all([
+    S.getOntslag(true),
+    db.from('hr_mails').select('naam,naar').eq('bron', 'exit'),
+    db.from('hr_exit').select('naam,email'),
+    db.from('hr_mails').select('naam,type,taal,onderwerp,tijdstip').eq('bron', 'ontslag').order('tijdstip', { ascending: false }).limit(2000)
+  ]);
+  const al = new Set();
+  (exitMails || []).forEach(m => { if (m.naar) al.add('e:' + String(m.naar).toLowerCase()); if (m.naam) al.add('n:' + normNaam(m.naam)); });
+  (ingevuld || []).forEach(m => { if (m.email) al.add('e:' + String(m.email).toLowerCase()); if (m.naam) al.add('n:' + normNaam(m.naam)); });
+  const brief = {}; // laatste (niet-herinnering) ontslagmail per naam → taal + soort
+  (ontslagMails || []).forEach(m => { const k = normNaam(m.naam); if (k && !brief[k] && !/herinnering/.test(String(m.type || ''))) brief[k] = m; });
+  for (const r of rijen) {
+    const d = parseNLDatum(r.einddatum); if (!d) continue;
+    const iso = isoDag(d); if (iso < van || iso > tot) continue;
+    const email = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam);
+    if (!email || email.indexOf('@') === -1) { rap.fouten.push(r.naam + ': geen e-mailadres'); continue; }
+    if (al.has('e:' + email) || al.has('n:' + nn)) continue;
+    al.add('e:' + email); al.add('n:' + nn);
+    const b = brief[nn] || {}, isEN = String(b.taal || '').toUpperCase() === 'EN', t = String(b.type || r.type || '');
+    const soort = /^aanzegging/.test(t) ? 'aanzegging' : /^proeftijd/.test(t) ? (/opzegging|resignation/i.test(b.onderwerp || '') ? 'proeftijd-wn' : 'proeftijd-wg') : 'ontslag';
+    const link = X.exitLink(r.naam, isEN ? 'EN' : 'NL', soort);
+    const subject = isEN ? 'How was it at SLA? Short exit survey' : 'Hoe was het bij SLA? Korte exit-survey';
+    const text = T.exitUitnodigingPlain(r.naam, isEN).split('{{EXITLINK}}').join(link), html = T.exitUitnodigingHtml(r.naam, isEN).split('{{EXITLINK}}').join(link);
+    const item = { naam: r.naam, email, einddatum: r.einddatum, taal: isEN ? 'EN' : 'NL', soort };
+    rap.gevonden.push(item);
+    if (rap.droog) { rap.verstuurd.push(Object.assign({ droog: true }, item)); continue; }
+    try {
+      const id = await M.verstuur({ to: email, subject, text, html, tags: [{ name: 'bron', value: 'exit' }, { name: 'type', value: 'automatisch' }] });
+      await M.logMail({ door: 'signalering', bron: 'exit', type: 'uitnodiging-auto', naar: email, naam: r.naam, onderwerp: subject, taal: item.taal, rij: 0, resend_id: id });
+      rap.verstuurd.push(Object.assign({ resendId: id }, item));
+    } catch (e) { rap.fouten.push(r.naam + ': ' + e.message); }
+  }
+  return rap;
+}
+
 async function draai(naam, droog, bron) {
   const fn = CHECKS[naam]; if (!fn) throw new Error('Onbekende check: ' + naam);
   const start = Date.now();
@@ -589,4 +634,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey };
