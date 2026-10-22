@@ -6,7 +6,7 @@
 //   3. Nieuwe medewerkers      — start deze week; welkomstcollectie Academy nog niet af
 //   4. Vertrek                 — laatste werkdag deze of volgende week (+ sleutels/kleding innemen)
 //   5. Jubilea                 — volgende week 1, 2, 5, 10… jaar in dienst
-//   5b. Verjaardagen           — deze week jarig (v0.28.1; alleen naam + dag, geen leeftijd)
+//   5b. Verjaardagen           — deze week jarig (v0.28.1; naam + dag; leeftijd alleen t/m 21 jr: uurloon aanpassen, v0.28.2)
 //   6. Cijfers                 — bestand, in-/uitstroom en verloop (3 maanden) naast SLA
 // Bewust NIET: verzuim per persoon, check-in-antwoorden, exit-redenen, inhoud van brieven (AVG).
 // Instelling 'winkelmail' (hr_instellingen): { aan, proef, adressen: { winkel: e-mail }, uit: [winkel] }
@@ -106,7 +106,11 @@ function bouw(data, winkel) {
     if (m.winkelNaam !== w || !m.verjaardag) continue;
     const vm = String(m.verjaardag).match(/^(\d{4})-(\d{2})-(\d{2})/); if (!vm) continue;
     const d = new Date(+vm[1], +vm[2] - 1, +vm[3]); if (d < v || d > zondag) continue;
-    b.jarig.push({ naam: m.naam, wat: 'Jarig op ' + dagNaam(d), datum: d });
+    // v0.28.2: jeugdloon — t/m 21 jaar stijgt het (minimum)uurloon op de verjaardag; dat moet de SM handmatig in Shiftbase aanpassen
+    const wordt = m.leeftijd == null ? null : (d.getTime() === v.getTime() ? m.leeftijd : m.leeftijd + 1);
+    const loon = wordt != null && wordt <= (C.JEUGD_LOON_MAX_LEEFTIJD || 20) + 1;
+    b.jarig.push({ naam: m.naam, wat: 'Jarig op ' + dagNaam(d) + (loon ? ' — wordt ' + wordt : ''), datum: d, loon,
+      tip: loon ? 'Uurloon aanpassen in Shiftbase per ' + d.getDate() + '-' + (d.getMonth() + 1) + '-' + d.getFullYear() + (wordt >= 21 ? ' (21 jaar: vanaf nu het volwassen loon).' : ' (jeugdloon ' + wordt + ' jaar).') : '' });
   }
   b.jarig.sort((a, c) => a.datum - c.datum);
 
@@ -150,7 +154,7 @@ function html(winkel, b, opts) {
     + blok('Nieuwe medewerkers', '#009f4b', b.nieuw.map(x => ({ naam: x.naam, html: esc(x.wat), tip: x.tip })))
     + blok('Vertrek', '#888078', b.vertrek.map(x => ({ naam: x.naam, html: esc(x.wat), tip: x.tip })))
     + blok('Jubilea volgende week', '#009f4b', b.jubilea.map(x => ({ naam: x.naam, html: esc(x.wat), tip: 'Laat het niet ongemerkt voorbijgaan: een kaartje of iets lekkers doet veel.' })))
-    + blok('Jarig deze week', '#e8824a', b.jarig.map(x => ({ naam: x.naam, html: '🎂 ' + esc(x.wat), tip: '' })), 'Even feliciteren op de vloer of in de groepsapp maakt verschil.')
+    + blok('Jarig deze week', '#e8824a', b.jarig.map(x => ({ naam: x.naam, html: '🎂 ' + esc(x.wat) + (x.loon ? '<br><strong style="color:#c0392b">⚠ ' + esc(x.tip) + '</strong>' : ''), tip: '' })), 'Even feliciteren op de vloer of in de groepsapp maakt verschil.' + (b.jarig.some(x => x.loon) ? ' <strong>Let op de ⚠: daar moet het uurloon in Shiftbase omhoog.</strong>' : ''))
     + c;
   const intro = b.leeg ? 'Deze week staat er niets open voor ' + esc(winkel) + '. Goed bezig!' : 'Dit speelt er deze week in <strong>' + esc(winkel) + '</strong>:';
   return T.slaWrap(T.slaHead('#009f4b', 'HR &middot; Weekoverzicht ' + esc(winkel)) + '<tr><td style="padding:30px 34px 26px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 12px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0">' + intro + '</p>'
@@ -164,7 +168,7 @@ function plain(winkel, b) {
   lijst('Nieuwe medewerkers', b.nieuw, x => '- ' + x.naam + ': ' + x.wat);
   lijst('Vertrek', b.vertrek, x => '- ' + x.naam + ': ' + x.wat);
   lijst('Jubilea volgende week', b.jubilea, x => '- ' + x.naam + ': ' + x.wat);
-  lijst('Jarig deze week', b.jarig, x => '- ' + x.naam + ': ' + x.wat);
+  lijst('Jarig deze week', b.jarig, x => '- ' + x.naam + ': ' + x.wat + (x.loon ? '\n  LET OP: ' + x.tip : ''));
   return 'Hallo,\n\n' + (b.leeg ? 'Deze week staat er niets open voor ' + winkel + '.' : 'Dit speelt er deze week in ' + winkel + ':') + '\n' + r.join('\n') + '\n\nVragen? Mail HR (hr@ilovesla.com). Niet doorsturen (persoonsgegevens).\n\n(Automatisch weekoverzicht van het SLA HR Dashboard)';
 }
 
