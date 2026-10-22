@@ -797,7 +797,8 @@ const DC_SOORTEN = {
   'geen-contract': ['Actief zonder contract', '#e8824a'],
   'contract-na-uitdienst': ['Contract loopt door na de uitdienstdatum', '#e8824a'],
   'geen-geboortedatum': ['Geboortedatum ontbreekt', '#2980b9'],
-  'geen-email': ['E-mailadres ontbreekt', '#2980b9']
+  'geen-email': ['E-mailadres ontbreekt', '#2980b9'],
+  'dossier': ['Ontslagdossier wijkt af van Shiftbase', '#c0392b']   // v0.27.2
 };
 function controleerData(users, per, med, vandaagIso, grensIso) {
   const medById = {}; (med || []).forEach(m => { medById[String(m.id)] = m; });
@@ -835,6 +836,12 @@ async function datacontrole(droog) {
   const vandaag = vandaag0(), grens = new Date(vandaag.getFullYear() - 1, vandaag.getMonth(), vandaag.getDate());
   const [users, per, med] = await Promise.all([SB.sbGet('users'), SB.getContractenPerUser(true), SB.getMedewerkers(true)]);
   const lijst = controleerData(users, per, med, isoDag(vandaag), isoDag(grens));
+  // v0.27.2: lopende ontslagdossiers die niet kloppen met Shiftbase (einddatum, BV, e-mail, onleesbare datums)
+  try {
+    const ontslag = await S.getOntslag(), ctl = await require('./dossiercontrole').laad(ontslag);
+    const winkelVan = {}; (med || []).forEach(m => { winkelVan[normNaam(m.naam)] = m.winkelNaam || '-'; });
+    for (const r of ontslag) for (const c of ctl[r.rij] || []) if (c.ernst !== 'blauw') lijst.push({ naam: r.naam, winkel: winkelVan[normNaam(r.naam)] || '-', soort: 'dossier', tekst: c.label + ' — ' + c.tekst, email: r.email || '' });
+  } catch (e) { rap.fouten.push('dossiercontrole: ' + e.message); }
   rap.gevonden = lijst; rap.perSoort = {}; lijst.forEach(x => { rap.perSoort[x.soort] = (rap.perSoort[x.soort] || 0) + 1; });
   if (!lijst.length) return rap;
   for (const [deel, team] of teams(lijst)) {

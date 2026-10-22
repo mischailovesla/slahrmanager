@@ -21,7 +21,10 @@ const KPIS = [
   { key: 'verzuimPct', label: 'Verzuim', eenheid: '%', richting: 'laag', groep: 'In dienst', uitleg: 'Ziektedagen ÷ dagen in dienst (kalenderdagen, goedgekeurde ziekmeldingen in Shiftbase)' },
   { key: 'meldingsfreq', label: 'Ziekmeldingen per medewerker per jaar', eenheid: '', richting: 'laag', groep: 'In dienst', uitleg: 'Aantal ziekmeldingen omgerekend naar een heel jaar per medewerker' },
   { key: 'enps', label: 'eNPS exit-survey', eenheid: '', richting: 'hoog', vergelijk: 'verschil', groep: 'Uitstroom', uitleg: '% promotors (9–10) min % criticasters (0–6) onder vertrekkers' },
-  { key: 'aanzegOpTijd', label: 'Aanzegging op tijd', eenheid: '%', richting: 'hoog', groep: 'Uitstroom', uitleg: 'Aanzeggingen die ≥ 30 dagen vóór de einddatum zijn verstuurd (art. 7:668 BW)' }
+  { key: 'aanzegOpTijd', label: 'Aanzegging op tijd', eenheid: '%', richting: 'hoog', groep: 'Uitstroom', uitleg: 'Aanzeggingen die ≥ 30 dagen vóór de einddatum zijn verstuurd (art. 7:668 BW)' },
+  // v0.27.2: doorlooptijden van dossiers
+  { key: 'loonOpTijd', label: 'Loonheffing binnen 7 dagen', eenheid: '%', richting: 'hoog', groep: 'Dossiers', uitleg: 'Van de loonheffingsuitnodigingen (verstuurd in de periode, ≥ 7 dagen geleden): deel waarvan het formulier binnen 7 dagen binnen was. Te laat = anoniementarief (52%) op de eerste loonstrook' },
+  { key: 'tekenDagen', label: 'Ontslagbrief getekend na', eenheid: 'dagen', richting: 'laag', groep: 'Dossiers', uitleg: 'Mediaan aantal dagen van versturen tot handtekening (ontslagbevestigingen en aanzeggingen verstuurd in de periode)' }
 ];
 
 const isoD = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
@@ -44,12 +47,12 @@ function sterk(k, v, o) {
   if (k.richting === 'laag') return o > 0 && v / o <= 0.8;
   return o > 0 && v / o >= 1.05;
 }
-const DECIMAAL = ['checkinScore', 'meldingsfreq', 'verzuimPct'];
-const fmt = (k, v) => v === null || v === undefined ? '-' : (DECIMAAL.includes(k.key) ? r1(v).toFixed(1) : String(Math.round(v))).replace('.', ',') + (k.eenheid === '%' || k.eenheid.indexOf('%') === 0 ? '%' : k.eenheid === '/5' ? '/5' : '');
+const DECIMAAL = ['checkinScore', 'meldingsfreq', 'verzuimPct', 'tekenDagen'];
+const fmt = (k, v) => v === null || v === undefined ? '-' : (DECIMAAL.includes(k.key) ? r1(v).toFixed(1) : String(Math.round(v))).replace('.', ',') + (k.eenheid === '%' || k.eenheid.indexOf('%') === 0 ? '%' : k.eenheid === '/5' ? '/5' : k.eenheid === 'dagen' ? ' d' : '');
 
 // ---- puur rekenwerk ----
 function bereken(inp) {
-  const { med, verloop, absences, checkins, exits, aanzeggingen, checklists, academy, vandaag } = inp;
+  const { med, verloop, absences, checkins, exits, aanzeggingen, checklists, academy, vandaag } = inp; const dossiers = inp.dossiers || [];
   const maanden = verloop.maanden, vanIso = maanden[0].vanIso, totIsoVol = maanden[maanden.length - 1].totIso;
   const vandaagIso = isoD(vandaag), totIso = totIsoVol > vandaagIso ? vandaagIso : totIsoVol;
   const van = dag(vanIso), tot = dag(totIso);
@@ -57,7 +60,7 @@ function bereken(inp) {
   (med || []).forEach(m => { perId[String(m.id)] = m.winkel; if (m.naam) perNaam[normNaam(m.naam)] = m.winkel; });
   const winkelVan = (id, naam, gegeven) => (id && perId[String(id)]) || (naam && perNaam[normNaam(naam)]) || gegeven || '';
   const namen = verloop.winkels.map(w => w.naam).filter(n => n && n !== '(geen winkel)');
-  const leeg = () => ({ ziekDagen: 0, dienstDagen: 0, meldingen: 0, lopend: 0, ciVerstuurd: 0, ciIngevuld: 0, ciScores: [], ciLaag: 0, ciMaand: maanden.map(() => []), meldMaand: maanden.map(() => 0), ex: [], az: 0, azOpTijd: 0, ob: 0, obOpTijd: 0, mensen: 0, wkTelt: 0, wkAf: 0, ctTelt: 0, ctOk: 0, acad: false });
+  const leeg = () => ({ ziekDagen: 0, dienstDagen: 0, meldingen: 0, lopend: 0, ciVerstuurd: 0, ciIngevuld: 0, ciScores: [], ciLaag: 0, ciMaand: maanden.map(() => []), meldMaand: maanden.map(() => 0), ex: [], az: 0, azOpTijd: 0, ob: 0, obOpTijd: 0, mensen: 0, wkTelt: 0, wkAf: 0, ctTelt: 0, ctOk: 0, acad: false , lo7: 0, lo7Ok: 0, teken: []});
   const acc = {}; namen.forEach(n => { acc[n] = leeg(); }); const tot0 = leeg();
   const bij = (w, f) => { if (acc[w]) f(acc[w]); f(tot0); };
 
@@ -102,6 +105,13 @@ function bereken(inp) {
     const w = winkelVan(r.mid, r.naam, ''); const vz = parseNLDatum(r.verzenddatum);
     bij(w, x => { x.az++; if (vz && dagenTussen(vz, eind) >= 30) x.azOpTijd++; });
   }
+  // v0.27.2: doorlooptijden (dossiers verstuurd in de periode)
+  for (const d of dossiers) {
+    const vi = isoD(d.verzonden); if (vi < vanIso || vi > totIsoVol) continue;
+    const w = winkelVan(d.mid, d.naam, '');
+    if (d.soort === 'loonheffing') { if (dagenTussen(d.verzonden, vandaag) >= 7) bij(w, x => { x.lo7++; if (d.binnen && (d.binnen - d.verzonden) / 864e5 <= 7) x.lo7Ok++; }); }
+    else if (d.binnen) { const dd = (d.binnen - d.verzonden) / 864e5; bij(w, x => { x.teken.push(dd); }); }
+  }
   // onboarding-checklists gestart in de periode die 21 dagen de tijd hebben gehad (of al af zijn)
   for (const c of checklists || []) {
     if (c.type !== 'onboarding' || !c.gestart_op) continue; const gs = new Date(c.gestart_op); const gi = isoD(gs); if (gi < vanIso || gi > totIsoVol) continue;
@@ -134,7 +144,9 @@ function bereken(inp) {
       enps: { v: enpsN ? Math.round((prom - det) / enpsN * 100) : null, n: enpsN, klein: enpsN < MIN_N },
       welkomAf: { v: x.wkTelt ? Math.round(x.wkAf / x.wkTelt * 100) : null, n: x.wkTelt, klein: x.wkTelt < MIN_N },
       certGeldig: { v: x.ctTelt ? Math.round(x.ctOk / x.ctTelt * 100) : null, n: x.ctTelt, klein: x.ctTelt < MIN_N },
-      aanzegOpTijd: { v: x.az ? Math.round(x.azOpTijd / x.az * 100) : null, n: x.az, klein: false }
+      aanzegOpTijd: { v: x.az ? Math.round(x.azOpTijd / x.az * 100) : null, n: x.az, klein: false },
+      loonOpTijd: { v: x.lo7 ? Math.round(x.lo7Ok / x.lo7 * 100) : null, n: x.lo7, klein: x.lo7 < MIN_N },
+      tekenDagen: { v: x.teken.length ? r1(require('./doorloop').mediaan(x.teken)) : null, n: x.teken.length, klein: x.teken.length < MIN_N }
     };
   };
   const metFmt = ws => { KPIS.forEach(k => { ws[k.key].f = fmt(k, ws[k.key].v); }); return ws; };
@@ -159,7 +171,8 @@ function bereken(inp) {
       trend: { uit: vr.maandUit, in: vr.maandIn, checkin: x.ciMaand.map(a => a.length ? r1(gem(a)) : null), meldingen: x.meldMaand },
       checkin: { verstuurd: x.ciVerstuurd, ingevuld: x.ciIngevuld, laag: x.ciLaag } };
   }).sort((a, b) => b.rood - a.rood || b.oranje - a.oranje || a.naam.localeCompare(b.naam, 'nl'));
-  return { kpis: KPIS, maanden: maanden.map(m => m.label), periode: maanden[0].label + ' t/m ' + maanden[maanden.length - 1].label, vanIso, totIso, winkels, totaal, minN: MIN_N };
+  const doorloop = dossiers.length ? require('./doorloop').stats(dossiers, vandaag, vanIso, totIsoVol) : null;
+  return { kpis: KPIS, maanden: maanden.map(m => m.label), periode: maanden[0].label + ' t/m ' + maanden[maanden.length - 1].label, vanIso, totIso, winkels, totaal, minN: MIN_N, doorloop };
 }
 
 // ---- ophalen ----
@@ -177,11 +190,15 @@ async function laadBronnen(vanIso, totIso, ververs) {
     veilig('verzuim (Shiftbase)', async () => { const r = await SB.sbGet('absentees?min_date=' + isoD(new Date(dag(vanIso).getTime() - 60 * 864e5)) + '&max_date=' + totIso); return (r && r.data) || r || []; }),
     veilig('check-ins', async () => lijst(await db.from('hr_checkin').select('medewerker_id,naam,winkel,verstuurd_op,ingevuld_op,score,laag').gte('verstuurd_op', vanIso + 'T00:00:00').lte('verstuurd_op', totIso + 'T23:59:59'))),
     veilig('exit-survey', async () => lijst(await db.from('hr_exit').select('medewerker_id,naam,winkel,nps,ingevuld_op').gte('ingevuld_op', vanIso + 'T00:00:00').lte('ingevuld_op', totIso + 'T23:59:59'))),
-    veilig('aanzeggingen', async () => (await S.getOntslag(true)).filter(r => r.type === 'aanzegging')),
+    veilig('ontslagdossiers', async () => S.getOntslag(true)),
     veilig('checklists', async () => lijst(await db.from('hr_checklists').select('type,naam,winkel,medewerker_id,gestart_op,afgerond_op').eq('type', 'onboarding')))
   ]);
+  // v0.27.2: doorlooptijden — loonheffing + ontslag/aanzegging met hun 'binnen'-moment (upload, formulier, digitale handtekening)
+  const loon = await veilig('loonheffing', async () => S.getLoonheffing(true));
+  const DL = require('./doorloop');
+  const dossiers = await veilig('doorlooptijden', async () => DL.tijdlijn(Object.assign({ loon, ontslag }, await DL.laad())));
   const academy = await academyP;
-  return { med, absences, checkins, exits, aanzeggingen: ontslag, checklists, academy, fouten };
+  return { med, absences, checkins, exits, aanzeggingen: (ontslag || []).filter(r => r.type === 'aanzegging'), dossiers, checklists, academy, fouten };
 }
 
 async function getScorekaart(maanden, ververs) {

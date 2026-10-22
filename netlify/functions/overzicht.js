@@ -18,6 +18,7 @@ exports.handler = beveiligd('overzicht', async () => {
   const recent = d => { const v = parseNLDatum(String(d.verzenddatum || '').split(' ')[0]); const n = v ? dagenTot(v) : null; return n !== null && n >= -KLAAR_DAGEN; };
   const loonOpen = loon.filter(d => d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ontvangen !== 'Ja' || recent(d))) || d.herinnering));
   const ontslagOpen = ontslag.filter(d => d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ondertekend !== 'Ja' || recent(d))) || d.herinnering));
+  try { const ctl = await require('./_lib/dossiercontrole').laad(ontslag); ontslagOpen.forEach(r => { if (ctl[r.rij]) r.controle = ctl[r.rij]; }); } catch (e) { console.warn('dossiercontrole:', e.message); } // v0.27.2
   const somOpen = som.filter(d => d.verwerkt !== 'Ja');
   const oplOpen = opl.filter(d => isVerzonden(d.status) && d.ondertekend !== 'Ja');
 

@@ -167,13 +167,7 @@ async function loonFormLinks() {
   return { byNaam, byEmail };
 }
 // v0.27.1: tijdstempel van een Forms-reactie → ISO (dd-mm-jjjj uu:mm[:ss], m/d/jjjj uu:mm[:ss] of ISO); onleesbaar → ''
-function formTijd(ts) {
-  const s = String(ts || '').trim(); let m;
-  if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})/))) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).toISOString();
-  if ((m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})\s+(\d{1,2}):(\d{2})/))) return new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]).toISOString();
-  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/))) return new Date(+m[3], +m[1] - 1, +m[2], +m[4], +m[5]).toISOString();
-  return '';
-}
+function formTijd(ts) { const d = require('./doorloop').formDatum(ts); return d && !isNaN(d) ? d.toISOString() : ''; }
 async function ontslagFormLinks() {
   const byNaam = {}, byEmail = {}, tijd = {};
   for (const f of await formReacties('ontslag')) {
@@ -204,8 +198,8 @@ function actueelDoc(dl, ref, verzenddatum) {
 function zoekDoc(dl, naam, email) { const em = String(email || '').trim().toLowerCase(); if (em && dl.byEmail[em]) return dl.byEmail[em]; const n = normNaam(naam); return (n && dl.byNaam[n]) || null; }
 
 // ---- Lijsten (zelfde vorm als sheets.js) ------------------------------------
-async function getLoonheffing() {
-  const data = await sheetWeergave('hr_loonheffing'); const dl = await loonDocLinks(); const out = [];
+async function getLoonheffing(metArchief) {
+  const data = await sheetWeergave('hr_loonheffing', !!metArchief); const dl = await loonDocLinks(); const out = [];
   for (let i = 1; i < data.length; i++) {
     const r = data[i]; if (!cel(r, 0)) continue;
     const d = zoekDoc(dl, cel(r, 0), cel(r, 1)) || {};

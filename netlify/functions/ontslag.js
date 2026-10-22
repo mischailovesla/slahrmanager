@@ -31,6 +31,8 @@ async function wijzig(p, g) {
 exports.handler = beveiligd('ontslag', async (event, g) => {
   if (event.httpMethod === 'POST') return wijzig(body(event), g);
   const rijen = await S.getOntslag();
+  // v0.27.2: dossiercontrole tegen Shiftbase (lopende dossiers); bij een Shiftbase-storing gewoon zonder
+  try { const ctl = await require('./_lib/dossiercontrole').laad(rijen); rijen.forEach(r => { if (ctl[r.rij]) r.controle = ctl[r.rij]; }); } catch (e) { console.warn('dossiercontrole:', e.message); }
   return {
     rijen, redenen: C.UITSTROOMREDENEN,
     templates: T.ONTSLAG_TEMPLATES.map(x => ({ key: x.key, label: x.label, taal: x.taal, type: x.type, pdf: x.pdf, subject: x.subject }))
