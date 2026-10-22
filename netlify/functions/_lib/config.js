@@ -50,6 +50,7 @@ module.exports = {
     checkin: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     maandrapport: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     jubilea: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    'mail-bounces': 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',  // v0.27.4
     datacontrole: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     zomerpiek: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
   },

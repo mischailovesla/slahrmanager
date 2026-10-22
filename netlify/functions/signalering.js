@@ -8,6 +8,7 @@ const { beveiligd, body, admin, logActie } = require('./_lib/auth');
 const SIG = require('./_lib/signaleringen');
 
 const OMSCHRIJVING = {
+  'mail-bounces': { label: 'Mail niet aangekomen', wanneer: 'elk uur 08:20–22:20', wat: 'Controleert bij Resend of verstuurde mails zijn afgeleverd. Bounce of spam-melding → mail aan HR (keuken: Jop) en een taak in de takenlijst, zodat je het adres kunt corrigeren en opnieuw kunt versturen.' },
   'jubilea': { label: 'Jubilea', wanneer: 'maandag 09:10', wat: 'Mail aan HR (keuken: Jop): wie volgende week 1, 2, 5, 10, 15 of 20 jaar in dienst is, zodat de store manager er iets mee kan doen.' },
   'datacontrole': { label: 'Shiftbase-datacontrole', wanneer: 'maandag 09:40', wat: 'Mail aan HR (keuken: Jop): uitgeschreven vóór de eerste werkdag, contract met einddatum vóór startdatum, verlopen contract terwijl de medewerker actief is, overlappende contracten, actief zonder contract, contract na de uitdienstdatum, en ontbrekende geboortedatum of e-mail.' },
   'zomerpiek': { label: 'Zomerpiek-alert', wanneer: 'maandag 09:05 (maart t/m juli)', wat: 'Mail aan HR (keuken: Jop): winkels waar in juli/augustus ≥20% van de bezetting tegelijk vakantie heeft (goedgekeurd + aangevraagd), plus hoeveel mensen nog geen zomervakantie hebben aangevraagd.' },

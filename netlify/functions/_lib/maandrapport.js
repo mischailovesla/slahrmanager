@@ -149,7 +149,7 @@ const BRON_LABEL = { loonheffing: 'Loonheffing (uitnodiging/herinnering)', ontsl
   oproepaanbod: 'Oproepaanbod', checkin: 'Check-in 30/60', exit: 'Exit-survey', salaris: 'Documenten naar salaris', signalering: 'Signaleringen aan HR', maandrapport: 'Maandrapport' };
 function telActiviteit(mails, gesprekken) {
   const perBron = {};
-  (mails || []).forEach(m => { if (m.status && m.status !== 'verstuurd') return; perBron[m.bron] = (perBron[m.bron] || 0) + 1; });
+  (mails || []).forEach(m => { if (m.status && !['verstuurd', 'afgeleverd', 'bounced', 'klacht', 'vertraagd'].includes(m.status)) return; /* v0.27.4: status wordt nu bijgewerkt uit Resend */ perBron[m.bron] = (perBron[m.bron] || 0) + 1; });
   const mailsLijst = Object.keys(perBron).filter(b => b !== 'maandrapport').map(b => ({ bron: b, label: BRON_LABEL[b] || b, aantal: perBron[b] })).sort((a, b) => b.aantal - a.aantal);
   const soorten = {}; (C.GESPREK_SOORTEN || []).forEach(s => { soorten[s.key] = s.label; });
   const perSoort = {}; (gesprekken || []).forEach(g => { perSoort[g.soort] = (perSoort[g.soort] || 0) + 1; });

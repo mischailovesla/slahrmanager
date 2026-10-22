@@ -890,7 +890,52 @@ async function zomerpiek(droog) {
   return rap;
 }
 
-const CHECKS = { 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
+// ---- 23. v0.27.4: mail niet aangekomen (elk uur 08–22 u) ----
+// Haalt bij Resend de status op van recent verstuurde mails (hr_mails.resend_id) en zet hr_mails.status op
+// afgeleverd / bounced / klacht / vertraagd. Nieuwe bounces → mail aan HR (keuken: Jop) + taak in de takenlijst (14 dagen, af te handelen).
+const MB_STATUS = { delivered: 'afgeleverd', opened: 'afgeleverd', clicked: 'afgeleverd', bounced: 'bounced', complained: 'klacht' };
+const MB_BRON = { loonheffing: 'Loonheffingsuitnodiging', ontslag: 'Ontslag/aanzegging', salaris: 'Documenten naar salaris', sommatie: 'Sommatie', overplaatsing: 'Overplaatsing', brief: 'Brief', korting: 'Loonheffingskorting', checkin: 'Check-in', exit: 'Exit-survey', mto: 'MTO', oproep: 'Oproepaanbod', waarschuwing: 'Waarschuwing', beschikbaarheid: 'Beschikbaarheid' };
+async function resendStatus(id) {
+  const r = await fetch('https://api.resend.com/emails/' + encodeURIComponent(id), { headers: { Authorization: 'Bearer ' + process.env.RESEND_API_KEY } });
+  if (r.status === 429) { const e = new Error('rate limit'); e.rate = true; throw e; }
+  if (!r.ok) throw new Error('Resend ' + r.status);
+  const j = await r.json(); return String(j.last_event || '');
+}
+async function mailBounces(droog) {
+  const rap = { naam: 'mail-bounces', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief(), gecontroleerd: 0, nieuw: [] };
+  const db = require('./auth').admin(), nu = Date.now();
+  if (!droog && process.env.RESEND_API_KEY) {
+    const { data, error } = await db.from('hr_mails').select('id,resend_id,tijdstip,status').in('status', ['verstuurd', 'vertraagd']).not('resend_id', 'is', null)
+      .gte('tijdstip', new Date(nu - 7 * 864e5).toISOString()).lte('tijdstip', new Date(nu - 10 * 6e4).toISOString()).order('tijdstip', { ascending: true }).limit(80);
+    if (error) rap.fouten.push('hr_mails: ' + error.message);
+    for (const m of data || []) {
+      if (!m.resend_id) continue;
+      let ev; try { ev = await resendStatus(m.resend_id); } catch (e) { if (e.rate) { await new Promise(r => setTimeout(r, 1500)); continue; } rap.fouten.push(e.message); if (rap.fouten.length > 5) break; continue; }
+      rap.gecontroleerd++;
+      const st = MB_STATUS[ev] || (ev === 'delivery_delayed' ? 'vertraagd' : null);
+      if (st && st !== m.status) { await db.from('hr_mails').update({ status: st }).eq('id', m.id); if (st === 'bounced' || st === 'klacht') rap.nieuw.push(m.id); }
+      await new Promise(r => setTimeout(r, 550)); // Resend: max 2 verzoeken per seconde
+    }
+  }
+  // gevonden = alle niet-aangekomen mails van de laatste 14 dagen (taak blijft staan tot HR hem afhandelt)
+  const { data: fout, error: e2 } = await db.from('hr_mails').select('id,naam,naar,bron,type,onderwerp,tijdstip,status').in('status', ['bounced', 'klacht']).gte('tijdstip', new Date(nu - 14 * 864e5).toISOString()).order('tijdstip', { ascending: false }).limit(200);
+  if (e2) { rap.fouten.push('hr_mails: ' + e2.message); return rap; }
+  let med = []; try { med = await SB.getMedewerkers(false); } catch (e) { /* zonder winkel */ }
+  const perEm = {}, perNaam = {}; med.forEach(m => { if (m.email) perEm[String(m.email).toLowerCase()] = m; perNaam[normNaam(m.naam)] = m; });
+  const tijdNL = t => new Date(t).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '');
+  rap.gevonden = (fout || []).map(m => { const w = perEm[String(m.naar || '').toLowerCase()] || perNaam[normNaam(m.naam)] || {};
+    return { id: m.id, naam: m.naam || m.naar, email: m.naar, winkel: w.winkelNaam || '', bron: m.bron, soort: MB_BRON[m.bron] || m.bron, type: m.type, onderwerp: m.onderwerp || '', verstuurd: tijdNL(m.tijdstip), status: m.status, nieuw: rap.nieuw.includes(m.id) }; });
+  const nieuw = rap.gevonden.filter(x => x.nieuw); if (!nieuw.length) return rap;
+  for (const [deel, team] of teams(nieuw)) {
+    const items = deel.map(x => ({ kleur: '#c0392b', titel: x.naam, sub: x.soort + ' · ' + x.verstuurd + (x.winkel ? ' · ' + x.winkel : ''), html: (x.status === 'klacht' ? 'Gemarkeerd als <strong>spam</strong> door de ontvanger.' : '<strong>Niet afgeleverd</strong> op ' + esc(x.email) + ' (adres bestaat niet of mailbox weigert).') + (x.onderwerp ? '<br><span style="color:#888">' + esc(x.onderwerp) + '</span>' : '') }));
+    const plain = 'Hallo,\n\nDeze mail(s) zijn niet aangekomen:\n' + deel.map(x => '- ' + x.naam + ' <' + x.email + '> — ' + x.soort + ', verstuurd ' + x.verstuurd + (x.status === 'klacht' ? ' (als spam gemarkeerd)' : ' (niet afgeleverd)')).join('\n') + '\n\nControleer het e-mailadres (Shiftbase en het dossier) en verstuur opnieuw.\n\n(Automatisch bericht van het SLA HR Dashboard)';
+    await mailOfDroog(rap, { team, to: ontvangers('mail-bounces'), subject: 'Mail niet aangekomen: ' + deel.map(x => x.naam).slice(0, 3).join(', ') + (deel.length > 3 ? ' +' + (deel.length - 3) : ''), text: plain,
+      html: blokMail('#c0392b', 'HR &middot; Mail niet aangekomen', 'Deze mail(s) uit het HR-dashboard zijn niet aangekomen. De medewerker weet dus van niets — en een brief telt juridisch pas als hij is ontvangen:', items, 'Controleer het e-mailadres in Shiftbase en in het dossier (✎ Gegevens wijzigen), en verstuur de mail opnieuw. Bel bij twijfel even of vraag het de store manager.', 'Controle elk uur'), kort: { naam: 'HR-team', aantal: deel.length } });
+  }
+  return rap;
+}
+
+const CHECKS = { 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 // ---- Automatisch naar salaris (maandag + donderdag) ----
