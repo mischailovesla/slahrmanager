@@ -109,16 +109,16 @@
 
   <!-- ONTSLAG & AANZEGGING -->
   <div class="tc" id="tab-ontslag">
+    <div class="sec" id="ond-sec">
+      <div class="sh"><div class="st">Digitaal ondertekenen <span class="pill" id="ond-count">-</span></div><div class="hr2"><label class="btn bd bsm" style="cursor:pointer">Controleer een PDF<input type="file" accept="application/pdf" style="display:none" onchange="ondControleer(this)"></label><button class="btn bd bsm" onclick="laadOndertekeningen()">↻</button></div></div>
+      <div class="lay-sub" style="padding:10px 24px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="tbar" id="ond-filter"><button type="button" class="tb sel" data-ond-f="wacht">Wacht op handtekening</button><button type="button" class="tb" data-ond-f="alles">Alles</button></span><span title="De medewerker ondertekent via de link in de mail: code per mail, naam typen en akkoord, eventueel met de vinger tekenen. De ondertekende PDF (met bewijsspoor) komt in het dossier en gaat mee naar salaris.">ⓘ Zo werkt het</span> <span id="ond-ctrl"></span></div>
+      <div class="tw"><table><thead><tr><th>Medewerker</th><th>Document</th><th>Verstuurd</th><th>Status</th><th>Vingerafdruk</th><th></th></tr></thead><tbody id="ond-body"><tr><td colspan="6" class="leeg grijs">Laden…</td></tr></tbody></table></div>
+    </div>
     <div class="sec">
       <div class="sh"><div class="st">Ontslag &amp; aanzegging <span class="pill" id="om-count">-</span></div>
         <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('om-body',this.value)"><button class="btn bd bsm" data-srt-knop="om-body" onclick="srtKnop('om-body')" title="Sorteer op datum: nieuw → oud, oud → nieuw, uit">⇅ Sorteer op datum</button><button class="btn bd bsm" onclick="laadOntslag()">↻</button><button class="btn bp bsm" onclick="openOntslagMail(null)">Nieuwe mail + PDF</button></div></div>
       <div id="ud-balk" class="alert geel" style="display:none;margin:12px 24px 0"></div>
       <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV</th><th>Opzegging</th><th>Einddatum</th><th>Mail verstuurd</th><th>Ondertekend</th><th>Herinneringen</th><th>Naar salaris</th><th>Brief</th><th>Actie</th></tr></thead><tbody id="om-body"></tbody></table></div>
-    </div>
-    <div class="sec" id="ond-sec">
-      <div class="sh"><div class="st">Digitaal ondertekenen <span class="pill" id="ond-count">-</span></div><div class="hr2"><label class="btn bd bsm" style="cursor:pointer">Controleer een PDF<input type="file" accept="application/pdf" style="display:none" onchange="ondControleer(this)"></label><button class="btn bd bsm" onclick="laadOndertekeningen()">↻</button></div></div>
-      <div class="lay-sub" style="padding:10px 24px 0">Ontslagbevestigingen, aanzeggingen, proeftijdbrieven en overplaatsingen kan de medewerker via de link in de mail digitaal ondertekenen: code per mail, naam typen en akkoord, eventueel met de vinger tekenen. De ondertekende PDF (met bewijsspoor op een extra pagina) komt automatisch in het dossier en gaat mee naar salaris. <span id="ond-ctrl"></span></div>
-      <div class="tw"><table><thead><tr><th>Medewerker</th><th>Document</th><th>Verstuurd</th><th>Status</th><th>Vingerafdruk</th><th></th></tr></thead><tbody id="ond-body"><tr><td colspan="6" class="leeg grijs">Laden…</td></tr></tbody></table></div>
     </div>
   </div>
 

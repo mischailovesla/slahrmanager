@@ -711,7 +711,7 @@
     udStatus();
     var d = await api('/api/ontslag');
     if (!d.success) { toast('Ontslag: ' + d.bericht, 'err'); return; }
-    omData = d.rijen; omTpl = d.templates;
+    omData = d.rijen; omTpl = d.templates; omRedenen(d.redenen);
     g('om-count').textContent = omData.length + ' dossiers';
     g('om-body').innerHTML = omData.map(function (r) {
       return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('ontslag', r, r.ondertekend === 'Ja') + (r.ondertekend !== 'Ja' && r.verzenddatum ? '<button class="btn bd bsm" data-ud-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="Niet ondertekend? Bevestig de uitdiensttreding (niets te tekenen), licht salaris in en archiveer">✓ Bevestig uitdiensttreding</button> ' : '') + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
@@ -728,8 +728,14 @@
     var a = e.target.closest && e.target.closest('button[data-om-aanzeg]');
     if (a) openOntslagMail({ naam: a.getAttribute('data-naam'), email: a.getAttribute('data-email'), bedrijf: a.getAttribute('data-bv'), einddatum: a.getAttribute('data-eind'), type: 'aanzegging' });
   });
+  // v0.25.10: uitstroomredenen altijd vullen (ook als de lijst eerst via het tabblad werd geladen)
+  function omRedenen(lijst) {
+    var sel = g('om-reden'); if (!sel || !lijst || !lijst.length) return; var nu = sel.value;
+    sel.innerHTML = '<option value="">— kies een reden —</option>' + lijst.map(function (x) { return '<option value="' + esc(x) + '">' + esc(x) + '</option>'; }).join(''); sel.value = nu;
+  }
   window.openOntslagMail = async function (persoon) {
-    if (!omTpl.length) { var d = await api('/api/ontslag'); if (d.success) { omTpl = d.templates; omData = d.rijen; g('om-reden').innerHTML = '<option value="">— kies een reden —</option>' + (d.redenen || []).map(function (x) { return '<option value="' + esc(x) + '">' + esc(x) + '</option>'; }).join(''); } }
+    if (g('om-reden').options.length <= 1) { var dr = await api('/api/ontslag'); if (dr.success) omRedenen(dr.redenen); }
+    if (!omTpl.length) { var d = await api('/api/ontslag'); if (d.success) { omTpl = d.templates; omData = d.rijen; omRedenen(d.redenen); } }
     if (!vbBvs.length) { var b = await api('/api/brieven'); if (b.success) vbBvs = b.bvs; }
     g('om-bv-list').innerHTML = vbBvs.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('');
     omRij = persoon && persoon.rij ? persoon.rij : null;
@@ -2198,12 +2204,19 @@
   // ---------- Digitaal ondertekenen (fase 6) ----------
   var tkOnd = null;
   var OND_ST = { wacht: ['Wacht op handtekening', 'bo'], getekend: ['Ondertekend', 'bg'], vervangen: ['Vervangen door nieuwere brief', 'boat'], ingetrokken: ['Ingetrokken', 'boat'] };
+  var ondFilter = 'wacht';
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-ond-f]'); if (!b) return;
+    ondFilter = b.getAttribute('data-ond-f'); document.querySelectorAll('[data-ond-f]').forEach(function (x) { x.classList.toggle('sel', x === b); }); laadOndertekeningen();
+  });
   window.laadOndertekeningen = async function () {
     var el = g('ond-body'); if (!el) return;
     var d = await api('/api/ondertekening-admin');
     if (!d.success) { el.innerHTML = '<tr><td colspan="6" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
-    tkOnd = d.rijen; g('ond-count').textContent = d.rijen.filter(function (r) { return r.status === 'wacht'; }).length;
-    el.innerHTML = d.rijen.length ? d.rijen.map(function (r) {
+    tkOnd = d.rijen; g('ond-count').textContent = d.rijen.filter(function (r) { return r.status === 'wacht'; }).length + ' wachten';
+    var rijen = ondFilter === 'wacht' ? d.rijen.filter(function (r) { return r.status === 'wacht'; }) : d.rijen;
+    if (!rijen.length && d.rijen.length) { el.innerHTML = '<tr><td colspan="6" class="leeg grijs">Er wacht niemand op ondertekening. Kies <strong>Alles</strong> voor getekende en ingetrokken brieven.</td></tr>'; return; }
+    el.innerHTML = rijen.length ? rijen.map(function (r) {
       var st = OND_ST[r.status] || [r.status, 'boat'];
       var extra = r.status === 'getekend' ? '<div class="lay-sub">' + esc(r.getekend) + ' · als "' + esc(r.getekend_naam) + '"' + (r.met_handtekening ? ' · met getekende handtekening' : '') + (r.getekend_ip ? ' · IP ' + esc(r.getekend_ip) : '') + '</div>' : r.status === 'wacht' ? '<div class="lay-sub">' + (r.codeAangevraagd ? 'code aangevraagd, nog niet getekend' : 'link nog niet gebruikt') + '</div>' : '';
       return '<tr><td><strong>' + esc(r.naam) + '</strong><div class="lay-sub">' + esc(r.email) + '</div></td><td>' + esc(r.titel) + '</td><td>' + esc(r.aangemaakt) + '<div class="lay-sub">' + esc(r.aangemaakt_door || '') + '</div></td><td><span class="badge ' + st[1] + '">' + st[0] + '</span>' + extra + '</td><td style="font-family:monospace;font-size:.72rem;color:var(--grijs)" title="SHA-256 ' + esc(r.getekend_hash || r.origineel_hash) + '">' + esc(String(r.getekend_hash || r.origineel_hash || '').slice(0, 12)) + '…</td><td>' + (r.status === 'wacht' ? '<button class="btn bd bsm" data-ond-in="' + esc(r.id) + '">Intrekken</button>' : '') + '</td></tr>';
