@@ -324,6 +324,19 @@
     <div class="alert grijs"><strong>Bron:</strong> SLA Academy (alleen lezen, via de functie <code>hr_training_status</code>). Toewijzen en herinneren doe je in Kas; Academy mailt medewerkers zelf bij deadlines. Taken op het Overzicht: verlopen/verlopend certificaat, welkomstcollectie niet af na 21 dagen, aftekenen te laat en per winkel wie na 7 dagen nog nooit heeft ingelogd.</div>
   </div>
   <!-- Document zelf uploaden (oud Google-formulier → Drive) -->
+  <div class="mo" id="omw-modal"><div class="modal" style="max-width:520px">
+    <div class="mh" style="background:#333d3a"><div class="mti" id="omw-titel">Gegevens wijzigen</div><button class="mc" onclick="omwSluit()">×</button></div>
+    <div class="mb2">
+      <div class="alert geel" style="margin:0 0 14px;font-size:.84rem">Past alleen de gegevens in het dossier aan. Een al verstuurde brief verandert niet mee; stuur zo nodig een nieuwe brief.</div>
+      <div class="fg"><label>Opzegdatum (dd-mm-jjjj)</label><input type="text" id="omw-opzegging" placeholder="bijv. 10-09-2026"></div>
+      <div class="fg"><label>Einddatum / laatste werkdag (dd-mm-jjjj)</label><input type="text" id="omw-einddatum"></div>
+      <div class="fg"><label>BV</label><input type="text" id="omw-bedrijf"></div>
+      <div class="fg"><label>Adres</label><input type="text" id="omw-adres"></div>
+      <div class="fg"><label>E-mail</label><input type="text" id="omw-email"></div>
+      <div id="omw-melding"></div>
+    </div>
+    <div class="mf"><button class="btn bd" onclick="omwSluit()">Annuleren</button><button class="btn bp" id="omw-btn" onclick="omwOpslaan()">Opslaan</button></div>
+  </div></div>
   <div class="mo" id="du-modal"><div class="modal" style="max-width:620px">
     <div class="mh" style="background:#333d3a"><div class="mti" id="du-titel">Document uploaden</div><button class="mc" onclick="closeDocUpload()">×</button></div>
     <div class="mb2">

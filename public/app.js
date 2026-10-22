@@ -724,9 +724,26 @@
     omData = d.rijen; omTpl = d.templates; omRedenen(d.redenen);
     g('om-count').textContent = omData.filter(function (r) { return !isAfgOm(r); }).length + ' lopend · ' + omData.filter(isAfgOm).length + ' afgerond';
     g('om-body').innerHTML = omData.map(function (r) {
-      return '<tr' + (isAfgOm(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('ontslag', r, r.ondertekend === 'Ja') + (r.ondertekend !== 'Ja' && r.verzenddatum ? '<button class="btn bd bsm" data-ud-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="Niet ondertekend? Bevestig de uitdiensttreding (niets te tekenen), licht salaris in en archiveer">✓ Bevestig uitdiensttreding</button> ' : '') + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
+      return '<tr' + (isAfgOm(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('ontslag', r, r.ondertekend === 'Ja') + (r.ondertekend !== 'Ja' && r.verzenddatum ? '<button class="btn bd bsm" data-ud-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="Niet ondertekend? Bevestig de uitdiensttreding (niets te tekenen), licht salaris in en archiveer">✓ Bevestig uitdiensttreding</button> ' : '') + '<button class="btn bd bsm" data-omw-rij="' + r.rij + '" title="Opzegging, einddatum, BV, adres of e-mail corrigeren">✎ Gegevens wijzigen</button> ' + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="12" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('om-body');
+  };
+  // v0.27.1: dossiergegevens corrigeren
+  var omwRij = 0;
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-omw-rij]'); if (!b) return;
+    var r = (omData || []).find(function (x) { return String(x.rij) === b.getAttribute('data-omw-rij'); }); if (!r) return;
+    omwRij = r.rij; g('omw-titel').textContent = 'Gegevens wijzigen · ' + r.naam;
+    ['opzegging', 'einddatum', 'bedrijf', 'adres', 'email'].forEach(function (k) { g('omw-' + k).value = r[k] || ''; });
+    g('omw-melding').innerHTML = ''; g('omw-modal').classList.add('open');
+  });
+  window.omwSluit = function () { g('omw-modal').classList.remove('open'); };
+  window.omwOpslaan = async function () {
+    var p = { rij: omwRij }; ['opzegging', 'einddatum', 'bedrijf', 'adres', 'email'].forEach(function (k) { p[k] = g('omw-' + k).value.trim(); });
+    var btn = g('omw-btn'); btn.disabled = true;
+    var r = await api('/api/ontslag', p); btn.disabled = false;
+    if (r.success) { toast(r.bericht, 'ok'); omwSluit(); laadOntslag(); if (typeof laadOverzicht === 'function') laadOverzicht(); }
+    else g('omw-melding').innerHTML = '<div class="alert rood" style="margin-top:10px">' + esc(r.bericht) + '</div>';
   };
   document.addEventListener('click', function (e) {
     var b = e.target.closest && e.target.closest('button[data-om-rij]');
