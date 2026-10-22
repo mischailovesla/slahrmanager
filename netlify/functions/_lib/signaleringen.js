@@ -971,8 +971,12 @@ async function salaris(droog) {
   for (const type of Object.keys(klaar)) {
     let lijst = [];
     try { lijst = (await SAL.lijstVan(type)).filter(klaar[type]); } catch (e) { rap.fouten.push(type + ': ' + e.message); continue; }
+    // v0.27.5: ontslagdossiers die niet kloppen met Shiftbase niet automatisch versturen
+    let ctl = {}; if (type === 'ontslag' && lijst.length) { try { ctl = await require('./dossiercontrole').laad(lijst); } catch (e) { rap.fouten.push('dossiercontrole: ' + e.message); } }
     for (const r of lijst) {
       const item = { type, naam: r.naam, rij: r.rij, winkel: medW[normNaam(r.naam)] || '' };
+      const blok = (ctl[r.rij] || []).filter(c => c.ernst !== 'blauw');
+      if (blok.length) { rap.handmatig.push(Object.assign({ reden: 'dossiercontrole: ' + blok.map(c => c.label + ' (' + c.tekst + ')').join('; ') }, item)); continue; }
       const oud = [r.docUrl, r.docUrl2].filter(u => u && !U.isRef(u));
       if (oud.length) { rap.handmatig.push(Object.assign({ reden: 'document staat nog in Google Drive (oud formulier)' }, item)); continue; }
       rap.gevonden.push(item);

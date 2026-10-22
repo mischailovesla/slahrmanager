@@ -18,6 +18,8 @@ async function zetVinkje(tok, refs, rijHint) {
     const r = (rijHint && lijst.find(x => x.rij === rijHint)) || lijst.filter(x => x.ondertekend !== 'Ja').sort((a, b) => ts(b).localeCompare(ts(a)))[0] || lijst[0];
     if (r.ondertekend !== 'Ja') await S.zetCel(C.SHEETS.ontslag.id, null, r.rij, 10, 'Ja', S.KLEUR.groen);
     await require('./offboarding').vink({ naam: r.naam, email: r.email, mid: r.mid }, 'bevestiging', null, 'Brief ondertekend retour'); // v0.27.3
+    const sal = await require('./salaris').direct('ontslag', r.rij); // v0.27.5: getekend → direct naar salaris (als dat aan staat)
+    if (!sal.verstuurd) console.log('salaris direct ' + r.naam + ': ' + sal.reden);
     return r.rij;
   }
   if (tok.s === 'korting') {

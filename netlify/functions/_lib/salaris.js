@@ -65,4 +65,26 @@ async function stuur(type, row, door, p) {
   return { bericht: bijlagen.length + ' document(en) van ' + row.naam + ' verstuurd naar ' + C.SALARIS_EMAIL + (oudeDrive.length ? '. LET OP: ' + oudeDrive.join(' en ') + ' staat nog in Google Drive en is niet meegestuurd.' : ''), rij, salaris: nu, resendId };
 }
 
-module.exports = { stuur, lijstVan, vinkVerwerkt };
+// v0.27.5: direct na de handtekening naar salaris (i.p.v. wachten op maandag/donderdag).
+// Alleen als 'Automatisch naar salaris' aan staat én SIGNALERINGEN_ACTIEF=1, het getekende document in het dashboard staat
+// (geen oude Drive-link) en de dossiercontrole geen rode/oranje punten geeft — anders blijft het voor HR staan.
+// Geeft { verstuurd, reden }. Gooit nooit (mag de ondertekening niet laten mislukken).
+async function direct(type, rij, door) {
+  try {
+    if (type !== 'ontslag') return { verstuurd: false, reden: 'alleen ontslag/aanzegging' };
+    if (String(process.env.SIGNALERINGEN_ACTIEF || '').trim() !== '1') return { verstuurd: false, reden: 'signaleringen staan uit' };
+    if ((await require('./instellingen').lees('salaris_auto', false)) !== true) return { verstuurd: false, reden: 'automatisch naar salaris staat uit' };
+    const r = (await lijstVan(type)).find(x => x.rij === rij); if (!r) return { verstuurd: false, reden: 'dossier niet gevonden' };
+    if (r.salaris || r.mahdia === 'Ja') return { verstuurd: false, reden: 'al naar salaris' };
+    if (r.ondertekend !== 'Ja' || !r.docUrl) return { verstuurd: false, reden: 'nog geen getekend document' };
+    if (!require('./uploads').isRef(r.docUrl)) return { verstuurd: false, reden: 'document staat nog in Google Drive' };
+    const vz = require('./util').parseNLDatum(r.verzenddatum), vanaf = C.SALARIS_AUTO_VANAF ? new Date(C.SALARIS_AUTO_VANAF + 'T00:00:00') : null;
+    if (!vz || (vanaf && vz < vanaf)) return { verstuurd: false, reden: 'dossier van vóór ' + C.SALARIS_AUTO_VANAF };
+    const ctl = (await require('./dossiercontrole').laad([r]))[r.rij] || [];
+    const blok = ctl.filter(c => c.ernst !== 'blauw'); if (blok.length) return { verstuurd: false, reden: 'dossiercontrole: ' + blok.map(c => c.label).join(', ') };
+    const uit = await stuur(type, r, door || 'automatisch (na ondertekening)', {});
+    return uit && uit.success === false ? { verstuurd: false, reden: uit.bericht || 'niet verstuurd' } : { verstuurd: true };
+  } catch (e) { console.warn('salaris direct:', e.message); return { verstuurd: false, reden: e.message }; }
+}
+
+module.exports = { stuur, lijstVan, vinkVerwerkt, direct };

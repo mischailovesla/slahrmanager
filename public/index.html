@@ -119,6 +119,7 @@
       <div class="sh"><div class="st">Ontslag &amp; aanzegging <span class="pill" id="om-count">-</span></div>
         <div class="hr2"><span class="tbar"><button type="button" class="tb sel" data-afg-f="om-body" data-v="lopend">Lopend</button><button type="button" class="tb" data-afg-f="om-body" data-v="afgerond">Afgerond</button><button type="button" class="tb" data-afg-f="om-body" data-v="alles">Alles</button></span><input class="sb" type="text" placeholder="Zoek in alles..." oninput="flt('om-body',this.value);afgZoek('om-body',this.value)"><button class="btn bd bsm" data-srt-knop="om-body" onclick="srtKnop('om-body')" title="Sorteer op datum: nieuw → oud, oud → nieuw, uit">⇅ Sorteer op datum</button><button class="btn bd bsm" onclick="laadOntslag()">↻</button><button class="btn bp bsm" onclick="openOntslagMail(null)">Nieuwe mail + PDF</button></div></div>
       <div id="ud-balk" class="alert geel" style="display:none;margin:12px 24px 0"></div>
+      <div id="om-sal-balk" class="alert geel" style="display:none;margin:8px 24px 0"></div>
       <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV</th><th>Opzegging</th><th>Einddatum</th><th>Mail verstuurd</th><th>Ondertekend</th><th>Herinneringen</th><th>Naar salaris</th><th>Brief</th><th>Actie</th></tr></thead><tbody id="om-body" data-toon="lopend" data-keuze="lopend"></tbody></table></div>
     </div>
   </div>

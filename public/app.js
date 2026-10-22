@@ -707,6 +707,11 @@
       : '<strong>Automatisch afronden staat uit.</strong> Na 3 herinneringen stopt het dashboard; na 30 dagen wordt het dossier stil gearchiveerd. Per rij kun je de uitdiensttreding wel zelf bevestigen.')
       + ' <button class="btn bd bsm" onclick="udVoorbeeld()">Voorbeeld mail + PDF</button>' + (window._ikRol === 'admin' ? ' <button class="btn ' + (d.actief ? 'bd' : 'bp') + ' bsm" onclick="udZet(' + (d.actief ? 'false' : 'true') + ')">' + (d.actief ? 'Uitzetten' : 'Aanzetten') + '</button>' : '');
   }
+  window.omSalZet = async function (aan) {
+    if (!confirm(aan ? 'Automatisch naar salaris aanzetten?\n\nGetekende ontslagdossiers gaan dan direct na de handtekening naar salaris, en elke maandag en donderdag gaat alles wat klaar is (ook loonheffing) mee. Dit is dezelfde schakelaar als op de tab Loonheffing.' : 'Automatisch naar salaris uitzetten? (Geldt ook voor loonheffing.)')) return;
+    var r = await api('/api/loonheffing', { actie: 'salaris-auto', aan: aan });
+    if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadOntslag();
+  };
   window.udVoorbeeld = async function (rij) {
     var r = await api('/api/uitdienst', { actie: 'voorbeeld', rij: rij || 0 });
     if (!r.success) { toast(r.bericht, 'err'); return; }
@@ -731,6 +736,10 @@
     var d = await api('/api/ontslag');
     if (!d.success) { toast('Ontslag: ' + d.bericht, 'err'); return; }
     omData = d.rijen; omTpl = d.templates; omRedenen(d.redenen);
+    // v0.27.5: automatisch naar salaris (zelfde schakelaar als op de tab Loonheffing)
+    var sb = g('om-sal-balk'); if (sb) { sb.style.display = ''; sb.className = 'alert ' + (d.salarisAuto ? 'groen' : 'geel');
+      sb.innerHTML = (d.salarisAuto ? '<strong>Automatisch naar salaris staat aan.</strong> Een getekende ontslagbevestiging of aanzegging gaat direct na de handtekening naar ' + esc((cfg && cfg.salarisEmail) || 'de salarisadministratie') + ' — behalve als de dossiercontrole (⚠) iets vindt: dan blijft hij bij "Klaar voor salaris" staan.'
+        : '<strong>Automatisch naar salaris staat uit.</strong> Getekende dossiers stuur je zelf met "→ Salaris".') + (window._ikRol === 'admin' ? ' <button class="btn ' + (d.salarisAuto ? 'bd' : 'bp') + ' bsm" onclick="omSalZet(' + (d.salarisAuto ? 'false' : 'true') + ')">' + (d.salarisAuto ? 'Uitzetten' : 'Aanzetten') + '</button>' : ''); }
     g('om-count').textContent = omData.filter(function (r) { return !isAfgOm(r); }).length + ' lopend · ' + omData.filter(isAfgOm).length + ' afgerond';
     g('om-body').innerHTML = omData.map(function (r) {
       return '<tr' + (isAfgOm(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong>' + bCtl(r) + '</td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('ontslag', r, r.ondertekend === 'Ja') + (r.ondertekend !== 'Ja' && r.verzenddatum ? '<button class="btn bd bsm" data-ud-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="Niet ondertekend? Bevestig de uitdiensttreding (niets te tekenen), licht salaris in en archiveer">✓ Bevestig uitdiensttreding</button> ' : '') + '<button class="btn bd bsm" data-omw-rij="' + r.rij + '" title="Opzegging, einddatum, BV, adres of e-mail corrigeren">✎ Gegevens wijzigen</button> ' + bArch('ontslag', r.rij, r.naam) + '</td></tr>';

@@ -35,6 +35,7 @@ exports.handler = beveiligd('ontslag', async (event, g) => {
   try { const ctl = await require('./_lib/dossiercontrole').laad(rijen); rijen.forEach(r => { if (ctl[r.rij]) r.controle = ctl[r.rij]; }); } catch (e) { console.warn('dossiercontrole:', e.message); }
   return {
     rijen, redenen: C.UITSTROOMREDENEN,
+    salarisAuto: (await require('./_lib/instellingen').lees('salaris_auto', false)) === true, // v0.27.5
     templates: T.ONTSLAG_TEMPLATES.map(x => ({ key: x.key, label: x.label, taal: x.taal, type: x.type, pdf: x.pdf, subject: x.subject }))
   };
 });
