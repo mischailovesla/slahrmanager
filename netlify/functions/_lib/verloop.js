@@ -34,6 +34,7 @@ function verwerkVerloopData(usersLijst, contractsLijst) {
     const start = startPerUser[String(u.id)] || String(u.startdate || '').trim();
     if (!start || start === '0000-00-00') continue;
     let eind = String(u.enddate || '').trim(); if (eind === '0000-00-00') eind = '';
+    if (eind && eind < start) continue; // v0.25.15: uitgeschreven vóór de eerste werkdag = nooit begonnen → telt niet als in- of uitstroom
     const winkelNaam = winkel || '(geen winkel)'; if (uitgesloten(winkelNaam)) continue;
     out.push({ id: String(u.id || ''), naam: geanon ? '(geanonimiseerd)' : (naam || '(naamloos)'), email: geanon ? '' : String(u.email || '').trim().toLowerCase(), winkel: winkelNaam, start, eind });
   }
