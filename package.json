@@ -5,7 +5,7 @@
   "description": "SLA HR Dashboard - Netlify versie (login, Overzicht, Dossier, vinkjes/archiveren, loonheffingsmails, vrije brieven met PDF)",
   "scripts": {
     "dev": "netlify dev",
-    "check": "node --check netlify/functions/*.js && node --check netlify/functions/_lib/*.js && node --check public/app.js",
+    "check": "node --check netlify/functions/*.js && node --check netlify/functions/_lib/*.js && node --check public/app.js && node --check public/version.js",
     "test": "node tests/run.js"
   },
   "dependencies": {
