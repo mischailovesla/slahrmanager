@@ -11,8 +11,12 @@ exports.handler = beveiligd('overzicht', async () => {
   const [loon, ontslag, som, opl] = await Promise.all([S.getLoonheffing(), S.getOntslag(), S.getSommatie(), S.getOverplaatsing()]);
 
   const isVerzonden = s => s && (s.indexOf('Verzonden') === 0 || s.indexOf('Verstuurd') === 0);
-  const loonOpen = loon.filter(d => d.mahdia !== 'Ja' && ((isVerzonden(d.status) && d.ontvangen !== 'Ja') || d.herinnering));
-  const ontslagOpen = ontslag.filter(d => d.mahdia !== 'Ja' && ((isVerzonden(d.status) && d.ondertekend !== 'Ja') || d.herinnering));
+  // v0.27.1: ook getekend/ontvangen maar nog niet naar salaris (Mahdia) = nog open → kolom 'Klaar voor salaris'.
+  // Alleen recente dossiers (verstuurd ≤ KLAAR_DAGEN geleden), zodat oude rijen van vóór de salaris-knop niet terugkomen.
+  const KLAAR_DAGEN = 90;
+  const recent = d => { const v = parseNLDatum(String(d.verzenddatum || '').split(' ')[0]); const n = v ? dagenTot(v) : null; return n !== null && n >= -KLAAR_DAGEN; };
+  const loonOpen = loon.filter(d => d.mahdia !== 'Ja' && ((isVerzonden(d.status) && (d.ontvangen !== 'Ja' || (!d.salaris && recent(d)))) || d.herinnering));
+  const ontslagOpen = ontslag.filter(d => d.mahdia !== 'Ja' && ((isVerzonden(d.status) && (d.ondertekend !== 'Ja' || (!d.salaris && recent(d)))) || d.herinnering));
   const somOpen = som.filter(d => d.verwerkt !== 'Ja');
   const oplOpen = opl.filter(d => isVerzonden(d.status) && d.ondertekend !== 'Ja');
 
@@ -56,7 +60,7 @@ exports.handler = beveiligd('overzicht', async () => {
       ontslagTotaal: ontslag.length, ontslagOndertekend: ontslag.filter(d => d.ondertekend === 'Ja').length,
       sommaties: som.length, overplaatsingen: opl.length
     },
-    werklijst: { instroom: loon.filter(d => d.ontvangen !== 'Ja').length, indienst: oplOpen.length, dossier: somOpen.length, uitstroom: ontslagOpen.length },
+    werklijst: { instroom: loon.filter(d => d.ontvangen !== 'Ja').length, indienst: oplOpen.length, dossier: somOpen.length, uitstroom: ontslagOpen.filter(d => d.ondertekend !== 'Ja').length },
     aanzegAlerts,
     open: {
       loonheffing: loonOpen, ontslag: ontslagOpen, sommatie: somOpen, overplaatsing: oplOpen
