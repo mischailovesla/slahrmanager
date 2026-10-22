@@ -121,6 +121,8 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
     await S.zetCel(id, null, rij, 8, 'Verzonden op ' + nu, S.KLEUR.groen);
     await S.zetCel(id, null, rij, 9, nu);
     if (!nieuweRij) {
+      // v0.27.1: nieuwe brief op een bestaande regel = nieuw dossier → oude ondertekening/herinneringen/salaris-status wissen
+      for (const k of [10, 11, 12, 14, 15]) await S.zetCel(id, null, rij, k, '', S.KLEUR.wit);
       if (einddatum) await S.zetCel(id, null, rij, 4, einddatum);
       if (datumOpzegging && (tpl.type === 'ontslag' || isProef)) await S.zetCel(id, null, rij, 3, datumOpzegging);
       if (adres) await S.zetCel(id, null, rij, 7, adres);

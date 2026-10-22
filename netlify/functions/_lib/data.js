@@ -166,20 +166,29 @@ async function loonFormLinks() {
   }
   return { byNaam, byEmail };
 }
+// v0.27.1: tijdstempel van een Forms-reactie → ISO (dd-mm-jjjj uu:mm[:ss], m/d/jjjj uu:mm[:ss] of ISO); onleesbaar → ''
+function formTijd(ts) {
+  const s = String(ts || '').trim(); let m;
+  if ((m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{1,2}):(\d{2})/))) return new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).toISOString();
+  if ((m = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})\s+(\d{1,2}):(\d{2})/))) return new Date(+m[3], +m[2] - 1, +m[1], +m[4], +m[5]).toISOString();
+  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2}):(\d{2})/))) return new Date(+m[3], +m[1] - 1, +m[2], +m[4], +m[5]).toISOString();
+  return '';
+}
 async function ontslagFormLinks() {
-  const byNaam = {}, byEmail = {};
+  const byNaam = {}, byEmail = {}, tijd = {};
   for (const f of await formReacties('ontslag')) {
     const url = toDownloadUrl(f.doc_url || ''); if (!url) continue;
     const n = normNaam(f.naam), em = String(f.email || '').toLowerCase();
     if (n) byNaam[n] = url; if (em) byEmail[em] = url;
+    const t = formTijd(f.tijdstempel); if (t) tijd[url] = t;   // zo telt een oud Forms-document niet mee bij een nieuwe brief (actueelDoc)
   }
-  return { byNaam, byEmail };
+  return { byNaam, byEmail, tijd };
 }
 async function mergeUploads(dl, soort, maak, combineer) {
   let up; try { up = await require('./uploads').vindUploads(soort); } catch (e) { console.warn('uploads:', e.message); return; }
   for (const k of Object.keys(up.byNaam)) dl.byNaam[k] = combineer(dl.byNaam[k], maak(up.byNaam[k]));
   for (const k of Object.keys(up.byEmail)) dl.byEmail[k] = combineer(dl.byEmail[k], maak(up.byEmail[k]));
-  dl.tijd = up.tijd || {};
+  dl.tijd = Object.assign({}, dl.tijd || {}, up.tijd || {});
 }
 async function loonDocLinks() { const dl = await loonFormLinks(); await mergeUploads(dl, 'loon', r => ({ loon: r.loon || '', indienst: r.indienst || '' }), (oud, nw) => ({ loon: nw.loon || (oud || {}).loon || '', indienst: nw.indienst || (oud || {}).indienst || '' })); return dl; }
 async function ontslagDocLinks() { const dl = await ontslagFormLinks(); await mergeUploads(dl, 'ontslag', r => r.ontslag || '', (oud, nw) => nw || oud || ''); return dl; }

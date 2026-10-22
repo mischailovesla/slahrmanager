@@ -15,6 +15,7 @@ const TOGGLES = {
   'mahdia-loonheffing': { id: SHEETS.loonheffing.id, tab: null, kol: 10, bron: 'loonheffing', veld: 'mahdia' },
   'mahdia-ontslag':     { id: SHEETS.ontslag.id,     tab: null, kol: 14, bron: 'ontslag',     veld: 'mahdia' },
   'som-verwerkt':       { id: SHEETS.sommatie.id,    tab: null, kol: 9,  bron: 'sommatie',    veld: 'verwerkt' },
+  'ondertekend-ontslag': { id: SHEETS.ontslag.id,   tab: null, kol: 10, bron: 'ontslag',     veld: 'ondertekend' },
   'opl-ondertekend':    { id: SHEETS.overplaatsing.id, tab: SHEETS.overplaatsing.tab, kol: 13, bron: 'overplaatsing', veld: 'ondertekend' }
 };
 
