@@ -25,7 +25,9 @@ exports.handler = beveiligd('beschikbaarheid-mail', async (event, g) => {
   const bv = w.bv;
   const subject = (isEN ? 'Weekend availability - written notice - ' : 'Weekendbeschikbaarheid - schriftelijke kennisgeving - ') + naam;
   const text = T.beschikbPlain(naam, bv, ingangsdatum, isEN), html = T.beschikbHtml(naam, bv, ingangsdatum, isEN);
-  if (p.preview) return { subject, text, html };
+  const gzLink = require('./_lib/uploads').uploadLink('beschikbaarheid', naam || 'medewerker'); // v0.26.0: voor gezien tekenen
+  const textG = text + T.gezienPlain(gzLink, isEN), htmlG = T.metGezienKnop(html, gzLink, isEN);
+  if (p.preview) return { subject, text: textG, html: htmlG };
   if (!naam) throw new Error('Vul de naam in.');
   if (!ingangsdatum) throw new Error('Vul de ingangsdatum in.');
 
@@ -38,9 +40,10 @@ exports.handler = beveiligd('beschikbaarheid-mail', async (event, g) => {
   if (p.alleenPdf) return { pdf: pdf.toString('base64'), bestandsnaam };
 
   if (!to || to.indexOf('@') === -1) throw new Error('Ongeldig e-mailadres.');
-  const resendId = await M.verstuur({ to, subject, text, html, attachments: [{ filename: bestandsnaam, content: pdf.toString('base64') }], tags: [{ name: 'bron', value: 'beschikbaarheid' }] });
+  const resendId = await M.verstuur({ to, subject, text: textG, html: htmlG, attachments: [{ filename: bestandsnaam, content: pdf.toString('base64') }], tags: [{ name: 'bron', value: 'beschikbaarheid' }] });
   const nu = D.stempel();
   const rij = await S.logBeschikbaarheid({ naam, to, adres, ingangsdatum, taal: isEN ? 'EN' : 'NL', onderbouwing: p.onderbouwing, rij: p.rij }, w, nu);
+  try { await require('./_lib/ondertekening').aanmaken({ soort: 'beschikbaarheid', type: 'beschikbaarheid', titel: (isEN ? 'Weekend availability notice' : 'Kennisgeving weekendbeschikbaarheid') + ' - ' + naam, naam, email: to, rij, taal: isEN ? 'EN' : 'NL', pdf, door: g.email }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); }
   await M.logMail({ door: g.email, bron: 'beschikbaarheid', type: 'kennisgeving-pdf', naar: to, naam, onderwerp: subject, taal: isEN ? 'EN' : 'NL', rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'beschikbaarheid', veld: w.naam, rij, naam, nieuw: to, details: subject + ' (+PDF)' });
   return { bericht: 'Kennisgeving' + (isEN ? ' (EN)' : '') + ' + PDF verstuurd naar ' + to, rij, resendId };

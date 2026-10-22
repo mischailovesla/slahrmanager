@@ -4,6 +4,7 @@ const { beveiligd } = require('./_lib/auth');
 const VR = require('./_lib/verloop');
 exports.handler = beveiligd('verloop', async (event) => {
   const q = event.queryStringParameters || {};
+  if (q.vroeg) return require('./_lib/vroegvertrek').laad(q.maanden); // v0.26.0: vroeg-vertrek-analyse
   const r = await VR.getVerloopData(q.maanden, q.ververs === '1');
   if (!q.controle) return r;
   const med = await VR.laadMedewerkers(false);

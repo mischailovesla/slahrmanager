@@ -546,6 +546,8 @@ Wij hechten eraan te benadrukken dat deze waarschuwing bedoeld is om helderheid 
 
 Een kopie van deze brief wordt bewaard in jouw personeelsdossier.
 
+Wij vragen je deze brief voor gezien te ondertekenen via de link in de begeleidende e-mail. Daarmee bevestig je alleen dat je de brief hebt ontvangen, niet dat je het met de inhoud eens bent. Je kunt daar ook een reactie geven; die komt bij de brief in je dossier.
+
 Met vriendelijke groet,
 
 ${AFZENDER_NAAM}
@@ -588,6 +590,8 @@ We want to emphasise that this warning is intended to provide clarity and preven
 
 A copy of this letter will be kept in your personnel file.
 
+Please sign this letter as seen via the link in the accompanying e-mail. This only confirms that you have received the letter, not that you agree with its content. You can also add a response there, which will be added to the letter in your file.
+
 Kind regards,
 
 ${AFZENDER_NAAM}
@@ -629,6 +633,8 @@ Is er een persoonlijke omstandigheid (studie, zorgtaken, tweede baan) waardoor j
 
 We vertrouwen erop dat we hiermee samen tot een goede oplossing komen.
 
+Wij vragen je deze brief voor gezien te ondertekenen via de link in de begeleidende e-mail. Daarmee bevestig je alleen dat je de brief hebt ontvangen, niet dat je het met de inhoud eens bent. Je kunt daar ook een reactie geven; die komt bij de brief in je dossier.
+
 Met vriendelijke groet,
 
 ${AFZENDER_NAAM}
@@ -667,6 +673,8 @@ If your availability still does not comply with the house rules after {{Ingangsd
 Is there a personal circumstance (studies, care responsibilities, a second job) that structurally prevents you from meeting this rule? Please contact your Store Manager or HR at hr@ilovesla.com before {{Ingangsdatum}}, so we can look at what is possible together.
 
 We trust that we will find a good solution together.
+
+Please sign this letter as seen via the link in the accompanying e-mail. This only confirms that you have received the letter, not that you agree with its content. You can also add a response there, which will be added to the letter in your file.
 
 Kind regards,
 
@@ -736,7 +744,7 @@ Wij bieden je hierbij een arbeidsovereenkomst aan met een vaste arbeidsomvang va
 
 **Wat we van je vragen**
 
-Laat ons uiterlijk op {{Reactiedatum}} weten of je dit aanbod aanvaardt. Dat kan door deze brief ondertekend terug te sturen via de link in de e-mail, of door te antwoorden op de e-mail. Aanvaard je het aanbod, dan leggen we de nieuwe arbeidsomvang schriftelijk vast.
+Laat ons uiterlijk op {{Reactiedatum}} weten of je dit aanbod aanvaardt. Dat kan door deze brief digitaal te ondertekenen via de link in de e-mail; daar kies je ook of je het aanbod aanvaardt of op oproepbasis blijft werken. Antwoorden op de e-mail mag ook. Aanvaard je het aanbod, dan leggen we de nieuwe arbeidsomvang schriftelijk vast.
 
 Je bent niet verplicht het aanbod te accepteren. Wil je liever op oproepbasis blijven werken, dan respecteren we dat; je oproepovereenkomst loopt dan ongewijzigd door en wij doen je volgend jaar opnieuw een aanbod. Reageer je niet vóór {{Reactiedatum}}, dan gaan wij ervan uit dat je op oproepbasis wilt blijven werken.
 
@@ -776,7 +784,7 @@ We hereby offer you an employment agreement with a fixed working time of **{{Aan
 
 **What we ask of you**
 
-Please let us know by {{Reactiedatum}} whether you accept this offer, by returning this letter signed via the link in the e-mail or by replying to the e-mail. If you accept, we will confirm the new working hours in writing.
+Please let us know by {{Reactiedatum}} whether you accept this offer, by signing this letter digitally via the link in the e-mail, where you also choose whether you accept the offer or stay on an on-call basis. Replying to the e-mail is also fine. If you accept, we will confirm the new working hours in writing.
 
 You are not obliged to accept. If you prefer to keep working on an on-call basis, we respect that: your on-call agreement continues unchanged and we will make you a new offer next year. If we do not hear from you before {{Reactiedatum}}, we will assume you wish to continue on an on-call basis.
 

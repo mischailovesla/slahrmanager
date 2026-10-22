@@ -48,8 +48,15 @@ module.exports = {
     jeugd: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     oproepaanbod: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     checkin: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
-    maandrapport: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
+    maandrapport: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    jubilea: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    datacontrole: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    zomerpiek: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
   },
+  // v0.26.0: jubilea (jaren in dienst, seintje een week vooruit) en zomerpiek-alert (maart t/m juli, kijkt naar juli/augustus)
+  JUBILEUM_JAREN: [1, 2, 5, 10, 15, 20],
+  ZOMERPIEK_VAN: '03-01',
+  ZOMERPIEK_TOT: '07-31',
 
   // ---- Fase 2: juridische checks (wettelijke defaults; CAO Horeca-afwijkingen hier aanpassen) ----
   // Ketenregeling (art. 7:668a BW): na 3 tijdelijke contracten of 36 maanden wordt het volgende contract onbepaalde tijd;

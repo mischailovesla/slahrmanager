@@ -8,6 +8,9 @@ const { beveiligd, body, admin, logActie } = require('./_lib/auth');
 const SIG = require('./_lib/signaleringen');
 
 const OMSCHRIJVING = {
+  'jubilea': { label: 'Jubilea', wanneer: 'maandag 09:10', wat: 'Mail aan HR (keuken: Jop): wie volgende week 1, 2, 5, 10, 15 of 20 jaar in dienst is, zodat de store manager er iets mee kan doen.' },
+  'datacontrole': { label: 'Shiftbase-datacontrole', wanneer: 'maandag 09:40', wat: 'Mail aan HR (keuken: Jop): uitgeschreven vóór de eerste werkdag, contract met einddatum vóór startdatum, verlopen contract terwijl de medewerker actief is, overlappende contracten, actief zonder contract, contract na de uitdienstdatum, en ontbrekende geboortedatum of e-mail.' },
+  'zomerpiek': { label: 'Zomerpiek-alert', wanneer: 'maandag 09:05 (maart t/m juli)', wat: 'Mail aan HR (keuken: Jop): winkels waar in juli/augustus ≥20% van de bezetting tegelijk vakantie heeft (goedgekeurd + aangevraagd), plus hoeveel mensen nog geen zomervakantie hebben aangevraagd.' },
   'sync-formulieren': { label: 'Formulierstatus syncen', wanneer: 'elke 4 uur', wat: 'Zet "Ja" bij Formulier ontvangen (loonheffing) / Ondertekend (ontslag) zodra het geüploade document is gevonden.' },
   'loonheffing-herinneringen': { label: 'Loonheffing-herinneringen', wanneer: 'dagelijks 09:00', wat: 'Herinnering (NL/EN) aan medewerkers van wie de deadline is verstreken en het formulier niet binnen is; max. 1x per 3 dagen.' },
   'ontslag-herinneringen': { label: 'Ontslag-herinneringen', wanneer: 'dagelijks 09:15', wat: 'Herinnering aan medewerkers die 3+ dagen na de ontslagbevestiging/aanzegging nog niet hebben ondertekend; max. 1x per 3 dagen en max. 3 keer. Daarna (als het aan staat bij Ontslag & aanzegging): bevestiging uitdiensttreding aan de medewerker zonder handtekening + seintje salaris + archiveren. Na 30 dagen zonder handtekening wordt de rij in elk geval gearchiveerd (terug te zetten via Beheer → Archief; daarna niet opnieuw).' },

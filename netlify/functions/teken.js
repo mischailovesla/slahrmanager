@@ -16,7 +16,7 @@ exports.handler = async (event) => {
   try {
     const p = body(event);
     const tok = U.leesToken(p.t);
-    if (!['ontslag', 'overplaatsing'].includes(tok.s)) throw new Error('Voor dit document is digitaal ondertekenen niet beschikbaar.');
+    if (!['ontslag', 'overplaatsing', 'oproep', 'waarschuwing', 'beschikbaarheid'].includes(tok.s)) throw new Error('Voor dit document is digitaal ondertekenen niet beschikbaar.');
     const h = event.headers || {};
     const ip = h['x-nf-client-connection-ip'] || h['client-ip'] || String(h['x-forwarded-for'] || '').split(',')[0].trim() || '';
     const ua = h['user-agent'] || '';
@@ -29,6 +29,7 @@ exports.handler = async (event) => {
     if (p.stap === 'teken') {
       const res = await ON.teken(tok, p, { ip, ua });
       let rij = 0; try { rij = await zetVinkje(tok, res.reg.refs, res.r && res.r.rij); } catch (e) { console.warn('teken vinkje:', e.message); }
+      if (tok.s === 'oproep' && res.reactie) { try { const rr = (res.r && res.r.rij) || rij; if (rr) await require('./_lib/sheets').zetOproepReactie(rr, res.reactie, 'medewerker, digitaal'); } catch (e) { console.warn('oproep reactie:', e.message); } }
       await logActie({ door: 'ondertekening:' + tok.n, actie: 'ondertekend', bron: tok.s, veld: res.r.type || tok.s, rij, naam: tok.n, nieuw: res.reg.id, details: res.r.titel + ' · digitaal ondertekend ' + res.tijd + ' · SHA-256 ' + res.hash.slice(0, 16) + '…' + (ip ? ' · ' + ip : '') });
       return json(200, { success: true, tijd: res.tijd, hash: res.hash });
     }

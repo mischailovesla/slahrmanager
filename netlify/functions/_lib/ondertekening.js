@@ -15,6 +15,10 @@ const T = require('./sjablonen');
 const P = require('./pdf');
 const { normNaam } = require('./util');
 
+// v0.26.0: wat betekent tekenen per soort? akkoord (standaard) · keuze (oproepaanbod: aanvaarden of op oproepbasis blijven) · gezien (waarschuwing/beschikbaarheid: ontvangen, niet per se eens)
+const MODUS = { oproep: 'keuze', waarschuwing: 'gezien', beschikbaarheid: 'gezien' };
+const modusVan = soort => MODUS[soort] || 'akkoord';
+const KEUZE = { aanvaard: { nl: 'Ik aanvaard het aanbod', en: 'I accept the offer', reactie: 'Aanvaard' }, afgewezen: { nl: 'Ik blijf op oproepbasis werken', en: 'I will continue working on an on-call basis', reactie: 'Afgewezen' } };
 const CODE_MINUTEN = 15, MAX_POGINGEN = 5, MAX_CODES_PER_DAG = 5, GELDIG_DAGEN = 60;
 const sha = buf => crypto.createHash('sha256').update(buf).digest('hex');
 const geheim = () => process.env.UPLOAD_SECRET || process.env.SUPABASE_SERVICE_KEY || '';
@@ -46,7 +50,7 @@ async function openVoor(tok) {
 async function info(tok) {
   const r = await openVoor(tok); if (!r) return null;
   const { data } = await admin().storage.from(U.BUCKET).createSignedUrl(r.status === 'getekend' && r.getekend_pad ? r.getekend_pad : r.origineel_pad, 600);
-  return { id: r.id, status: r.status, titel: r.titel, type: r.type, naam: r.naam, taal: r.taal, email: maskeer(r.email), heeftEmail: !!r.email, pdf: data ? data.signedUrl : '', getekendOp: r.getekend_op ? stempel(r.getekend_op) : '' };
+  return { id: r.id, modus: modusVan(r.soort), soort: r.soort, status: r.status, titel: r.titel, type: r.type, naam: r.naam, taal: r.taal, email: maskeer(r.email), heeftEmail: !!r.email, pdf: data ? data.signedUrl : '', getekendOp: r.getekend_op ? stempel(r.getekend_op) : '' };
 }
 async function rijVoor(tok) {
   const r = await openVoor(tok);
@@ -86,7 +90,8 @@ async function maakOndertekend(origBuf, r, s) {
   t('SLA', L, y, 22, F.b, groen); t(en ? 'Signature page' : 'Ondertekeningspagina', L, y - 30, 15, F.b);
   t(r.titel, L, y - 48, 10, F.n, grijs); y -= 80;
   pg.drawRectangle({ x: L - 8, y: y - 132, width: 595.28 - 2 * L + 16, height: 140, color: zand });
-  t(en ? 'Signed for receipt and approval by' : 'Voor ontvangst en akkoord ondertekend door', L, y - 8, 9, F.b, grijs);
+  const md = modusVan(r.soort);
+  t(md === 'gezien' ? (en ? 'Signed as seen (receipt) by' : 'Voor gezien (ontvangst) ondertekend door') : md === 'keuze' ? (en ? 'Signed with choice by' : 'Ondertekend met keuze door') : (en ? 'Signed for receipt and approval by' : 'Voor ontvangst en akkoord ondertekend door'), L, y - 8, 9, F.b, grijs);
   t(s.naam, L, y - 30, 16, F.b);
   if (s.png) {
     try { const img = await doc.embedPng(s.png); const h = 70, w = Math.min(260, img.width * (h / img.height)); pg.drawImage(img, { x: L, y: y - 118, width: w, height: h }); }
@@ -101,7 +106,10 @@ async function maakOndertekend(origBuf, r, s) {
     [en ? 'Identity check' : 'Identiteitscontrole', (en ? 'one-time code by e-mail to ' : 'eenmalige code per mail naar ') + r.email + (en ? ', requested ' : ', aangevraagd ') + stempel(r.code_verstuurd_op)],
     [en ? 'Signed on' : 'Ondertekend op', s.tijd + ' (Europe/Amsterdam)'],
     [en ? 'Typed name' : 'Getypte naam', s.naam],
-    [en ? 'Statement' : 'Verklaring', en ? 'I have read this document and sign it for receipt and approval.' : 'Ik heb dit document gelezen en onderteken het voor ontvangst en akkoord.'],
+    [en ? 'Statement' : 'Verklaring', md === 'gezien' ? (en ? 'I have received and read this letter. Signing means receipt, not necessarily agreement with its content.' : 'Ik heb deze brief ontvangen en gelezen. Ondertekenen betekent ontvangst, niet per se dat ik het met de inhoud eens ben.')
+      : md === 'keuze' ? (en ? 'I have read this offer and make the choice below.' : 'Ik heb dit aanbod gelezen en maak de keuze hieronder.') : (en ? 'I have read this document and sign it for receipt and approval.' : 'Ik heb dit document gelezen en onderteken het voor ontvangst en akkoord.')],
+    ...(s.keuze && KEUZE[s.keuze] ? [[en ? 'Choice' : 'Keuze', en ? KEUZE[s.keuze].en : KEUZE[s.keuze].nl]] : []),
+    ...(s.opmerking ? [[en ? 'Response of the employee' : 'Reactie medewerker', s.opmerking]] : []),
     [en ? 'IP address' : 'IP-adres', s.ip || '-'],
     [en ? 'Browser / device' : 'Browser / apparaat', String(s.ua || '-').slice(0, 110)],
     [en ? 'Document fingerprint (SHA-256)' : 'Vingerafdruk document (SHA-256)', r.origineel_hash],
@@ -135,6 +143,10 @@ async function teken(tok, p, meta) {
   const goed = code.length === 6 && crypto.timingSafeEqual(Buffer.from(codeHash(r.id, code)), Buffer.from(r.code_hash));
   if (!goed) { await db.from('hr_ondertekening').update({ code_pogingen: r.code_pogingen + 1 }).eq('id', r.id); throw E('De code klopt niet.', 'The code is incorrect.'); }
   if (p.akkoord !== true) throw E('Vink aan dat je het document hebt gelezen.', 'Please confirm that you have read the document.');
+  const md = modusVan(r.soort);
+  const keuze = md === 'keuze' ? String(p.keuze || '') : '';
+  if (md === 'keuze' && !KEUZE[keuze]) throw E('Kies of je het aanbod aanvaardt of op oproepbasis blijft werken.', 'Please choose whether you accept the offer or stay on an on-call basis.');
+  const opmerking = md === 'gezien' ? String(p.opmerking || '').replace(/\s+/g, ' ').trim().slice(0, 1000) : '';
   const naam = String(p.naam || '').replace(/\s+/g, ' ').trim().slice(0, 120);
   if (naam.length < 3) throw E('Typ je volledige naam.', 'Please type your full name.');
   const achternaam = normNaam(r.naam).split(' ').pop();
@@ -147,7 +159,7 @@ async function teken(tok, p, meta) {
   const orig = Buffer.from(await blob.arrayBuffer());
   if (sha(orig) !== r.origineel_hash) throw new Error('Het document is gewijzigd sinds het werd verstuurd en kan niet worden ondertekend. Neem contact op met HR.');
   const nu = new Date(), tijd = stempel(nu);
-  const getekend = await maakOndertekend(orig, r, { naam, png, tijd, ip: meta.ip, ua: meta.ua });
+  const getekend = await maakOndertekend(orig, r, { naam, png, tijd, ip: meta.ip, ua: meta.ua, keuze, opmerking });
   const hashNa = sha(getekend);
   const key = U.SOORTEN[tok.s].bestanden[0].key;
   const pad = tok.s + '/' + slug(tok.n) + '/' + Date.now() + '_' + key + '_digitaal_ondertekend.pdf';
@@ -155,7 +167,7 @@ async function teken(tok, p, meta) {
   if (ue) throw new Error('Opslaan mislukt: ' + ue.message);
   const bestandsnaam = String(r.titel || 'document').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '_') + '_ondertekend.pdf';
   const reg = await U.registreer(tok, [{ key, pad, naam_orig: bestandsnaam, bytes: getekend.length, mime: 'application/pdf' }], { email: r.email, ip: meta.ip });
-  const { error: ee } = await db.from('hr_ondertekening').update({ status: 'getekend', getekend_op: nu.toISOString(), getekend_naam: naam, getekend_ip: meta.ip || '', getekend_browser: String(meta.ua || '').slice(0, 300), met_handtekening: !!png, getekend_pad: pad, getekend_hash: hashNa, upload_id: reg.id, code_hash: null }).eq('id', r.id).eq('status', 'wacht');
+  const { error: ee } = await db.from('hr_ondertekening').update({ keuze: keuze || null, opmerking: opmerking || null, status: 'getekend', getekend_op: nu.toISOString(), getekend_naam: naam, getekend_ip: meta.ip || '', getekend_browser: String(meta.ua || '').slice(0, 300), met_handtekening: !!png, getekend_pad: pad, getekend_hash: hashNa, upload_id: reg.id, code_hash: null }).eq('id', r.id).eq('status', 'wacht');
   fout(ee, 'Ondertekening vastleggen');
   // bevestiging met kopie aan de medewerker
   try {
@@ -164,12 +176,12 @@ async function teken(tok, p, meta) {
     await M.verstuur({ to: r.email, subject: (en ? 'Signed: ' : 'Ondertekend: ') + r.titel, html, text: (en ? 'You signed "' : 'Je hebt "') + r.titel + (en ? '" on ' : '" ondertekend op ') + tijd + '. SHA-256: ' + hashNa, attachments: [{ filename: bestandsnaam, content: getekend.toString('base64') }], tags: [{ name: 'bron', value: 'ondertekening' }, { name: 'type', value: 'bevestiging' }] });
     await M.logMail({ door: 'ondertekening', bron: 'ondertekening', type: r.type || r.soort, naar: r.email, naam: r.naam, onderwerp: (en ? 'Signed: ' : 'Ondertekend: ') + r.titel, taal: r.taal, rij: r.rij || 0, resend_id: '' });
   } catch (e) { console.warn('ondertekening bevestiging:', e.message); }
-  return { r, reg, tijd, hash: hashNa };
+  return { r, reg, tijd, hash: hashNa, keuze, reactie: keuze && KEUZE[keuze] ? KEUZE[keuze].reactie : '', opmerking };
 }
 // Voor het dashboard: alle ondertekeningen (laatste 6 maanden)
 async function overzicht() {
   const van = new Date(Date.now() - 183 * 864e5).toISOString();
-  const { data, error } = await admin().from('hr_ondertekening').select('id,soort,type,titel,naam,email,status,aangemaakt_op,aangemaakt_door,code_verstuurd_op,getekend_op,getekend_naam,getekend_ip,met_handtekening,getekend_hash,origineel_hash').gte('aangemaakt_op', van).order('aangemaakt_op', { ascending: false });
+  const { data, error } = await admin().from('hr_ondertekening').select('id,soort,type,titel,naam,email,status,keuze,opmerking,aangemaakt_op,aangemaakt_door,code_verstuurd_op,getekend_op,getekend_naam,getekend_ip,met_handtekening,getekend_hash,origineel_hash').gte('aangemaakt_op', van).order('aangemaakt_op', { ascending: false });
   fout(error, 'Ondertekeningen lezen');
   return (data || []).map(r => Object.assign({}, r, { aangemaakt: stempel(r.aangemaakt_op), getekend: r.getekend_op ? stempel(r.getekend_op) : '', codeAangevraagd: !!r.code_verstuurd_op }));
 }
@@ -180,4 +192,4 @@ async function controleer(hash) {
   const r = (data || [])[0]; if (!r) return { gevonden: false };
   return { gevonden: true, soort: r.getekend_hash === h ? 'ondertekend' : 'origineel', titel: r.titel, naam: r.naam, status: r.status, getekend: r.getekend_op ? stempel(r.getekend_op) : '' };
 }
-module.exports = { aanmaken, openVoor, info, stuurCode, teken, overzicht, controleer, maskeer, sha };
+module.exports = { MODUS, modusVan, KEUZE, aanmaken, openVoor, info, stuurCode, teken, overzicht, controleer, maskeer, sha };

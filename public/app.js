@@ -2159,6 +2159,33 @@
     el.innerHTML = h;
   }
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('#vrl-ctrl-f .tb'); if (!b) return; vrlCtrlFilter = b.getAttribute('data-vcf'); renderVrlControle(); });
+  // ---------- Vroeg-vertrek-analyse (v0.26.0) ----------
+  window.vvLaad = async function () {
+    var el = g('vv'); el.innerHTML = '<div class="lay-sub">Starters en vertrekkers uit Shiftbase analyseren…</div>';
+    var r = await api('/api/verloop?vroeg=1&maanden=12');
+    if (!r.success) { el.innerHTML = '<div class="leeg grijs">' + esc(r.bericht) + '</div>'; return; }
+    var KL = { rood: '#c0392b', oranje: '#e8824a', groen: '#009f4b', klein: '#b8b0a8' };
+    var tegel = function (w, l, s, kl) { return '<div class="card ' + (kl || 'cd') + '"><div><div class="sv">' + w + '</div><div class="sl">' + l + '</div><div class="lay-sub" style="margin-top:3px">' + s + '</div></div></div>'; };
+    var tabel = function (titel, rijen, lbl) {
+      var mx = Math.max.apply(null, rijen.map(function (x) { return x.pct || 0; }).concat([1]));
+      return '<div style="flex:1;min-width:300px"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px">' + titel + '</div><table class="sk-tabel" style="width:100%"><thead><tr><th></th><th>Starters</th><th>Binnen 90 d</th><th style="width:40%">%</th></tr></thead><tbody>'
+        + rijen.map(function (x) { var k = KL[x.oordeel] || KL.klein; return '<tr><td><strong>' + esc(lbl ? lbl(x) : x.waarde) + '</strong></td><td>' + x.starters + '</td><td>' + x.vroeg + '</td><td><div style="display:flex;align-items:center;gap:6px"><div style="height:9px;border-radius:4px;background:' + k + ';width:' + Math.max(2, Math.round((x.pct || 0) / mx * 100)) + '%"></div><span style="font-size:.8rem;' + (x.klein ? 'color:#b8b0a8' : '') + '">' + (x.pct == null ? '-' : x.pct + '%') + '</span></div></td></tr>'; }).join('') + '</tbody></table></div>';
+    };
+    var h = '<div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));margin-bottom:14px">'
+      + tegel(r.starters, 'Starters', esc(r.periode.van) + ' t/m ' + esc(r.periode.tot)) + tegel(r.vroeg, 'Binnen 90 dagen weg', (r.pct == null ? '-' : r.pct + '%') + ' van de starters', r.pct >= 20 ? 'cr' : r.pct >= 12 ? 'cw' : 'cg')
+      + tegel(r.mediaanDagen == null ? '-' : r.mediaanDagen + ' d', 'Helft weg binnen', 'van de vroege vertrekkers') + tegel(r.fases[0].aantal, 'In de eerste 2 weken', (r.fases[0].pct || 0) + '% van de vroege vertrekkers', r.fases[0].aantal ? 'cw' : 'cd') + '</div>';
+    if (r.zinnen.length) h += '<ul style="margin:0 0 16px;padding-left:18px;font-size:.88rem;line-height:1.55">' + r.zinnen.map(function (z) { return '<li>' + esc(z) + '</li>'; }).join('') + '</ul>';
+    h += '<div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:16px">' + tabel('Per winkel', r.perWinkel) + tabel('Per functie', r.perFunctie) + '</div>';
+    h += '<div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:16px">' + tabel('Per contracttype', r.perType) + tabel('Per startmaand', r.perMaand, function (x) { return x.label; }) + '</div>';
+    h += '<div style="display:flex;gap:22px;flex-wrap:wrap;margin-bottom:16px"><div style="flex:1;min-width:260px"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px">Wanneer gaan ze?</div>'
+      + r.fases.map(function (f) { return '<div style="display:flex;align-items:center;gap:8px;margin:4px 0;font-size:.85rem"><span style="width:90px">' + esc(f.label) + '</span><div style="height:10px;border-radius:4px;background:#e8824a;width:' + Math.max(2, (f.pct || 0) * 2) + 'px"></div><span>' + f.aantal + ' (' + (f.pct || 0) + '%)</span></div>'; }).join('') + '</div>'
+      + '<div style="flex:1;min-width:260px"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px">Uitstroomreden (dossier)</div>' + (r.redenen.length ? r.redenen.map(function (x) { return '<div style="display:flex;justify-content:space-between;font-size:.85rem;margin:3px 0;' + (/geen dossier|zonder reden/.test(x.reden) ? 'color:#c0392b' : '') + '"><span>' + esc(x.reden) + '</span><span>' + x.aantal + ' (' + x.pct + '%)</span></div>'; }).join('') : '<div class="lay-sub">-</div>') + '</div>'
+      + '<div style="flex:1;min-width:220px"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin:0 0 6px">Check-in na 30 dagen</div><div style="font-size:.85rem;line-height:1.7">Vroege vertrekkers: <strong>' + (r.checkin.vroegScore == null ? '-' : String(r.checkin.vroegScore).replace('.', ',')) + '</strong> (n=' + r.checkin.vroegN + ', ' + r.checkin.vroegLaag + ' laag)<br>Blijvers: <strong>' + (r.checkin.blijfScore == null ? '-' : String(r.checkin.blijfScore).replace('.', ',')) + '</strong> (n=' + r.checkin.blijfN + ', ' + r.checkin.blijfLaag + ' laag)</div></div></div>';
+    h += '<details><summary style="cursor:pointer;font-weight:600;margin-bottom:8px">Alle ' + r.lijst.length + ' vroege vertrekkers</summary><div class="tw"><table><thead><tr><th>Naam</th><th>Winkel</th><th>Functie</th><th>Contract</th><th>Start</th><th>Einde</th><th>Dagen</th><th>Reden</th><th>Check-in</th></tr></thead><tbody>'
+      + r.lijst.map(function (x) { return '<tr><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel) + '</td><td>' + esc(x.functie) + '</td><td>' + esc(x.type) + '</td><td>' + esc(x.start) + '</td><td>' + esc(x.eind) + '</td><td>' + x.dagen + '</td><td>' + esc(x.reden) + '</td><td>' + (x.checkin == null ? '-' : String(x.checkin).replace('.', ',')) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
+    h += '<div class="lay-sub" style="margin-top:10px">Kleur: rood = duidelijk hoger dan gemiddeld (≥ 1,5×), oranje = iets hoger, grijs = minder dan ' + r.minN + ' starters (te weinig om iets te zeggen). Functie en contracttype komen van het eerste contract in Shiftbase.</div>';
+    el.innerHTML = h;
+  };
   // ---------- Mijn handtekening (fase 6b): brieven krijgen de handtekening van wie ze verstuurt ----------
   var htData = null;
   async function htLaad(forceer) {
@@ -2237,7 +2264,7 @@
     if (!rijen.length && d.rijen.length) { el.innerHTML = '<tr><td colspan="6" class="leeg grijs">Er wacht niemand op ondertekening. Kies <strong>Alles</strong> voor getekende en ingetrokken brieven.</td></tr>'; return; }
     el.innerHTML = rijen.length ? rijen.map(function (r) {
       var st = OND_ST[r.status] || [r.status, 'boat'];
-      var extra = r.status === 'getekend' ? '<div class="lay-sub">' + esc(r.getekend) + ' · als "' + esc(r.getekend_naam) + '"' + (r.met_handtekening ? ' · met getekende handtekening' : '') + (r.getekend_ip ? ' · IP ' + esc(r.getekend_ip) : '') + '</div>' : r.status === 'wacht' ? '<div class="lay-sub">' + (r.codeAangevraagd ? 'code aangevraagd, nog niet getekend' : 'link nog niet gebruikt') + '</div>' : '';
+      var extra = r.status === 'getekend' ? '<div class="lay-sub">' + esc(r.getekend) + ' · als "' + esc(r.getekend_naam) + '"' + (r.met_handtekening ? ' · met getekende handtekening' : '') + (r.getekend_ip ? ' · IP ' + esc(r.getekend_ip) : '') + (r.keuze ? ' · <strong>' + (r.keuze === 'aanvaard' ? 'aanbod aanvaard' : 'blijft oproepkracht') + '</strong>' : '') + (r.opmerking ? '<br>Reactie: “' + esc(r.opmerking) + '”' : '') + '</div>' : r.status === 'wacht' ? '<div class="lay-sub">' + (r.codeAangevraagd ? 'code aangevraagd, nog niet getekend' : 'link nog niet gebruikt') + '</div>' : '';
       return '<tr><td><strong>' + esc(r.naam) + '</strong><div class="lay-sub">' + esc(r.email) + '</div></td><td>' + esc(r.titel) + '</td><td>' + esc(r.aangemaakt) + '<div class="lay-sub">' + esc(r.aangemaakt_door || '') + '</div></td><td><span class="badge ' + st[1] + '">' + st[0] + '</span>' + extra + '</td><td style="font-family:monospace;font-size:.72rem;color:var(--grijs)" title="SHA-256 ' + esc(r.getekend_hash || r.origineel_hash) + '">' + esc(String(r.getekend_hash || r.origineel_hash || '').slice(0, 12)) + '…</td><td>' + (r.status === 'wacht' ? '<button class="btn bd bsm" data-ond-in="' + esc(r.id) + '">Intrekken</button>' : '') + '</td></tr>';
     }).join('') : '<tr><td colspan="6" class="leeg grijs">Nog geen brieven verstuurd met digitaal ondertekenen.</td></tr>';
   };

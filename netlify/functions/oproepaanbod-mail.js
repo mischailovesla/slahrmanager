@@ -50,6 +50,7 @@ exports.handler = beveiligd('oproepaanbod-mail', async (event, g) => {
   const resendId = await M.verstuur({ to, subject, text, html, attachments: [{ filename: bestandsnaam, content: pdf.toString('base64') }], tags: [{ name: 'bron', value: 'oproepaanbod' }] });
   const nu = D.stempel();
   const rij = await S.logOproepaanbod({ naam, to, adres, sinds: p.sinds, gemUren: gem > 0 ? gem : '', aangebodenUren: aang, ingangsdatum: p.ingangsdatum, reactiedatum: p.reactiedatum, taal: isEN ? 'EN' : 'NL' }, w, nu);
+  try { await require('./_lib/ondertekening').aanmaken({ soort: 'oproep', type: 'oproepaanbod', titel: (isEN ? 'Offer of fixed working hours' : 'Aanbod vaste arbeidsomvang') + ' - ' + naam, naam, email: to, rij, taal: isEN ? 'EN' : 'NL', pdf, door: g.email }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); } // v0.26.0: digitaal kiezen + tekenen
   await M.logMail({ door: g.email, bron: 'oproepaanbod', type: 'aanbod-pdf', naar: to, naam, onderwerp: subject, taal: isEN ? 'EN' : 'NL', rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'oproepaanbod', veld: w.naam, rij, naam, nieuw: to, details: subject + ' (' + uren + ' u/week, +PDF)' });
   return { bericht: 'Aanbod' + (isEN ? ' (EN)' : '') + ' + PDF verstuurd naar ' + to, rij, resendId };

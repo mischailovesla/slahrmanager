@@ -777,7 +777,133 @@ async function mto(droog) {
   return rap;
 }
 
-const CHECKS = { 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
+// ============================================================
+// v0.26.0: jubilea, Shiftbase-datacontrole en zomerpiek-alert
+// ============================================================
+
+// ---- 20. Jubilea (maandag): wie viert volgende week (ma t/m zo) een jubileum? ----
+function vindJubilea(med, vandaag) {
+  const ma = plusDagen(vandaag, 7 - ((vandaag.getDay() + 6) % 7)), zo = plusDagen(ma, 6); // volgende week
+  const uit = [];
+  for (const m of med || []) {
+    const s = parseNLDatum(m.indienst); if (!s) continue;
+    for (let jr = ma.getFullYear(); jr <= zo.getFullYear(); jr++) {
+      const jaren = jr - s.getFullYear(); if (!C.JUBILEUM_JAREN.includes(jaren)) continue;
+      const d = new Date(jr, s.getMonth(), s.getDate()); if (d < ma || d > zo) continue;
+      uit.push({ naam: m.naam, email: m.email || '', winkel: m.winkelNaam || '-', functie: m.functie || '', jaren, datum: d, datumNL: String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear(), indienst: m.indienst });
+    }
+  }
+  return { lijst: uit.sort((a, b) => a.datum - b.datum || b.jaren - a.jaren), van: ma, tot: zo };
+}
+async function jubilea(droog) {
+  const rap = { naam: 'jubilea', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const { lijst, van, tot } = vindJubilea(await SB.getMedewerkers(true), vandaag0());
+  rap.gevonden = lijst.map(x => Object.assign({}, x, { datum: x.datumNL }));
+  if (!lijst.length) return rap;
+  const dl = d => ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za'][d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth() + 1);
+  for (const [deel, team] of teams(lijst)) {
+    const items = deel.map(x => ({ kleur: x.jaren >= 5 ? '#e8824a' : '#009f4b', titel: x.naam, sub: x.winkel + (x.functie ? ' · ' + x.functie : '') + ' · ' + dl(x.datum), html: '<strong>' + x.jaren + ' jaar</strong> in dienst (sinds ' + esc(x.indienst) + ')' + (x.jaren >= 5 ? ' — een mooie mijlpaal' : '') + '.' }));
+    const plain = 'Hallo,\n\nVolgende week (' + dl(van) + ' t/m ' + dl(tot) + ') vieren deze medewerkers een jubileum:\n' + deel.map(x => '- ' + x.naam + ' (' + x.winkel + '): ' + x.jaren + ' jaar op ' + x.datumNL).join('\n') + '\n\nTip: laat de store manager het moment niet ongemerkt voorbij gaan (kaartje, iets lekkers, een berichtje in de groep).\n\n(Automatisch bericht van het SLA HR Dashboard)';
+    await mailOfDroog(rap, { team, to: ontvangers('jubilea'), subject: 'Jubilea volgende week: ' + deel.length + ' medewerker(s)', text: plain,
+      html: blokMail('#009f4b', 'HR &middot; Jubilea', 'Volgende week (' + dl(van) + ' t/m ' + dl(tot) + ') vieren deze medewerkers een jubileum bij SLA:', items, 'Laat de store manager het moment niet ongemerkt voorbij gaan: een kaartje, iets lekkers of een berichtje in de groep doet veel. Mijlpalen: ' + C.JUBILEUM_JAREN.join(', ') + ' jaar.', 'Wekelijkse jubileum-check'), kort: { naam: 'HR-team', aantal: deel.length } });
+  }
+  return rap;
+}
+
+// ---- 21. Shiftbase-datacontrole (maandag): fouten in datums en contracten die de cijfers en brieven vertekenen ----
+const DC_SOORTEN = {
+  'nooit-begonnen': ['Uitgeschreven vóór de eerste werkdag', '#c0392b'],
+  'contract-omgedraaid': ['Contract: einddatum vóór startdatum', '#c0392b'],
+  'contract-verlopen': ['Contract verlopen, medewerker nog actief', '#c0392b'],
+  'overlap': ['Contracten overlappen', '#e8824a'],
+  'geen-contract': ['Actief zonder contract', '#e8824a'],
+  'contract-na-uitdienst': ['Contract loopt door na de uitdienstdatum', '#e8824a'],
+  'geen-geboortedatum': ['Geboortedatum ontbreekt', '#2980b9'],
+  'geen-email': ['E-mailadres ontbreekt', '#2980b9']
+};
+function controleerData(users, per, med, vandaagIso, grensIso) {
+  const medById = {}; (med || []).forEach(m => { medById[String(m.id)] = m; });
+  const UIT = new Set((C.SB_UITGESLOTEN_NAMEN || []).map(normNaam));
+  const nl = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : s; };
+  const zevenTerug = isoDag(plusDagen(new Date(vandaagIso + 'T00:00:00'), -7));
+  const uit = [];
+  for (const rec of users || []) {
+    const u = (rec && rec.User) || rec || {}; const id = String(u.id || '');
+    if (u.anonymized === true || u.anonymized === '1' || u.anonymized === 1) continue;
+    const naam = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
+    if (!naam || UIT.has(normNaam(naam))) continue;
+    const teams = (rec.Team || []).filter(t => !/flex/i.test(String(t.name || '')));
+    if (teams.length && teams.every(t => C.SB_FRANCHISE_DEPTS[String(t.department_id || '')] || C.FRANCHISE_NAAM.test(String(t.name || '')))) continue;
+    let e = String(u.enddate || '').trim(); if (e === '0000-00-00') e = '';
+    const actief = !e || e >= vandaagIso;
+    if (!actief && e < grensIso) continue; // lang geleden vertrokken: niet meer interessant
+    const m = medById[id], winkel = (m && m.winkelNaam) || (teams[0] ? String(teams[0].name || '').replace(/^SLA\s*/i, '').trim() : '-') || '-';
+    if (C.FRANCHISE_NAAM.test(winkel)) continue;
+    const cons = per[id] || [], p = (soort, tekst) => uit.push({ naam, winkel, soort, tekst, email: String(u.email || '') });
+    if (e && cons.length && e < cons[0].start) p('nooit-begonnen', 'Uit dienst op ' + nl(e) + ', eerste contract start ' + nl(cons[0].start) + '. Is diegene nooit begonnen? Verwijder dan het contract (telt nu niet mee in het verloop).');
+    cons.forEach(c => { if (c.eind && c.eind < c.start) p('contract-omgedraaid', 'Contract ' + nl(c.start) + ' → ' + nl(c.eind) + (c.functie ? ' (' + c.functie + ')' : '') + '.'); });
+    for (let i = 1; i < cons.length; i++) { const a = cons[i - 1], b = cons[i]; if (a.eind && b.start <= a.eind && !(a.start === b.start && a.eind === b.eind)) p('overlap', 'Contract tot ' + nl(a.eind) + ' en volgend contract vanaf ' + nl(b.start) + '.'); }
+    if (actief && !cons.length) p('geen-contract', 'Actief in Shiftbase maar zonder contract: geen contracttype, functie of einddatum bekend.');
+    if (actief && cons.length) { const l = cons[cons.length - 1]; if (l.eind && l.eind < zevenTerug) p('contract-verlopen', 'Laatste contract eindigde ' + nl(l.eind) + ' en er staat geen nieuw contract. Verlengd? Zet het contract in Shiftbase. Vertrokken? Zet de uitdienstdatum.'); }
+    if (e && e < vandaagIso && cons.some(c => c.start <= e && c.eind && c.eind > isoDag(plusDagen(new Date(e + 'T00:00:00'), 31)))) p('contract-na-uitdienst', 'Uit dienst op ' + nl(e) + ', maar het contract loopt nog door tot ' + nl(cons.filter(c => c.start <= e && c.eind > e).map(c => c.eind).sort().pop()) + '.');
+    if (actief && !String(u.birthdate || u.birth_date || u.date_of_birth || '').match(/^\d{4}-\d{2}-\d{2}/)) p('geen-geboortedatum', 'Nodig voor jeugdloon en de ATW-check.');
+    if (actief && String(u.email || '').indexOf('@') === -1) p('geen-email', 'Zonder e-mailadres kunnen loonheffing, check-in en brieven niet automatisch.');
+  }
+  const volg = Object.keys(DC_SOORTEN);
+  return uit.sort((a, b) => volg.indexOf(a.soort) - volg.indexOf(b.soort) || a.winkel.localeCompare(b.winkel, 'nl') || a.naam.localeCompare(b.naam, 'nl'));
+}
+async function datacontrole(droog) {
+  const rap = { naam: 'datacontrole', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const vandaag = vandaag0(), grens = new Date(vandaag.getFullYear() - 1, vandaag.getMonth(), vandaag.getDate());
+  const [users, per, med] = await Promise.all([SB.sbGet('users'), SB.getContractenPerUser(true), SB.getMedewerkers(true)]);
+  const lijst = controleerData(users, per, med, isoDag(vandaag), isoDag(grens));
+  rap.gevonden = lijst; rap.perSoort = {}; lijst.forEach(x => { rap.perSoort[x.soort] = (rap.perSoort[x.soort] || 0) + 1; });
+  if (!lijst.length) return rap;
+  for (const [deel, team] of teams(lijst)) {
+    const items = deel.map(x => ({ kleur: DC_SOORTEN[x.soort][1], titel: x.naam, sub: x.winkel + ' · ' + DC_SOORTEN[x.soort][0], html: esc(x.tekst) }));
+    const n = s => deel.filter(x => x.soort === s).length, ernstig = n('nooit-begonnen') + n('contract-omgedraaid') + n('contract-verlopen');
+    const plain = 'Hallo,\n\nShiftbase-datacontrole:\n' + deel.map(x => '- ' + x.naam + ' (' + x.winkel + ') — ' + DC_SOORTEN[x.soort][0] + ': ' + x.tekst).join('\n') + '\n\nPas het aan in Shiftbase (medewerker → Wijzig / Contracten); volgende week staat het er dan niet meer in.\n\n(Automatisch bericht van het SLA HR Dashboard)';
+    await mailOfDroog(rap, { team, to: ontvangers('datacontrole'), subject: 'Shiftbase-datacontrole: ' + deel.length + ' punt(en)' + (ernstig ? ', ' + ernstig + ' met datums/contracten' : ''), text: plain,
+      html: blokMail('#e8824a', 'HR &middot; Shiftbase-datacontrole', 'Deze gegevens in Shiftbase kloppen waarschijnlijk niet. Ze vertekenen het verloop, de contractsignalen of de brieven:', items, 'Aanpassen in Shiftbase: medewerker &rarr; <strong>Wijzig</strong> (uitdienstdatum, geboortedatum, e-mail) of <strong>Contracten</strong>. Volgende week staat het er dan niet meer in.', 'Wekelijkse datacontrole'), kort: { naam: 'HR-team', aantal: deel.length } });
+  }
+  return rap;
+}
+
+// ---- 22. Zomerpiek-alert (maandag, maart t/m juli): waar wordt het in juli/augustus krap? ----
+function bepaalZomerpiek(d, jaar) {
+  const zomer = d.weken.map((w, i) => ({ w, i })).filter(x => x.w.van >= jaar + '-06-29' && x.w.van <= jaar + '-08-31');
+  const uit = [];
+  for (const rij of d.rijen) {
+    if (rij.bezetting < C.VAKANTIE_PIEK_MIN_BEZETTING) continue;
+    const weken = [], metVakantie = new Set();
+    for (const { w, i } of zomer) {
+      const c = rij.cellen[i]; (c.namen || []).forEach(n => metVakantie.add(n.replace(/ \(aangevraagd\)$/, '')));
+      const vast = c.app / rij.bezetting, tot = (c.app + c.pend) / rij.bezetting;
+      if (tot >= C.VAKANTIE_DREMPEL_ORANJE) weken.push({ week: 'wk ' + w.weeknr + ' (' + w.label + ')', app: c.app, pend: c.pend, pct: Math.round(tot * 100), rood: tot >= C.VAKANTIE_DREMPEL_ROOD, alRood: vast >= C.VAKANTIE_DREMPEL_ROOD, namen: c.namen || [] });
+    }
+    if (weken.length) uit.push({ winkel: rij.naam, bezetting: rij.bezetting, weken, rood: weken.filter(x => x.rood).length, zonderVakantie: Math.max(0, rij.bezetting - metVakantie.size) });
+  }
+  return uit.sort((a, b) => b.rood - a.rood || b.weken.length - a.weken.length);
+}
+async function zomerpiek(droog) {
+  const rap = { naam: 'zomerpiek', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const vandaag = vandaag0(), md = String(vandaag.getMonth() + 1).padStart(2, '0') + '-' + String(vandaag.getDate()).padStart(2, '0');
+  if (md < C.ZOMERPIEK_VAN || md > C.ZOMERPIEK_TOT) { rap.buitenSeizoen = true; return rap; }
+  const jaar = vandaag.getFullYear();
+  const lijst = bepaalZomerpiek(await require('./vakantie').getVakantiePlannerData(jaar), jaar);
+  rap.gevonden = lijst;
+  if (!lijst.length) return rap;
+  for (const [deel, team] of teams(lijst)) {
+    const items = deel.map(x => ({ kleur: x.rood ? '#c0392b' : '#e8824a', titel: x.winkel, sub: 'bezetting ' + x.bezetting + ' · ' + x.weken.length + ' krappe week/weken' + (x.zonderVakantie ? ' · ' + x.zonderVakantie + ' mensen nog zonder zomervakantie' : ''),
+      html: x.weken.map(w => (w.rood ? '<strong style="color:#c0392b">' : '<strong>') + esc(w.week) + '</strong>: ' + w.pct + '% weg (' + w.app + ' goedgekeurd' + (w.pend ? ' + ' + w.pend + ' aangevraagd' : '') + ')' + (w.namen.length ? ' — ' + esc(w.namen.join(', ')) : '')).join('<br>') }));
+    const plain = 'Hallo,\n\nZomerpiek ' + jaar + ' (juli/augustus): weken waarin ≥' + Math.round(C.VAKANTIE_DREMPEL_ORANJE * 100) + '% van de bezetting vakantie heeft (goedgekeurd + aangevraagd):\n' + deel.map(x => '\n' + x.winkel + ' (bezetting ' + x.bezetting + '):\n' + x.weken.map(w => '  - ' + w.week + ': ' + w.pct + '% (' + w.app + ' + ' + w.pend + ' aangevraagd)').join('\n')).join('\n') + '\n\nBespreek het nu met de store managers: aanvragen spreiden, flexpool of zomerkrachten inzetten.\n\n(Automatisch bericht van het SLA HR Dashboard)';
+    await mailOfDroog(rap, { team, to: ontvangers('zomerpiek'), subject: 'Zomerpiek ' + jaar + ': ' + deel.filter(x => x.rood).length + ' winkel(s) te krap, ' + deel.length + ' met krappe weken', text: plain,
+      html: blokMail('#e8824a', 'HR &middot; Zomerpiek ' + jaar, 'Vakantie in juli en augustus tot nu toe (goedgekeurd + aangevraagd, Shiftbase). Oranje = ≥' + Math.round(C.VAKANTIE_DREMPEL_ORANJE * 100) + '% van de bezetting weg, rood = ≥' + Math.round(C.VAKANTIE_DREMPEL_ROOD * 100) + '%:', items, 'Nu is er nog tijd: bespreek de krappe weken met de store manager, spreid aanvragen, of plan flexpool en zomerkrachten in. "Nog zonder zomervakantie" = mensen die nog kunnen aanvragen; de druk kan dus nog oplopen.', 'Wekelijkse zomerpiek-check (maart t/m juli)'), kort: { naam: 'HR-team', aantal: deel.length } });
+  }
+  return rap;
+}
+
+const CHECKS = { 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 // ---- Automatisch naar salaris (maandag + donderdag) ----
@@ -900,4 +1026,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };
+module.exports = { vindJubilea, controleerData, bepaalZomerpiek, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };

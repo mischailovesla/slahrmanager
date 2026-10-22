@@ -26,7 +26,9 @@ exports.handler = beveiligd('waarschuwing-mail', async (event, g) => {
   const bv = w.bv;
   const subject = (isEN ? 'Official written warning - ' : 'Officiele schriftelijke waarschuwing - ') + naam;
   const text = T.wrsPlain(naam, bv, regels, isEN), html = T.wrsHtml(naam, bv, regels, p.datumOvertreding || '', isEN);
-  if (p.preview) return { subject, text, html };
+  const gzLink = require('./_lib/uploads').uploadLink('waarschuwing', naam || 'medewerker'); // v0.26.0: voor gezien tekenen
+  const textG = text + T.gezienPlain(gzLink, isEN), htmlG = T.metGezienKnop(html, gzLink, isEN);
+  if (p.preview) return { subject, text: textG, html: htmlG };
   if (!naam) throw new Error('Vul de naam in.');
   if (!regels.length) throw new Error('Vink minimaal 1 overtreden regel aan.');
 
@@ -39,9 +41,10 @@ exports.handler = beveiligd('waarschuwing-mail', async (event, g) => {
   if (p.alleenPdf) return { pdf: pdf.toString('base64'), bestandsnaam };
 
   if (!to || to.indexOf('@') === -1) throw new Error('Ongeldig e-mailadres.');
-  const resendId = await M.verstuur({ to, subject, text, html, attachments: [{ filename: bestandsnaam, content: pdf.toString('base64') }], tags: [{ name: 'bron', value: 'waarschuwing' }] });
+  const resendId = await M.verstuur({ to, subject, text: textG, html: htmlG, attachments: [{ filename: bestandsnaam, content: pdf.toString('base64') }], tags: [{ name: 'bron', value: 'waarschuwing' }] });
   const nu = D.stempel();
   const rij = await S.logWaarschuwing({ naam, to, adres, datumOvertreding: p.datumOvertreding, toelichting: p.toelichting, taal: isEN ? 'EN' : 'NL', rij: p.rij }, w, regels, nu);
+  try { await require('./_lib/ondertekening').aanmaken({ soort: 'waarschuwing', type: 'waarschuwing', titel: (isEN ? 'Official written warning' : 'Officiele waarschuwing') + ' - ' + naam, naam, email: to, rij, taal: isEN ? 'EN' : 'NL', pdf, door: g.email }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); }
   await M.logMail({ door: g.email, bron: 'waarschuwing', type: 'waarschuwing-pdf', naar: to, naam, onderwerp: subject, taal: isEN ? 'EN' : 'NL', rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'waarschuwing', veld: regels.length + ' regel(s)', rij, naam, nieuw: to, details: subject + ' (+PDF)' });
   return { bericht: 'Officiele waarschuwing' + (isEN ? ' (EN)' : '') + ' + PDF verstuurd naar ' + to, rij, resendId };

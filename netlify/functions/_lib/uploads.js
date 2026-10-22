@@ -23,6 +23,8 @@ const SOORTEN = {
   ontslag: { label: 'Ondertekende ontslagbevestiging', labelEN: 'Signed confirmation', bestanden: [{ key: 'ontslag', label: 'Ondertekend document', labelEN: 'Signed document', verplicht: true }] },
   oproep:  { label: 'Ondertekend aanbod vaste arbeidsomvang', labelEN: 'Signed offer of fixed working hours', bestanden: [{ key: 'oproep', label: 'Ondertekende brief (akkoord of niet akkoord aangekruist)', labelEN: 'Signed letter (accept or decline ticked)', verplicht: true }] },
   overplaatsing: { label: 'Ondertekende overplaatsing / standplaatswijziging', labelEN: 'Signed transfer / change of workplace', bestanden: [{ key: 'overplaatsing', label: 'Ondertekende brief', labelEN: 'Signed letter', verplicht: true }] },
+  waarschuwing: { label: 'Waarschuwing voor gezien getekend', labelEN: 'Warning signed as seen', bestanden: [{ key: 'waarschuwing', label: 'Voor gezien getekende brief', labelEN: 'Letter signed as seen', verplicht: true }] },
+  beschikbaarheid: { label: 'Kennisgeving beschikbaarheid voor gezien getekend', labelEN: 'Availability notice signed as seen', bestanden: [{ key: 'beschikbaarheid', label: 'Voor gezien getekende brief', labelEN: 'Letter signed as seen', verplicht: true }] },
   korting: { label: 'Formulier loonheffingskorting', labelEN: 'Payroll tax credit form', bestanden: [{ key: 'korting', label: 'Ondertekend formulier loonheffingskorting', labelEN: 'Signed payroll tax credit form', verplicht: true }] }
 };
 const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
