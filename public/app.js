@@ -185,9 +185,18 @@
     // Beheer → Gegevens & export is alleen voor beheerders (de API weigert anderen toch); knop verbergen
     if (ik.rol !== 'admin') document.querySelectorAll('.nav button[data-tab="gegevens"]').forEach(function (b) { b.style.display = 'none'; });
     setInterval(function () { g('top-dt').textContent = new Date().toLocaleDateString('nl-NL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }); }, 1000);
+    if (ik.rol === 'keuken') { keukenWeergave(ik); return; }
     zetDossierZoek();
     await laadOverzicht();
     laadMedewerkers(false);
+  }
+  // v0.25.8: Jop (rol keuken) ziet alleen de takenlijst met keukenmedewerkers
+  function keukenWeergave(ik) {
+    document.querySelectorAll('.nav button').forEach(function (b) { if (b.getAttribute('data-tab') !== 'overview') b.style.display = 'none'; });
+    ['ov-uitleg', 'ov-tegels', 'ov-week', 'ov-pijp'].forEach(function (id) { var el = g(id); if (!el) return; var sec = el.closest('.sec') || el; sec.style.display = 'none'; });
+    g('ov-groet').textContent = 'Keuken · takenlijst';
+    g('ov-samen').textContent = 'Taken voor medewerkers van de keuken. Een brief nodig (aanzegging, proeftijd, verzuim)? Laat het HR weten, dan maken zij hem.';
+    laadTaken(false);
   }
   async function api(pad, postBody) {
     var s = sessie || (await sb.auth.getSession()).data.session;
@@ -793,8 +802,8 @@
     if (t.type === 'aanzegging' && !p.einddatum) { toast('Vul de einddatum in (staat in de aanzegging)', 'err'); return; }
     if (t.type === 'proeftijd' && !p.einddatum) { toast('Vul de einddatum in', 'err'); return; }
     if (t.type !== 'herinnering' && !p.uitstroomreden) { toast('Kies een uitstroomreden (nodig voor de verloopanalyse)', 'err'); g('om-reden').focus(); return; }
-    if (t.key === 'ontslag-pdf' && !confirm('Ontslagbevestiging + PDF versturen naar ' + p.to + '?')) return;
-    if (t.type === 'proeftijd' && !confirm(t.label + ' versturen naar ' + p.to + '?')) return;
+    // v0.25.9: altijd bevestigen welke brief naar wie gaat (voorkomt de verkeerde knop)
+    if (!confirm('Brief: ' + t.label + '\nAan: ' + p.naam + ' (' + p.to + ')' + (p.einddatum ? '\nEinddatum: ' + p.einddatum : '') + '\n\nKlopt dit? Versturen?')) return;
     var b = g('om-sbtn'); b.disabled = true; g('om-slbl').textContent = t.pdf ? 'PDF maken en versturen…' : 'Versturen…';
     var r = await api('/api/ontslag-mail', p);
     b.disabled = false; g('om-slbl').textContent = 'Verstuur mail';
@@ -2388,6 +2397,7 @@
     tkData = d; renderTaken();
   };
   function tkKnop(a, t) {
+    if (window._ikRol === 'keuken') return ''; // keukenrol: geen dossier/brieven, alleen afhandelen
     if (!a) return '';
     var attrs = ' data-tk-actie="' + esc(a.soort) + '" data-tk-naam="' + esc(t.naam || '') + '" data-tk-email="' + esc(t.email || '') + '"';
     if (a.persoon) attrs += ' data-tk-persoon="' + esc(JSON.stringify(a.persoon)) + '"';
@@ -2473,7 +2483,7 @@
     if (af) {
       af.disabled = true;
       var rij = af.closest('.tk'), sleutel = af.getAttribute('data-tk-af');
-      var r = await api('/api/taken', { sleutel: sleutel, dagen: parseInt(af.getAttribute('data-tk-dagen'), 10) || 7, opmerking: af.getAttribute('data-tk-opm') || '' });
+      var r = await api('/api/taken', { sleutel: sleutel, dagen: parseInt(af.getAttribute('data-tk-dagen'), 10) || 7, opmerking: af.getAttribute('data-tk-opm') || '', winkel: (((tkData && tkData.taken) || []).find(function (x) { return x.sleutel === sleutel; }) || {}).winkel || '' });
       if (!r.success) { af.disabled = false; toast(r.bericht, 'err'); return; }
       toast(r.bericht, 'ok');
       tkWeg(rij, sleutel, true);

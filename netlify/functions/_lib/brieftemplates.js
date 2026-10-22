@@ -46,6 +46,38 @@ i.o. ${AFZENDER_NAAM}
 
 ................................................`;
 
+// v0.25.9: Engelse ontslagbevestiging (medewerker stopt zelf; ook bruikbaar als iemand een tijdelijk contract uitdient)
+const ONTSLAG_EN = `**CONFIRMATION OF RESIGNATION {{BV}}**
+
+**Amsterdam, {{HuidigeDatum}}**
+
+**{{Naam}}**
+**{{Adres}}**
+
+**Dear {{Naam}},**
+
+We hereby confirm that on {{DatumOpzegging}} you informed us that you are ending your employment with {{BV}}. Your employment agreement ends on {{Einddatum}}.
+
+Your last day of employment is therefore {{Einddatum}}. Please return any keys and other company property no later than this day. The final settlement of the wages for your last hours worked will take place after the end of your last month. Because you have an all-in contract, holiday hours and holiday allowance are already included in your hourly wage and are not paid out separately.
+
+We would love to hear how you experienced your time at SLA. After your last working day you will receive a short questionnaire by email (a few questions, about 2 minutes, anonymously if you prefer).{{EXITMELDING}}
+
+We wish you every success in the future!
+
+Kind regards,
+
+
+**{{BV}}**
+{{HANDTEKENING}}
+................................................
+i.o. ${AFZENDER_NAAM}
+
+
+**The employee**
+{{Naam}}
+
+................................................`;
+
 const AANZEGGING_NL = `{{Naam}}
 {{Adres}}
 
@@ -776,5 +808,5 @@ function ondertekenaar(tekst, a) {
   return t.replace(/(Met vriendelijke groet,|Kind regards,)\n\n/, '$1\n\n{{HANDTEKENING}}\n' + blok + '\n'); // overplaatsing / standplaats
 }
 
-module.exports = { ondertekenaar, ONTSLAG, AANZEGGING_NL, AANZEGGING_EN, OVERPL_NL, OVERPL_EN, STANDPL_NL, STANDPL_EN,
+module.exports = { ondertekenaar, ONTSLAG, ONTSLAG_EN, AANZEGGING_NL, AANZEGGING_EN, OVERPL_NL, OVERPL_EN, STANDPL_NL, STANDPL_EN,
   PROEFTIJD_WG_NL, PROEFTIJD_WG_EN, PROEFTIJD_WN_NL, PROEFTIJD_WN_EN, WRS_NL, WRS_EN, BESCHIKB_NL, BESCHIKB_EN, OOSV, OOSV_WEDERHOOR, OPROEP_NL, OPROEP_EN, vul, handtekening };

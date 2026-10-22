@@ -54,6 +54,11 @@ async function controleerToegang(event, actie) {
     await log(email, 'geweigerd', 'niet op allowlist', event);
     return { ok: false, status: 403, bericht: 'Je account staat niet op de toegangslijst. Vraag Mischa om toegang.' };
   }
+  // v0.25.8: rol 'keuken' (Jop) ziet alleen de takenlijst met keukenmedewerkers — de rest van het dashboard is dicht
+  if (rij.rol === 'keuken' && !['login', 'taken'].includes(actie)) {
+    await log(email, 'geweigerd', 'keukenrol: ' + (actie || ''), event);
+    return { ok: false, status: 403, bericht: 'Met de keukenrol heb je alleen toegang tot de takenlijst.' };
+  }
   await log(email, actie || 'opvraag', null, event);
   return { ok: true, email, naam: rij.naam || email, rol: rij.rol || 'hr' };
 }

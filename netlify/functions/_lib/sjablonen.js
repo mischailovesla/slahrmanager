@@ -235,7 +235,12 @@ function zonderExit(s) {
   });
   return regels.filter((r, i) => !weg.has(i)).join('\n').replace(/\n{3,}/g, '\n\n');
 }
-function ontslagHtml(naam, bv) {
+function ontslagHtml(naam, bv, isEN) {
+  if (isEN) return slaWrap(slaHead('#333d3a', 'Confirmation of your resignation') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:16px;font-weight:700;color:#333d3a;margin:0 0 14px">Dear ' + esc(voornaamVan(naam)) + ',</p>'
+    + '<p style="' + P14 + 'line-height:1.7;margin:0 0 14px">You have let us know that you are leaving SLA. We are sorry to see you go, but we understand and wish you all the best with what comes next!</p>'
+    + '<p style="' + P14 + 'line-height:1.7;margin:0 0 20px">Attached you will find the official confirmation, with your last working day and what you can expect.</p>'
+    + '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:22px"><tr><td style="padding:16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #333d3a"><p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 12px">Could you sign the letter digitally here? Then everything is properly arranged.</p>' + knop(prefillOntslagUrl(naam), '&rarr; Sign the letter') + '</td></tr></table>'
+    + exitMeldingBlok(true) + '<p style="' + P14 + 'margin:0 0 20px">Questions? Email us at <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a>.</p>' + groet('Kind regards,', bv) + '</td></tr>' + slaFoot());
   return slaWrap(slaHead('#333d3a', 'Bevestiging van je opzegging') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:16px;font-weight:700;color:#333d3a;margin:0 0 14px">Beste ' + esc(voornaamVan(naam)) + ',</p>'
     + '<p style="' + P14 + 'line-height:1.7;margin:0 0 14px">Je hebt aangegeven dat je bij SLA stopt. Jammer dat je gaat, maar we begrijpen het en wensen je veel succes met wat er komt!</p>'
     + '<p style="' + P14 + 'line-height:1.7;margin:0 0 20px">In de bijlage vind je de offici&euml;le bevestiging van je opzegging, met je laatste werkdag en wat je verder kunt verwachten.</p>'
@@ -267,6 +272,8 @@ function aanzeggingHtml(naam, bv, einddatum, isEN) {
 const ONTSLAG_TEMPLATES = [
   { key: 'ontslag-pdf', label: 'Ontslagbevestiging + PDF', type: 'ontslag', taal: 'NL', pdf: true, subject: 'Bevestiging opzegging dienstverband - [BV]',
     body: (n, bv) => 'Beste ' + (voornaamVan(n) || '[Naam]') + ',\n\nJe hebt aangegeven dat je bij SLA stopt. Jammer dat je gaat, maar we begrijpen het en wensen je veel succes met wat er komt!\n\nIn de bijlage vind je de officiële bevestiging van je opzegging. Wil je de brief hier digitaal ondertekenen? Dan is alles netjes geregeld:\n' + C.UPLOAD_ONTSLAG + '\n\nNa je laatste werkdag ontvang je van ons per mail een korte exit-survey (een paar vragen, 2 minuten, desgewenst anoniem). We horen graag hoe je je tijd bij SLA hebt ervaren.{{EXITMELDING}}\n\nMet vriendelijke groet,\n' + C.AFZENDER_NAAM + '\n' + (bv || 'SLA') },
+  { key: 'ontslag-en', label: 'Confirmation of resignation + PDF (EN)', type: 'ontslag', taal: 'EN', pdf: true, subject: 'Confirmation of your resignation - [BV]',
+    body: (n, bv) => 'Dear ' + (voornaamVan(n) || '[Name]') + ',\n\nYou have let us know that you are leaving SLA. We are sorry to see you go, but we understand and wish you all the best with what comes next!\n\nAttached you will find the official confirmation. Could you sign the letter digitally here? Then everything is properly arranged:\n' + C.UPLOAD_ONTSLAG + '\n\nAfter your last working day you will receive a short exit survey by email (a few questions, 2 minutes, anonymously if you prefer). We would love to hear how you experienced your time at SLA.{{EXITMELDING}}\n\nKind regards,\n' + C.AFZENDER_NAAM + '\n' + (bv || 'SLA') },
   { key: 'ontslag-herinnering', label: 'Herinnering ondertekening', type: 'herinnering', taal: 'NL', pdf: false, subject: 'Even een herinnering: je ondertekende brief',
     body: (n, bv) => 'Beste ' + (voornaamVan(n) || '[Naam]') + ',\n\nWe hebben de ondertekende brief nog niet van je terug ontvangen. Wil je hem nog even ondertekenen? Dat kan hier:\n' + C.UPLOAD_ONTSLAG + '\n\nLukt het niet of heb je een vraag? Mail ons gerust op hr@ilovesla.com.\n\nHartelijke groet,\n' + C.AFZENDER_NAAM + '\n' + (bv || 'SLA') },
   { key: 'aanzegging-nl', label: 'Aanzegging niet-verlengen + PDF', type: 'aanzegging', taal: 'NL', pdf: true, subject: 'Aanzegging einde arbeidsovereenkomst - [BV]',
@@ -304,7 +311,7 @@ function ontslagMailHtml(tpl, naam, bv, einddatum) {
   if (tpl.type === 'proeftijd') return proeftijdHtml(naam, bv, einddatum, tpl.variant === 'wg', tpl.taal === 'EN');
   if (tpl.type === 'aanzegging') return aanzeggingHtml(naam, bv, einddatum, tpl.taal === 'EN');
   if (tpl.type === 'herinnering') return ontslagHerHtml(naam, bv);
-  return ontslagHtml(naam, bv);
+  return ontslagHtml(naam, bv, tpl.taal === 'EN');
 }
 
 // --- Sommatie (buildSommatieHtml / buildSommatiePlain + eigen tekst uit VrijeBrief.gs) ---

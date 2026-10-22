@@ -179,9 +179,19 @@ async function mergeUploads(dl, soort, maak, combineer) {
   let up; try { up = await require('./uploads').vindUploads(soort); } catch (e) { console.warn('uploads:', e.message); return; }
   for (const k of Object.keys(up.byNaam)) dl.byNaam[k] = combineer(dl.byNaam[k], maak(up.byNaam[k]));
   for (const k of Object.keys(up.byEmail)) dl.byEmail[k] = combineer(dl.byEmail[k], maak(up.byEmail[k]));
+  dl.tijd = up.tijd || {};
 }
 async function loonDocLinks() { const dl = await loonFormLinks(); await mergeUploads(dl, 'loon', r => ({ loon: r.loon || '', indienst: r.indienst || '' }), (oud, nw) => ({ loon: nw.loon || (oud || {}).loon || '', indienst: nw.indienst || (oud || {}).indienst || '' })); return dl; }
 async function ontslagDocLinks() { const dl = await ontslagFormLinks(); await mergeUploads(dl, 'ontslag', r => r.ontslag || '', (oud, nw) => nw || oud || ''); return dl; }
+// v0.25.9: een upload hoort alleen bij dit dossier als hij ná het versturen van de brief binnenkwam
+// (anders hangt bij een hergebruikte regel — zelfde naam/e-mail — een oud of test-document aan de nieuwe brief).
+function actueelDoc(dl, ref, verzenddatum) {
+  const t = ref && dl.tijd && dl.tijd[ref]; if (!t) return ref;
+  const m = String(verzenddatum || '').match(/(\d{2})-(\d{2})-(\d{4})(?:\s+(\d{2}):(\d{2}))?/); if (!m) return ref;
+  const upl = new Date(t).toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).slice(0, 16); // yyyy-mm-dd HH:mm
+  const verz = m[3] + '-' + m[2] + '-' + m[1] + ' ' + (m[4] || '00') + ':' + (m[5] || '00');
+  return upl >= verz ? ref : '';
+}
 function zoekDoc(dl, naam, email) { const em = String(email || '').trim().toLowerCase(); if (em && dl.byEmail[em]) return dl.byEmail[em]; const n = normNaam(naam); return (n && dl.byNaam[n]) || null; }
 
 // ---- Lijsten (zelfde vorm als sheets.js) ------------------------------------
@@ -199,7 +209,7 @@ async function getOntslag(metArchief) {
   const data = await sheetWeergave('hr_ontslag', !!metArchief); const dl = await ontslagDocLinks(); const out = [];
   for (let i = 1; i < data.length; i++) {
     const r = data[i]; if (!cel(r, 0)) continue;
-    const rec = metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), opzegging: cel(r, 2), einddatum: cel(r, 3), bedrijf: cel(r, 5), adres: cel(r, 6), status: cel(r, 7), verzenddatum: cel(r, 8), ondertekend: isJa(r[9]) ? 'Ja' : 'Nee', herinnering: cel(r, 10), aantalHer: parseInt(cel(r, 11), 10) || 0, mahdia: isJa(r[13]) ? 'Ja' : 'Nee', salaris: cel(r, 14), docUrl: zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', briefUrl: cel(r, 15), uitstroomreden: cel(r, 16), type: (!cel(r, 2) && cel(r, 3)) ? 'aanzegging' : 'ontslag' });
+    const rec = metMid(data, { rij: i + 1, naam: cel(r, 0), email: cel(r, 1), opzegging: cel(r, 2), einddatum: cel(r, 3), bedrijf: cel(r, 5), adres: cel(r, 6), status: cel(r, 7), verzenddatum: cel(r, 8), ondertekend: isJa(r[9]) ? 'Ja' : 'Nee', herinnering: cel(r, 10), aantalHer: parseInt(cel(r, 11), 10) || 0, mahdia: isJa(r[13]) ? 'Ja' : 'Nee', salaris: cel(r, 14), docUrl: actueelDoc(dl, zoekDoc(dl, cel(r, 0), cel(r, 1)) || '', cel(r, 8)), briefUrl: cel(r, 15), uitstroomreden: cel(r, 16), type: (!cel(r, 2) && cel(r, 3)) ? 'aanzegging' : 'ontslag' });
     if (data.arch[i + 1]) rec.gearchiveerd = data.arch[i + 1];
     out.push(rec);
   }

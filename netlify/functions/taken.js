@@ -176,6 +176,7 @@ exports.handler = beveiligd('taken', async (event, g) => {
   if (event.httpMethod === 'POST') {
     const p = body(event);
     if (!p.sleutel) throw new Error('sleutel ontbreekt');
+    if (g.rol === 'keuken' && !/keuken/i.test(String(p.winkel || ''))) throw new Error('Je kunt alleen taken van de keuken afhandelen.');
     const dagen = Math.min(Math.max(parseInt(p.dagen, 10) || 7, 1), 90);
     const tot = new Date(Date.now() + dagen * 864e5).toISOString();
     const { error } = await admin().from('hr_taken_afgehandeld').upsert({ sleutel: String(p.sleutel), door: g.email, op: new Date().toISOString(), tot, opmerking: p.opmerking ? String(p.opmerking).slice(0, 300) : null }, { onConflict: 'sleutel' });
@@ -224,6 +225,9 @@ exports.handler = beveiligd('taken', async (event, g) => {
     const weg = new Set((data || []).map(r => r.sleutel));
     const voor = taken.length; taken = taken.filter(t => !weg.has(t.sleutel)); verborgen = voor - taken.length;
   } catch (e) { /* migratie 0007 nog niet gedraaid */ }
+  // v0.25.8: keukentaken alleen bij Jop (rol 'keuken'); HR ziet alles behalve de keuken
+  const keukenRol = g.rol === 'keuken', isKeuken = t => /keuken/i.test(String(t.winkel || ''));
+  taken = taken.filter(t => keukenRol ? isKeuken(t) : !isKeuken(t));
   const rang = { rood: 0, oranje: 1, grijs: 2 };
   taken.sort((a, b) => rang[a.urgentie] - rang[b.urgentie] || String(a.naam || '').localeCompare(String(b.naam || ''), 'nl'));
   const stand = Object.keys(runs).filter(k => ALLE_CHECKS.includes(k)).map(k => ({ check: k, tijd: stempelNL(runs[k].tijd), aantal: (runs[k].gevonden || []).length }));

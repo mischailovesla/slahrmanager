@@ -90,16 +90,16 @@ async function registreer(tok, bestanden, meta) {
 }
 // Alle uploads van een soort → { byNaam: {norm: {key: ref}}, byEmail }, nieuwste wint
 async function vindUploads(soort) {
-  const byNaam = {}, byEmail = {};
+  const byNaam = {}, byEmail = {}, tijd = {};
   const { data, error } = await admin().from('hr_uploads').select('id,naam,email,bestanden,created_at').eq('soort', soort).order('created_at', { ascending: false }).limit(2000);
-  if (error) { console.warn('hr_uploads:', error.message); return { byNaam, byEmail }; }
+  if (error) { console.warn('hr_uploads:', error.message); return { byNaam, byEmail, tijd }; }
   for (const u of data || []) {
-    const refs = {}; (u.bestanden || []).forEach(b => { refs[b.key] = 'sb:' + u.id + ':' + b.key; });
+    const refs = {}; (u.bestanden || []).forEach(b => { refs[b.key] = 'sb:' + u.id + ':' + b.key; tijd[refs[b.key]] = u.created_at; });
     const n = normNaam(u.naam), e = String(u.email || '').toLowerCase();
     if (n) byNaam[n] = Object.assign({}, refs, byNaam[n] || {});
     if (e) byEmail[e] = Object.assign({}, refs, byEmail[e] || {});
   }
-  return { byNaam, byEmail };
+  return { byNaam, byEmail, tijd };
 }
 const isRef = s => /^sb:[0-9a-f-]{36}:\w+$/.test(String(s || ''));
 async function zoekBestand(ref) {
