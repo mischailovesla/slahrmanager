@@ -110,7 +110,7 @@ async function bevestig(r, door) {
     const st = salarisTekst(r, soort, t);
     const sid = await M.verstuur({ to: C.SALARIS_EMAIL, subject: st.subject, text: st.plain, html: st.html, attachments: bijlage, tags: [{ name: 'bron', value: 'salaris' }, { name: 'type', value: 'ontslag' }] });
     await M.logMail({ door: door || 'signalering', bron: 'salaris', type: 'ontslag', naar: C.SALARIS_EMAIL, naam: r.naam, onderwerp: st.subject, taal: 'NL', rij: r.rij, resend_id: sid });
-    try { await S.zetSalarisStempel('ontslag', r.rij, D.stempel()); } catch (e) { console.warn('salaris-stempel:', e.message); }
+    try { await S.zetSalarisStempel('ontslag', r.rij, D.stempel()); await require('./salaris').vinkVerwerkt('ontslag', r.rij); } catch (e) { console.warn('salaris-stempel:', e.message); }
     salaris = 'verstuurd';
   }
   await S.archiveerRij(C.SHEETS.ontslag.id, 'afgerond: uitdiensttreding bevestigd (niet ondertekend)', r.rij, r.naam, door || 'signalering');

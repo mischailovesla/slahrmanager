@@ -15,6 +15,13 @@ async function lijstVan(type) {
   return type === 'loonheffing' ? S.getLoonheffing() : type === 'ontslag' ? S.getOntslag() : type === 'overplaatsing' ? S.getOverplaatsing() : S.getKorting();
 }
 
+// v0.25.6: is de mail aan salaris geaccepteerd, dan staat "Naar salaris / Verwerkt" meteen aan (geen handmatig vinkje meer nodig).
+const KOL_VERWERKT = { loonheffing: [C.SHEETS.loonheffing.id, 10], ontslag: [C.SHEETS.ontslag.id, 14] };
+async function vinkVerwerkt(type, rij) {
+  const k = KOL_VERWERKT[type]; if (!k || !rij) return;
+  try { await S.zetCel(k[0], null, rij, k[1], 'Ja', S.KLEUR.groen); } catch (e) { console.warn('vinkje verwerkt:', e.message); }
+}
+
 async function stuur(type, row, door, p) {
   p = p || {}; const rij = row.rij;
   const bijlagen = [], labels = [];
@@ -51,9 +58,10 @@ async function stuur(type, row, door, p) {
   const resendId = await M.verstuur({ to: C.SALARIS_EMAIL, subject, text, html, attachments: bijlagen.map(b => ({ filename: b.filename, content: b.content })), tags: [{ name: 'bron', value: 'salaris' }, { name: 'type', value: type }] });
   const nu = D.stempel();
   await S.zetSalarisStempel(type, rij, nu);
+  await vinkVerwerkt(type, rij);
   await M.logMail({ door: door, bron: 'salaris', type, naar: C.SALARIS_EMAIL, naam: row.naam, onderwerp: subject, taal: 'NL', rij, resend_id: resendId });
   await logActie({ door: door, actie: 'mail', bron: type, veld: 'naar-salaris', rij, naam: row.naam, nieuw: nu, details: subject + ' (' + bijlagen.length + ' bijlage(n))' });
   return { bericht: bijlagen.length + ' document(en) van ' + row.naam + ' verstuurd naar ' + C.SALARIS_EMAIL + (oudeDrive.length ? '. LET OP: ' + oudeDrive.join(' en ') + ' staat nog in Google Drive en is niet meegestuurd.' : ''), rij, salaris: nu, resendId };
 }
 
-module.exports = { stuur, lijstVan };
+module.exports = { stuur, lijstVan, vinkVerwerkt };

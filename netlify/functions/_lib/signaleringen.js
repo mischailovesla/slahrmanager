@@ -748,6 +748,11 @@ async function salaris(droog) {
     korting: r => recent(r) && !r.salaris && !!r.docUrl,
     overplaatsing: r => recent(r) && !r.salaris && String(r.status || '').indexOf('Verstuurd') === 0
   };
+  // v0.25.6: al naar salaris gestuurd (stempel staat) maar vinkje nog uit -> alsnog aanvinken
+  if (!rap.droog) for (const type of ['loonheffing', 'ontslag']) {
+    try { for (const r of (await SAL.lijstVan(type)).filter(r => r.salaris && r.mahdia !== 'Ja')) { await SAL.vinkVerwerkt(type, r.rij); (rap.bijgewerkt = rap.bijgewerkt || []).push(r.naam); } }
+    catch (e) { rap.fouten.push('vinkjes ' + type + ': ' + e.message); }
+  }
   for (const type of Object.keys(klaar)) {
     let lijst = [];
     try { lijst = (await SAL.lijstVan(type)).filter(klaar[type]); } catch (e) { rap.fouten.push(type + ': ' + e.message); continue; }
