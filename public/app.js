@@ -11,10 +11,10 @@
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
-    { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
+    { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -73,6 +73,7 @@
     if (tab === 'training' && !trData) laadTraining(false);
     if (tab === 'toegang' && !tgData) laadToegang();
     if (tab === 'archief' && !arData) laadArchief();
+    if (tab === 'bewaartermijn' && !btData) laadBewaartermijnen();
     if (tab === 'gegevens' && !gvData) laadGegevens();
     if (tab === 'oproepaanbod' && !oprData) laadOproep(false);
   }
@@ -134,6 +135,7 @@
     mto: ['Tevredenheidsonderzoek (MTO)', 'Twee keer per jaar een anonieme vragenlijst voor iedereen; rapport per winkel en voor SLA makers en store managers apart.'],
     exit: ['Exit-surveys', 'Reacties op de exit-survey en uitnodigingen voor vertrekkers.'],
     toegang: ['Toegangslog', 'Wie heeft wanneer welke gegevens bekeken of gewijzigd (AVG-verantwoording).'],
+    bewaartermijn: ['Bewaartermijnen (AVG)', 'Oud-medewerkers van wie de gegevens langer bewaard worden dan de wet toestaat: beoordelen en opschonen.'],
     archief: ['Archief', 'Gearchiveerde dossiers bekijken en terugzetten.'],
     gegevens: ['Gegevens & export', 'Export van de HR-gegevens en de stand van de gegevensbron.']
   };
@@ -1388,7 +1390,7 @@
   var gsData = null, gsDagen = 90, gsMeta = null, gsOpts = {}, dosPersoon = null, dosGesprekken = [];
   var gsVandaag = function () { return new Date().toLocaleDateString('sv-SE'); };
   var gsPlus = function (n) { var d = new Date(); d.setDate(d.getDate() + n); return d.toLocaleDateString('sv-SE'); };
-  async function gsZorgMeta() { if (gsMeta) return gsMeta; var r = await api('/api/gesprek?dagen=7'); if (r.success) gsMeta = { soorten: r.soorten, kanalen: r.kanalen }; return gsMeta; }
+  async function gsZorgMeta() { if (gsMeta) return gsMeta; var r = await api('/api/gesprek?dagen=7'); if (r.success) gsMeta = { soorten: r.soorten, kanalen: r.kanalen, verzuimVelden: r.verzuimVelden || [] }; return gsMeta; }
   function gsSoortLabel(k) { var s = gsMeta && gsMeta.soorten.find(function (x) { return x.key === k; }); return s ? s.label : k; }
   function gsKaart(x) {
     var vv = x.vervolgDatum ? (x.vervolgOpen ? '<span class="badge ' + (x.vervolgTeLaat ? 'br' : 'bo') + '">vervolg ' + esc(x.vervolgNL) + (x.vervolgTeLaat ? ' — over tijd' : '') + '</span>' : '<span class="badge bg">vervolg ' + esc(x.vervolgNL) + ' afgerond' + (x.vervolgNotitie ? ': ' + esc(x.vervolgNotitie) : '') + '</span>') : '';
@@ -1411,15 +1413,25 @@
     g('gs-context').innerHTML = ctx; g('gs-context').style.display = ctx ? '' : 'none';
     g('gs-alleenaf').style.display = o.checkinId ? '' : 'none';
     g('gs-fg-zoek').style.display = p.naam ? 'none' : ''; g('gs-zoek').value = ''; g('gs-zoek-res').classList.remove('open');
-    gsHint(); g('gs-modal').classList.add('open');
+    gsHint(); gsVerzuimToon(gs ? gs.besproken : ''); g('gs-modal').classList.add('open');
     setTimeout(function () { (p.naam ? g('gs-besproken') : g('gs-zoek')).focus(); }, 60);
   };
   window.closeGesprek = function () { g('gs-modal').classList.remove('open'); };
   g('gs-modal').addEventListener('click', function (e) { if (e.target === this) closeGesprek(); });
   window.gsHint = function () { var s = gsMeta && gsMeta.soorten.find(function (x) { return x.key === g('gs-soort').value; }); g('gs-hint').textContent = s && s.hint ? s.hint : ''; g('gs-hint').style.display = s && s.hint ? '' : 'none'; };
+  // v0.27.0: verzuimgesprek met vaste keuzes (geen vrije tekst 'besproken'); bij bewerken teruglezen uit de samenvatting
+  function gsVerzuimVeld(f, waarde) { return '<div class="fg"><label>' + esc(f.label) + '</label><select data-gs-vz="' + f.key + '"><option value="">—</option>' + f.opties.map(function (o) { return '<option' + (o === waarde ? ' selected' : '') + '>' + esc(o) + '</option>'; }).join('') + '</select></div>'; }
+  window.gsVerzuimToon = function (besproken) {
+    var isVz = g('gs-soort').value === 'verzuim', velden = (gsMeta && gsMeta.verzuimVelden) || [];
+    g('gs-fg-besproken').style.display = isVz ? 'none' : '';
+    if (!isVz) { g('gs-verzuim').style.display = 'none'; return; }
+    var oud = {}; String(besproken || '').split(' · ').forEach(function (d) { var i = d.indexOf(': '); if (i > 0) oud[d.slice(0, i)] = d.slice(i + 2); });
+    var h = ''; for (var i = 0; i < velden.length; i += 2) h += '<div class="fr">' + velden.slice(i, i + 2).map(function (f) { return gsVerzuimVeld(f, oud[f.label]); }).join('') + '</div>';
+    g('gs-verzuim').innerHTML = h; g('gs-verzuim').style.display = '';
+  };
   koppelSbZoek('gs-zoek', 'gs-zoek-res', function (m) { if (!m) return; g('gs-naam').value = m.naam; g('gs-email').value = m.email || ''; g('gs-mid').value = m.id; g('gs-winkel').value = m.winkelNaam || ''; g('gs-fg-zoek').style.display = 'none'; });
   window.gsOpslaan = async function () {
-    var gsp = { id: g('gs-id').value || undefined, naam: g('gs-naam').value.trim(), email: g('gs-email').value.trim(), medewerker_id: g('gs-mid').value, winkel: g('gs-winkel').value, soort: g('gs-soort').value, datum: g('gs-datum').value, kanaal: g('gs-kanaal').value, gevoerd_door: g('gs-door').value.trim(), aanleiding: g('gs-aanleiding').value, besproken: g('gs-besproken').value, afspraken: g('gs-afspraken').value, vervolg_datum: g('gs-vervolg').value || null };
+    var gsp = { id: g('gs-id').value || undefined, naam: g('gs-naam').value.trim(), email: g('gs-email').value.trim(), medewerker_id: g('gs-mid').value, winkel: g('gs-winkel').value, soort: g('gs-soort').value, datum: g('gs-datum').value, kanaal: g('gs-kanaal').value, gevoerd_door: g('gs-door').value.trim(), aanleiding: g('gs-aanleiding').value, besproken: g('gs-soort').value === 'verzuim' ? '' : g('gs-besproken').value, verzuim: (function () { var v = {}; document.querySelectorAll('#gs-verzuim select[data-gs-vz]').forEach(function (x) { v[x.getAttribute('data-gs-vz')] = x.value; }); return v; })(), afspraken: g('gs-afspraken').value, vervolg_datum: g('gs-vervolg').value || null };
     var b = g('gs-sbtn'); b.disabled = true; g('gs-slbl').textContent = 'Opslaan…';
     var r = await api('/api/gesprek', { actie: 'opslaan', gesprek: gsp, checkinId: gsOpts.checkinId, vervolgVan: gsOpts.vervolgVan });
     b.disabled = false; g('gs-slbl').textContent = 'Gesprek opslaan';
@@ -1456,7 +1468,7 @@
     g('gs-body').innerHTML = '<tr><td colspan="9" class="leeg grijs">Laden…</td></tr>';
     var d = await api('/api/gesprek?dagen=' + gsDagen);
     if (!d.success) { g('gs-body').innerHTML = '<tr><td colspan="9" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
-    gsData = d; gsMeta = { soorten: d.soorten, kanalen: d.kanalen };
+    gsData = d; gsMeta = { soorten: d.soorten, kanalen: d.kanalen, verzuimVelden: d.verzuimVelden || [] };
     var fs = g('gs-fsoort'), keuze = fs.value; fs.innerHTML = '<option value="">Alle soorten</option>' + d.soorten.map(function (s) { return '<option value="' + s.key + '">' + esc(s.label) + '</option>'; }).join(''); fs.value = keuze;
     g('gs-ocount').textContent = d.open.length;
     g('gs-obody').innerHTML = d.open.length ? d.open.map(function (x) { return '<tr><td><span class="badge ' + (x.vervolgTeLaat ? 'br' : 'bo') + '">' + esc(x.vervolgNL) + '</span></td><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td>' + esc(x.soortLabel) + '</td><td>' + esc(x.datumNL) + '</td><td style="max-width:320px;white-space:normal;font-size:.82rem">' + esc(x.afspraken || '') + '</td><td style="white-space:nowrap"><button class="btn bp bsm" data-gs-vervolg="' + esc(x.id) + '">Vervolggesprek</button> <button class="btn bd bsm" data-gs-af="' + esc(x.id) + '">✓ Afvinken</button> ' + dosBtn(x.naam, x.email) + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="leeg grijs">Geen openstaande vervolgafspraken.</td></tr>';
@@ -2364,6 +2376,83 @@
     var kleur = function (r) { return r === 'geweigerd' ? 'br' : r === 'login' ? 'bg' : r === 'dossier' || r === 'dossier-pdf' || r === 'export' || r === 'document' ? 'bo' : 'boat'; };
     g('tg-body').innerHTML = d.regels.map(function (r) { return '<tr><td style="white-space:nowrap">' + esc(r.tijd) + '</td><td>' + esc(r.account) + '</td><td><span class="badge ' + kleur(r.resultaat) + '">' + esc(r.resultaat) + '</span></td><td style="font-size:.8rem">' + esc(r.details || '-') + '</td><td class="lay-sub">' + esc(r.ip || '') + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="leeg grijs">Nog geen logregels</td></tr>';
     g('tg-mut-body').innerHTML = d.mutaties.map(function (r) { return '<tr><td style="white-space:nowrap">' + esc(r.tijd) + '</td><td>' + esc(r.account) + '</td><td><span class="badge boat">' + esc(r.actie) + '</span></td><td>' + esc(r.bron) + (r.veld ? ' · ' + esc(r.veld) : '') + '</td><td><strong>' + esc(r.naam || '-') + '</strong></td><td style="font-size:.8rem">' + esc(r.details || '') + '</td></tr>'; }).join('') || '<tr><td colspan="6" class="leeg grijs">Nog geen schrijfacties</td></tr>';
+  };
+
+  // ---------- Bewaartermijnen (AVG) — v0.27.0 ----------
+  var btData = null, btSel = {};
+  function btTelSel() {
+    var n = Object.keys(btSel).filter(function (k) { return btSel[k]; }).length;
+    g('bt-sel').textContent = n + ' geselecteerd'; g('bt-verwijder').disabled = !n || !(btData && btData.magVerwijderen);
+  }
+  window.laadBewaartermijnen = async function () {
+    g('bt-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">Laden… (alle tabellen + Shiftbase, duurt een paar seconden)</td></tr>';
+    g('bt-fout').style.display = 'none'; btSel = {};
+    var d = await api('/api/bewaartermijnen');
+    if (!d.success) { g('bt-body').innerHTML = '<tr><td colspan="6" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    btData = d;
+    var regels = d.personen.reduce(function (a, p) { return a + p.aantal; }, 0), best = d.personen.reduce(function (a, p) { return a + p.bestanden; }, 0);
+    var logs = (d.logboeken || []).reduce(function (a, l) { return a + (l.aantal || 0); }, 0);
+    g('bt-count').textContent = d.personen.length + ' oud-medewerker(s)';
+    g('bt-kpi').innerHTML = '<div class="card ' + (d.personen.length ? 'cw' : 'cg') + '"><div class="si ' + (d.personen.length ? 'siw' : 'sig') + '">🗂</div><div><div class="sv">' + d.personen.length + '</div><div class="sl">Over de termijn</div></div></div>'
+      + '<div class="card cd"><div class="si sid">≡</div><div><div class="sv">' + regels + '</div><div class="sl">Regels · ' + best + ' bestand(en)</div></div></div>'
+      + '<div class="card ' + (d.nietGekoppeld ? 'cw' : 'cd') + '"><div class="si ' + (d.nietGekoppeld ? 'siw' : 'sid') + '">?</div><div><div class="sv">' + d.nietGekoppeld + '</div><div class="sl">Niet in Shiftbase</div></div></div>'
+      + '<div class="card cd"><div class="si sid">⏳</div><div><div class="sv">' + d.binnenkort + '</div><div class="sl">Vervalt binnen 90 dagen</div></div></div>'
+      + '<div class="card ' + (logs ? 'cw' : 'cd') + '"><div class="si ' + (logs ? 'siw' : 'sid') + '">🧾</div><div><div class="sv">' + logs + '</div><div class="sl">Oude logregels</div></div></div>';
+    if (d.ontbreekt && d.ontbreekt.length) { g('bt-fout').innerHTML = '<strong>Niet gevonden:</strong> ' + esc(d.ontbreekt.join(', ')) + ' — die tabellen bestaan (nog) niet en zijn overgeslagen.'; g('bt-fout').style.display = ''; }
+    if (d.termijnen) g('bt-termijnen').textContent = 'dossier ' + d.termijnen.dossier + ' · loonheffing, korting en kopie-ID ' + d.termijnen.fiscaal + ' · logboeken ' + d.termijnen.logboek;
+    var kanWeg = d.magVerwijderen;
+    g('bt-alles').disabled = !kanWeg; g('bt-alles').checked = false;
+    var eersteNiet = true;
+    g('bt-body').innerHTML = d.personen.map(function (p) {
+      var kop = '';
+      if (!p.gekoppeld && eersteNiet) { eersteNiet = false; kop = '<tr><td colspan="6" style="background:#fdf3ea;font-size:.8rem;padding:8px 14px"><strong>Niet gevonden in Shiftbase</strong> — uit-dienstdatum geschat op de laatste HR-activiteit. Controleer eerst of deze mensen echt weg zijn.</td></tr>'; }
+      if (p.gekoppeld && kanWeg) btSel[p.key] = false;
+      var wat = p.items.map(function (i) { return '<span class="badge ' + (i.actie === 'anonimiseer' ? 'bb' : 'boat') + '" style="margin:0 4px 4px 0" title="Termijn: ' + esc(i.termijn) + ' · verviel ' + esc(i.vervaltOp.split('-').reverse().join('-')) + '">' + esc(i.label) + ' · ' + i.aantal + '</span>'; }).join('');
+      return kop + '<tr><td>' + (kanWeg ? '<input type="checkbox" data-bt="' + esc(p.key) + '">' : '') + '</td><td><strong>' + esc(p.naam) + '</strong>' + (p.shiftbaseId ? '<div class="lay-sub">Shiftbase ' + esc(p.shiftbaseId) + '</div>' : '') + '</td><td style="white-space:nowrap">' + esc(p.ankerNL) + '<div class="lay-sub">' + (p.ankerBron === 'shiftbase' ? 'Shiftbase' : 'laatste activiteit') + '</div></td><td style="white-space:normal;max-width:560px">' + wat + '</td><td>' + p.aantal + '</td><td>' + (p.bestanden || '-') + (p.drive ? '<div class="lay-sub">+' + p.drive + ' in Drive</div>' : '') + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="leeg grijs">Niemand over de bewaartermijn. 👍</td></tr>';
+    g('bt-logs').innerHTML = (d.logboeken || []).map(function (l) { return '<tr><td><strong>' + esc(l.label) + '</strong><div class="lay-sub">' + esc(l.tabel) + '</div></td><td>' + esc(l.termijn) + '</td><td>' + esc(l.ouderDan.split('-').reverse().join('-')) + '</td><td>' + (l.aantal == null ? '<span class="lay-sub">' + esc(l.fout || '?') + '</span>' : l.aantal) + '</td></tr>'; }).join('');
+    g('bt-logs-knop').disabled = !kanWeg || !logs;
+    btSel = {}; btTelSel();
+  };
+  document.addEventListener('change', function (e) {
+    var c = e.target.closest && e.target.closest('input[data-bt]'); if (!c) return;
+    btSel[c.getAttribute('data-bt')] = c.checked; btTelSel();
+  });
+  // "alles selecteren" pakt alleen de in Shiftbase gevonden oud-medewerkers; niet-gekoppelden vink je bewust zelf aan
+  window.btAlles = function (aan) {
+    if (!btData) return;
+    var gek = {}; btData.personen.forEach(function (p) { if (p.gekoppeld) gek[p.key] = 1; });
+    document.querySelectorAll('input[data-bt]').forEach(function (c) { var k = c.getAttribute('data-bt'); if (gek[k]) { c.checked = aan; btSel[k] = aan; } });
+    btTelSel();
+  };
+  window.btVerwijder = async function () {
+    var keys = Object.keys(btSel).filter(function (k) { return btSel[k]; }); if (!keys.length) return;
+    var pers = btData.personen.filter(function (p) { return keys.indexOf(p.key) > -1; });
+    var regels = pers.reduce(function (a, p) { return a + p.aantal; }, 0), best = pers.reduce(function (a, p) { return a + p.bestanden; }, 0), niet = pers.filter(function (p) { return !p.gekoppeld; }).length;
+    if (!confirm('Gegevens van ' + keys.length + ' oud-medewerker(s) definitief opschonen?\n\n' + regels + ' regels en ' + best + ' bestand(en). Check-ins en exit-surveys worden geanonimiseerd.' + (niet ? '\n\nLet op: ' + niet + ' van hen zijn NIET in Shiftbase gevonden. Weet je zeker dat ze uit dienst zijn?' : '') + '\n\nDit kan niet ongedaan worden gemaakt.')) return;
+    g('bt-verwijder').disabled = true;
+    var tot = { personen: 0, rijen: 0, geanonimiseerd: 0, bestanden: 0, driveLinks: [], fouten: [] };
+    for (var i = 0; i < keys.length; i += 10) {
+      g('bt-sel').textContent = 'Bezig… ' + Math.min(i + 10, keys.length) + ' / ' + keys.length;
+      var r = await api('/api/bewaartermijnen', { actie: 'verwijder', keys: keys.slice(i, i + 10) });
+      if (!r.success) { tot.fouten.push(r.bericht); break; }
+      ['personen', 'rijen', 'geanonimiseerd', 'bestanden'].forEach(function (k) { tot[k] += r[k] || 0; });
+      tot.driveLinks = tot.driveLinks.concat(r.driveLinks || []); tot.fouten = tot.fouten.concat(r.fouten || []);
+    }
+    toast(tot.personen + ' opgeschoond: ' + tot.rijen + ' regels weg, ' + tot.geanonimiseerd + ' geanonimiseerd, ' + tot.bestanden + ' bestand(en)' + (tot.fouten.length ? ' · ' + tot.fouten.length + ' fout(en)' : ''), tot.fouten.length ? 'err' : 'ok');
+    if (tot.fouten.length || tot.driveLinks.length) {
+      g('bt-fout').innerHTML = (tot.fouten.length ? '<strong>Fouten:</strong><br>' + tot.fouten.map(esc).join('<br>') + '<br>' : '') + (tot.driveLinks.length ? '<strong>Nog zelf verwijderen in Google Drive (' + tot.driveLinks.length + '):</strong><br>' + tot.driveLinks.map(function (u) { return '<a href="' + esc(u) + '" target="_blank" rel="noopener">' + esc(u) + '</a>'; }).join('<br>') : '');
+      g('bt-fout').style.display = '';
+      var fout = g('bt-fout').innerHTML; await laadBewaartermijnen(); g('bt-fout').innerHTML = fout; g('bt-fout').style.display = '';
+    } else await laadBewaartermijnen();
+    ovData = null;
+  };
+  window.btLogboeken = async function () {
+    if (!confirm('Logregels ouder dan hun termijn definitief verwijderen (actielog, toegangslog, check-runs, afgehandelde taken)?')) return;
+    g('bt-logs-knop').disabled = true;
+    var r = await api('/api/bewaartermijnen', { actie: 'logboeken' });
+    toast(r.success ? r.bericht : 'Opschonen: ' + r.bericht, r.success ? 'ok' : 'err');
+    laadBewaartermijnen();
   };
 
   // ---------- Archief herstellen (port van herstelUitArchief, Code.gs v29.5) ----------

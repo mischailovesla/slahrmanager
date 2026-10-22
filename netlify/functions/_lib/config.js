@@ -65,6 +65,8 @@ module.exports = {
   KETEN_MAX_MAANDEN: 36,
   KETEN_ONDERBREKING_MAANDEN: 6,
   KETEN_VENSTER_DAGEN: 60,
+  // Standaard looptijden bij SLA (Mischa, 22-10-2026): 7, 12 en 16 maanden. Andere 'hele maanden'-einden in Shiftbase zijn wijzigingen (knips).
+  KETEN_LOOPTIJDEN_MAANDEN: [7, 12, 16],
   // Fase 4c: contractverlenging als proces — vanaf 60 dagen vóór het einde een besluit vragen, uiterlijk 35 dagen vóór het einde
   // (5 dagen marge op de wettelijke aanzegtermijn van 1 maand); na een besluit 'verlengen' moet het contract binnen 7 dagen in Shiftbase staan.
   VERLENG_VENSTER_DAGEN: 60,
@@ -136,12 +138,19 @@ module.exports = {
   GESPREK_SOORTEN: [
     { key: 'checkin', label: 'Opvolging check-in', hint: 'Na een lage check-in: vraag door op wat er speelt en spreek iets concreets af (wie doet wat, wanneer).' },
     { key: 'proeftijd', label: 'Proeftijdgesprek', hint: 'Bespreek vóór het einde van de proeftijd wat goed gaat en wat beter moet, en leg de beslissing vast. Opzeggen in de proeftijd kan alleen tot en met de laatste dag (art. 7:652 BW).' },
-    { key: 'verzuim', label: 'Verzuimgesprek', hint: 'Leg géén medische informatie vast (AVG): geen diagnose, klachten of behandeling. Wel: wat de medewerker wél en niet kan, verwachte duur, afspraken over bereikbaarheid en werkhervatting, en eventueel doorverwijzing naar de bedrijfsarts.' },
+    { key: 'verzuim', label: 'Verzuimgesprek', hint: 'Leg géén medische informatie vast (AVG): geen diagnose, klachten, oorzaak of behandeling — het dashboard weigert zulke woorden. Kies hieronder de duur, werkhervatting, bedrijfsarts en bereikbaarheid; bij Afspraken alleen wie wat doet en wanneer.' },
     { key: 'waarschuwing', label: 'Correctiegesprek', hint: 'Beschrijf feitelijk wat er is gebeurd (datum, wat, wie erbij was), de reactie van de medewerker (hoor en wederhoor) en wat je hebt afgesproken. Een schriftelijke waarschuwing verstuur je via Dossier → Waarschuwingen.' },
     { key: 'functioneren', label: 'Functioneringsgesprek', hint: 'Wat gaat goed, wat kan beter, ontwikkelwensen en afspraken voor de komende periode.' },
     { key: 'overig', label: 'Overig', hint: '' }
   ],
   GESPREK_KANALEN: ['In de winkel', 'Telefonisch', 'Op kantoor', 'Videobellen'],
+  // v0.27.0: verzuimgesprek zonder vrije tekst over 'wat er besproken is' — alleen wat een werkgever mag vastleggen (AVG/UAVG art. 30)
+  VERZUIM_VELDEN: [
+    { key: 'duur', label: 'Verwachte duur', opties: ['Binnen een week', '1–4 weken', 'Langer dan 4 weken', 'Onbekend'] },
+    { key: 'werk', label: 'Werken mogelijk?', opties: ['Nee, nog niet', 'Gedeeltelijk / aangepast werk', 'Ja, volledig', 'In overleg met bedrijfsarts'] },
+    { key: 'arts', label: 'Bedrijfsarts', opties: ['Nog niet nodig', 'Ingeschakeld', 'Afspraak gepland', 'Advies ontvangen'] },
+    { key: 'contact', label: 'Bereikbaarheid', opties: ['Wekelijks contact afgesproken', 'Medewerker meldt zich zelf', 'Via Store Manager', 'Anders (zie afspraken)'] }
+  ],
   GESPREK_VERVOLG_TE_LAAT_DAGEN: 7,     // vervolg zoveel dagen over tijd = rood op de takenlijst
   // Fase 4a: koppeling met SLA Academy (Supabase-project "training"). URL + publishable key zijn openbaar (staan ook in de Academy-app);
   // de toegang zit in de geheime sleutel ACADEMY_HR_SLEUTEL (env) die hr_training_status() controleert.
@@ -221,8 +230,11 @@ module.exports = {
   // Batch D
   TAB_NOTITIES: 'Notities',        // tab in de loonheffing-sheet (Dossier.gs): A Naam B Email C Datum D Auteur E Notitie
   TAB_ARCHIEF: 'Archief',
-  BHR_JAREN_DOSSIER: 2,            // AVG-bewaartermijn personeelsdossier (ontslag, sommaties, waarschuwingen) na einde dienstverband
-  BHR_JAREN_LOON: 5,               // loonheffingsverklaring-administratie (fiscaal; kopie in de sheets)
+  BHR_JAREN_DOSSIER: 2,            // AVG-bewaartermijn personeelsdossier na einde dienstverband (alle dossiertabellen, mails, gesprekken, uploads behalve loonheffing)
+  BHR_JAREN_LOON: 5,               // loonheffingsverklaring + kopie-ID + korting: 5 jaar na het einde van het kalenderjaar van uit dienst (fiscaal)
+  BHR_JAREN_LOG: 2,               // v0.27.0: actielog, toegangslog (rollend, vanaf het tijdstip)
+  BHR_MAANDEN_SIGNALERING: 12,     // v0.27.0: runs van de automatische checks (bevatten namen)
+  UPLOAD_GELDIG_DAGEN: 60,         // v0.27.0: persoonlijke upload-/tekenlinks verlopen na 60 dagen (nieuwe link: ⋯ → 🔗 Uploadlink)
 
   // ---- Fase 1: on-/offboarding-checklists (sjablonen; aanpassen = hier) ----
   CHECKLIST_ONBOARDING: [

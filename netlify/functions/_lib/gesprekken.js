@@ -15,12 +15,28 @@ const vandaagIso = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Eur
 const isIso = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || ''));
 const kort = (s, n) => String(s || '').trim().slice(0, n);
 
+// Verzuim: { duur, werk, arts, contact } (labels uit config.VERZUIM_VELDEN) -> 'Verwachte duur: … · Werken mogelijk?: …'
+function verzuimSamenvatting(v) {
+  v = v || {};
+  const delen = [];
+  for (const f of C.VERZUIM_VELDEN) {
+    const w = String(v[f.key] || '');
+    if (!w) continue;
+    if (!f.opties.includes(w)) throw new Error('Ongeldige keuze bij ' + f.label + '.');
+    delen.push(f.label + ': ' + w);
+  }
+  if (!delen.length) throw new Error('Kies bij een verzuimgesprek minimaal de verwachte duur of of werken mogelijk is.');
+  return delen.join(' · ');
+}
 function valideer(g) {
   const naam = kort(g.naam, 200); if (!naam) throw new Error('Kies of vul de medewerker in.');
   const soort = SOORT_KEYS.includes(g.soort) ? g.soort : null; if (!soort) throw new Error('Kies het soort gesprek.');
   const datum = isIso(g.datum) ? g.datum : null; if (!datum) throw new Error('Vul de datum van het gesprek in.');
   if (datum > vandaagIso()) throw new Error('De gespreksdatum ligt in de toekomst. Plan een gesprek als vervolgdatum bij een eerder gesprek, of vul de datum in waarop het gesprek is gevoerd.');
-  const aanleiding = kort(g.aanleiding, 4000), besproken = kort(g.besproken, 8000), afspraken = kort(g.afspraken, 4000);
+  const aanleiding = kort(g.aanleiding, 4000), afspraken = kort(g.afspraken, 4000); let besproken = kort(g.besproken, 8000);
+  // v0.27.0: verzuim = vaste keuzes i.p.v. vrije tekst; nergens medische woorden (AVG art. 9)
+  if (soort === 'verzuim') besproken = verzuimSamenvatting(g.verzuim);
+  require('./medisch').controleer([aanleiding, besproken, afspraken]);
   if (!aanleiding && !besproken && !afspraken) throw new Error('Vul minimaal de aanleiding, wat er besproken is of de afspraken in.');
   let vervolg = g.vervolg_datum ? String(g.vervolg_datum) : null;
   if (vervolg && !isIso(vervolg)) throw new Error('Ongeldige vervolgdatum.');
@@ -94,4 +110,4 @@ async function openVervolgen() {
   if (error) throw new Error(error.message);
   return (data || []).map(toon);
 }
-module.exports = { SOORT_KEYS, label, valideer, opslaan, vervolgAf, voorPersoon, lijst, openVervolgen, toon };
+module.exports = { SOORT_KEYS, label, valideer, verzuimSamenvatting, opslaan, vervolgAf, voorPersoon, lijst, openVervolgen, toon };

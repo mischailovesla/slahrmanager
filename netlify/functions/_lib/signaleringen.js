@@ -453,49 +453,27 @@ async function vakantiepieken(droog) {
   return rap;
 }
 
-// ---- 10. AVG-bewaartermijnen (bewaartermijnRapport, Beheer.gs v1.0; 1e van de maand 08:00) ----
-// Rapporteert, verwijdert NIETS: beoordelen en verwijderen blijft een menselijke beslissing (gedocumenteerd opschoonproces).
-function bhrScan(data, datumKoppen, jaren) {
-  if (!data || data.length < 2) return [];
-  let hRij = 0;
-  for (let i = 0; i < Math.min(data.length, 10); i++) { const k = (data[i] || []).map(x => String(x || '').trim().toLowerCase()); if (k.indexOf('naam') > -1 || k.indexOf('voornaam') > -1) { hRij = i; break; } }
-  const koppen = (data[hRij] || []).map(x => String(x || '').trim().toLowerCase());
-  let kNaam = koppen.indexOf('naam'); if (kNaam === -1) kNaam = koppen.indexOf('voornaam');
-  let kDatum = -1;
-  for (const dk of datumKoppen) { if (kDatum > -1) break; for (let c = 0; c < koppen.length; c++) if (koppen[c].indexOf(dk) > -1) { kDatum = c; break; } }
-  if (kNaam === -1 || kDatum === -1) return [];
-  const grens = new Date(); grens.setFullYear(grens.getFullYear() - jaren);
-  const uit = [];
-  for (let r = hRij + 1; r < data.length; r++) {
-    const naam = String((data[r] || [])[kNaam] || '').trim(); if (!naam) continue;
-    const dt = parseNLDatum((data[r] || [])[kDatum]); if (!dt || dt > grens) continue;
-    uit.push({ rij: r + 1, naam, datum: String(data[r][kDatum]) });
-  }
-  return uit;
-}
+// ---- 10. AVG-bewaartermijnen (1e van de maand 08:00) — v0.27.0: _lib/bewaartermijnen.js ----
+// Alle tabellen + uploads, anker = uit dienst (Shiftbase). Verwijderen gebeurt in Beheer → Bewaartermijnen,
+// na een klik van een beheerder. De mail en het run-log bevatten bewust GEEN namen (alleen aantallen).
 async function bewaartermijnen(droog) {
   const rap = { naam: 'bewaartermijnen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
-  const blokken = [];
-  const scan = async (titel, id, tab, koppen, jaren, termijn) => { try { const items = bhrScan(await S.leesRuw(id, tab), koppen, jaren); if (items.length) blokken.push({ titel, items, termijn }); } catch (e) { rap.fouten.push(titel + ': ' + e.message); } };
-  const tabs = { loon: await S.eersteTabNaam(C.SHEETS.loonheffing.id), ontslag: await S.eersteTabNaam(C.SHEETS.ontslag.id), som: await S.eersteTabNaam(C.SHEETS.sommatie.id) };
-  await scan('Ontslag / aanzegging (hoofdtab)', C.SHEETS.ontslag.id, tabs.ontslag, ['einddatum'], C.BHR_JAREN_DOSSIER, C.BHR_JAREN_DOSSIER + ' jaar na einddatum');
-  await scan('Sommaties', C.SHEETS.sommatie.id, tabs.som, ['verzenddatum', 'verzonden'], C.BHR_JAREN_DOSSIER, C.BHR_JAREN_DOSSIER + ' jaar na verzending');
-  await scan('Waarschuwingen', C.SHEETS.ontslag.id, C.TAB_WAARSCHUWINGEN, ['datum', 'verzonden'], C.BHR_JAREN_DOSSIER, C.BHR_JAREN_DOSSIER + ' jaar');
-  await scan('Loonheffingsverklaringen', C.SHEETS.loonheffing.id, tabs.loon, ['deadline', 'verzenddatum'], C.BHR_JAREN_LOON, C.BHR_JAREN_LOON + ' jaar (fiscaal)');
-  rap.gevonden = blokken.flatMap(b => b.items.map(i => Object.assign({ categorie: b.titel, termijn: b.termijn }, i)));
-  if (!blokken.length) return rap;
-  const totaal = rap.gevonden.length, st = F + 'font-size:13px;color:#333d3a;line-height:1.6';
-  let plain = 'Hoi,\n\nDe maandelijkse AVG-bewaartermijncontrole heeft records gevonden die hun termijn voorbij zijn. Verwijderen gebeurt NIET automatisch - beoordeel en verwijder handmatig (rij in de sheet + bijbehorend document):\n', html = '';
-  for (const bl of blokken) {
-    plain += '\n=== ' + bl.titel + ' (termijn: ' + bl.termijn + ') ===\n';
-    let rijen = '';
-    for (const it of bl.items) { plain += '  rij ' + it.rij + ': ' + it.naam + ' (' + it.datum + ')\n'; rijen += '<div style="' + st + ';padding:3px 0">rij ' + it.rij + ' &bull; <strong>' + esc(it.naam) + '</strong> &bull; ' + esc(it.datum) + '</div>'; }
-    html += '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:12px"><tr><td style="padding:12px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid #2b6cb0"><p style="' + st + ';font-weight:700;margin:0 0 6px">' + esc(bl.titel) + ' <span style="font-weight:400;color:#888078">(termijn: ' + esc(bl.termijn) + ')</span></p>' + rijen + '</td></tr></table>';
-  }
-  plain += '\nDeze controle draait maandelijks en is onderdeel van het AVG-opschoonproces.\n\n(Automatisch bericht van het SLA HR Dashboard)';
-  await mailOfDroog(rap, { to: ontvangers('bewaartermijn'), subject: 'AVG-bewaartermijnen: ' + totaal + ' record(s) te beoordelen', text: plain,
-    html: T.slaWrap(T.slaHead('#2b6cb0', 'HR &middot; AVG-bewaartermijnen') + '<tr><td style="padding:32px 36px 28px"><p style="' + st + ';font-size:15px;margin:0 0 14px">Hoi,</p><p style="' + st + ';margin:0 0 18px">De maandelijkse bewaartermijncontrole heeft <strong>' + totaal + ' record(s)</strong> gevonden die hun termijn voorbij zijn. Er wordt <strong>niets automatisch verwijderd</strong> - beoordeel de records en verwijder handmatig (sheet-rij + bijbehorend document).</p>' + html + '<p style="' + F + 'font-size:11px;color:#aaa;margin:14px 0 0">Onderdeel van het periodieke AVG-opschoonproces &bull; automatisch bericht van het SLA HR Dashboard</p></td></tr>' + T.slaFoot()),
-    kort: { naam: 'HR-team', aantal: totaal } });
+  const B = require('./bewaartermijnen');
+  const o = await B.overzicht();
+  rap.gevonden = o.personen.map(p => ({ ref: p.shiftbaseId ? 'sb:' + p.shiftbaseId : 'niet-gekoppeld', gekoppeld: p.gekoppeld, vervaltOp: p.vervaltOp, aantal: p.aantal, bestanden: p.bestanden }));
+  const logs = (o.logboeken || []).filter(l => l.aantal);
+  if (o.ontbreekt && o.ontbreekt.length) rap.fouten.push('Tabellen niet gevonden (migratie?): ' + o.ontbreekt.join(', '));
+  if (!o.personen.length && !logs.length) return rap;
+  const st = F + 'font-size:13px;color:#333d3a;line-height:1.6';
+  const regels = o.personen.length ? [
+    o.personen.length + ' oud-medewerker(s) met gegevens voorbij de bewaartermijn (' + o.personen.reduce((a, p) => a + p.aantal, 0) + ' regels, ' + o.personen.reduce((a, p) => a + p.bestanden, 0) + ' bestand(en))',
+    o.nietGekoppeld ? o.nietGekoppeld + ' daarvan niet gevonden in Shiftbase — controleer of zij echt uit dienst zijn' : ''
+  ].filter(Boolean) : [];
+  logs.forEach(l => regels.push(l.label + ': ' + l.aantal + ' regel(s) ouder dan ' + l.termijn));
+  const plain = 'Hoi,\n\nDe maandelijkse AVG-bewaartermijncontrole:\n' + regels.map(r => '- ' + r).join('\n') + '\n\nBeoordeel en verwijder via HR Dashboard -> Beheer -> Bewaartermijnen (alleen beheerders). Er wordt niets automatisch verwijderd.\n\n(Automatisch bericht van het SLA HR Dashboard — bewust zonder namen)';
+  await mailOfDroog(rap, { to: ontvangers('bewaartermijn'), subject: 'AVG-bewaartermijnen: ' + (o.personen.length ? o.personen.length + ' oud-medewerker(s) te beoordelen' : 'logboeken opschonen'), text: plain,
+    html: T.slaWrap(T.slaHead('#2b6cb0', 'HR &middot; AVG-bewaartermijnen') + '<tr><td style="padding:32px 36px 28px"><p style="' + st + ';font-size:15px;margin:0 0 14px">Hoi,</p><p style="' + st + ';margin:0 0 12px">De maandelijkse bewaartermijncontrole:</p><ul style="' + st + ';margin:0 0 18px;padding-left:18px">' + regels.map(r => '<li>' + esc(r) + '</li>').join('') + '</ul><table width="100%" cellpadding="0" cellspacing="0"><tr><td style="padding:12px 16px;background:#e6f7ee;border-radius:8px;border-left:4px solid #009f4b;' + st + '">Beoordeel en verwijder via <strong>HR Dashboard &rarr; Beheer &rarr; Bewaartermijnen</strong> (alleen beheerders). Er wordt niets automatisch verwijderd.</td></tr></table><p style="' + F + 'font-size:11px;color:#aaa;margin:14px 0 0">Termijnen: dossier ' + esc(o.termijnen.dossier) + ' &bull; loonheffing/ID ' + esc(o.termijnen.fiscaal) + ' &bull; logboeken ' + esc(o.termijnen.logboek) + '. Deze mail bevat bewust geen namen.</p></td></tr>' + T.slaFoot()),
+    kort: { naam: 'HR-team', aantal: o.personen.length } });
   return rap;
 }
 
@@ -1026,4 +1004,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { vindJubilea, controleerData, bepaalZomerpiek, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };
+module.exports = { vindJubilea, controleerData, bepaalZomerpiek, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };

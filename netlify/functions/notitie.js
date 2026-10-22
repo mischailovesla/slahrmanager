@@ -8,6 +8,7 @@ exports.handler = beveiligd('notitie', async (event, g) => {
   const naam = String(p.naam || '').trim(), tekst = String(p.tekst || '').trim();
   if (!naam) throw new Error('Naam ontbreekt.');
   if (tekst.length < 3) throw new Error('Notitie is leeg.');
+  require('./_lib/medisch').controleer(tekst); // v0.27.0: geen medische informatie in dossiernotities
   const nu = D.stempel();
   const rij = await S.voegNotitieToe(naam, String(p.email || '').trim(), g.email, tekst, nu);
   await logActie({ door: g.email, actie: 'notitie', bron: 'dossier', veld: 'notitie', rij, naam, nieuw: tekst.slice(0, 200), details: 'Dossiernotitie toegevoegd' });

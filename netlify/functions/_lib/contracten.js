@@ -25,9 +25,12 @@ const isOnbepaald = c => !c.eind || /onbepaald|indefinite|permanent|vast\s*contr
 // of het nieuwe deel zelf een nieuwe looptijd van hele maanden heeft (en niet op 01-01/01-07 begint).
 // Bij twijfel telt het als nieuw contract (veilige kant); HR kan het aantal per medewerker corrigeren.
 const TOLERANTIE = 2;
+// v0.26.3 (Mischa, 22-10-2026): SLA werkt altijd met 7 → 12 → 16 maanden. Alleen een einde na precies zo'n looptijd telt als
+// "afgesproken einde"; een wijziging die toevallig op hele maanden na de start valt (bijv. functie per de 17e na 6 maanden) is een knip.
 function heleMaanden(startIso, eindIso) {
   const s = dag(startIso), e = dag(eindIso); if (!s || !e || e <= s) return 0;
-  for (let k = 1; k <= 60; k++) { const t = plusMaanden(s, k), d = dagen(t, e); if (Math.abs(d) <= TOLERANTIE) return k; if (d < -TOLERANTIE) break; }
+  const toegestaan = C.KETEN_LOOPTIJDEN_MAANDEN && C.KETEN_LOOPTIJDEN_MAANDEN.length ? C.KETEN_LOOPTIJDEN_MAANDEN : null;
+  for (let k = 1; k <= 60; k++) { const t = plusMaanden(s, k), d = dagen(t, e); if (Math.abs(d) <= TOLERANTIE) return !toegestaan || toegestaan.includes(k) ? k : 0; if (d < -TOLERANTIE) break; }
   return 0;
 }
 const loondatum = iso => /-(01-01|07-01)$/.test(String(iso || ''));

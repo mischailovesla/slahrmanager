@@ -24,7 +24,7 @@ exports.handler = beveiligd('gesprek', async (event, g) => {
     return { id: r.id, bericht: (nieuw ? 'Gesprek vastgelegd' : 'Gesprek bijgewerkt') + ' voor ' + r.rij.naam + (r.rij.vervolg_datum ? ' · vervolg op ' + r.rij.vervolg_datum.split('-').reverse().join('-') : '') + (p.checkinId && nieuw ? ' · check-in opgevolgd' : '') + '.' };
   }
   const q = event.queryStringParameters || {};
-  const meta = { soorten: C.GESPREK_SOORTEN, kanalen: C.GESPREK_KANALEN };
+  const meta = { soorten: C.GESPREK_SOORTEN, kanalen: C.GESPREK_KANALEN, verzuimVelden: C.VERZUIM_VELDEN };
   if (q.mid || q.naam) return Object.assign({ gesprekken: await G.voorPersoon(q) }, meta);
   return Object.assign({ gesprekken: await G.lijst(q), open: await G.openVervolgen() }, meta);
 });

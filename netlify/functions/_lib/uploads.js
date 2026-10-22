@@ -48,9 +48,22 @@ function maakToken(soort, naam) {
   if (!SOORTEN[soort]) throw new Error('Onbekende upload-soort: ' + soort);
   return tekenToken({ s: soort, n: String(naam || '').trim(), d: new Date().toISOString().slice(0, 10) });
 }
-function leesToken(t) {
+// v0.27.0: upload-/tekenlinks verlopen na UPLOAD_GELDIG_DAGEN (standaard 60). Voorheen bleven ze eeuwig geldig:
+// een doorgestuurde of gelekte mail gaf dan blijvend schrijftoegang tot iemands dossier.
+// Elke nieuwe mail en herinnering maakt een verse link; HR maakt er zelf een via ⋯ → 🔗 Uploadlink.
+// Tokens zonder datum (zouden niet moeten bestaan) gelden vanaf de start van de uploadpagina (16-10-2026).
+const UPLOAD_GELDIG_DAGEN = () => Number(process.env.UPLOAD_GELDIG_DAGEN) || require('./config').UPLOAD_GELDIG_DAGEN || 60;
+function tokenLeeftijdDagen(d, nu) {
+  const m = String(d || '2026-10-16').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return Infinity;
+  return Math.floor(((nu || new Date()) - new Date(+m[1], +m[2] - 1, +m[3])) / 864e5);
+}
+function leesToken(t, nu) {
   const d = leesGetekend(t, 'Ongeldige upload-link.');
   if (!SOORTEN[d.s]) throw new Error('Ongeldige upload-link.');
+  if (tokenLeeftijdDagen(d.d, nu) > UPLOAD_GELDIG_DAGEN()) {
+    const e = new Error('Deze link is verlopen. Vraag HR (hr@ilovesla.com) om een nieuwe link. · This link has expired. Please ask HR (hr@ilovesla.com) for a new link.');
+    e.verlopen = true; throw e;
+  }
   return d;
 }
 const site = () => (process.env.UPLOAD_SITE || process.env.URL || 'https://slahrmanager.netlify.app').replace(/\/$/, '');
@@ -127,4 +140,4 @@ async function bestandMetLabel(ref, label, naam) {
   const ext = (b.naam_orig && b.naam_orig.lastIndexOf('.') > -1 ? b.naam_orig.substring(b.naam_orig.lastIndexOf('.')) : TOEGESTAAN[b.mime]) || '';
   return { filename: label + '_' + String(naam || '').trim().replace(/\s+/g, '_') + ext.toLowerCase(), content: buf.toString('base64'), bytes: buf.length };
 }
-module.exports = { site, SOORTEN, BUCKET, tekenToken, leesGetekend, maakToken, leesToken, uploadLink, startUpload, registreer, vindUploads, isRef, zoekBestand, signedUrl, bestandMetLabel };
+module.exports = { site, SOORTEN, BUCKET, tekenToken, leesGetekend, maakToken, leesToken, tokenLeeftijdDagen, uploadLink, startUpload, registreer, vindUploads, isRef, zoekBestand, signedUrl, bestandMetLabel };
