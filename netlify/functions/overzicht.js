@@ -11,12 +11,13 @@ exports.handler = beveiligd('overzicht', async () => {
   const [loon, ontslag, som, opl] = await Promise.all([S.getLoonheffing(), S.getOntslag(), S.getSommatie(), S.getOverplaatsing()]);
 
   const isVerzonden = s => s && (s.indexOf('Verzonden') === 0 || s.indexOf('Verstuurd') === 0);
-  // v0.27.1: ook getekend/ontvangen maar nog niet naar salaris (Mahdia) = nog open → kolom 'Klaar voor salaris'.
+  // v0.27.1: open = nog niet naar salaris (Mahdia) gestuurd. Getekend/ontvangen → kolom 'Klaar voor salaris'.
+  // Na een geslaagde salarismail staat 'Verwerkt' automatisch op Ja (salaris.vinkVerwerkt) en is het dossier afgerond.
   // Alleen recente dossiers (verstuurd ≤ KLAAR_DAGEN geleden), zodat oude rijen van vóór de salaris-knop niet terugkomen.
   const KLAAR_DAGEN = 90;
   const recent = d => { const v = parseNLDatum(String(d.verzenddatum || '').split(' ')[0]); const n = v ? dagenTot(v) : null; return n !== null && n >= -KLAAR_DAGEN; };
-  const loonOpen = loon.filter(d => d.mahdia !== 'Ja' && ((isVerzonden(d.status) && (d.ontvangen !== 'Ja' || (!d.salaris && recent(d)))) || d.herinnering));
-  const ontslagOpen = ontslag.filter(d => d.mahdia !== 'Ja' && ((isVerzonden(d.status) && (d.ondertekend !== 'Ja' || (!d.salaris && recent(d)))) || d.herinnering));
+  const loonOpen = loon.filter(d => d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ontvangen !== 'Ja' || recent(d))) || d.herinnering));
+  const ontslagOpen = ontslag.filter(d => d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ondertekend !== 'Ja' || recent(d))) || d.herinnering));
   const somOpen = som.filter(d => d.verwerkt !== 'Ja');
   const oplOpen = opl.filter(d => isVerzonden(d.status) && d.ondertekend !== 'Ja');
 
