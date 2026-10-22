@@ -191,7 +191,7 @@ exports.handler = beveiligd('taken', async (event, g) => {
   const fouten = [];
   if (live) {
     const sig = require('./_lib/signaleringen');
-    await Promise.all(LIVE_CHECKS.map(async naam => { try { const rap = await sig.CHECKS[naam](true); runs[naam] = { tijd: new Date().toISOString(), gevonden: rap.gevonden || [] }; } catch (e) { fouten.push(naam + ': ' + e.message); } }));
+    await Promise.all(LIVE_CHECKS.map(async naam => { try { const rap = await sig.draai(naam, true, 'verse stand · ' + g.email); /* v0.27.1: verse stand bewaren (droogloop, geen mails) */ runs[naam] = { tijd: new Date().toISOString(), gevonden: rap.gevonden || [] }; } catch (e) { fouten.push(naam + ': ' + e.message); } }));
   }
   // Wie al bij Ontslag & aanzegging staat (einddatum vandaag of later) krijgt geen contract-/keten-/proeftijd-/oproep-/aanwezigheidstaken meer
   const OVERBODIG_BIJ_ONTSLAG = new Set(['contractketen', 'aanzegtermijnen', 'oproepaanbod', 'stille-afwezigen', 'weekend-beschikbaarheid']);

@@ -85,6 +85,16 @@ async function maakOndertekend(origBuf, r, s) {
   const en = r.taal === 'EN';
   const voet = v((en ? 'Digitally signed by ' : 'Digitaal ondertekend door ') + s.naam + (en ? ' on ' : ' op ') + s.tijd + ' · ' + (en ? 'verification code ' : 'controlecode ') + r.id.slice(0, 8));
   doc.getPages().forEach(pg => { pg.drawText(voet, { x: 40, y: 14, size: 6.5, font: F.n, color: grijs }); });
+  // v0.27.1: handtekening ook op de brief zelf, op de regel van de medewerker (als de brief die plek heeft vastgelegd)
+  try {
+    const kw = String(doc.getKeywords() || '').match(/wnsig=(\d+),([\d.]+),([\d.]+)/);
+    if (kw && doc.getPageCount() > +kw[1]) {
+      const p1 = doc.getPage(+kw[1]), x = +kw[2], yb = +kw[3];
+      if (s.png) { const img = await doc.embedPng(s.png); const h = 28, w = Math.min(150, img.width * (h / img.height)); p1.drawImage(img, { x, y: yb + 2, width: w, height: h }); }
+      else p1.drawText(v(s.naam), { x, y: yb + 4, size: 13, font: await doc.embedFont(StandardFonts.HelveticaOblique), color: rgb(0.1, 0.16, 0.42) });
+      p1.drawText(v((en ? 'digitally signed ' : 'digitaal ondertekend ') + s.tijd), { x, y: yb - 9, size: 6.5, font: F.n, color: grijs });
+    }
+  } catch (e) { console.warn('handtekening op brief:', e.message); }
   const pg = doc.addPage([595.28, 841.89]), L = 56; let y = 780;
   const t = (x, xx, yy, size, font, kleur) => pg.drawText(v(x), { x: xx, y: yy, size, font: font || F.n, color: kleur || donker });
   t('SLA', L, y, 22, F.b, groen); t(en ? 'Signature page' : 'Ondertekeningspagina', L, y - 30, 15, F.b);
@@ -192,4 +202,4 @@ async function controleer(hash) {
   const r = (data || [])[0]; if (!r) return { gevonden: false };
   return { gevonden: true, soort: r.getekend_hash === h ? 'ondertekend' : 'origineel', titel: r.titel, naam: r.naam, status: r.status, getekend: r.getekend_op ? stempel(r.getekend_op) : '' };
 }
-module.exports = { MODUS, modusVan, KEUZE, aanmaken, openVoor, info, stuurCode, teken, overzicht, controleer, maskeer, sha };
+module.exports = { maakOndertekend, MODUS, modusVan, KEUZE, aanmaken, openVoor, info, stuurCode, teken, overzicht, controleer, maskeer, sha };

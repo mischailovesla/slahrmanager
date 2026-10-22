@@ -215,8 +215,19 @@ async function maakOpgemaakteBrief(tekst, opties) {
   let handtekening = null;
   if (o.handtekening) { try { handtekening = await doc.embedPng(o.handtekening); } catch (e) { console.warn('handtekening niet geladen:', e.message); } }
   const blokken = String(tekst || '').replace(/\r/g, '').split('\n');
+  // v0.27.1: plek van de handtekening van de medewerker onthouden (eerste tekenregel na 'De werknemer' / 'ondertekend' e.d.),
+  // zodat de digitale handtekening daar op de brief zelf komt (ondertekening.js leest dit uit de PDF-keywords).
+  let wnZone = false, wnSig = null;
+  const ZONE = /(de werknemer|the employee|ondertekend:|signed for|voor akkoord|voor ontvangst|voor gezien|akkoord \/ niet akkoord|for approval)/i;
+  const LABEL = /^(.*?(?:handtekening|signature|signed for receipt|voor ontvangst getekend)\s*:\s*)_{5,}/i;
   blokken.forEach(regel => {
     const r = regel.replace(/\s+$/, '');
+    const kaal = r.replace(/\*\*/g, '');
+    if (!wnSig && wnZone && (/^\s*\.{10,}\s*$/.test(kaal) || LABEL.test(kaal))) {
+      const m = kaal.match(LABEL), xOff = m ? fonts.norm.widthOfTextAtSize(veilig(m[1]), size) : 0;
+      ruimte(lh); wnSig = { p: doc.getPageCount() - 1, x: MARGE.links + xOff, y: y - size };
+    }
+    if (ZONE.test(kaal)) wnZone = true;
     if (r.trim() === '{{HANDTEKENING}}') {
       if (!handtekening) return;
       const h = 46, w = h * handtekening.width / handtekening.height;
@@ -238,6 +249,7 @@ async function maakOpgemaakteBrief(tekst, opties) {
     });
     if (isBullet) y -= 2;
   });
+  if (wnSig) doc.setKeywords(['wnsig=' + wnSig.p + ',' + wnSig.x.toFixed(1) + ',' + wnSig.y.toFixed(1)]);
   if (o.voet !== false) { y -= 18; ruimte(12); pagina.drawText('SLA · the good food bar · ' + HR_EMAIL, { x: MARGE.links, y: y - 8, size: 8, font: fonts.norm, color: KL.grijs }); }
   return Buffer.from(await doc.save());
 }

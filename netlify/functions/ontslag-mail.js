@@ -62,7 +62,7 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
   const metAfz = x => afz.naam ? String(x).split(C.AFZENDER_NAAM).join(afz.naam) : x; // groet in de mail = de afzender
   const text = metAfz(metExit(T.personaliseerUploadLinks(String(p.body || tpl.body(naam, bv)), naam)));
   const html = metAfz(metExit(T.ontslagMailHtml(tpl, naam, bv, einddatum)));
-  const AI = require('./_lib/allin'); const manager = await AI.isManager({ email: to, naam }); // managers: geen all-in-tekst
+  const AI = require('./_lib/allin'); const manager = typeof p.manager === 'boolean' ? p.manager : await AI.isManager({ email: to, naam }); // v0.27.1: HR kan het aanvinken (functie in Shiftbase klopt niet altijd) // managers: geen all-in-tekst
   if (p.preview) return { subject, text, html, manager, afzender: { naam: afz.naam, functie: afz.functie, handtekening: afz.ingesteld } };
   if (!naam) throw new Error('Naam ontbreekt.');
 

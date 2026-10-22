@@ -798,10 +798,10 @@
     g('om-subj').value = (t.subject || '').replace('[BV]', g('om-bv').value.trim() || 'SLA');
     g('om-tekst').value = 'Tekst laden…';
     var r = await api('/api/ontslag-mail', { template: omKey, naam: g('om-naam').value.trim(), bv: g('om-bv').value.trim(), einddatum: g('om-eind').value.trim(), preview: true });
-    if (r.success) g('om-tekst').value = r.text; else g('om-tekst').value = '(kon template niet laden: ' + r.bericht + ')';
+    if (r.success) { g('om-tekst').value = r.text; if (g('om-manager')) g('om-manager').checked = !!r.manager; } else g('om-tekst').value = '(kon template niet laden: ' + r.bericht + ')';
   };
   function omLees() {
-    return { template: omKey, to: g('om-to').value.trim(), naam: g('om-naam').value.trim(), bv: g('om-bv').value.trim(), adres: g('om-adres').value.trim(), datumOpzegging: g('om-opz').value.trim(), einddatum: g('om-eind').value.trim(), uitstroomreden: g('om-reden').value, rij: omRij, subject: g('om-subj').value.trim(), body: g('om-tekst').value };
+    return { template: omKey, to: g('om-to').value.trim(), naam: g('om-naam').value.trim(), bv: g('om-bv').value.trim(), adres: g('om-adres').value.trim(), datumOpzegging: g('om-opz').value.trim(), einddatum: g('om-eind').value.trim(), uitstroomreden: g('om-reden').value, manager: g('om-manager') ? g('om-manager').checked : undefined, rij: omRij, subject: g('om-subj').value.trim(), body: g('om-tekst').value };
   }
   window.omKopieer = function () { navigator.clipboard.writeText('Onderwerp: ' + g('om-subj').value + '\n\n' + g('om-tekst').value).then(function () { toast('Gekopieerd', 'ok'); }); };
   window.omPdf = async function () {
