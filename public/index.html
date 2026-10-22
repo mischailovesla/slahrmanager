@@ -7,6 +7,7 @@
 <title>SLA HR Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<style>/* v0.25.11: werklijsten Lopend/Afgerond */ tbody[data-toon="lopend"] tr.afg{display:none} tbody[data-toon="afgerond"] tr:not(.afg){display:none}</style>
 </head>
 <body>
 
@@ -84,10 +85,10 @@
   <div class="tc" id="tab-loonheffing">
     <div class="sec">
       <div class="sh"><div class="st">Loonheffingsverklaring <span class="pill" id="lh-count">-</span></div>
-        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('lh-body',this.value)"><button class="btn bd bsm" data-srt-knop="lh-body" onclick="srtKnop('lh-body')" title="Sorteer op datum: nieuw → oud, oud → nieuw, uit">⇅ Sorteer op datum</button><button class="btn bd bsm" onclick="laadLoonheffing()">↻</button><button class="btn bp bsm" onclick="openLoonMail(null)">Nieuwe mail</button></div></div>
+        <div class="hr2"><span class="tbar"><button type="button" class="tb sel" data-afg-f="lh-body" data-v="lopend">Lopend</button><button type="button" class="tb" data-afg-f="lh-body" data-v="afgerond">Afgerond</button><button type="button" class="tb" data-afg-f="lh-body" data-v="alles">Alles</button></span><input class="sb" type="text" placeholder="Zoek in alles..." oninput="flt('lh-body',this.value);afgZoek('lh-body',this.value)"><button class="btn bd bsm" data-srt-knop="lh-body" onclick="srtKnop('lh-body')" title="Sorteer op datum: nieuw → oud, oud → nieuw, uit">⇅ Sorteer op datum</button><button class="btn bd bsm" onclick="laadLoonheffing()">↻</button><button class="btn bp bsm" onclick="openLoonMail(null)">Nieuwe mail</button></div></div>
       <div class="alert" id="lh-auto" style="margin:12px 24px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span id="lh-auto-tekst" style="flex:1;min-width:260px">-</span><button class="btn bd bsm" onclick="lhAutoVoorbeeld()">Voorbeeld mail</button><button class="btn bp bsm" id="lh-auto-knop" onclick="lhAutoToggle()">Aanzetten</button></div>
       <div class="alert" id="lh-sal" style="margin:8px 24px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span id="lh-sal-tekst" style="flex:1;min-width:260px">-</span><button class="btn bp bsm" id="lh-sal-knop" onclick="lhSalToggle()">Aanzetten</button></div>
-      <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Deadline</th><th>Mail verstuurd</th><th>Formulier</th><th>Documenten</th><th>Taal</th><th>Herinneringen</th><th>Naar salaris</th><th>Actie</th></tr></thead><tbody id="lh-body"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Deadline</th><th>Mail verstuurd</th><th>Formulier</th><th>Documenten</th><th>Taal</th><th>Herinneringen</th><th>Naar salaris</th><th>Actie</th></tr></thead><tbody id="lh-body" data-toon="lopend" data-keuze="lopend"></tbody></table></div>
     </div>
   </div>
 
@@ -116,9 +117,9 @@
     </div>
     <div class="sec">
       <div class="sh"><div class="st">Ontslag &amp; aanzegging <span class="pill" id="om-count">-</span></div>
-        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('om-body',this.value)"><button class="btn bd bsm" data-srt-knop="om-body" onclick="srtKnop('om-body')" title="Sorteer op datum: nieuw → oud, oud → nieuw, uit">⇅ Sorteer op datum</button><button class="btn bd bsm" onclick="laadOntslag()">↻</button><button class="btn bp bsm" onclick="openOntslagMail(null)">Nieuwe mail + PDF</button></div></div>
+        <div class="hr2"><span class="tbar"><button type="button" class="tb sel" data-afg-f="om-body" data-v="lopend">Lopend</button><button type="button" class="tb" data-afg-f="om-body" data-v="afgerond">Afgerond</button><button type="button" class="tb" data-afg-f="om-body" data-v="alles">Alles</button></span><input class="sb" type="text" placeholder="Zoek in alles..." oninput="flt('om-body',this.value);afgZoek('om-body',this.value)"><button class="btn bd bsm" data-srt-knop="om-body" onclick="srtKnop('om-body')" title="Sorteer op datum: nieuw → oud, oud → nieuw, uit">⇅ Sorteer op datum</button><button class="btn bd bsm" onclick="laadOntslag()">↻</button><button class="btn bp bsm" onclick="openOntslagMail(null)">Nieuwe mail + PDF</button></div></div>
       <div id="ud-balk" class="alert geel" style="display:none;margin:12px 24px 0"></div>
-      <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV</th><th>Opzegging</th><th>Einddatum</th><th>Mail verstuurd</th><th>Ondertekend</th><th>Herinneringen</th><th>Naar salaris</th><th>Brief</th><th>Actie</th></tr></thead><tbody id="om-body"></tbody></table></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>BV</th><th>Opzegging</th><th>Einddatum</th><th>Mail verstuurd</th><th>Ondertekend</th><th>Herinneringen</th><th>Naar salaris</th><th>Brief</th><th>Actie</th></tr></thead><tbody id="om-body" data-toon="lopend" data-keuze="lopend"></tbody></table></div>
     </div>
   </div>
 

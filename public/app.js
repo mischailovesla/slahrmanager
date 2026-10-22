@@ -441,6 +441,16 @@
     g('ov-samen').innerHTML = delen.join(' · ') || 'Laden…';
   }
 
+  // v0.25.11: werklijsten tonen standaard alleen lopende dossiers; afgerond = getekend/ontvangen én naar salaris
+  function isAfgLh(r) { return r.ontvangen === 'Ja' && (!!r.salaris || r.mahdia === 'Ja'); }
+  function isAfgOm(r) { return (!!r.salaris || r.mahdia === 'Ja') && (r.ondertekend === 'Ja' || !!r.docUrl); }
+  window.afgZoek = function (id, q) { var tb = g(id); if (tb) tb.setAttribute('data-toon', String(q || '').trim() ? 'alles' : tb.getAttribute('data-keuze')); };
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-afg-f]'); if (!b) return;
+    var id = b.getAttribute('data-afg-f'), tb = g(id); if (!tb) return;
+    tb.setAttribute('data-keuze', b.getAttribute('data-v')); tb.setAttribute('data-toon', b.getAttribute('data-v'));
+    document.querySelectorAll('[data-afg-f="' + id + '"]').forEach(function (x) { x.classList.toggle('sel', x === b); });
+  });
   window.flt = function (id, q) {
     q = String(q || '').toLowerCase();
     Array.prototype.forEach.call(g(id).rows, function (r) { r.style.display = r.textContent.toLowerCase().indexOf(q) > -1 ? '' : 'none'; });
@@ -614,9 +624,9 @@
     g('lh-sal-tekst').innerHTML = lhSal ? '<strong>Automatisch naar salaris staat aan.</strong> Elke maandag en donderdag om 09:00 gaat alles wat klaar is naar Mahdia: loonheffing + indiensttreding, ondertekende ontslag/aanzegging, loonheffingskorting en overplaatsingen. HR krijgt een overzicht.' : '<strong>Automatisch naar salaris staat uit.</strong> Documenten gaan alleen naar Mahdia als je op "→ Salaris" klikt.';
     g('lh-sal-knop').textContent = lhSal ? 'Uitzetten' : 'Aanzetten'; g('lh-sal-knop').className = 'btn bsm ' + (lhSal ? 'bd' : 'bp');
     g('lh-auto-knop').textContent = lhAuto ? 'Uitzetten' : 'Aanzetten'; g('lh-auto-knop').className = 'btn bsm ' + (lhAuto ? 'bd' : 'bp');
-    g('lh-count').textContent = lhData.length + ' dossiers';
+    g('lh-count').textContent = lhData.filter(function (r) { return !isAfgLh(r); }).length + ' lopend · ' + lhData.filter(isAfgLh).length + ' afgerond';
     g('lh-body').innerHTML = lhData.map(function (r) {
-      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
+      return '<tr' + (isAfgLh(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('lh-body');
   };
@@ -712,9 +722,9 @@
     var d = await api('/api/ontslag');
     if (!d.success) { toast('Ontslag: ' + d.bericht, 'err'); return; }
     omData = d.rijen; omTpl = d.templates; omRedenen(d.redenen);
-    g('om-count').textContent = omData.length + ' dossiers';
+    g('om-count').textContent = omData.filter(function (r) { return !isAfgOm(r); }).length + ' lopend · ' + omData.filter(isAfgOm).length + ' afgerond';
     g('om-body').innerHTML = omData.map(function (r) {
-      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('ontslag', r, r.ondertekend === 'Ja') + (r.ondertekend !== 'Ja' && r.verzenddatum ? '<button class="btn bd bsm" data-ud-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="Niet ondertekend? Bevestig de uitdiensttreding (niets te tekenen), licht salaris in en archiveer">✓ Bevestig uitdiensttreding</button> ' : '') + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
+      return '<tr' + (isAfgOm(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td><span class="badge ' + (r.type === 'aanzegging' ? 'bo' : 'bdk') + '">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span></td><td>' + esc(r.email) + '</td><td><span class="badge boat">' + esc(r.bedrijf || '-') + '</span></td><td>' + esc(r.opzegging || '-') + '</td><td>' + esc(r.einddatum || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ondertekend, 'Ondertekend', 'Wacht') + '</td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r) + '</td><td>' + bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief') + '</td><td>' + omBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('ontslag', r, r.ondertekend === 'Ja') + (r.ondertekend !== 'Ja' && r.verzenddatum ? '<button class="btn bd bsm" data-ud-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="Niet ondertekend? Bevestig de uitdiensttreding (niets te tekenen), licht salaris in en archiveer">✓ Bevestig uitdiensttreding</button> ' : '') + bArch('ontslag', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="12" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('om-body');
   };
