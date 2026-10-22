@@ -127,7 +127,8 @@ function compact(m, vandaag) {
 async function laad(ververs) {
   const SB = require('./shiftbase');
   const [a, sb] = await Promise.all([haal(ververs), SB.getMedewerkers()]);
-  const vandaag = vandaagIso(), lijst = koppel(a.medewerkers, sb);
+  const vandaag = vandaagIso(), FR = require('./config').FRANCHISE_NAAM;
+  const lijst = koppel(a.medewerkers, sb).filter(m => !FR.test(String(m.winkel || ''))); // v0.26.1: franchisewinkels (Amersfoort, Haarlem, Groningen) niet tonen
   const s = samenvatting(lijst, vandaag);
   return { stand: a.stand, lijst, vandaag, winkels: s.winkels, totaal: s.totaal, signalen: signalen(lijst, vandaag), ongekoppeld: lijst.filter(m => !m.gekoppeld).map(m => m.naam) };
 }
