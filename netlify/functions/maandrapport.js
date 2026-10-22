@@ -21,16 +21,16 @@ exports.handler = beveiligd('maandrapport', async (event, g) => {
   if (event.httpMethod === 'POST') {
     const p = body(event);
     if (p.actie !== 'mail') throw new Error('Onbekende actie.');
-    const r = await MR.laad(p.maand);
+    const r = await MR.laad(p.maand, false, p.winkel || '');
     const naar = String(C.SIGNALERING_ONTVANGERS.maandrapport || C.HR_EMAIL);
     await MR.mail(r, naar, g.email);
     await logActie({ door: g.email, actie: 'mail', bron: 'maandrapport', veld: r.sleutel, naam: '', nieuw: naar, details: 'Maandrapport ' + r.label + ' handmatig gemaild' });
     return { bericht: 'Maandrapport ' + r.label + ' gemaild naar ' + naar.split(',').join(', ') + '.' };
   }
-  const r = await MR.laad(q.maand, q.ververs === '1');
+  const r = await MR.laad(q.maand, q.ververs === '1', q.winkel || '');
   if (q.pdf === '1') {
     const pdf = await require('./_lib/maandrapport-pdf').maakMaandrapportPdf(r, g.email);
-    await logActie({ door: g.email, actie: 'export', bron: 'maandrapport', veld: 'pdf', naam: '', details: 'Maandrapport ' + r.label });
+    await logActie({ door: g.email, actie: 'export', bron: 'maandrapport', veld: 'pdf', naam: '', details: r.titel || ('Maandrapport ' + r.label) });
     return { pdf: pdf.toString('base64'), bestandsnaam: MR.bestandsnaam(r) };
   }
   r.kiesbaar = kiesbaar(); r.ontvangers = String(C.SIGNALERING_ONTVANGERS.maandrapport || C.HR_EMAIL).split(',');

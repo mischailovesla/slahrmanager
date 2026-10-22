@@ -68,7 +68,12 @@ function bereken(inp) {
   const vorige = new Date(maand.getFullYear(), maand.getMonth() - 1, 1);
   const sk = (eind, n) => SK.bereken(Object.assign({}, bron, { verloop: VR.berekenVerloop(bron.med, eind, n, vandaag), vandaag }));
   const skM = sk(maand, 1), skV = sk(vorige, 1), sk12 = sk(maand, 12), skW = sk(maand, WINKEL_MAANDEN);
-  const T = skM.totaal, TV = skV.totaal, TJ = sk12.totaal;
+  // v0.25.12: per winkel — dezelfde cijfers, maar dan van één winkel (met SLA over 12 maanden ter vergelijking)
+  const wNaam = inp.winkel || '';
+  const leegW = () => ({ instroom: 0, uitstroom: 0, bestandEind: 0, lopendVerzuim: 0, waarden: Object.fromEntries(SK.KPIS.map(k => [k.key, { v: null, f: '-', n: 0, klein: true }])), trend: { in: [], uit: [], checkin: [], meldingen: [] } });
+  const kies = x => wNaam ? (x.winkels.find(w => w.naam === wNaam) || null) : x.totaal;
+  if (wNaam && !kies(sk12)) throw new Error('Geen gegevens voor winkel "' + wNaam + '".');
+  const T = kies(skM) || leegW(), TV = kies(skV) || leegW(), TJ = kies(sk12), SLA12 = sk12.totaal;
   const lopend = sleutelVan(maand) === sleutelVan(vandaag);
 
   const kpis = SK.KPIS.filter(k => !TRAINING.includes(k.key)).map(k => {
@@ -76,13 +81,14 @@ function bereken(inp) {
     const verborgen = x => PRIVE.includes(k.key) && x && x.n < SK.MIN_N;
     return { key: k.key, label: k.label, groep: k.groep, eenheid: k.eenheid, richting: k.richting, uitleg: k.uitleg,
       nu: { v: a.v, f: verborgen(a) ? '-' : a.f, n: a.n, klein: a.klein }, vorig: { v: b.v, f: verborgen(b) ? '-' : b.f, n: b.n }, jaar: { v: j.v, f: verborgen(j) ? '-' : j.f, n: j.n },
-      verschil: verborgen(a) || verborgen(b) ? { d: null, tekst: '', oordeel: null } : kleinGrijs(verschil(k, a.v, b.v), a, b), opvallend: !verborgen(a) && !verborgen(b) && opvallend(k, a, b) };
+      verschil: verborgen(a) || verborgen(b) ? { d: null, tekst: '', oordeel: null } : kleinGrijs(verschil(k, a.v, b.v), a, b), opvallend: !verborgen(a) && !verborgen(b) && opvallend(k, a, b),
+      sla: wNaam ? { f: verborgen(SLA12.waarden[k.key]) ? '-' : SLA12.waarden[k.key].f, status: j && j.status || null } : null };
   });
   const training = bron.academy ? SK.KPIS.filter(k => TRAINING.includes(k.key)).map(k => ({ key: k.key, label: k.label, uitleg: k.uitleg, f: T.waarden[k.key].f, v: T.waarden[k.key].v, n: T.waarden[k.key].n })) : null;
 
   // winkels: 3 maanden t/m de rapportmaand, t.o.v. SLA over dezelfde 3 maanden
   const perMaand = {}; skM.winkels.forEach(w => { perMaand[w.naam] = w; });
-  const winkels = skW.winkels.map(w => ({
+  const winkels = skW.winkels.filter(w => !wNaam || w.naam === wNaam).map(w => ({
     naam: w.naam, bestand: w.bestandEind, instroom: w.instroom, uitstroom: w.uitstroom, lopendVerzuim: w.lopendVerzuim,
     maand: perMaand[w.naam] ? { instroom: perMaand[w.naam].instroom, uitstroom: perMaand[w.naam].uitstroom } : { instroom: 0, uitstroom: 0 },
     verloop: w.waarden.verloop.f, verzuim: w.waarden.verzuimPct.f, checkin: w.waarden.checkinScore.n >= SK.MIN_N ? w.waarden.checkinScore.f : '-',
@@ -100,10 +106,19 @@ function bereken(inp) {
     zinnen.push(k.label + ' ' + (k.verschil.oordeel === 'beter' ? 'verbeterde' : 'verslechterde') + ': ' + k.nu.f + ' (vorige maand ' + k.vorig.f + ').');
   });
   const rodeWinkels = winkels.filter(w => w.rood > 0);
-  if (rodeWinkels.length) zinnen.push('Winkels met de meeste aandachtspunten (laatste ' + WINKEL_MAANDEN + ' maanden): ' + rodeWinkels.slice(0, 3).map(w => w.naam + ' (' + w.rood + ')').join(', ') + '.');
+  if (wNaam) {
+    const w = winkels[0];
+    if (w && w.aandacht.length) zinnen.push('Aandachtspunten t.o.v. het SLA-gemiddelde (laatste ' + WINKEL_MAANDEN + ' maanden): ' + w.aandacht.join('; ') + '.');
+    else zinnen.push(wNaam + ' wijkt de laatste ' + WINKEL_MAANDEN + ' maanden niet duidelijk negatief af van het SLA-gemiddelde.');
+    if (w && w.goed.length) zinnen.push('Gaat goed: ' + w.goed.slice(0, 3).join('; ') + '.');
+  } else if (rodeWinkels.length) zinnen.push('Winkels met de meeste aandachtspunten (laatste ' + WINKEL_MAANDEN + ' maanden): ' + rodeWinkels.slice(0, 3).map(w => w.naam + ' (' + w.rood + ')').join(', ') + '.');
   else if (winkels.length) zinnen.push('Geen winkel wijkt de laatste ' + WINKEL_MAANDEN + ' maanden duidelijk negatief af van het SLA-gemiddelde.');
   let kosten = null;
-  if (inp.kostenParams) {
+  if (inp.kostenParams && wNaam) {
+    const VK = require('./verloopkosten'), k = VK.bereken(sk12, inp.kostenParams, 12), K = k.perVervanging.totaal, kw = k.winkels.find(x => x.naam === wNaam);
+    const eur = n => 'EUR ' + Math.round(n).toLocaleString('nl-NL');
+    if (kw) zinnen.push('Verloop kostte ' + wNaam + ' de afgelopen 12 maanden naar schatting ' + eur(kw.perJaar) + ' (' + kw.uitstroom + ' vertrekkers x ' + eur(K) + ' per vervanging); in ' + labelVan(maand) + ' ' + eur(T.uitstroom * K) + '.');
+  } else if (inp.kostenParams) {
     const VK = require('./verloopkosten'), k = VK.bereken(sk12, inp.kostenParams, 12), K = k.perVervanging.totaal;
     kosten = { perVervanging: K, maand: T.uitstroom * K, vorig: TV.uitstroom * K, jaar: k.totaal.perJaar, vroegJaar: k.totaal.vroegKosten, vroeg: k.totaal.vroeg, uitstroomJaar: k.totaal.uitstroom,
       naarGemiddelde: k.scenario.naarGemiddelde, top: k.winkels.slice(0, 3).map(w => ({ naam: w.naam, perJaar: w.perJaar, uitstroom: w.uitstroom })), standaard: !!inp.kostenStandaard };
@@ -118,13 +133,13 @@ function bereken(inp) {
   }
 
   return {
-    sleutel: sleutelVan(maand), label: labelVan(maand), labelVorig: labelVan(vorige), lopend,
+    sleutel: sleutelVan(maand), label: labelVan(maand), winkel: wNaam, titel: 'HR-maandrapport ' + (wNaam ? wNaam + ' · ' : '') + labelVan(maand), winkelNamen: sk12.winkels.map(w => w.naam).sort((a, b) => a.localeCompare(b, 'nl')), labelVorig: labelVan(vorige), lopend,
     vanIso: skM.vanIso, totIso: skM.totIso, periodeJaar: sk12.periode, periodeWinkels: skW.periode, winkelMaanden: WINKEL_MAANDEN,
     kern: { bestand: T.bestandEind, instroom: T.instroom, uitstroom: T.uitstroom, netto, verloop12: TJ.waarden.verloop.f, nuZiek: T.lopendVerzuim,
       vorig: { bestand: TV.bestandEind, instroom: TV.instroom, uitstroom: TV.uitstroom } },
     kpis, training, winkels, zinnen, kosten,
     trend: { maanden: sk12.maanden, in: TJ.trend.in, uit: TJ.trend.uit, checkin: TJ.trend.checkin, meldingen: TJ.trend.meldingen },
-    redenen: red || null, activiteit: inp.activiteit || null, minN: SK.MIN_N
+    redenen: wNaam ? null : (red || null), activiteit: wNaam ? null : (inp.activiteit || null), minN: SK.MIN_N
   };
 }
 
@@ -144,7 +159,7 @@ function telActiviteit(mails, gesprekken) {
 }
 
 // ---- ophalen ----
-async function laad(maandStr, ververs) {
+async function laad(maandStr, ververs, winkel) {
   const vandaag = SK.nuNL(), maand = rapportMaand(maandStr, vandaag);
   const van12 = new Date(maand.getFullYear(), maand.getMonth() - 11, 1), eind = new Date(maand.getFullYear(), maand.getMonth() + 1, 0);
   const iso = d => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
@@ -164,11 +179,12 @@ async function laad(maandStr, ververs) {
   activiteit.exitIngevuld = bron.exits.filter(r => String(r.ingevuld_op || '').slice(0, 10) >= vanM && String(r.ingevuld_op || '').slice(0, 10) <= totM).length;
   let kostenParams = null, kostenStandaard = true;
   try { const kp = await require('./verloopkosten').params(); kostenParams = kp.p; kostenStandaard = kp.standaard; } catch (e) { fouten.push('kosten verloop: ' + e.message); }
-  const r = bereken({ bron, maand, vandaag, activiteit, redenen, kostenParams, kostenStandaard });
+  const r = bereken({ bron, maand, vandaag, activiteit, redenen, kostenParams, kostenStandaard, winkel: winkel || '' });
   try {
-    const m = await require('./mto').samenvatting();
-    r.mto = m;
-    if (m) r.zinnen.push('Medewerkertevredenheid (' + m.ronde + ', ' + m.n + ' reacties): gemiddeld ' + String(m.totaal).replace('.', ',') + ' / 5, eNPS ' + (m.enps > 0 ? '+' : '') + m.enps + (m.vorige ? ' (' + m.vorige.naam + ': ' + String(m.vorige.totaal).replace('.', ',') + ', eNPS ' + (m.vorige.enps > 0 ? '+' : '') + m.vorige.enps + ')' : '') + '. Grootste verbeterpunt: ' + (m.laagste ? m.laagste.naam + ' (' + String(m.laagste.score).replace('.', ',') + ')' : '-') + '. Actieplan: ' + m.acties.lopend + ' lopend' + (m.acties.teLaat ? ', waarvan ' + m.acties.teLaat + ' over de deadline' : '') + ', ' + m.acties.klaar + ' afgerond.');
+    const MTO = require('./mto'), m = await MTO.samenvatting();
+    r.mto = r.winkel ? null : m;
+    if (m && r.winkel) { const mw = MTO.voorWinkel(m, r.winkel); if (mw && !mw.verborgen) r.zinnen.push('Medewerkertevredenheid (' + m.ronde + ', ' + mw.n + ' reacties): ' + String(mw.totaal).replace('.', ',') + ' / 5 (SLA ' + String(m.totaal).replace('.', ',') + ')' + (mw.enps != null ? ', eNPS ' + (mw.enps > 0 ? '+' : '') + mw.enps + ' (SLA ' + (m.enps > 0 ? '+' : '') + m.enps + ')' : '') + '.'); }
+    else if (m) r.zinnen.push('Medewerkertevredenheid (' + m.ronde + ', ' + m.n + ' reacties): gemiddeld ' + String(m.totaal).replace('.', ',') + ' / 5, eNPS ' + (m.enps > 0 ? '+' : '') + m.enps + (m.vorige ? ' (' + m.vorige.naam + ': ' + String(m.vorige.totaal).replace('.', ',') + ', eNPS ' + (m.vorige.enps > 0 ? '+' : '') + m.vorige.enps + ')' : '') + '. Grootste verbeterpunt: ' + (m.laagste ? m.laagste.naam + ' (' + String(m.laagste.score).replace('.', ',') + ')' : '-') + '. Actieplan: ' + m.acties.lopend + ' lopend' + (m.acties.teLaat ? ', waarvan ' + m.acties.teLaat + ' over de deadline' : '') + ', ' + m.acties.klaar + ' afgerond.');
   } catch (e) { r.mto = null; }
   r.fouten = fouten; r.bijgewerkt = require('./datum').stempel();
   return r;
@@ -184,7 +200,7 @@ async function alVerstuurd(sleutel) {
 
 // ---- mail ----
 const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-const onderwerp = r => 'HR-maandrapport ' + r.label;
+const onderwerp = r => r.titel || 'HR-maandrapport ' + r.label;
 function mailHtml(r, url) {
   const F = 'font-family:Arial,sans-serif;';
   const kleur = o => o === 'beter' ? '#009f4b' : o === 'slechter' ? '#c0392b' : '#888078';
@@ -218,6 +234,6 @@ async function mail(r, naar, door) {
   await M.logMail({ door: door || 'signalering', bron: 'maandrapport', type: r.sleutel, naar: ontv.join(','), naam: '', onderwerp: onderwerp(r), taal: 'NL', rij: 0, resend_id: id });
   return id;
 }
-const bestandsnaam = r => 'HR-maandrapport_' + r.sleutel + '.pdf';
+const bestandsnaam = r => 'HR-maandrapport_' + (r.winkel ? r.winkel.replace(/[^\w-]+/g, '_') + '_' : '') + r.sleutel + '.pdf';
 
 module.exports = { rapportMaand, bereken, laad, verschil, opvallend, telActiviteit, alVerstuurd, mail, mailHtml, mailPlain, onderwerp, bestandsnaam, WINKEL_MAANDEN };

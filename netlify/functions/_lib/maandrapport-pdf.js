@@ -15,7 +15,7 @@ const t = s => P.veilig(String(s == null ? '' : s).replace(/≤/g, '<=').replace
 const Hoofd = s => s.charAt(0).toUpperCase() + s.slice(1);
 
 async function maakMaandrapportPdf(r, door) {
-  const doc = await PDFDocument.create(); doc.setTitle('HR-maandrapport ' + r.label); doc.setAuthor('SLA HR Team');
+  const doc = await PDFDocument.create(); doc.setTitle((r.titel || 'HR-maandrapport ' + r.label)); doc.setAuthor('SLA HR Team');
   const F = { n: await doc.embedFont(StandardFonts.Helvetica), b: await doc.embedFont(StandardFonts.HelveticaBold), i: await doc.embedFont(StandardFonts.HelveticaOblique) };
   let pg, y;
   const tekst = (s, x, yy, size, font, kleur) => pg.drawText(t(s), { x, y: yy, size, font: font || F.n, color: kleur || KL.donker });
@@ -29,12 +29,12 @@ async function maakMaandrapportPdf(r, door) {
     rechts(titel, A4[0] - R, y - 14, 14, F.b);
     y -= 44; lijn(1); y -= 18;
   };
-  const ruimte = (h, titel) => { if (y - h < 56) nieuwePagina(titel || 'HR-maandrapport ' + r.label); };
+  const ruimte = (h, titel) => { if (y - h < 56) nieuwePagina(titel || (r.titel || 'HR-maandrapport ' + r.label)); };
   const kop = (s, h) => { ruimte((h || 0) + 26); tekst(s, L, y, 11, F.b, KL.groen); y -= 14; };
 
   // ---------- pagina 1: SLA totaal ----------
-  nieuwePagina('HR-maandrapport ' + r.label);
-  rechts('SLA totaal' + (r.lopend ? ' · lopende maand t/m vandaag' : '') + ' · gemaakt ' + (r.bijgewerkt || ''), A4[0] - R, y + 22, 8, F.n, KL.grijs);
+  nieuwePagina((r.titel || 'HR-maandrapport ' + r.label));
+  rechts((r.winkel || 'SLA totaal') + (r.lopend ? ' · lopende maand t/m vandaag' : '') + ' · gemaakt ' + (r.bijgewerkt || ''), A4[0] - R, y + 22, 8, F.n, KL.grijs);
 
   const k = r.kern;
   const tegels = [[k.bestand, 'In dienst eind maand', 'vorige maand ' + k.vorig.bestand], [k.instroom, 'Instroom', 'vorige maand ' + k.vorig.instroom], [k.uitstroom, 'Uitstroom', 'vorige maand ' + k.vorig.uitstroom], [(k.netto > 0 ? '+' : '') + k.netto, 'Netto', 'instroom - uitstroom'], [k.verloop12, 'Verloop 12 mnd', 'uitstroom / gem. bestand'], [k.nuZiek, 'Nu ziek', 'lopende ziekmeldingen']];
@@ -48,13 +48,13 @@ async function maakMaandrapportPdf(r, door) {
   y -= 8;
 
   // KPI-tabel
-  kop('Kerncijfers SLA', 40);
-  const kol = { kpi: L, nu: L + 238, vo: L + 300, vs: L + 362, jr: L + 430 };
-  tekst('Indicator', kol.kpi, y, 7.5, F.b, KL.grijs); tekst(Hoofd(r.label), kol.nu, y, 7.5, F.b, KL.grijs); tekst(Hoofd(r.labelVorig), kol.vo, y, 7.5, F.b, KL.grijs); tekst('Verschil', kol.vs, y, 7.5, F.b, KL.grijs); tekst('12 maanden', kol.jr, y, 7.5, F.b, KL.grijs);
+  kop(r.winkel ? 'Kerncijfers ' + r.winkel + ' (met SLA ter vergelijking)' : 'Kerncijfers SLA', 40);
+  const kol = r.winkel ? { kpi: L, nu: L + 214, vo: L + 268, vs: L + 322, jr: L + 384, sla: L + 440 } : { kpi: L, nu: L + 238, vo: L + 300, vs: L + 362, jr: L + 430 };
+  tekst('Indicator', kol.kpi, y, 7.5, F.b, KL.grijs); const kortL = l => kol.sla ? Hoofd(l.slice(0, 3)) + ' ' + l.slice(-2) : Hoofd(l); tekst(kortL(r.label), kol.nu, y, 7.5, F.b, KL.grijs); tekst(kortL(r.labelVorig), kol.vo, y, 7.5, F.b, KL.grijs); tekst('Verschil', kol.vs, y, 7.5, F.b, KL.grijs); tekst('12 maanden', kol.jr, y, 7.5, F.b, KL.grijs); if (kol.sla) tekst('SLA 12 mnd', kol.sla, y, 7.5, F.b, KL.grijs);
   y -= 6; lijn(0.8); y -= 2;
   let groep = '';
   for (const kp of r.kpis) {
-    const uitleg = regels(kp.uitleg, 6.5, F.n, 228);
+    const uitleg = regels(kp.uitleg, 6.5, F.n, r.winkel ? 205 : 228);
     ruimte(15 + uitleg.length * 8 + (groep !== kp.groep ? 14 : 0));
     if (groep !== kp.groep) { groep = kp.groep; y -= 12; tekst(groep.toUpperCase(), kol.kpi, y, 7, F.b, KL.groen); }
     y -= 12;
@@ -65,7 +65,8 @@ async function maakMaandrapportPdf(r, door) {
       const c = kp.verschil.oordeel === 'beter' ? ST.groen : kp.verschil.oordeel === 'slechter' ? ST.rood : ST.geen, w = breed(kp.verschil.tekst, 8, F.b) + 10;
       pg.drawRectangle({ x: kol.vs, y: y - 3.5, width: w, height: 12.5, color: c[1] }); tekst(kp.verschil.tekst, kol.vs + 5, y, 8, F.b, c[0]);
     }
-    tekst(kp.jaar.f, kol.jr, y, 9, F.n);
+    tekst(kp.jaar.f, kol.jr, y, 9, kp.sla && kp.sla.status === 'rood' ? F.b : F.n, kp.sla && kp.sla.status === 'rood' ? KL.rood : undefined);
+    if (kol.sla && kp.sla) tekst(kp.sla.f, kol.sla, y, 9, F.n, KL.grijs);
     uitleg.forEach(rg => { y -= 8; tekst(rg, kol.kpi, y, 6.5, F.n, KL.grijs); });
     y -= 4; lijn(0.4);
   }
@@ -98,8 +99,9 @@ async function maakMaandrapportPdf(r, door) {
 
   // uitstroomredenen
   const red = r.redenen;
-  kop('Uitstroomredenen ' + r.label, 40);
-  if (!red || !red.totaal) { tekst('Geen uitstroomdossiers met een einddatum in deze maand.', L, y, 8.5, F.i, KL.grijs); y -= 16; }
+  if (!r.winkel) kop('Uitstroomredenen ' + r.label, 40);
+  if (r.winkel) { /* per winkel: geen uitstroomredenen-blok */ }
+  else if (!red || !red.totaal) { tekst('Geen uitstroomdossiers met een einddatum in deze maand.', L, y, 8.5, F.i, KL.grijs); y -= 16; }
   else {
     const rijen = red.lijst.map(x => [x.reden, x.aantal]).concat(red.zonder ? [['Niet geregistreerd', red.zonder]] : []);
     const mxr = Math.max(...rijen.map(x => x[1]));
@@ -153,8 +155,8 @@ async function maakMaandrapportPdf(r, door) {
   }
 
   // ---------- per winkel ----------
-  y -= 6; if (y < 300) nieuwePagina('HR-maandrapport ' + r.label);
-  kop('Per winkel · laatste ' + r.winkelMaanden + ' maanden (' + r.periodeWinkels + ')', 120);
+  y -= 6; if (y < 300) nieuwePagina((r.titel || 'HR-maandrapport ' + r.label));
+  kop(r.winkel ? r.winkel + ' t.o.v. SLA' : 'Per winkel · laatste ' + r.winkelMaanden + ' maanden (' + r.periodeWinkels + ')', 120);
   const uitlegW = 'Per winkel kijken we naar de laatste ' + r.winkelMaanden + ' maanden: per maand zijn de aantallen per winkel te klein om iets te zeggen. Kleur = vergeleken met het SLA-gemiddelde over dezelfde periode (rood duidelijk slechter, oranje iets slechter, groen gelijk of beter, grijs te weinig gegevens).';
   regels(uitlegW, 7.5, F.n, B).forEach(rg => { tekst(rg, L, y, 7.5, F.n, KL.grijs); y -= 9.5; });
   y -= 8;
@@ -192,7 +194,7 @@ async function maakMaandrapportPdf(r, door) {
   const vr = regels(voet, 7, F.n, B); ruimte(vr.length * 9 + 12);
   y -= 4; vr.forEach(rg => { tekst(rg, L, y, 7, F.n, KL.grijs); y -= 9; });
   const pages = doc.getPages();
-  pages.forEach((p, i) => { p.drawText(t('SLA HR · Maandrapport ' + r.label + ' · vertrouwelijk'), { x: L, y: 26, size: 7, font: F.n, color: KL.grijs }); const s = t('pagina ' + (i + 1) + ' van ' + pages.length); p.drawText(s, { x: A4[0] - R - F.n.widthOfTextAtSize(s, 7), y: 26, size: 7, font: F.n, color: KL.grijs }); });
+  pages.forEach((p, i) => { p.drawText(t('SLA HR · Maandrapport ' + (r.winkel ? r.winkel + ' · ' : '') + r.label + ' · vertrouwelijk'), { x: L, y: 26, size: 7, font: F.n, color: KL.grijs }); const s = t('pagina ' + (i + 1) + ' van ' + pages.length); p.drawText(s, { x: A4[0] - R - F.n.widthOfTextAtSize(s, 7), y: 26, size: 7, font: F.n, color: KL.grijs }); });
   return Buffer.from(await doc.save());
 }
 module.exports = { maakMaandrapportPdf };

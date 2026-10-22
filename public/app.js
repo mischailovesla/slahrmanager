@@ -1612,18 +1612,27 @@
     var nu = new Date();
     for (var i = 0; i <= 12; i++) { var d = new Date(nu.getFullYear(), nu.getMonth() - i, 1), o = document.createElement('option'); o.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); o.textContent = MR_MAAND[d.getMonth()] + ' ' + d.getFullYear() + (i === 0 ? ' (lopend)' : ''); if (i === 1) o.selected = true; sel.appendChild(o); }
   }
+  // v0.25.12: maandrapport per winkel
+  function mrWinkels(namen) {
+    var sel = g('mr-winkel'); if (!sel) return; var nu = sel.value;
+    if (!namen) { var wf = g('winkel-filter'); namen = wf ? Array.prototype.map.call(wf.options, function (o) { return o.value; }).filter(Boolean) : []; }
+    if (!namen.length || sel.options.length - 1 === namen.length) return;
+    sel.innerHTML = '<option value="">Hele organisatie</option>' + namen.map(function (w) { return '<option' + (w === nu ? ' selected' : '') + '>' + esc(w) + '</option>'; }).join('');
+  }
+  function mrQs() { var w = g('mr-winkel') ? g('mr-winkel').value : ''; return w ? '&winkel=' + encodeURIComponent(w) : ''; }
   window.laadMaandrapport = async function () {
-    mrVulMaanden(); var maand = g('mr-maand').value;
+    mrVulMaanden(); mrWinkels(); var maand = g('mr-maand').value;
     g('mr-body').innerHTML = '<div class="lay-sub">Maandrapport berekenen (Shiftbase + dashboard, 12 maanden)…</div>';
-    var d = await api('/api/maandrapport?maand=' + encodeURIComponent(maand));
+    var d = await api('/api/maandrapport?maand=' + encodeURIComponent(maand) + mrQs());
     if (!d.success) { g('mr-body').innerHTML = '<div class="alert rood" style="margin:0">' + esc(d.bericht) + '</div>'; return; }
+    mrWinkels(d.winkelNamen);
     var kl = { beter: 'bg', slechter: 'br', gelijk: 'boat' };
     var tegel = function (w, l, s) { return '<div style="background:#f8f3f0;border-radius:8px;padding:10px 14px;min-width:120px"><div style="font-size:1.35rem;font-weight:700">' + esc(w) + '</div><div class="lay-sub" style="font-weight:600;color:#333d3a">' + esc(l) + '</div>' + (s ? '<div class="lay-sub">' + esc(s) + '</div>' : '') + '</div>'; };
     var k = d.kern, h = '';
     if (d.fouten && d.fouten.length) h += '<div class="alert geel" style="margin:0 0 10px">Niet alles kon worden opgehaald: ' + esc(d.fouten.join(' · ')) + '</div>';
     h += '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">' + tegel(k.bestand, 'In dienst eind maand', 'vorige maand ' + k.vorig.bestand) + tegel(k.instroom, 'Instroom', 'vorige maand ' + k.vorig.instroom) + tegel(k.uitstroom, 'Uitstroom', 'vorige maand ' + k.vorig.uitstroom) + tegel((k.netto > 0 ? '+' : '') + k.netto, 'Netto', '') + tegel(k.verloop12, 'Verloop 12 mnd', '') + tegel(k.nuZiek, 'Nu ziek', '') + '</div>';
-    h += '<div style="display:flex;gap:28px;flex-wrap:wrap"><div style="flex:1;min-width:300px"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">In het kort · ' + esc(d.label) + '</div><ul style="margin:0;padding-left:18px;font-size:.88rem;line-height:1.5">' + d.zinnen.map(function (z) { return '<li>' + esc(z) + '</li>'; }).join('') + '</ul></div>';
-    h += '<div style="flex:1.4;min-width:340px;overflow-x:auto"><table class="sk-tabel" style="width:100%"><thead><tr><th>Indicator</th><th>' + esc(d.label) + '</th><th>' + esc(d.labelVorig) + '</th><th>Verschil</th><th>12 mnd</th></tr></thead><tbody>' + d.kpis.map(function (x) { return '<tr><td title="' + esc(x.uitleg) + '">' + esc(x.label) + '</td><td><strong>' + esc(x.nu.f) + '</strong></td><td>' + esc(x.vorig.f) + '</td><td>' + (x.verschil.tekst ? '<span class="badge ' + (kl[x.verschil.oordeel] || 'boat') + '">' + esc(x.verschil.tekst) + '</span>' : '') + '</td><td>' + esc(x.jaar.f) + '</td></tr>'; }).join('') + '</tbody></table></div></div>';
+    h += '<div style="display:flex;gap:28px;flex-wrap:wrap"><div style="flex:1;min-width:300px"><div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px">In het kort · ' + esc((d.winkel ? d.winkel + ' · ' : '') + d.label) + '</div><ul style="margin:0;padding-left:18px;font-size:.88rem;line-height:1.5">' + d.zinnen.map(function (z) { return '<li>' + esc(z) + '</li>'; }).join('') + '</ul></div>';
+    h += '<div style="flex:1.4;min-width:340px;overflow-x:auto"><table class="sk-tabel" style="width:100%"><thead><tr><th>Indicator</th><th>' + esc(d.label) + '</th><th>' + esc(d.labelVorig) + '</th><th>Verschil</th><th>12 mnd</th>' + (d.winkel ? '<th>SLA 12 mnd</th>' : '') + '</tr></thead><tbody>' + d.kpis.map(function (x) { return '<tr><td title="' + esc(x.uitleg) + '">' + esc(x.label) + '</td><td><strong>' + esc(x.nu.f) + '</strong></td><td>' + esc(x.vorig.f) + '</td><td>' + (x.verschil.tekst ? '<span class="badge ' + (kl[x.verschil.oordeel] || 'boat') + '">' + esc(x.verschil.tekst) + '</span>' : '') + '</td><td>' + esc(x.jaar.f) + '</td>' + (d.winkel ? '<td class="lay-sub">' + esc(x.sla ? x.sla.f : '-') + '</td>' : '') + '</tr>'; }).join('') + '</tbody></table></div></div>';
     var rood = d.winkels.filter(function (w) { return w.rood; });
     if (rood.length) h += '<div class="lay-sub" style="text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Aandachtspunten per winkel · ' + esc(d.periodeWinkels) + '</div>' + rood.map(function (w) { return '<div class="alert rood" style="margin:0 0 6px;padding:8px 12px;font-size:.85rem"><strong>' + esc(w.naam) + ':</strong> ' + esc(w.aandacht.join(' · ')) + '</div>'; }).join('');
     h += '<div class="lay-sub" style="margin-top:10px">Bijgewerkt ' + esc(d.bijgewerkt || '') + ' · de PDF bevat ook de trend over 12 maanden, uitstroomredenen, wat HR deed en de tabel per winkel.</div>';
@@ -1632,7 +1641,7 @@
   window.mrPdf = async function () {
     mrVulMaanden(); var maand = g('mr-maand').value;
     toast('Maandrapport maken…', 'ok');
-    var r = await api('/api/maandrapport?maand=' + encodeURIComponent(maand) + '&pdf=1');
+    mrWinkels(); var r = await api('/api/maandrapport?maand=' + encodeURIComponent(maand) + '&pdf=1' + mrQs());
     if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
     downloadB64(r.pdf, r.bestandsnaam);
   };
@@ -1640,7 +1649,7 @@
     mrVulMaanden(); var sel = g('mr-maand'), lbl = sel.options[sel.selectedIndex].textContent;
     if (!confirm('Maandrapport ' + lbl + ' nu mailen naar Mischa, Jodi en Ymke?')) return;
     toast('Maandrapport mailen…', 'ok');
-    var r = await api('/api/maandrapport', { maand: sel.value, actie: 'mail' });
+    var r = await api('/api/maandrapport', { maand: sel.value, actie: 'mail', winkel: g('mr-winkel') ? g('mr-winkel').value : '' });
     toast(r.success ? r.bericht : 'Mail: ' + r.bericht, r.success ? 'ok' : 'err');
   };
 
