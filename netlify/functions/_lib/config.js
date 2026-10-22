@@ -280,6 +280,9 @@ module.exports = {
     '152898': 'VS', '153140': 'HC', '153141': 'KP'
   },
   SB_FRANCHISE_DEPTS: { '153143': true, '153187': true }, // Haarlem, Groningen
+  // v0.25.13: franchisewinkels horen niet in het HR-dashboard (Mischa, 22-10-2026). Naast de afdelings-id's ook op teamnaam,
+  // zodat Amersfoort (id onbekend) en eventuele extra teams van deze winkels ook wegvallen. \b: Haarlemmerdijk blijft gewoon staan.
+  FRANCHISE_NAAM: /\b(haarlem|groningen|amersfoort)\b/i,
   SB_UITGESLOTEN_NAMEN: ['Afwasser T', 'Af Wasser', 'Test Test'],
   VAKANTIE_OPTION_ID: '1019457'
 };

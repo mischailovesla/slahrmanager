@@ -26,8 +26,8 @@ function verwerkVerloopData(usersLijst, contractsLijst) {
     const u = (rec && rec.User) || rec || {}; const teams = rec.Team || [];
     const eigen = teams.filter(t => !isFlexTeam(t)), flexT = teams.filter(isFlexTeam), basis = eigen.length ? eigen : flexT;
     let winkel = '', alleenFranchise = basis.length > 0;
-    for (const t of basis) { const did = String(t.department_id || ''); if (!C.SB_FRANCHISE_DEPTS[did]) alleenFranchise = false; if (!winkel && eigen.length && C.SB_DEPT_CODE[did]) winkel = C.WINKEL_BV_MAP[C.SB_DEPT_CODE[did]].naam; if (!winkel && t.name) winkel = String(t.name).replace(/^SLA\s*/i, '').trim(); }
-    if (alleenFranchise) continue;
+    for (const t of basis) { const did = String(t.department_id || ''); if (!C.SB_FRANCHISE_DEPTS[did] && !require('./config').FRANCHISE_NAAM.test(String(t.name || ''))) alleenFranchise = false; if (!winkel && eigen.length && C.SB_DEPT_CODE[did]) winkel = C.WINKEL_BV_MAP[C.SB_DEPT_CODE[did]].naam; if (!winkel && t.name) winkel = String(t.name).replace(/^SLA\s*/i, '').trim(); }
+    if (alleenFranchise || C.FRANCHISE_NAAM.test(winkel)) continue;
     const naam = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
     const geanon = u.anonymized === true || u.anonymized === '1' || u.anonymized === 1;
     if (!geanon && naam && UIT_NAMEN.has(normNaam(naam))) continue;

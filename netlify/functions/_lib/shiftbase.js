@@ -73,11 +73,11 @@ function verwerk(usersLijst, contractsLijst, typeNamen) {
     let code = '', winkelNaam = '', alleenFranchise = basis.length > 0;
     for (const t of basis) {
       const did = String(t.department_id || '');
-      if (!SB_FRANCHISE_DEPTS[did]) alleenFranchise = false;
+      if (!SB_FRANCHISE_DEPTS[did] && !require('./config').FRANCHISE_NAAM.test(String(t.name || ''))) alleenFranchise = false;
       if (eigen.length && !code && SB_DEPT_CODE[did]) { code = SB_DEPT_CODE[did]; winkelNaam = WINKEL_BV_MAP[code].naam; }
       if (!winkelNaam && t.name) winkelNaam = String(t.name).replace(/^SLA\s*/i, '').trim();
     }
-    if (alleenFranchise) continue;
+    if (alleenFranchise || require('./config').FRANCHISE_NAAM.test(winkelNaam)) continue;
     const naam = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
     if (!naam || UITGESLOTEN.has(normNaam(naam))) continue;
     let adres = '';
