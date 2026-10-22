@@ -52,8 +52,8 @@ function verstuurdeBrief(ontslag, m, startIso) {
 
 // Overzicht van alle aflopende tijdelijke contracten met hun status.
 // med = Shiftbase-medewerkers, perUser = contracten per user-id, besluiten = { 'mid|eindIso': rij hr_verlenging }, ontslag = getOntslag(true)
-function overzicht(med, perUser, besluiten, ontslag, vandaag, correcties) {
-  vandaag = vandaag || new Date(); besluiten = besluiten || {}; correcties = correcties || {};
+function overzicht(med, perUser, besluiten, ontslag, vandaag, correcties, adviezen) {
+  vandaag = vandaag || new Date(); besluiten = besluiten || {}; correcties = correcties || {}; adviezen = adviezen || {};
   const uit = [];
   for (const m of med || []) {
     const cons = perUser[String(m.id)] || []; if (!cons.length) continue;
@@ -76,7 +76,9 @@ function overzicht(med, perUser, besluiten, ontslag, vandaag, correcties) {
       keten: { aantal: k.aantal, maanden: k.maanden, vol: k.vol, laatste: !k.vol && k.aantal >= C.KETEN_MAX_CONTRACTEN - 1, gecorrigeerd: !!k.gecorrigeerd },
       besluit: b ? { besluit: b.besluit, label: BESLUITEN[b.besluit] || b.besluit, nieuweEind: b.nieuwe_eind || '', advies: b.advies_sm || '', adviesLabel: ADVIES[b.advies_sm || ''] || '', adviesOpmerking: b.advies_opmerking || '', notitie: b.notitie || '', door: b.besloten_door || '', op: b.besloten_op || '' } : null,
       vervolg: volgende ? { start: nl(volgende.start), eind: volgende.eind ? nl(volgende.eind) : '', vast: isOnbepaald(volgende), type: volgende.type || '' } : null,
-      brief
+      brief,
+      // v0.28.0: advies van de store manager (via de winkelmail)
+      smAdvies: (a => a ? { advies: a.advies, label: ADVIES[a.advies] || a.advies, opmerking: a.opmerking || '', op: a.gegeven_op || '' } : null)(adviezen[sleutel(m.id, k.huidig.eind)])
     };
     // status + urgentie
     let status, urgentie, titel, uitleg = '';

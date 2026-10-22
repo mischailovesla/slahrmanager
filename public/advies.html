@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>SLA · Advies verlenging</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--groen:#009f4b;--donker:#333d3a;--grijs:#888078;--zand:#f8f3f0;--lijn:#e8e2de;--rood:#c0392b}
+  *{box-sizing:border-box}body{margin:0;font-family:'DM Sans',Arial,sans-serif;background:var(--zand);color:var(--donker);line-height:1.5}
+  .wrap{max-width:600px;margin:0 auto;padding:28px 16px 48px}
+  .logo{font-size:30px;font-weight:700;color:var(--groen);letter-spacing:1px}.logo small{display:block;font-size:11px;color:var(--grijs);font-weight:500;letter-spacing:0}
+  .card{background:#fff;border-radius:14px;padding:26px 24px;margin-top:20px;box-shadow:0 6px 24px rgba(51,61,58,.08)}
+  h1{font-size:1.15rem;margin:0 0 6px}.sub{color:var(--grijs);font-size:.9rem;margin:0 0 22px}
+  .vr{margin:0 0 24px;padding-bottom:20px;border-bottom:1px solid var(--lijn)}.vr:last-of-type{border:0}
+  .vr .q{font-weight:600;font-size:.97rem;margin:0 0 10px}.vr .q b{color:var(--groen);margin-right:6px}
+  .opties{display:flex;flex-wrap:wrap;gap:8px}
+  .opt{border:1.5px solid var(--lijn);border-radius:999px;padding:8px 14px;font-size:.88rem;cursor:pointer;background:#fff;user-select:none}.opt.sel{border-color:var(--groen);background:#e6f7ee;color:#006b30;font-weight:600}
+  .schaal{display:flex;gap:6px}.schaal .opt{flex:1;text-align:center;padding:10px 0;border-radius:8px}
+  .schaal-lbl{display:flex;justify-content:space-between;font-size:.72rem;color:var(--grijs);margin-top:6px}
+  .nps{display:grid;grid-template-columns:repeat(11,1fr);gap:4px}.nps .opt{text-align:center;padding:9px 0;border-radius:6px;font-size:.85rem}
+  textarea{width:100%;min-height:96px;padding:11px 14px;border:1.5px solid var(--lijn);border-radius:8px;font:inherit;font-size:.93rem;resize:vertical}
+  .chk{display:flex;gap:10px;align-items:flex-start;font-size:.85rem;color:var(--grijs);margin:0 0 18px}.chk input{margin-top:4px}
+  .btn{width:100%;padding:14px;border:0;border-radius:10px;background:var(--groen);color:#fff;font:inherit;font-size:1rem;font-weight:700;cursor:pointer}.btn:disabled{opacity:.5;cursor:default}
+  .melding{border-radius:8px;padding:12px 14px;font-size:.88rem;margin:0 0 16px;border-left:4px solid}.melding.rood{background:#fdecea;color:#8a1c12;border-color:var(--rood)}.melding.groen{background:#e6f7ee;color:#006b30;border-color:var(--groen)}
+  .voet{margin-top:22px;font-size:.75rem;color:var(--grijs);text-align:center}
+  .taal{float:right;font-size:.8rem}.taal a{color:var(--grijs);text-decoration:none;margin-left:8px}.taal a.sel{color:var(--groen);font-weight:700}
+  .klaar{text-align:center;padding:20px 0}.klaar .ic{font-size:46px}
+  .keuze{display:grid;gap:10px;margin:0 0 18px}.keuze .opt{border-radius:10px;padding:14px 16px;font-size:.95rem;text-align:left}
+  .info{background:var(--zand);border-radius:10px;padding:14px 16px;font-size:.92rem;margin:0 0 20px}
+  label.l{display:block;font-weight:600;font-size:.9rem;margin:0 0 6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">SLA<small>the good food bar · HR</small></div>
+  <div class="card" id="card"><p class="sub">Even geduld…</p></div>
+  <div class="voet">Je advies gaat alleen naar HR (Mischa, Jodi, Ymke). HR neemt het besluit en regelt de brief.</div>
+</div>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('t') || '', card = document.getElementById('card'), keuze = '';
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function post(d) { return fetch('/api/advies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).then(function (r) { return r.json(); }); }
+  function fout(m) { card.innerHTML = '<div class="melding rood">' + esc(m) + '</div>'; }
+  var LBL = { verlengen: 'Verlengen', niet: 'Niet verlengen', twijfel: 'Twijfel — liever even overleggen' };
+  if (!t) { fout('Deze link is niet compleet. Open hem opnieuw vanuit de winkelmail.'); return; }
+  post({ t: t }).then(function (r) {
+    if (!r.success) return fout(r.bericht);
+    var a = r.advies;
+    if (a.besloten) { card.innerHTML = '<h1>' + esc(a.naam) + '</h1><div class="melding groen">HR heeft al besloten: <strong>' + esc(a.besloten) + '</strong>. Bedankt!</div>'; return; }
+    keuze = a.huidig ? a.huidig.advies : '';
+    card.innerHTML = '<h1>Verlengen: ' + esc(a.naam) + '?</h1><p class="sub">' + esc(a.winkel) + '</p>'
+      + '<div class="info">Het contract loopt af op <strong>' + esc(a.einddatum) + '</strong>. Wat is jouw advies?' + (a.huidig ? '<br><span style="color:#888078">Je gaf eerder: ' + esc(LBL[a.huidig.advies]) + ' — je kunt het hieronder wijzigen.</span>' : '') + '</div>'
+      + '<div class="keuze">' + ['verlengen', 'niet', 'twijfel'].map(function (k) { return '<div class="opt' + (keuze === k ? ' sel' : '') + '" data-k="' + k + '">' + LBL[k] + '</div>'; }).join('') + '</div>'
+      + '<label class="l" for="opm">Toelichting <span id="verpl" style="font-weight:400;color:#888078">(optioneel)</span></label><textarea id="opm" placeholder="Bijv. functioneren, betrouwbaarheid, beschikbaarheid, wil de medewerker zelf blijven?">' + esc(a.huidig ? a.huidig.opmerking : '') + '</textarea>'
+      + '<div id="msg" style="margin-top:14px"></div><button class="btn" id="stuur" style="margin-top:6px">Advies versturen</button>';
+    function zetVerpl() { document.getElementById('verpl').textContent = keuze === 'niet' || keuze === 'twijfel' ? '(graag kort toelichten)' : '(optioneel)'; }
+    zetVerpl();
+    card.querySelectorAll('.opt').forEach(function (o) { o.onclick = function () { keuze = o.getAttribute('data-k'); card.querySelectorAll('.opt').forEach(function (x) { x.classList.toggle('sel', x === o); }); zetVerpl(); }; });
+    document.getElementById('stuur').onclick = function () {
+      var b = this, msg = document.getElementById('msg');
+      if (!keuze) { msg.innerHTML = '<div class="melding rood">Kies eerst je advies.</div>'; return; }
+      b.disabled = true;
+      post({ t: t, advies: keuze, opmerking: document.getElementById('opm').value }).then(function (r) {
+        b.disabled = false;
+        if (!r.success) { msg.innerHTML = '<div class="melding rood">' + esc(r.bericht) + '</div>'; return; }
+        card.innerHTML = '<div class="klaar"><div class="ic">✓</div><h1>Advies ontvangen</h1><p class="sub">' + esc(a.naam) + ': ' + esc(r.advies) + '</p><p>' + esc(r.bericht) + '</p></div>';
+      }).catch(function () { b.disabled = false; msg.innerHTML = '<div class="melding rood">Versturen lukte niet. Probeer het opnieuw.</div>'; });
+    };
+  }).catch(function () { fout('De pagina kon niet laden. Probeer het later opnieuw.'); });
+})();
+</script>
+</body>
+</html>

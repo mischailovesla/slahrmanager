@@ -67,6 +67,7 @@ module.exports = {
   KETEN_ONDERBREKING_MAANDEN: 6,
   KETEN_VENSTER_DAGEN: 60,
   // Standaard looptijden bij SLA (Mischa, 22-10-2026): 7, 12 en 16 maanden. Andere 'hele maanden'-einden in Shiftbase zijn wijzigingen (knips).
+  WINKELMAIL_PROEF: 'mischa@ilovesla.com',   // v0.28.0: proefstand winkelmail → alles hierheen
   KETEN_LOOPTIJDEN_MAANDEN: [7, 12, 16],
   // Fase 4c: contractverlenging als proces — vanaf 60 dagen vóór het einde een besluit vragen, uiterlijk 35 dagen vóór het einde
   // (5 dagen marge op de wettelijke aanzegtermijn van 1 maand); na een besluit 'verlengen' moet het contract binnen 7 dagen in Shiftbase staan.

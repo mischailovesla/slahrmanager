@@ -720,6 +720,25 @@
   </div>
 
   <!-- BEWAARTERMIJNEN (AVG) — v0.27.0 -->
+  <!-- WINKELMAIL STORE MANAGERS — v0.28.0 -->
+  <div class="tc" id="tab-winkelmail">
+    <div class="sec">
+      <div class="sh"><div class="st">Winkelmail store managers</div><div class="hr2"><button class="btn bd bsm" onclick="wmLaad()">↻</button></div></div>
+      <div id="wm-status" class="alert geel" style="margin:12px 24px 0"></div>
+      <div class="lay-sub" style="padding:12px 24px 0;line-height:1.6">Elke maandag krijgt de store manager per winkel: wie nog moet tekenen of een formulier moet inleveren, contracten die binnen 6 weken aflopen (met een knop om <strong>advies over verlengen</strong> te geven, zonder inlog), nieuwe medewerkers, vertrek en jubilea, plus de verloopcijfers van de winkel. Geen verzuim, check-in-antwoorden of exit-redenen. Winkels zonder iets te melden krijgen geen mail. Keuken gaat standaard naar Jop.</div>
+      <div style="padding:12px 24px;display:flex;gap:18px;flex-wrap:wrap;align-items:center">
+        <label class="chk"><input type="checkbox" id="wm-aan"> Winkelmail aan</label>
+        <label class="chk"><input type="checkbox" id="wm-proef" checked> Proefstand: alles naar <span id="wm-proef-aan">mij</span></label>
+        <button class="btn bp bsm" id="wm-opslaan" onclick="wmOpslaan()">Opslaan</button>
+        <button class="btn bd bsm" id="wm-proef-alles" onclick="wmProef('')">Proef: alle winkels naar mij</button>
+      </div>
+      <div class="tw"><table><thead><tr><th>Winkel</th><th>Mailadres store manager (winkelaccount)</th><th>Meesturen</th><th></th></tr></thead><tbody id="wm-body"><tr><td colspan="4" class="leeg grijs">Laden…</td></tr></tbody></table></div>
+    </div>
+    <div class="sec" id="wm-voorbeeld" style="display:none">
+      <div class="sh"><div class="st" id="wm-v-titel">Voorbeeld</div><div class="lay-sub" id="wm-v-info" style="color:rgba(255,255,255,.7)"></div></div>
+      <iframe id="wm-v-frame" style="width:100%;height:760px;border:0;background:#f8f3f0" sandbox=""></iframe>
+    </div>
+  </div>
   <div class="tc" id="tab-bewaartermijn">
     <div class="sec">
       <div class="sh"><div class="st">Bewaartermijnen <span class="pill" id="bt-count">-</span></div><div class="hr2"><button class="btn bd bsm" onclick="laadBewaartermijnen()">↻</button></div></div>

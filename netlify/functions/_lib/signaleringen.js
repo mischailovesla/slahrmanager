@@ -708,10 +708,12 @@ async function maandrapport(droog) {
 // ---- Fase 4c: contractverlengingen (dagelijks; geen mail — alleen de takenlijst en het tabblad Contractverlenging) ----
 async function laadVerlengingen() {
   const VL = require('./verlenging');
-  const [med, per, corr, ontslag, bes] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true), require('./instellingen').lees('keten_correcties', {}), S.getOntslag(true),
-    admin().from('hr_verlenging').select('*').then(r => { if (r.error) throw new Error(r.error.message); return r.data || []; }).catch(e => { console.warn('hr_verlenging:', e.message); return null; })]);
+  const [med, per, corr, ontslag, bes, adv] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true), require('./instellingen').lees('keten_correcties', {}), S.getOntslag(true),
+    admin().from('hr_verlenging').select('*').then(r => { if (r.error) throw new Error(r.error.message); return r.data || []; }).catch(e => { console.warn('hr_verlenging:', e.message); return null; }),
+    admin().from('hr_sm_advies').select('*').then(r => { if (r.error) throw new Error(r.error.message); return r.data || []; }).catch(e => { console.warn('hr_sm_advies (migratie 0021):', e.message); return []; })]);
   const besluiten = {}; (bes || []).forEach(b => { besluiten[VL.sleutel(b.medewerker_id, b.contract_eind)] = b; });
-  return { lijst: VL.overzicht(med, per, besluiten, ontslag, vandaag0(), corr || {}), tabelOk: bes !== null };
+  const adviezen = {}; (adv || []).forEach(a => { adviezen[VL.sleutel(a.medewerker_id, a.contract_eind)] = a; });
+  return { lijst: VL.overzicht(med, per, besluiten, ontslag, vandaag0(), corr || {}, adviezen), tabelOk: bes !== null };
 }
 async function verlengingen(droog) {
   const rap = { naam: 'verlengingen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
@@ -935,7 +937,18 @@ async function mailBounces(droog) {
   return rap;
 }
 
-const CHECKS = { 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
+// ---- 24. v0.28.0: winkelmail aan de store managers (maandag) — inhoud in _lib/winkelmail.js ----
+async function winkelmail(droog) {
+  const rap = { naam: 'winkelmail', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const WM = require('./winkelmail'), inst = await WM.instelling();
+  if (!inst.aan) { rap.gepauzeerd = true; return rap; }
+  const r = await WM.verstuurAlles({ droog: rap.droog });
+  rap.proef = r.proef; rap.verstuurd = r.verstuurd; rap.overgeslagen = r.overgeslagen; rap.fouten = r.fouten;
+  rap.gevonden = r.verstuurd.map(x => ({ naam: x.winkel, winkel: x.winkel, to: x.to }));
+  return rap;
+}
+
+const CHECKS = { 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 // ---- Automatisch naar salaris (maandag + donderdag) ----

@@ -11,10 +11,10 @@
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
-    { label: 'Beheer', items: [['toegang', 'Toegangslog (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
+    { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegangslog (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -52,6 +52,7 @@
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
     if (tab === 'brief' && !vbData) laadBrieven();
     if (tab === 'ontslag' && !omData) laadOntslag();
+    if (tab === 'winkelmail') wmLaad();
     if (tab === 'ontslag') { laadOndertekeningen(); htLaad(); }
     if (tab === 'overplaatsing') htLaad();
     if (tab === 'sommatie' && !smData) laadSommaties();
@@ -707,6 +708,42 @@
       : '<strong>Automatisch afronden staat uit.</strong> Na 3 herinneringen stopt het dashboard; na 30 dagen wordt het dossier stil gearchiveerd. Per rij kun je de uitdiensttreding wel zelf bevestigen.')
       + ' <button class="btn bd bsm" onclick="udVoorbeeld()">Voorbeeld mail + PDF</button>' + (window._ikRol === 'admin' ? ' <button class="btn ' + (d.actief ? 'bd' : 'bp') + ' bsm" onclick="udZet(' + (d.actief ? 'false' : 'true') + ')">' + (d.actief ? 'Uitzetten' : 'Aanzetten') + '</button>' : '');
   }
+  // ---------- v0.28.0: Beheer → Winkelmail store managers ----------
+  var wmData = null;
+  window.wmLaad = async function () {
+    g('wm-body').innerHTML = '<tr><td colspan="5" class="leeg grijs">Laden…</td></tr>';
+    var d = await api('/api/winkelmail'); if (!d.success) { g('wm-body').innerHTML = '<tr><td colspan="5" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    wmData = d; var i = d.instelling, adm = window._ikRol === 'admin';
+    g('wm-aan').checked = !!i.aan; g('wm-proef').checked = i.proef !== false; g('wm-aan').disabled = g('wm-proef').disabled = !adm;
+    g('wm-proef-aan').textContent = d.proefAan;
+    g('wm-status').className = 'alert ' + (!i.aan ? 'geel' : i.proef !== false ? 'geel' : 'groen');
+    g('wm-status').innerHTML = !i.aan ? '<strong>Uit.</strong> Er gaan geen winkelmails.' : i.proef !== false ? '<strong>Proefstand.</strong> Elke maandag krijg jij (' + esc(d.proefAan) + ') alle winkelmails, met het adres van de winkel in het onderwerp. Store managers krijgen nog niets.' : '<strong>Aan.</strong> Elke maandag 07:50 krijgt elke store manager het weekoverzicht van zijn winkel.';
+    g('wm-body').innerHTML = d.winkels.map(function (w) {
+      return '<tr data-wm="' + esc(w.winkel) + '"><td><strong>' + esc(w.winkel) + '</strong></td><td><input type="text" class="wm-adres" value="' + esc(w.adres) + '" placeholder="' + esc(w.standaard || 'winkel@ilovesla.com') + '" style="width:100%;min-width:220px"' + (adm ? '' : ' disabled') + '></td>'
+        + '<td><label class="chk"><input type="checkbox" class="wm-mee"' + (w.uit ? '' : ' checked') + (adm ? '' : ' disabled') + '> mee</label></td>'
+        + '<td><button class="btn bd bsm" onclick="wmVoorbeeld(\'' + esc(w.winkel).replace(/'/g, "\\'") + '\')">Voorbeeld</button>' + (adm ? ' <button class="btn bd bsm" onclick="wmProef(\'' + esc(w.winkel).replace(/'/g, "\\'") + '\')">Proef naar mij</button>' : '') + '</td></tr>';
+    }).join('');
+    g('wm-opslaan').style.display = adm ? '' : 'none'; g('wm-proef-alles').style.display = adm ? '' : 'none';
+  };
+  window.wmOpslaan = async function () {
+    var adressen = {}, uit = [];
+    document.querySelectorAll('#wm-body tr[data-wm]').forEach(function (tr) { var w = tr.getAttribute('data-wm'); var a = tr.querySelector('.wm-adres').value.trim(); if (a) adressen[w] = a; if (!tr.querySelector('.wm-mee').checked) uit.push(w); });
+    var aan = g('wm-aan').checked, proef = g('wm-proef').checked;
+    if (aan && !proef) { var zonder = wmData.winkels.filter(function (w) { return !adressen[w.winkel] && !w.standaard && uit.indexOf(w.winkel) < 0; }).map(function (w) { return w.winkel; }); if (!confirm('De winkelmail gaat vanaf maandag echt naar de store managers.' + (zonder.length ? '\n\nZonder mailadres (krijgen niets): ' + zonder.join(', ') : '') + '\n\nDoorgaan?')) return; }
+    var r = await api('/api/winkelmail', { actie: 'opslaan', aan: aan, proef: proef, adressen: adressen, uit: uit });
+    toast(r.bericht, r.success ? 'ok' : 'err'); if (r.success) wmLaad();
+  };
+  window.wmVoorbeeld = async function (w) {
+    var el = g('wm-voorbeeld'); el.style.display = ''; g('wm-v-titel').textContent = 'Voorbeeld · ' + w; g('wm-v-frame').srcdoc = '<p style="font-family:Arial;padding:20px;color:#888">Laden (Shiftbase, dossiers, Academy)…</p>';
+    var r = await api('/api/winkelmail', { actie: 'voorbeeld', winkel: w });
+    if (!r.success) { g('wm-v-frame').srcdoc = '<p style="font-family:Arial;padding:20px;color:#c0392b">' + esc(r.bericht) + '</p>'; return; }
+    g('wm-v-info').textContent = (r.leeg ? 'Niets te melden: deze winkel krijgt maandag géén mail.' : r.aantallen.wacht + ' wacht · ' + r.aantallen.contracten + ' contracten · ' + r.aantallen.nieuw + ' nieuw · ' + r.aantallen.vertrek + ' vertrek · ' + r.aantallen.jubilea + ' jubilea') + (r.fouten && r.fouten.length ? ' · niet alles opgehaald: ' + r.fouten.join('; ') : '');
+    g('wm-v-frame').srcdoc = r.html; el.scrollIntoView({ behavior: 'smooth' });
+  };
+  window.wmProef = async function (w) {
+    if (!confirm(w ? 'Proefmail van ' + w + ' naar jezelf sturen?' : 'Proefmails van alle winkels (met iets te melden) naar jezelf sturen?')) return;
+    toast('Bezig…', 'ok'); var r = await api('/api/winkelmail', { actie: 'proef', winkel: w || '' }); toast(r.bericht, r.success ? 'ok' : 'err');
+  };
   window.omSalZet = async function (aan) {
     if (!confirm(aan ? 'Automatisch naar salaris aanzetten?\n\nGetekende ontslagdossiers gaan dan direct na de handtekening naar salaris, en elke maandag en donderdag gaat alles wat klaar is (ook loonheffing) mee. Dit is dezelfde schakelaar als op de tab Loonheffing.' : 'Automatisch naar salaris uitzetten? (Geldt ook voor loonheffing.)')) return;
     var r = await api('/api/loonheffing', { actie: 'salaris-auto', aan: aan });
@@ -1752,7 +1789,8 @@
     var b = x.besluit;
     document.querySelectorAll('input[name="vl-besluit"]').forEach(function (r) { r.checked = !!b && r.value === b.besluit; });
     g('vl-nieuwe-eind').value = b && b.nieuweEind ? b.nieuweEind : '';
-    g('vl-advies').value = b ? (b.advies || '') : ''; g('vl-advies-opm').value = b ? (b.adviesOpmerking || '') : ''; g('vl-notitie').value = b ? (b.notitie || '') : '';
+    var sa = x.smAdvies; /* v0.28.0: advies uit de winkelmail voorinvullen */
+    g('vl-advies').value = b ? (b.advies || '') : (sa ? sa.advies : ''); g('vl-advies-opm').value = b ? (b.adviesOpmerking || '') : (sa ? sa.opmerking : ''); g('vl-notitie').value = b ? (b.notitie || '') : '';
     g('vl-mid').value = x.mid; g('vl-eind').value = x.eindIso; g('vl-start').value = x.startIso || '';
     g('vl-wis').style.display = b ? '' : 'none';
     vlToon(); g('vl-modal').classList.add('open');
