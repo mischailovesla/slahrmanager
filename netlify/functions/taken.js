@@ -205,6 +205,9 @@ exports.handler = beveiligd('taken', async (event, g) => {
   const loonVerstuurd = x => loonAl && ((x.email && loonAl.has('e:' + String(x.email).trim().toLowerCase())) || (x.naam && loonAl.has('n:' + loonAl.nn(x.naam))));
   for (const naam of ALLE_CHECKS) if (runs[naam]) {
     let items = vertrek && OVERBODIG_BIJ_ONTSLAG.has(naam) ? (runs[naam].gevonden || []).filter(x => !VT(vertrek, x)) : runs[naam].gevonden;
+    // v0.26.2: de checks draaien 's ochtends; is er daarna een ontslagbevestiging/aanzegging verstuurd, dan is de verlengingstaak klaar
+    // (behalve 'tegenstrijdig': besloten te verlengen terwijl er een brief is verstuurd — die moet juist blijven staan)
+    if (vertrek && naam === 'verlengingen') items = (items || []).filter(x => x.status === 'tegenstrijdig' || !VT(vertrek, x));
     if (naam === 'nieuwe-medewerkers') items = (items || []).filter(x => !loonVerstuurd(x));
     taken.push(...uitCheck(naam, items, runs[naam].tijd));
   }
