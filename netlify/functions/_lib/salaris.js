@@ -59,6 +59,7 @@ async function stuur(type, row, door, p) {
   const nu = D.stempel();
   await S.zetSalarisStempel(type, rij, nu);
   await vinkVerwerkt(type, rij);
+  if (type === 'ontslag') await require('./offboarding').vink({ naam: row.naam, email: row.email, mid: row.mid }, 'salaris', door, 'Naar salaris gestuurd op ' + nu); // v0.27.3
   await M.logMail({ door: door, bron: 'salaris', type, naar: C.SALARIS_EMAIL, naam: row.naam, onderwerp: subject, taal: 'NL', rij, resend_id: resendId });
   await logActie({ door: door, actie: 'mail', bron: type, veld: 'naar-salaris', rij, naam: row.naam, nieuw: nu, details: subject + ' (' + bijlagen.length + ' bijlage(n))' });
   return { bericht: bijlagen.length + ' document(en) van ' + row.naam + ' verstuurd naar ' + C.SALARIS_EMAIL + (oudeDrive.length ? '. LET OP: ' + oudeDrive.join(' en ') + ' staat nog in Google Drive en is niet meegestuurd.' : ''), rij, salaris: nu, resendId };

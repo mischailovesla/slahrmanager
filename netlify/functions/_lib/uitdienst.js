@@ -113,6 +113,8 @@ async function bevestig(r, door) {
     try { await S.zetSalarisStempel('ontslag', r.rij, D.stempel()); await require('./salaris').vinkVerwerkt('ontslag', r.rij); } catch (e) { console.warn('salaris-stempel:', e.message); }
     salaris = 'verstuurd';
   }
+  { const OB = require('./offboarding'), pp = { naam: r.naam, email: r.email, mid: r.mid }; // v0.27.3
+    await OB.vink(pp, 'bevestiging', door || null, 'Uitdiensttreding bevestigd zonder handtekening'); if (salaris === 'verstuurd') await OB.vink(pp, 'salaris', door || null, 'Naar salaris gestuurd (bevestiging uitdienst)'); }
   await S.archiveerRij(C.SHEETS.ontslag.id, 'afgerond: uitdiensttreding bevestigd (niet ondertekend)', r.rij, r.naam, door || 'signalering');
   await logActie({ door: door || 'signalering', actie: 'bevestiging-uitdienst', bron: 'ontslag', rij: r.rij, naam: r.naam, nieuw: r.email, details: 'Uitdiensttreding bevestigd zonder handtekening (' + soort + ', einddatum ' + t.eind + '); salaris: ' + salaris + '; dossier gearchiveerd' });
   return { naam: r.naam, soort, salaris, resendId: id };

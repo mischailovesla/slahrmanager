@@ -130,6 +130,11 @@ exports.handler = beveiligd('ontslag-mail', async (event, g) => {
   }
   if (p.uitstroomreden && tpl.type !== 'herinnering' && C.UITSTROOMREDENEN.includes(p.uitstroomreden)) await S.zetUitstroomreden(rij, p.uitstroomreden);
   if (pdf && tpl.type !== 'herinnering') { try { await require('./_lib/ondertekening').aanmaken({ soort: 'ontslag', type: tpl.type, titel: (tpl.type === 'aanzegging' ? (isEN ? 'Notice of non-renewal' : 'Aanzegging') : isProef ? proefLabel : (isEN ? 'Confirmation of resignation (EN)' : 'Ontslagbevestiging')) + ' - ' + naam, naam, email: to, rij, taal: tpl.taal, pdf, door: (afz.naam ? afz.naam + ' (' + g.email + ')' : g.email) }); } catch (e) { console.warn('ondertekening aanmaken:', e.message); } }
+  // v0.27.3: offboarding-checklist automatisch starten bij een ontslagbevestiging / aanzegging / proeftijdbrief
+  if (tpl.type !== 'herinnering') {
+    try { const SB = require('./_lib/shiftbase'), nn = require('./_lib/util').normNaam; const m = (await SB.getMedewerkers(false).catch(() => [])).find(x => (to && String(x.email || '').toLowerCase() === String(to).toLowerCase()) || nn(x.naam) === nn(naam));
+      await require('./_lib/offboarding').start({ naam, email: to, medewerker_id: m ? m.id : '', winkel: m ? m.winkelNaam : '' }, g.email); } catch (e) { console.warn('offboarding:', e.message); }
+  }
   await M.logMail({ door: g.email, bron: 'ontslag', type: tpl.type + (pdf ? '-pdf' : ''), naar: to, naam, onderwerp: subject, taal: tpl.taal, rij, resend_id: resendId });
   await logActie({ door: g.email, actie: 'mail', bron: 'ontslag', veld: tpl.type, rij, naam, nieuw: to, details: subject + (pdf ? ' (+PDF)' : '') });
   const wat = tpl.type === 'aanzegging' ? 'Aanzegging' + (isEN ? ' (EN)' : '') : tpl.type === 'herinnering' ? 'Herinnering' : isProef ? proefLabel : (isEN ? 'Confirmation of resignation (EN)' : 'Ontslagbevestiging');

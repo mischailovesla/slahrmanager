@@ -125,6 +125,8 @@ async function loonHerinneringen(droog) {
 // ---- 3. Ontslag-herinneringen (checkOntslagHerinneringen) ----
 async function ontslagHerinneringen(droog) {
   const rap = { naam: 'ontslag-herinneringen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  // v0.27.3: offboarding-checklists bijwerken met wat het systeem al weet (ondertekend, naar salaris, uitdienstdatum in Shiftbase)
+  if (!droog) { try { rap.offboardingAfgevinkt = await require('./offboarding').syncShiftbase(await S.getOntslag(), await require('./verloop').laadMedewerkers(false)); } catch (e) { rap.fouten.push('offboarding: ' + e.message); } }
   const vandaag = vandaag0(), id = C.SHEETS.ontslag.id;
   rap.gearchiveerd = []; rap.bevestigd = [];
   const UD = require('./uitdienst'), bevestigAan = await UD.actief();

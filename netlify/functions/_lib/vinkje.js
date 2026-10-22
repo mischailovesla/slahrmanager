@@ -17,6 +17,7 @@ async function zetVinkje(tok, refs, rijHint) {
     const ts = x => { const m = String(x.verzenddatum || '').match(/(\d{2})-(\d{2})-(\d{4})/); return m ? m[3] + m[2] + m[1] : ''; };
     const r = (rijHint && lijst.find(x => x.rij === rijHint)) || lijst.filter(x => x.ondertekend !== 'Ja').sort((a, b) => ts(b).localeCompare(ts(a)))[0] || lijst[0];
     if (r.ondertekend !== 'Ja') await S.zetCel(C.SHEETS.ontslag.id, null, r.rij, 10, 'Ja', S.KLEUR.groen);
+    await require('./offboarding').vink({ naam: r.naam, email: r.email, mid: r.mid }, 'bevestiging', null, 'Brief ondertekend retour'); // v0.27.3
     return r.rij;
   }
   if (tok.s === 'korting') {
