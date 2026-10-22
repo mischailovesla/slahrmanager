@@ -49,7 +49,7 @@
     info.bestanden.forEach(function (b) {
       var f = gekozen[b.key];
       h += '<div class="fg"><label class="kop">' + esc(taal === 'en' ? b.labelEN : b.label) + (b.verplicht ? '' : ' <span style="font-weight:400;text-transform:none">(' + tx('optioneel') + ')</span>') + '</label>'
-        + '<label class="drop' + (f ? ' ok' : '') + '" id="drop-' + b.key + '"><input type="file" data-key="' + b.key + '" accept="application/pdf,image/*"><span class="ic">' + (f ? '✓' : '📎') + '</span><span class="t">' + (f ? esc(f.name) + '<small>' + Math.round(f.size / 1024) + ' kB</small>' : tx('kies') + '<small>PDF · JPG · PNG · HEIC</small>') + '</span></label><div class="bar" id="bar-' + b.key + '"><i></i></div></div>';
+        + '<label class="drop' + (f ? ' ok' : '') + '" id="drop-' + b.key + '"><input type="file" data-key="' + b.key + '" accept="application/pdf,image/*,.xlsx,.xls,.docx,.doc,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword"><span class="ic">' + (f ? '✓' : '📎') + '</span><span class="t">' + (f ? esc(f.name) + '<small>' + Math.round(f.size / 1024) + ' kB</small>' : tx('kies') + '<small>PDF · JPG · PNG · HEIC · Excel · Word</small>') + '</span></label><div class="bar" id="bar-' + b.key + '"><i></i></div></div>';
     });
     h += '<div class="fg"><label class="kop">' + tx('email') + '</label><input type="email" id="email" placeholder="naam@voorbeeld.nl" value="' + esc((g('email') || {}).value || '') + '"></div><button class="btn" id="btn">' + tx('verstuur') + '</button>';
     g('card').innerHTML = h;
@@ -64,7 +64,7 @@
       var sb = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, { auth: { persistSession: false } });
       var klaar = [];
       for (var k in gekozen) {
-        var f = gekozen[k], mime = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.hei[cf]$/i.test(f.name) ? 'image/heic' : 'image/jpeg');
+        var f = gekozen[k], mime = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.hei[cf]$/i.test(f.name) ? 'image/heic' : /\.xlsx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : /\.xls$/i.test(f.name) ? 'application/vnd.ms-excel' : /\.docx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : /\.doc$/i.test(f.name) ? 'application/msword' : 'image/jpeg');
         var s = await post({ stap: 'start', key: k, naam: f.name, mime: mime, bytes: f.size });
         if (!s.success) throw new Error(s.bericht);
         var bar = g('bar-' + k); bar.style.display = 'block'; bar.firstChild.style.width = '30%';

@@ -272,7 +272,7 @@
     duInfo = info; duGekozen = {};
     g('du-titel').textContent = 'Document uploaden — ' + info.naam;
     g('du-lijst').innerHTML = info.bestanden.map(function (b) {
-      return '<div class="fg"><label>' + esc(b.label) + '</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + (b.drive ? '<a class="btn bd bsm" href="' + esc(b.drive) + '" target="_blank" rel="noopener">1. Open in Drive ↗</a>' : '') + '<input type="file" data-du-key="' + esc(b.key) + '" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,application/pdf,image/*" style="flex:1;min-width:220px"></div></div>';
+      return '<div class="fg"><label>' + esc(b.label) + '</label><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">' + (b.drive ? '<a class="btn bd bsm" href="' + esc(b.drive) + '" target="_blank" rel="noopener">1. Open in Drive ↗</a>' : '') + '<input type="file" data-du-key="' + esc(b.key) + '" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.webp,application/pdf,image/*,.xlsx,.xls,.docx,.doc,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword" style="flex:1;min-width:220px"></div></div>';
     }).join('');
     g('du-melding').innerHTML = ''; g('du-btn').disabled = false; g('du-btn').textContent = info.alleenUpload ? 'Uploaden' : 'Uploaden en naar salaris';
     g('du-uitleg').innerHTML = info.alleenUpload ? 'Upload hier het ondertekende document dat je van de medewerker kreeg (mail, WhatsApp of op papier gescand). Het dossier gaat op <strong>Ondertekend</strong> en daarna kun je het met <strong>→ Salaris</strong> doorsturen.' : 'Dit document is ooit via het oude Google-formulier ingestuurd en staat in Google Drive. Het dashboard kan Drive niet uitlezen. <strong>1.</strong> Open het document in Drive en download het (PDF of foto). <strong>2.</strong> Kies het bestand hieronder. Daarna gaat het mee naar de salarisadministratie en staat het voortaan in de eigen opslag.';
@@ -288,7 +288,7 @@
     try {
       var klaar = [];
       for (var i = 0; i < keys.length; i++) {
-        var k = keys[i], f = duGekozen[k], mime = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.hei[cf]$/i.test(f.name) ? 'image/heic' : 'image/jpeg');
+        var k = keys[i], f = duGekozen[k], mime = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.hei[cf]$/i.test(f.name) ? 'image/heic' : /\.xlsx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : /\.xls$/i.test(f.name) ? 'application/vnd.ms-excel' : /\.docx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : /\.doc$/i.test(f.name) ? 'application/msword' : 'image/jpeg');
         var st = await api('/api/document-upload', { stap: 'start', type: duInfo.type, rij: duInfo.rij, key: k, naam: f.name, mime: mime, bytes: f.size });
         if (!st.success) throw new Error(st.bericht);
         var up = await sb.storage.from(st.bucket).uploadToSignedUrl(st.pad, st.token, f, { contentType: mime, upsert: false });

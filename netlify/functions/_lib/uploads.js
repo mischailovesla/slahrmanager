@@ -15,7 +15,9 @@ const { normNaam } = require('./util');
 
 const BUCKET = 'hr-documenten';
 const MAX_BYTES = 15 * 1024 * 1024;
-const TOEGESTAAN = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png', 'image/heic': '.heic', 'image/heif': '.heif', 'image/webp': '.webp' };
+const TOEGESTAAN = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png', 'image/heic': '.heic', 'image/heif': '.heif', 'image/webp': '.webp',
+  // v0.25.5: ingevulde formulieren komen soms als Excel of Word terug
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx', 'application/vnd.ms-excel': '.xls', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx', 'application/msword': '.doc' };
 const SOORTEN = {
   loon:    { label: 'Loonheffingsverklaring en indiensttredingsformulier', labelEN: 'Payroll tax form and onboarding form', bestanden: [{ key: 'loon', label: 'Loonheffingsverklaring (model opgaaf gegevens voor de loonheffingen)', labelEN: 'Payroll tax statement (model opgaaf gegevens voor de loonheffingen)', verplicht: true }, { key: 'indienst', label: 'Indiensttredingsformulier', labelEN: 'Onboarding form', verplicht: false }] },
   ontslag: { label: 'Ondertekende ontslagbevestiging', labelEN: 'Signed confirmation', bestanden: [{ key: 'ontslag', label: 'Ondertekend document', labelEN: 'Signed document', verplicht: true }] },
@@ -55,7 +57,7 @@ const uploadLink = (soort, naam) => site() + '/upload.html?t=' + maakToken(soort
 const slug = s => normNaam(s).replace(/\s+/g, '_').slice(0, 40) || 'medewerker';
 const veiligeBestandsnaam = s => String(s || 'bestand').replace(/[^\w.\-]+/g, '_').slice(0, 80);
 function controleer(bestand) {
-  if (!TOEGESTAAN[bestand.mime]) throw new Error('Alleen PDF, JPG, PNG of HEIC. (' + bestand.mime + ')');
+  if (!TOEGESTAAN[bestand.mime]) throw new Error('Alleen PDF, foto (JPG/PNG/HEIC), Excel of Word. (' + bestand.mime + ')');
   if (!(bestand.bytes > 0) || bestand.bytes > MAX_BYTES) throw new Error('Bestand is te groot (max. 15 MB).');
 }
 // Stap 1: getekende upload-URL voor de browser (bestand gaat niet door de function heen)
