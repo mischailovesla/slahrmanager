@@ -51,8 +51,21 @@ async function zonderVertrekkers(lijst, rap) {
   catch (e) { if (rap) rap.fouten.push('ontslagdossiers lezen: ' + e.message); return lijst; }
 }
 
+// v0.25.7: Keuken valt onder Jop. Signalen over keukenmedewerkers gaan naar C.KEUKEN_EMAIL i.p.v. naar HR.
+const isKeuken = x => /keuken/i.test(String((x && (x.winkel || x.winkelNaam)) || ''));
+const KEUKEN = () => C.KEUKEN_EMAIL ? { to: String(C.KEUKEN_EMAIL).split(',').map(x => x.trim()).filter(Boolean), prefix: 'Keuken · ' } : null;
+const alleTeams = () => [null].concat(KEUKEN() ? [KEUKEN()] : []);
+// [ [deel, team], ... ]: team null = HR (alles behalve keuken), anders keuken -> Jop
+function teams(lijst) {
+  const out = [], hr = (lijst || []).filter(x => !isKeuken(x)), k = (lijst || []).filter(isKeuken);
+  if (hr.length) out.push([hr, null]);
+  if (k.length && KEUKEN()) out.push([k, KEUKEN()]);
+  return out;
+}
+
 // Verzendhulp: in droogloop alleen registreren
 async function mailOfDroog(rap, opts, doen) {
+  if (opts.team) { opts = Object.assign({}, opts, { to: opts.team.to, subject: opts.team.prefix + opts.subject, kort: Object.assign({}, opts.kort, { naam: 'Keuken' }) }); delete opts.team; }
   if (!actief() || rap.droog) { rap.verstuurd.push(Object.assign({ droog: true }, opts.kort)); return; }
   try {
     const id = await M.verstuur({ to: opts.to, subject: opts.subject, text: opts.text, html: opts.html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: rap.naam }] });
@@ -222,16 +235,25 @@ async function nieuweMedewerkers(droog) {
     rap.gevonden = zonderMail; // wat overblijft is nog een taak voor HR
     const meld = zonderMail.filter(p => p.fout || eersteRun);
     if (rap.droog || (!verstuurd.length && !meld.length)) return rap;
+    const _v = verstuurd, _m = meld;
+    for (const team of alleTeams()) {
+    const verstuurd = _v.filter(p => !!team === isKeuken(p)), meld = _m.filter(p => !!team === isKeuken(p));
+    if (!verstuurd.length && !meld.length) continue;
+    const naar = team ? team.to : ontvangers('nieuweMedewerkers'), pre = team ? team.prefix : '';
     const regel = p => '- ' + p.naam + ' (' + p.winkel + ', start ' + p.start + (p.deadline ? ', deadline ' + p.deadline : '') + (p.fout ? ' — FOUT: ' + p.fout : '') + ')';
     const plain = 'Hallo,\n\n' + (verstuurd.length ? 'Automatisch verstuurd (indiensttredings- en loonheffingsformulier, NL + EN):\n' + verstuurd.map(regel).join('\n') + '\n\n' : '') + (meld.length ? 'Kon NIET automatisch (geen e-mailadres in Shiftbase of fout) — handmatig versturen:\n' + meld.map(regel).join('\n') + '\n\n' : '') + '(Automatisch bericht van het SLA HR Dashboard)';
     const html = T.slaWrap(T.slaHead('#009f4b', 'HR &middot; Nieuwe medewerkers') + '<tr><td style="padding:32px 36px 28px"><pre style="' + F + 'font-size:13px;color:#333d3a;white-space:pre-wrap;margin:0">' + esc(plain) + '</pre></td></tr>' + T.slaFoot());
-    const id = await M.verstuur({ to: ontvangers('nieuweMedewerkers'), subject: 'Nieuwe medewerkers: ' + verstuurd.length + ' uitnodiging(en) automatisch verstuurd' + (meld.length ? ', ' + meld.length + ' handmatig' : ''), text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'nieuwe-medewerkers' }] }).catch(e => { rap.fouten.push('HR-overzicht: ' + e.message); return null; });
-    if (id) await M.logMail({ door: 'signalering', bron: 'signalering', type: 'nieuwe-medewerkers', naar: ontvangers('nieuweMedewerkers').join(','), naam: 'HR-team', onderwerp: 'Nieuwe medewerkers (automatisch)', taal: 'NL', rij: 0, resend_id: id });
+    const id = await M.verstuur({ to: naar, subject: pre + 'Nieuwe medewerkers: ' + verstuurd.length + ' uitnodiging(en) automatisch verstuurd' + (meld.length ? ', ' + meld.length + ' handmatig' : ''), text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'nieuwe-medewerkers' }] }).catch(e => { rap.fouten.push('HR-overzicht: ' + e.message); return null; });
+    if (id) await M.logMail({ door: 'signalering', bron: 'signalering', type: 'nieuwe-medewerkers', naar: naar.join(','), naam: 'HR-team', onderwerp: 'Nieuwe medewerkers (automatisch)', taal: 'NL', rij: 0, resend_id: id });
+    }
     return rap;
   }
   if (!eersteRun) return rap; // schakelaar uit: HR-lijstje één keer per dag, zoals voorheen
+  const _alle = nieuw;
+  for (const [nieuw, team] of teams(_alle)) {
   const plain = 'Hallo,\n\nDeze medewerkers zijn recent gestart (of starten binnenkort) volgens Shiftbase, maar hebben nog geen loonheffingsuitnodiging vanuit het HR Dashboard ontvangen:\n\n' + nieuw.map(p => '- ' + p.naam + ' (' + p.winkel + ', start ' + p.start + ')').join('\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
-  await mailOfDroog(rap, { to: ontvangers('nieuweMedewerkers'), subject: 'Nieuwe medewerkers gevonden in Shiftbase: ' + nieuw.length + ' zonder loonheffingsuitnodiging', text: plain, html: nieuweMedewerkersHtml(nieuw), kort: { naam: 'HR-team', aantal: nieuw.length } });
+  await mailOfDroog(rap, { team, to: ontvangers('nieuweMedewerkers'), subject: 'Nieuwe medewerkers gevonden in Shiftbase: ' + nieuw.length + ' zonder loonheffingsuitnodiging', text: plain, html: nieuweMedewerkersHtml(nieuw), kort: { naam: 'HR-team', aantal: nieuw.length } });
+  }
   return rap;
 }
 
@@ -333,10 +355,13 @@ async function stilleAfwezigen(droog) {
   const lijst = await zonderVertrekkers(bepaalStilleAfwezigen(med, ros, abs, vandaag, C.STIL_VENSTER_DAGEN, C.STIL_UITGESLOTEN_WINKELS), rap);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
+  const _alle = lijst;
+  for (const [lijst, team] of teams(_alle)) {
   let plain = 'Hallo,\n\nDeze actieve medewerkers hadden de afgelopen ' + C.STIL_VENSTER_DAGEN + ' dagen geen enkele ingeroosterde dienst, zonder goedgekeurd verlof en zonder toekomstige dienst in het rooster:\n', vorige = '';
   lijst.forEach(p => { if (p.winkel !== vorige) { plain += '\n' + p.winkel + ':\n'; vorige = p.winkel; } plain += '- ' + p.naam + ' - laatste dienst: ' + (p.laatsteDienst ? p.laatsteDienst + ' (' + p.dagen + ' dagen geleden)' : 'geen in de laatste ' + C.STIL_LOOKBACK_DAGEN + ' dagen' + (p.indienst ? ' (in dienst sinds ' + p.indienst + ')' : '')) + '\n'; });
   plain += '\nCheck bij de store manager wat er speelt. Blijft het stil, dan is de oproepbrief in het HR Dashboard (Sommaties) de volgende stap.\n\n(Automatisch wekelijks bericht van het SLA HR systeem)';
-  await mailOfDroog(rap, { to: ontvangers('stilleAfwezigen'), subject: 'Stille afwezigen: ' + lijst.length + ' medewerker(s) zonder dienst in ' + C.STIL_VENSTER_DAGEN + ' dagen', text: plain, html: stilHtml(lijst, C.STIL_VENSTER_DAGEN, C.STIL_LOOKBACK_DAGEN), kort: { naam: 'HR-team', aantal: lijst.length } });
+  await mailOfDroog(rap, { team, to: ontvangers('stilleAfwezigen'), subject: 'Stille afwezigen: ' + lijst.length + ' medewerker(s) zonder dienst in ' + C.STIL_VENSTER_DAGEN + ' dagen', text: plain, html: stilHtml(lijst, C.STIL_VENSTER_DAGEN, C.STIL_LOOKBACK_DAGEN), kort: { naam: 'HR-team', aantal: lijst.length } });
+  }
   return rap;
 }
 
@@ -364,10 +389,13 @@ async function weekendBeschikbaarheid(droog) {
   const lijst = await zonderVertrekkers(W.bepaalWeekendOntwijkers(med, ros, abs, vandaag, weken, C.WEEKEND_UITGESLOTEN_WINKELS), rap);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
+  const _alle = lijst;
+  for (const [lijst, team] of teams(_alle)) {
   let plain = 'Hallo,\n\nDeze medewerkers hadden de afgelopen ' + weken + ' volledige weekenden (vr t/m zo) geen enkele weekenddienst, terwijl ze in dezelfde periode wel doordeweeks werkten. Goedgekeurd verlof en net gestarte medewerkers zijn uitgefilterd:\n', vorige = '';
   lijst.forEach(p => { if (p.winkel !== vorige) { plain += '\n' + p.winkel + ':\n'; vorige = p.winkel; } plain += '- ' + p.naam + ' - ' + p.doordeweeks + ' doordeweekse dienst(en), laatste weekenddienst: ' + (p.laatsteWeekendDienst || 'niet gevonden in de laatste ' + Math.round((weken * 7 + 56) / 7) + ' weken') + '\n  Onderbouwing voor de brief: "' + p.onderbouwing + '"\n'; });
   plain += '\nLET OP: dit is gebaseerd op het rooster (ingeroosterd), niet op opgegeven beschikbaarheid. Check bij twijfel de beschikbaarheid in Shiftbase.\nVerstuur de kennisgeving via HR Dashboard -> Beschikbaarheid (de onderbouwing kun je zo overnemen).\n\n(Automatisch wekelijks bericht van het SLA HR systeem)';
-  await mailOfDroog(rap, { to: ontvangers('weekendBeschikbaarheid'), subject: 'Weekendbeschikbaarheid: ' + lijst.length + ' medewerker(s) ' + weken + ' weekenden zonder dienst (wel doordeweeks actief)', text: plain, html: weekendHtml(lijst, weken), kort: { naam: 'HR-team', aantal: lijst.length } });
+  await mailOfDroog(rap, { team, to: ontvangers('weekendBeschikbaarheid'), subject: 'Weekendbeschikbaarheid: ' + lijst.length + ' medewerker(s) ' + weken + ' weekenden zonder dienst (wel doordeweeks actief)', text: plain, html: weekendHtml(lijst, weken), kort: { naam: 'HR-team', aantal: lijst.length } });
+  }
   return rap;
 }
 
@@ -410,10 +438,13 @@ async function vakantiepieken(droog) {
   const pieken = VK.bepaalPieken(d);
   rap.gevonden = pieken;
   if (!pieken.length) return rap;
+  const _alle = pieken;
+  for (const [pieken, team] of teams(_alle)) {
   let plain = 'Hallo,\n\nIn de komende ' + C.VAKANTIE_PIEK_WEKEN + ' weken zijn er pieken van gelijktijdige afwezigheid (vakantie + stille afwezigen samen, >= ' + Math.round(C.VAKANTIE_DREMPEL_ROOD * 100) + '% van de bezetting):\n\n';
   pieken.forEach(p => { plain += '- ' + p.winkel + ' (bezetting ' + p.bezetting + '), week ' + p.week + ': ' + p.app + ' vakantie' + (p.stil ? ' + ' + p.stil + ' stil' : '') + (p.pend ? ' + ' + p.pend + ' aangevraagd' : '') + ' = ' + (p.app + p.stil + p.pend) + ' totaal\n' + (p.namen.length ? '  Vakantie: ' + p.namen.join(', ') + '\n' : '') + (p.stilNamen.length ? '  Stil: ' + p.stilNamen.join(', ') + '\n' : ''); });
   plain += '\nBekijk de volledige heatmap in HR Dashboard -> Vakantieplanner. Aanvragen die nog open staan kun je nu nog met de store manager bespreken.\n\n(Automatisch wekelijks bericht van het SLA HR systeem)';
-  await mailOfDroog(rap, { to: ontvangers('vakantiepiek'), subject: 'Afwezigheidspieken: ' + pieken.length + ' winkel-week combinatie(s) boven de drempel', text: plain, html: piekHtml(pieken), kort: { naam: 'HR-team', aantal: pieken.length } });
+  await mailOfDroog(rap, { team, to: ontvangers('vakantiepiek'), subject: 'Afwezigheidspieken: ' + pieken.length + ' winkel-week combinatie(s) boven de drempel', text: plain, html: piekHtml(pieken), kort: { naam: 'HR-team', aantal: pieken.length } });
+  }
   return rap;
 }
 
@@ -471,10 +502,15 @@ function hygieneOverzicht(med) {
 }
 async function dataHygiene(droog) {
   const rap = { naam: 'data-hygiene', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
-  const ov = hygieneOverzicht(await SB.getMedewerkers(true));
+  const _medH = await SB.getMedewerkers(true);
+  const ov = hygieneOverzicht(_medH);
   const winkels = Object.keys(ov.perWinkel).sort();
   rap.gevonden = winkels.flatMap(w => ov.perWinkel[w].map(p => ({ winkel: w, naam: p.naam, mist: [p.mistAdres ? 'adres' : '', p.mistFunctie ? 'functie' : ''].filter(Boolean).join(' + ') })));
   if (!winkels.length) return rap;
+  for (const team of alleTeams()) {
+  const ov = hygieneOverzicht(_medH.filter(m => !!team === isKeuken(m)));
+  const winkels = Object.keys(ov.perWinkel).sort();
+  if (!winkels.length) continue;
   const pct = n => Math.round(n / ov.totaal * 100);
   let plain = 'Hallo,\n\nMaandelijkse datakwaliteit-check van Shiftbase (' + ov.totaal + ' actieve medewerkers):\n- Zonder adres: ' + ov.totAdres + ' (' + pct(ov.totAdres) + '%)\n- Zonder functie: ' + ov.totFunctie + ' (' + pct(ov.totFunctie) + '%)\n\n', blokken = '';
   winkels.forEach((w, i) => {
@@ -485,9 +521,10 @@ async function dataHygiene(droog) {
     plain += '\n'; if (i < winkels.length - 1) blokken += '<div style="height:12px;line-height:12px;font-size:1px">&nbsp;</div>';
   });
   plain += 'Aanvullen kan direct in Shiftbase (medewerkerprofiel). Complete data = complete juridische brieven.\n\n(Automatisch maandelijks bericht van het SLA HR systeem)';
-  await mailOfDroog(rap, { to: ontvangers('dataHygiene'), subject: 'Shiftbase datakwaliteit: ' + ov.totAdres + 'x adres en ' + ov.totFunctie + 'x functie ontbreekt', text: plain,
+  await mailOfDroog(rap, { team, to: ontvangers('dataHygiene'), subject: 'Shiftbase datakwaliteit: ' + ov.totAdres + 'x adres en ' + ov.totFunctie + 'x functie ontbreekt', text: plain,
     html: T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Datakwaliteit Shiftbase') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">Maandelijkse check over <strong>' + ov.totaal + ' actieve medewerkers</strong>: <strong>' + ov.totAdres + '</strong> zonder adres (' + pct(ov.totAdres) + '%), <strong>' + ov.totFunctie + '</strong> zonder functie (' + pct(ov.totFunctie) + '%). Compleet aangevulde profielen betekenen complete juridische brieven vanuit het dashboard.</p>' + blokken + '<p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch maandelijks bericht - aanvullen kan direct in Shiftbase</p></td></tr>' + T.slaFoot()),
     kort: { naam: 'HR-team', aantal: rap.gevonden.length } });
+  }
   return rap;
 }
 
@@ -521,8 +558,12 @@ async function contractketen(droog) {
     const { data } = await admin().from('hr_verlenging').select('medewerker_id,contract_eind,besluit,besloten_door,besloten_op').gte('contract_eind', isoDag(vandaag0()));
     (data || []).sort((a, b) => String(a.besloten_op).localeCompare(String(b.besloten_op))).forEach(b => { const n = naamVan[String(b.medewerker_id)]; if (n) besluit[normNaam(n)] = b; });
   } catch (e) { rap.fouten.push('besluiten: ' + e.message); }
-  const mail = contractMail(lijst, aanzeg, besluit);
-  await mailOfDroog(rap, { to: ontvangers('contractketen'), subject: mail.subject, text: mail.plain, html: mail.html, kort: { naam: 'HR-team', aantal: mail.personen } });
+  for (const team of alleTeams()) {
+    const lT = lijst.filter(x => !!team === isKeuken(x)), aT = aanzeg.filter(x => !!team === isKeuken(x));
+    if (!lT.length && !aT.length) continue;
+    const mail = contractMail(lT, aT, besluit);
+    await mailOfDroog(rap, { team, to: ontvangers('contractketen'), subject: mail.subject, text: mail.plain, html: mail.html, kort: { naam: 'HR-team', aantal: mail.personen } });
+  }
   return rap;
 }
 // Eén kaart per persoon met alle contractsignalen (aanzegtermijn, keten, van rechtswege vast, proeftijd); urgentste eerst.
@@ -576,13 +617,16 @@ async function verzuim(droog) {
   const lijst = VZ.verzuimSignalen(med, periodes, vandaag);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
+  const _alle = lijst;
+  for (const [lijst, team] of teams(_alle)) {
   const items = lijst.map(x => x.soort === 'mijlpaal'
     ? { kleur: x.teLaat ? '#c0392b' : '#e8824a', titel: x.naam, sub: x.winkel + ' · ziek sinds ' + x.sinds + ' (dag ' + x.dag + ')', html: '<strong>' + esc(x.mijlpaal) + '</strong>' + (x.over > 0 ? ' — over ' + x.over + ' dagen' : x.over === 0 ? ' — <strong>vandaag</strong>' : ' — <strong style="color:#c0392b">' + (-x.over) + ' dagen geleden (nog niet vastgelegd?)</strong>') }
     : x.soort === 'frequent'
       ? { kleur: '#2980b9', titel: x.naam, sub: x.winkel, html: '<strong>Frequent verzuim:</strong> ' + x.meldingen + ' ziekmeldingen in 12 maanden (laatste ' + esc(x.laatste) + '). Plan een verzuimgesprek: wat speelt er, en wat is er nodig?' }
       : { kleur: '#888078', titel: x.naam, sub: x.winkel + ' · ziek sinds ' + x.sinds, html: 'Lopend verzuim, dag ' + x.dag + '. Houd contact (wekelijks) en leg afspraken vast in het dossier.' });
   const plain = 'Hallo,\n\nVerzuimsignalen:\n' + lijst.map(x => '- ' + x.naam + ' (' + x.winkel + '): ' + (x.soort === 'mijlpaal' ? x.mijlpaal + (x.over >= 0 ? ' over ' + x.over + ' dagen' : ' ' + (-x.over) + ' dagen geleden') : x.soort === 'frequent' ? 'frequent verzuim (' + x.meldingen + 'x in 12 mnd)' : 'lopend verzuim dag ' + x.dag)).join('\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
-  await mailOfDroog(rap, { to: ontvangers('verzuim'), subject: 'Verzuim: ' + lijst.filter(x => x.soort === 'mijlpaal').length + ' Poortwachter-mijlpa(a)l(en), ' + lijst.filter(x => x.soort === 'frequent').length + 'x frequent verzuim', text: plain, html: blokMail('#e8824a', 'HR &middot; Verzuim &amp; Poortwachter', 'Op basis van de ziekmeldingen in Shiftbase (status goedgekeurd; periodes korter dan 4 weken uit elkaar tellen als één ziektegeval):', items, 'Mijlpalen uit de Wet verbetering poortwachter: week 6 probleemanalyse (bedrijfsarts), week 8 plan van aanpak, week 42 UWV-melding, week 52 eerstejaarsevaluatie. Een onvolledig dossier kan een loonsanctie van UWV opleveren.', 'Dagelijkse verzuimcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
+  await mailOfDroog(rap, { team, to: ontvangers('verzuim'), subject: 'Verzuim: ' + lijst.filter(x => x.soort === 'mijlpaal').length + ' Poortwachter-mijlpa(a)l(en), ' + lijst.filter(x => x.soort === 'frequent').length + 'x frequent verzuim', text: plain, html: blokMail('#e8824a', 'HR &middot; Verzuim &amp; Poortwachter', 'Op basis van de ziekmeldingen in Shiftbase (status goedgekeurd; periodes korter dan 4 weken uit elkaar tellen als één ziektegeval):', items, 'Mijlpalen uit de Wet verbetering poortwachter: week 6 probleemanalyse (bedrijfsarts), week 8 plan van aanpak, week 42 UWV-melding, week 52 eerstejaarsevaluatie. Een onvolledig dossier kan een loonsanctie van UWV opleveren.', 'Dagelijkse verzuimcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
+  }
   return rap;
 }
 
@@ -599,10 +643,14 @@ async function jeugd(droog) {
   rap.gevonden = atw.concat(vj);
   rap.zonderGeboortedatum = med.filter(m => m.leeftijd == null).length;
   if (!rap.gevonden.length) return rap;
+  const _alle = atw.concat(vj);
+  for (const [_deel, team] of teams(_alle)) {
+  const atw = _deel.filter(x => x.soort === 'atw'), vj = _deel.filter(x => x.soort === 'verjaardag');
   const items = atw.map(x => ({ kleur: '#c0392b', titel: x.naam + ' (' + x.leeftijd + ')', sub: x.winkel + ' · ' + x.datum + (x.dienst ? ' · ' + x.dienst : ''), html: '<strong>Rooster past niet bij de Arbeidstijdenwet:</strong> ' + esc(x.wat) + '. Regel: ' + esc(x.regel) + '.' }))
     .concat(vj.map(x => ({ kleur: '#009f4b', titel: x.naam, sub: x.winkel + ' · wordt ' + x.wordt + ' op ' + x.op + (x.over === 0 ? ' (vandaag)' : ' (over ' + x.over + ' dagen)'), html: 'Minimumjeugdloon stijgt per die datum — doorgeven aan de salarisadministratie (' + esc(C.SALARIS_EMAIL) + ').' })));
   const plain = 'Hallo,\n\n' + (atw.length ? 'Arbeidstijdenwet (<18):\n' + atw.map(x => '- ' + x.naam + ' (' + x.leeftijd + ', ' + x.winkel + ') ' + x.datum + ': ' + x.wat).join('\n') + '\n\n' : '') + (vj.length ? 'Verjaardagen (minimumjeugdloon):\n' + vj.map(x => '- ' + x.naam + ' (' + x.winkel + ') wordt ' + x.wordt + ' op ' + x.op).join('\n') + '\n\n' : '') + '(Automatisch bericht van het SLA HR Dashboard)';
-  await mailOfDroog(rap, { to: ontvangers('jeugd'), subject: 'Jeugd: ' + atw.length + ' roosterafwijking(en) ATW, ' + vj.length + ' verjaardag(en) minimumjeugdloon', text: plain, html: blokMail('#2980b9', 'HR &middot; Jeugd: rooster &amp; jeugdloon', 'Medewerkers onder de 18 en verjaardagen tot en met ' + C.JEUGD_LOON_MAX_LEEFTIJD + ' jaar in de komende ' + C.JEUGD_VERJAARDAG_DAGEN + ' dagen:', items, 'Roosterafwijkingen: pas het rooster in Shiftbase aan vóór de dienst. Verjaardagen: het wettelijk minimumjeugdloon geldt vanaf de verjaardag zelf; de salarisadministratie moet dit per loonrun verwerken.' + (rap.zonderGeboortedatum ? ' Let op: bij ' + rap.zonderGeboortedatum + ' medewerker(s) ontbreekt de geboortedatum in Shiftbase.' : ''), 'Wekelijkse jeugdcheck'), kort: { naam: 'HR-team', aantal: rap.gevonden.length } });
+  await mailOfDroog(rap, { team, to: ontvangers('jeugd'), subject: 'Jeugd: ' + atw.length + ' roosterafwijking(en) ATW, ' + vj.length + ' verjaardag(en) minimumjeugdloon', text: plain, html: blokMail('#2980b9', 'HR &middot; Jeugd: rooster &amp; jeugdloon', 'Medewerkers onder de 18 en verjaardagen tot en met ' + C.JEUGD_LOON_MAX_LEEFTIJD + ' jaar in de komende ' + C.JEUGD_VERJAARDAG_DAGEN + ' dagen:', items, 'Roosterafwijkingen: pas het rooster in Shiftbase aan vóór de dienst. Verjaardagen: het wettelijk minimumjeugdloon geldt vanaf de verjaardag zelf; de salarisadministratie moet dit per loonrun verwerken.' + (rap.zonderGeboortedatum ? ' Let op: bij ' + rap.zonderGeboortedatum + ' medewerker(s) ontbreekt de geboortedatum in Shiftbase.' : ''), 'Wekelijkse jeugdcheck'), kort: { naam: 'HR-team', aantal: rap.gevonden.length } });
+  }
   return rap;
 }
 
@@ -619,9 +667,12 @@ async function oproepaanbod(droog) {
   const lijst = await zonderVertrekkers(OP.oproepSignalen(med, per, ros, laatste, vandaag), rap);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
+  const _alle = lijst;
+  for (const [lijst, team] of teams(_alle)) {
   const items = lijst.map(x => ({ kleur: x.teLaat ? '#c0392b' : '#e8824a', titel: x.naam, sub: x.winkel + ' · oproep sinds ' + x.sinds + ' (' + x.contractType + ')', html: '12-maandsgrens <strong>' + esc(x.grens) + '</strong>' + (x.teLaat ? ' — <strong style="color:#c0392b">' + (-x.over) + ' dagen verstreken</strong>; de medewerker kan loon claimen over niet-aangeboden uren' : ' — over ' + x.over + ' dagen') + '. Gemiddeld <strong>' + x.gemPerWeek + ' u/week</strong> (' + x.diensten + ' diensten, ' + esc(x.periode) + ').' + (x.laatsteAanbod ? ' Laatste aanbod: ' + esc(x.laatsteAanbod) + ' (herhaling na 12 maanden).' : '') }));
   const plain = 'Hallo,\n\nOproepkrachten die een aanbod vaste arbeidsomvang moeten krijgen (art. 7:628a lid 5 BW):\n' + lijst.map(x => '- ' + x.naam + ' (' + x.winkel + '): grens ' + x.grens + ', gemiddeld ' + x.gemPerWeek + ' u/week').join('\n') + '\n\nVerstuur het aanbod via HR Dashboard → In dienst → Oproepaanbod.\n\n(Automatisch bericht van het SLA HR Dashboard)';
-  await mailOfDroog(rap, { to: ontvangers('oproepaanbod'), subject: 'Oproepaanbod: ' + lijst.length + ' medewerker(s) bereiken de 12-maandsgrens' + (lijst.some(x => x.teLaat) ? ' (' + lijst.filter(x => x.teLaat).length + ' al verstreken)' : ''), text: plain, html: blokMail('#e8824a', 'HR &middot; Aanbod vaste arbeidsomvang', 'Deze oproepkrachten werken (bijna) 12 maanden op oproepbasis. De wet verplicht binnen een maand een schriftelijk aanbod van ten minste het gemiddelde aantal uren:', items, 'Verstuur het aanbod met brief + PDF via <strong>In dienst &rarr; Oproepaanbod</strong>. De medewerker mag weigeren; dan volgend jaar opnieuw aanbieden. Contracttype-herkenning via OPROEP_TREFWOORDEN in config.js.', 'Wekelijkse oproepcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
+  await mailOfDroog(rap, { team, to: ontvangers('oproepaanbod'), subject: 'Oproepaanbod: ' + lijst.length + ' medewerker(s) bereiken de 12-maandsgrens' + (lijst.some(x => x.teLaat) ? ' (' + lijst.filter(x => x.teLaat).length + ' al verstreken)' : ''), text: plain, html: blokMail('#e8824a', 'HR &middot; Aanbod vaste arbeidsomvang', 'Deze oproepkrachten werken (bijna) 12 maanden op oproepbasis. De wet verplicht binnen een maand een schriftelijk aanbod van ten minste het gemiddelde aantal uren:', items, 'Verstuur het aanbod met brief + PDF via <strong>In dienst &rarr; Oproepaanbod</strong>. De medewerker mag weigeren; dan volgend jaar opnieuw aanbieden. Contracttype-herkenning via OPROEP_TREFWOORDEN in config.js.', 'Wekelijkse oproepcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
+  }
   return rap;
 }
 
@@ -736,6 +787,7 @@ async function salaris(droog) {
   const rap = { naam: 'salaris', gevonden: [], verstuurd: [], fouten: [], handmatig: [], droog: !!droog || !actief() };
   if ((await require('./instellingen').lees('salaris_auto', false)) !== true) { rap.gepauzeerd = true; return rap; }
   const SAL = require('./salaris'), U = require('./uploads');
+  const medW = {}; try { (await SB.getMedewerkers()).forEach(m => { medW[normNaam(m.naam)] = m.winkelNaam; }); } catch (e) { /* zonder winkel gaat alles naar HR */ }
   // Veiligheidsgrens: alleen dossiers van de laatste SALARIS_AUTO_DAGEN (verzenddatum), en niet al door Mahdia als verwerkt
   // aangevinkt — zo gaan oude dossiers van vóór het stempel (Apps Script-tijd) niet alsnog dubbel naar salaris.
   const vanaf = C.SALARIS_AUTO_VANAF ? new Date(C.SALARIS_AUTO_VANAF + 'T00:00:00') : null;
@@ -757,7 +809,7 @@ async function salaris(droog) {
     let lijst = [];
     try { lijst = (await SAL.lijstVan(type)).filter(klaar[type]); } catch (e) { rap.fouten.push(type + ': ' + e.message); continue; }
     for (const r of lijst) {
-      const item = { type, naam: r.naam, rij: r.rij };
+      const item = { type, naam: r.naam, rij: r.rij, winkel: medW[normNaam(r.naam)] || '' };
       const oud = [r.docUrl, r.docUrl2].filter(u => u && !U.isRef(u));
       if (oud.length) { rap.handmatig.push(Object.assign({ reden: 'document staat nog in Google Drive (oud formulier)' }, item)); continue; }
       rap.gevonden.push(item);
@@ -770,15 +822,18 @@ async function salaris(droog) {
     }
   }
   // Kort overzicht aan HR (alleen als er iets is gebeurd of handmatig moet)
-  if (!rap.droog && (rap.verstuurd.length || rap.handmatig.length || rap.fouten.length)) {
+  for (const team of alleTeams()) {
+  const V = rap.verstuurd.filter(x => !!team === isKeuken(x)), H = rap.handmatig.filter(x => !!team === isKeuken(x)), Fo = team ? [] : rap.fouten;
+  if (!rap.droog && (V.length || H.length || Fo.length)) {
     const lbl = { loonheffing: 'Loonheffing/indiensttreding', ontslag: 'Ontslag/aanzegging (ondertekend)', korting: 'Loonheffingskorting', overplaatsing: 'Overplaatsing' };
     const regel = x => '- ' + (lbl[x.type] || x.type) + ': ' + x.naam + (x.reden ? ' — ' + x.reden : '');
-    const plain = 'Hallo,\n\nAutomatisch naar de salarisadministratie (' + C.SALARIS_EMAIL + ') gestuurd:\n' + (rap.verstuurd.length ? rap.verstuurd.map(regel).join('\n') : '- niets') + '\n\n'
-      + (rap.handmatig.length ? 'Kon niet automatisch — graag handmatig via de knop "→ Salaris":\n' + rap.handmatig.map(regel).join('\n') + '\n\n' : '')
-      + (rap.fouten.length ? 'Fouten:\n' + rap.fouten.map(f => '- ' + f).join('\n') + '\n\n' : '') + '(Automatisch bericht van het SLA HR Dashboard, maandag en donderdag)';
+    const plain = 'Hallo,\n\nAutomatisch naar de salarisadministratie (' + C.SALARIS_EMAIL + ') gestuurd:\n' + (V.length ? V.map(regel).join('\n') : '- niets') + '\n\n'
+      + (H.length ? 'Kon niet automatisch — graag handmatig via de knop "→ Salaris":\n' + H.map(regel).join('\n') + '\n\n' : '')
+      + (Fo.length ? 'Fouten:\n' + Fo.map(f => '- ' + f).join('\n') + '\n\n' : '') + '(Automatisch bericht van het SLA HR Dashboard, maandag en donderdag)';
     const html = T.slaWrap(T.slaHead('#2b6cb0', 'HR &middot; Naar salaris') + '<tr><td style="padding:32px 36px 28px"><pre style="' + F + 'font-size:13px;color:#333d3a;white-space:pre-wrap;margin:0">' + esc(plain) + '</pre></td></tr>' + T.slaFoot());
-    try { await M.verstuur({ to: ontvangers('salaris'), subject: 'Naar salaris: ' + rap.verstuurd.length + ' dossier(s) verstuurd' + (rap.handmatig.length ? ', ' + rap.handmatig.length + ' handmatig' : ''), text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'salaris' }] }); }
+    try { await M.verstuur({ to: team ? team.to : ontvangers('salaris'), subject: (team ? team.prefix : '') + 'Naar salaris: ' + V.length + ' dossier(s) verstuurd' + (H.length ? ', ' + H.length + ' handmatig' : ''), text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'salaris' }] }); }
     catch (e) { rap.fouten.push('HR-overzicht: ' + e.message); }
+  }
   }
   return rap;
 }

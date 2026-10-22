@@ -31,6 +31,8 @@ module.exports = {
   ONTSLAG_ARCHIVEER_DAGEN: 30,
 
   // Signaleringen (uit Shiftbase.gs v9.4) — stap 4
+  // v0.25.7: Keuken valt onder Jop — signalen over keukenmedewerkers gaan naar hem i.p.v. naar HR
+  KEUKEN_EMAIL: 'jop@ilovesla.com',
   SIGNALERING_ONTVANGERS: {
     nieuweMedewerkers: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     salaris: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
