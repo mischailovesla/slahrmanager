@@ -514,12 +514,20 @@ async function contractketen(droog) {
   const lijst = await zonderVertrekkers(KT.contractSignalen(med, per, vandaag0(), corr || {}), rap);
   rap.gevonden = lijst; rap.aanzeg = aanzeg.length;
   if (!lijst.length && !aanzeg.length) return rap;
-  const mail = contractMail(lijst, aanzeg);
+  // Vastgelegde besluiten (tab Verlengingen) per naam: dan geen alarm meer, maar de vervolgstap
+  const besluit = {};
+  try {
+    const naamVan = {}; med.forEach(m => { naamVan[String(m.id)] = m.naam; });
+    const { data } = await admin().from('hr_verlenging').select('medewerker_id,contract_eind,besluit,besloten_door,besloten_op').gte('contract_eind', isoDag(vandaag0()));
+    (data || []).sort((a, b) => String(a.besloten_op).localeCompare(String(b.besloten_op))).forEach(b => { const n = naamVan[String(b.medewerker_id)]; if (n) besluit[normNaam(n)] = b; });
+  } catch (e) { rap.fouten.push('besluiten: ' + e.message); }
+  const mail = contractMail(lijst, aanzeg, besluit);
   await mailOfDroog(rap, { to: ontvangers('contractketen'), subject: mail.subject, text: mail.plain, html: mail.html, kort: { naam: 'HR-team', aantal: mail.personen } });
   return rap;
 }
 // Eén kaart per persoon met alle contractsignalen (aanzegtermijn, keten, van rechtswege vast, proeftijd); urgentste eerst.
-function contractMail(lijst, aanzeg) {
+function contractMail(lijst, aanzeg, besluit) {
+  besluit = besluit || {};
   const P = {}, pers = x => { const k = normNaam(x.naam) || x.naam; return P[k] || (P[k] = { naam: x.naam, winkel: x.winkel || '-', regels: [], plain: [], score: 9, kleur: '#009f4b', eind: '', dagenTotEinde: null }); };
   const zet = (p, score, kleur) => { if (score < p.score) { p.score = score; p.kleur = kleur; } };
   for (const a of aanzeg) {
@@ -534,12 +542,20 @@ function contractMail(lijst, aanzeg) {
     else if (x.soort === 'keten') { zet(p, x.vol ? 2 : 3, x.vol ? '#c0392b' : '#e8824a'); if (!p.eind) { p.eind = x.einddatum; p.dagenTotEinde = x.dagenTotEinde; } p.regels.push((x.vol ? '<strong style="color:#c0392b">Keten vol</strong> &mdash; ' : '<strong>Keten</strong> &mdash; ') + esc(x.reden) + ' (' + x.aantal + ' contract(en), ' + x.maanden + ' maanden).' + (x.vol ? ' Verlengen kan alleen als <strong>onbepaalde tijd</strong>; anders aanzeggen.' : ' Het volgende contract is het laatste tijdelijke; daarna wordt het vast.')); p.plain.push((x.vol ? 'keten vol: ' : 'keten: ') + x.reden); }
     else { zet(p, x.dagenTotEinde <= 7 ? 1 : 3, '#2980b9'); p.inDienst = x.start; p.regels.push('<strong style="color:#2980b9">Proeftijd</strong> (indien schriftelijk overeengekomen) eindigt op <strong>' + esc(x.proeftijdEinde) + '</strong>' + (x.dagenTotEinde >= 0 ? ' &mdash; over ' + x.dagenTotEinde + ' dagen' : ' &mdash; <strong style="color:#c0392b">verstreken</strong>') + '. Gesprek en beslissing vóór die datum; proeftijdontslag daarna is niet meer mogelijk.'); p.plain.push('proeftijd eindigt ' + x.proeftijdEinde + (x.dagenTotEinde < 0 ? ' (verstreken)' : '')); }
   }
+  // Besluit vastgelegd? Dan vervangt de vervolgstap de aanzeg-/ketenregels.
+  for (const k of Object.keys(P)) {
+    const b = besluit[k]; if (!b) continue; const p = P[k], door = b.besloten_door ? ' (vastgelegd door ' + esc(String(b.besloten_door).split('@')[0]) + ')' : '';
+    const proef = p.regels.filter(r => /Proeftijd/.test(r)), dl = p.dl;
+    if (b.besluit === 'zelf-opgezegd') { p.regels = ['<strong style="color:#9a4a1a">Medewerker stopt zelf</strong>' + door + ' &mdash; verstuur nog de <strong>ontslagbevestiging</strong> en laat die digitaal ondertekenen; dan verdwijnt de melding.']; p.plain = ['medewerker stopt zelf: ontslagbevestiging nog versturen']; p.score = 1; p.kleur = '#e8824a'; }
+    else if (b.besluit === 'niet-verlengen') { p.regels = ['<strong style="color:#9a4a1a">Besloten: niet verlengen</strong>' + door + ' &mdash; verstuur de <strong>aanzegging</strong>' + (dl != null ? (dl < 0 ? ' (deadline al ' + (-dl) + ' dagen verstreken)' : ' (deadline over ' + dl + ' dagen)') : '') + '.']; p.plain = ['besloten niet verlengen: aanzegging nog versturen']; p.score = dl != null && dl < 0 ? 0 : 1; p.kleur = dl != null && dl < 0 ? '#c0392b' : '#e8824a'; }
+    else if (/^verlengen/.test(b.besluit)) { p.regels = ['<strong style="color:#006b30">Besloten: ' + (b.besluit === 'verlengen-vast' ? 'vast contract' : 'verlengen') + '</strong>' + door + ' &mdash; zet het nieuwe contract in Shiftbase; dan verdwijnt de melding.'].concat(proef); p.plain = ['besloten verlengen: contract nog in Shiftbase zetten']; p.score = 3; p.kleur = '#009f4b'; }
+  }
   const alle = Object.values(P).sort((a, b) => a.score - b.score || (a.dl != null ? a.dl : 999) - (b.dl != null ? b.dl : 999) || (a.dagenTotEinde != null ? a.dagenTotEinde : 999) - (b.dagenTotEinde != null ? b.dagenTotEinde : 999) || a.naam.localeCompare(b.naam, 'nl'));
   const sub = p => p.winkel + (p.eind ? ' · contract eindigt ' + p.eind + (p.verlengd ? ', verlengd t/m ' + p.verlengd : p.dagenTotEinde != null ? ' (over ' + p.dagenTotEinde + ' dagen)' : '') : p.inDienst ? ' · in dienst ' + p.inDienst : '');
   const kaart = p => '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px"><tr><td style="padding:14px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid ' + p.kleur + '"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 6px">' + esc(p.naam) + ' <span style="font-weight:400;color:#888078;font-size:12px">&middot; ' + esc(sub(p)) + '</span></p>' + p.regels.map(r => '<p style="' + F + 'font-size:12px;color:#555;margin:0 0 4px;line-height:1.6">' + r + '</p>').join('') + '</td></tr></table>';
   const kop = t => '<p style="' + F + 'font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888078;margin:18px 0 8px">' + t + '</p>';
   const nu = alle.filter(p => p.score <= 1), later = alle.filter(p => p.score > 1);
-  const teLaat = aanzeg.filter(a => a.dagenTotDeadline < 0).length, nKeten = lijst.filter(x => x.soort !== 'proeftijd').length, nProef = lijst.filter(x => x.soort === 'proeftijd').length;
+  const teLaat = alle.filter(p => p.score === 0).length, nKeten = lijst.filter(x => x.soort !== 'proeftijd').length, nProef = lijst.filter(x => x.soort === 'proeftijd').length;
   const delen = [teLaat ? teLaat + ' aanzegdeadline(s) verstreken' : '', nu.length ? nu.length + ' actie deze week' : '', alle.length + ' medewerker(s)'].filter(Boolean);
   const subject = (teLaat ? '⚠ ' : '') + 'Contracten: ' + delen.join(' · ');
   const intro = 'Alle contractsignalen van vandaag, <strong>één kaart per medewerker</strong>: aanzegtermijnen (contract loopt binnen ' + C.AANZEG_VENSTER_DAGEN + ' dagen af zonder verstuurde aanzegging, art. 7:668 BW), ketenregeling (na ' + C.KETEN_MAX_CONTRACTEN + ' tijdelijke contracten of ' + C.KETEN_MAX_MAANDEN + ' maanden volgt onbepaalde tijd, art. 7:668a BW) en proeftijden (art. 7:652 BW).' + ' <span style="color:#888078">(' + aanzeg.length + ' zonder aanzegging · ' + nKeten + ' ketensignaal · ' + nProef + ' proeftijd)</span>';
