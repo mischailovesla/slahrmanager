@@ -28,7 +28,7 @@ exports.handler = async (event) => {
     }
     if (p.stap === 'teken') {
       const res = await ON.teken(tok, p, { ip, ua });
-      let rij = 0; try { rij = await zetVinkje(tok, res.reg.refs); } catch (e) { console.warn('teken vinkje:', e.message); }
+      let rij = 0; try { rij = await zetVinkje(tok, res.reg.refs, res.r && res.r.rij); } catch (e) { console.warn('teken vinkje:', e.message); }
       await logActie({ door: 'ondertekening:' + tok.n, actie: 'ondertekend', bron: tok.s, veld: res.r.type || tok.s, rij, naam: tok.n, nieuw: res.reg.id, details: res.r.titel + ' · digitaal ondertekend ' + res.tijd + ' · SHA-256 ' + res.hash.slice(0, 16) + '…' + (ip ? ' · ' + ip : '') });
       return json(200, { success: true, tijd: res.tijd, hash: res.hash });
     }

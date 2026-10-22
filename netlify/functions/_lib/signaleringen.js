@@ -131,8 +131,13 @@ async function ontslagHerinneringen(droog) {
   // rijen die HR zelf uit het archief heeft teruggezet niet opnieuw automatisch archiveren
   const teruggezet = {};
   try { const { data } = await admin().from('hr_acties').select('rij').eq('actie', 'herstel').eq('bron', 'ontslag').limit(1000); (data || []).forEach(a => { teruggezet[a.rij] = true; }); } catch (e) { /* tabel/kolom ontbreekt: dan niets uitzonderen */ }
+  // v0.25.14: ook geen herinnering als er al een getekend document binnen is (na het versturen) of de digitale ondertekening klaar is
+  let getekendDigitaal = new Map();
+  try { const { data } = await admin().from('hr_ondertekening').select('naam,soort,status,getekend_op').eq('soort', 'ontslag').eq('status', 'getekend').limit(2000); getekendDigitaal = new Map(); (data || []).forEach(x => { const k = normNaam(x.naam), d = String(x.getekend_op || '').slice(0, 10); if (!getekendDigitaal.has(k) || getekendDigitaal.get(k) < d) getekendDigitaal.set(k, d); }); } catch (e) { /* tabel ontbreekt */ }
   for (const r of await S.getOntslag()) {
-    if (r.ondertekend === 'Ja' || !r.verzenddatum) continue;
+    if (r.ondertekend === 'Ja' || !r.verzenddatum || r.docUrl) continue;
+    const gd = getekendDigitaal.get(normNaam(r.naam)), vz = String(r.verzenddatum || '').match(/(\d{2})-(\d{2})-(\d{4})/);
+    if (gd && vz && gd >= vz[3] + '-' + vz[2] + '-' + vz[1]) { rap.overgeslagen = (rap.overgeslagen || 0) + 1; continue; }
     const sindsVerzonden = dagenSinds(r.verzenddatum, vandaag);
     // na ONTSLAG_ARCHIVEER_DAGEN zonder handtekening: automatisch archiveren, geen herinneringen meer
     if (sindsVerzonden !== null && sindsVerzonden >= C.ONTSLAG_ARCHIVEER_DAGEN && !teruggezet[r.rij]) {
