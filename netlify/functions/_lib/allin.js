@@ -6,7 +6,10 @@
 // ============================================================
 const { normNaam } = require('./util');
 
-const IS_MANAGER = f => /manager/i.test(String(f || ''));
+// v0.27.2 (Mischa, 22-10-2026): ook OPS (operations) is leidinggevend. MTO-groep blijft alleen 'manager' (mto.js).
+const IS_MANAGER = f => /manager|\bops\b/i.test(String(f || ''));
+// Geen all-in-contract: leidinggevenden én de keuken (normaal contract met vakantiedagen)
+const GEEN_ALLIN = m => !!m && (IS_MANAGER(m.functie) || /keuken/i.test(String(m.winkelNaam || '')));
 
 // [all-in tekst, manager-tekst] — exact zoals in brieftemplates.js / uitdienst.js / sjablonen.js
 const PAREN = [
@@ -33,11 +36,11 @@ async function isManager({ email, naam } = {}) {
     const med = await SB.getMedewerkers();
     const e = String(email || '').trim().toLowerCase(), n = normNaam(naam || '');
     const m = (e && med.find(x => String(x.email || '').toLowerCase() === e)) || (n && med.find(x => normNaam(x.naam) === n)) || null;
-    return !!(m && IS_MANAGER(m.functie));
+    return GEEN_ALLIN(m);
   } catch (err) { console.warn('allin.isManager:', err.message); return false; }
 }
 
 // Tekst aanpassen als het een manager is
 async function pasAan(tekst, wie) { return (await isManager(wie)) ? voorManager(tekst) : tekst; }
 
-module.exports = { IS_MANAGER, voorManager, isManager, pasAan, PAREN };
+module.exports = { GEEN_ALLIN, IS_MANAGER, voorManager, isManager, pasAan, PAREN };
