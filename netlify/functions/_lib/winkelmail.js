@@ -6,6 +6,7 @@
 //   3. Nieuwe medewerkers      — start deze week; welkomstcollectie Academy nog niet af
 //   4. Vertrek                 — laatste werkdag deze of volgende week (+ sleutels/kleding innemen)
 //   5. Jubilea                 — volgende week 1, 2, 5, 10… jaar in dienst
+//   5b. Verjaardagen           — deze week jarig (v0.28.1; alleen naam + dag, geen leeftijd)
 //   6. Cijfers                 — bestand, in-/uitstroom en verloop (3 maanden) naast SLA
 // Bewust NIET: verzuim per persoon, check-in-antwoorden, exit-redenen, inhoud van brieven (AVG).
 // Instelling 'winkelmail' (hr_instellingen): { aan, proef, adressen: { winkel: e-mail }, uit: [winkel] }
@@ -47,7 +48,7 @@ function bouw(data, winkel) {
   const winkelVan = maakWinkelVan(data.med);
   const inWinkel = r => winkelVan(r) === w;
   const dagenSinds = s => { const d = parseNLDatum(String(s || '').split(' ')[0]); return d ? Math.round((v - d) / 864e5) : null; };
-  const b = { wacht: [], contracten: [], nieuw: [], vertrek: [], jubilea: [], cijfers: null };
+  const b = { wacht: [], contracten: [], nieuw: [], vertrek: [], jubilea: [], jarig: [], cijfers: null };
 
   // 1. wacht op de medewerker
   for (const r of data.ontslag || []) {
@@ -99,12 +100,22 @@ function bouw(data, winkel) {
   // 5. jubilea volgende week
   for (const j of data.jubilea || []) if (j.winkel === w) b.jubilea.push({ naam: j.naam, wat: j.jaren + ' jaar in dienst op ' + dagNaam(j.datum), tip: '' });
 
+  // 5b. verjaardagen deze week (vandaag t/m zondag; mail gaat op maandag) — m.verjaardag = volgende verjaardag (jjjj-mm-dd)
+  const zondag = plus(v, (7 - v.getDay()) % 7);
+  for (const m of data.med || []) {
+    if (m.winkelNaam !== w || !m.verjaardag) continue;
+    const vm = String(m.verjaardag).match(/^(\d{4})-(\d{2})-(\d{2})/); if (!vm) continue;
+    const d = new Date(+vm[1], +vm[2] - 1, +vm[3]); if (d < v || d > zondag) continue;
+    b.jarig.push({ naam: m.naam, wat: 'Jarig op ' + dagNaam(d), datum: d });
+  }
+  b.jarig.sort((a, c) => a.datum - c.datum);
+
   // 6. cijfers
   if (data.cijfers) {
     const wv = (data.cijfers.winkels || []).find(x => x.naam === w), t = data.cijfers.totaal;
     if (wv) b.cijfers = { periode: data.cijfers.periode, bestand: wv.bestandEind, instroom: wv.instroom, uitstroom: wv.uitstroom, verloop: wv.verloop, slaVerloop: t ? t.verloop : null };
   }
-  b.leeg = !b.wacht.length && !b.contracten.length && !b.nieuw.length && !b.vertrek.length && !b.jubilea.length;
+  b.leeg = !b.wacht.length && !b.contracten.length && !b.nieuw.length && !b.vertrek.length && !b.jubilea.length && !b.jarig.length;
   return b;
 }
 
@@ -139,6 +150,7 @@ function html(winkel, b, opts) {
     + blok('Nieuwe medewerkers', '#009f4b', b.nieuw.map(x => ({ naam: x.naam, html: esc(x.wat), tip: x.tip })))
     + blok('Vertrek', '#888078', b.vertrek.map(x => ({ naam: x.naam, html: esc(x.wat), tip: x.tip })))
     + blok('Jubilea volgende week', '#009f4b', b.jubilea.map(x => ({ naam: x.naam, html: esc(x.wat), tip: 'Laat het niet ongemerkt voorbijgaan: een kaartje of iets lekkers doet veel.' })))
+    + blok('Jarig deze week', '#e8824a', b.jarig.map(x => ({ naam: x.naam, html: '🎂 ' + esc(x.wat), tip: '' })), 'Even feliciteren op de vloer of in de groepsapp maakt verschil.')
     + c;
   const intro = b.leeg ? 'Deze week staat er niets open voor ' + esc(winkel) + '. Goed bezig!' : 'Dit speelt er deze week in <strong>' + esc(winkel) + '</strong>:';
   return T.slaWrap(T.slaHead('#009f4b', 'HR &middot; Weekoverzicht ' + esc(winkel)) + '<tr><td style="padding:30px 34px 26px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 12px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0">' + intro + '</p>'
@@ -152,6 +164,7 @@ function plain(winkel, b) {
   lijst('Nieuwe medewerkers', b.nieuw, x => '- ' + x.naam + ': ' + x.wat);
   lijst('Vertrek', b.vertrek, x => '- ' + x.naam + ': ' + x.wat);
   lijst('Jubilea volgende week', b.jubilea, x => '- ' + x.naam + ': ' + x.wat);
+  lijst('Jarig deze week', b.jarig, x => '- ' + x.naam + ': ' + x.wat);
   return 'Hallo,\n\n' + (b.leeg ? 'Deze week staat er niets open voor ' + winkel + '.' : 'Dit speelt er deze week in ' + winkel + ':') + '\n' + r.join('\n') + '\n\nVragen? Mail HR (hr@ilovesla.com). Niet doorsturen (persoonsgegevens).\n\n(Automatisch weekoverzicht van het SLA HR Dashboard)';
 }
 
