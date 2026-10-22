@@ -33,8 +33,18 @@ function heleMaanden(startIso, eindIso) {
   for (let k = 1; k <= 60; k++) { const t = plusMaanden(s, k), d = dagen(t, e); if (Math.abs(d) <= TOLERANTIE) return !toegestaan || toegestaan.includes(k) ? k : 0; if (d < -TOLERANTIE) break; }
   return 0;
 }
-const loondatum = iso => /-(01-01|07-01)$/.test(String(iso || ''));
-function overeenkomsten(contracten) {
+// Loonknip: 01-01, 01-07 of (v0.26.4) rond de verjaardag (jeugdloon stijgt op de verjaardag; Shiftbase knipt dan het contract).
+// verjaardag = 'JJJJ-MM-DD' (volgende verjaardag uit Shiftbase) of leeg.
+function maakLoondatum(verjaardag) {
+  const vm = String(verjaardag || '').match(/^\d{4}-(\d{2})-(\d{2})/);
+  return iso => {
+    const s = String(iso || ''); if (/-(01-01|07-01)$/.test(s)) return true;
+    if (!vm) return false; const d = dag(s); if (!d) return false;
+    const vj = new Date(d.getFullYear(), +vm[1] - 1, +vm[2]); return Math.abs(dagen(vj, d)) <= 3;
+  };
+}
+function overeenkomsten(contracten, verjaardag) {
+  const loondatum = maakLoondatum(verjaardag);
   const lijst = (contracten || []).filter(c => dag(c.start)).slice().sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0);
   const uit = [];
   lijst.forEach((c, i) => {
@@ -56,6 +66,7 @@ function overeenkomsten(contracten) {
             }
           }
         }
+        else if (loondatum(c.start)) knip = true;                   // v0.26.4: nieuw deel op 01-01/01-07/verjaardag = loonknip
         else {
           // kijk vooruit: heeft dit deel (met de knips erna) een eigen looptijd van hele maanden? Een "hele maanden"-einde
           // waar direct een deel op 01-01/01-07 op aansluit is zelf een loonknip en telt niet als afgesproken einde.
@@ -79,9 +90,9 @@ function overeenkomsten(contracten) {
 // Keten bepalen voor één medewerker. contracten = Shiftbase-records [{start, eind, type}].
 // correctie (optioneel) = { aantal, huidigStart } door HR vastgelegd: geldt zolang de huidige overeenkomst dezelfde start heeft.
 // Geeft { keten, aantal, maanden, vol, reden, huidig, volgende, overeenkomsten, gecorrigeerd }
-function bepaalKeten(contracten, vandaag, correctie) {
+function bepaalKeten(contracten, vandaag, correctie, verjaardag) {
   vandaag = vandaag || new Date();
-  const lijst = overeenkomsten(contracten);
+  const lijst = overeenkomsten(contracten, verjaardag);
   if (!lijst.length) return null;
   const huidig = lijst.filter(c => dag(c.start) <= vandaag && (!c.eind || dag(c.eind) >= vandaag)).pop() || lijst.filter(c => dag(c.start) <= vandaag).pop() || lijst[0];
   const idx = lijst.indexOf(huidig), volgende = lijst[idx + 1] || null;
@@ -135,7 +146,7 @@ function contractSignalen(med, perUser, vandaag, correcties) {
     const cons = perUser[String(m.id)] || [];
     if (!cons.length) continue;
     const corr = correcties[String(m.id)];
-    const k = bepaalKeten(cons, vandaag, corr);
+    const k = bepaalKeten(cons, vandaag, corr, m.verjaardag);
     const basis = { naam: m.naam, email: m.email || '', winkel: m.winkelNaam || '-', mid: String(m.id) };
     if (k && !k.onbepaald && k.huidig.eind) {
       const totEinde = dagen(vandaag, dag(k.huidig.eind));
@@ -156,7 +167,7 @@ function contractSignalen(med, perUser, vandaag, correcties) {
       }
     }
     // proeftijd: eerste arbeidsovereenkomst ooit (knips samengevoegd), gestart ≤ 70 dagen geleden
-    const eerste = overeenkomsten(cons)[0];
+    const eerste = overeenkomsten(cons, m.verjaardag)[0];
     if (eerste && dagen(dag(eerste.start), vandaag) <= 70 && dagen(dag(eerste.start), vandaag) >= 0) {
       const pe = proeftijdEinde(eerste);
       if (pe) {

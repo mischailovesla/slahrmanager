@@ -57,7 +57,7 @@ function overzicht(med, perUser, besluiten, ontslag, vandaag, correcties) {
   const uit = [];
   for (const m of med || []) {
     const cons = perUser[String(m.id)] || []; if (!cons.length) continue;
-    const k = KT.bepaalKeten(cons, vandaag, correcties[String(m.id)]);
+    const k = KT.bepaalKeten(cons, vandaag, correcties[String(m.id)], m.verjaardag);
     if (!k || k.onbepaald || !k.huidig.eind) continue;
     const eind = dag(k.huidig.eind), totEinde = dagen(vandaag, eind);
     if (totEinde < 0 || totEinde > VENSTER) continue;

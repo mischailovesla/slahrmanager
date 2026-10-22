@@ -69,7 +69,7 @@ async function laad(qs) {
     try {
       const KT = require('./_lib/contracten'); const per = await SB.getContractenPerUser(false);
       const corr = ((await require('./_lib/instellingen').lees('keten_correcties', {})) || {})[String(persoon.id)] || null;
-      const k = KT.bepaalKeten(per[String(persoon.id)] || [], new Date(), corr);
+      const k = KT.bepaalKeten(per[String(persoon.id)] || [], new Date(), corr, persoon.verjaardag);
       const nl = d => d ? d.split('-').reverse().join('-') : '';
       if (k) keten = { mid: String(persoon.id), onbepaald: k.onbepaald, aantal: k.aantal, maanden: k.maanden, vol: k.vol, reden: k.reden || '', gecorrigeerd: !!k.gecorrigeerd, correctie: k.gecorrigeerd ? corr : null, huidigStart: k.huidig ? k.huidig.start : '', telling: (k.keten || []).length,
         overeenkomsten: k.overeenkomsten.map(o => ({ start: nl(o.start), eind: nl(o.eind), type: o.type, functie: o.functie, inKeten: (k.keten || []).includes(o), huidig: o === k.huidig, knips: o.delen.length - 1, delen: o.delen.map(d => nl(d.start) + (d.eind ? ' – ' + nl(d.eind) : ' – heden')) })),
