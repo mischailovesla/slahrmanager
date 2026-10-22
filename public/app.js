@@ -443,7 +443,7 @@
     g('dos-lijst').innerHTML = '<tr><td colspan="8" class="leeg grijs">Shiftbase-lijst laden…</td></tr>';
     var d = await api('/api/medewerkers' + (forceer ? '?ververs=1' : ''));
     if (d.success) { medewerkers = d.medewerkers || []; medewerkersFout = ''; if (forceer) toast(medewerkers.length + ' medewerkers opgehaald uit Shiftbase', 'ok'); vulWinkelFilter(); }
-    else { medewerkersFout = d.bericht || 'onbekende fout'; toast('Shiftbase: ' + medewerkersFout, 'err'); }
+    else { medewerkersFout = d.bericht || 'onbekende fout'; toast(/tijdelijk niet bereikbaar/.test(medewerkersFout) ? medewerkersFout : 'Shiftbase: ' + medewerkersFout, 'err'); }
     renderMedewerkersLijst();
   }
   // Volledige lijst in de Medewerkers-tab (gefilterd op het zoekveld)

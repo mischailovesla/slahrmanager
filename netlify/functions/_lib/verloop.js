@@ -89,7 +89,10 @@ let _cache = { t: 0, v: null };
 // Alle medewerkers (ook uit dienst) met id, naam, winkel, start, eind — 30 min cache; ook gebruikt door de scorekaart (fase 3c)
 async function laadMedewerkers(ververs) {
   if (ververs || !_cache.v || _cache.t < Date.now()) {
-    const users = await SB.sbGet('users'); let cons = []; try { cons = await SB.sbGet('contracts'); } catch (e) { console.warn('contracts:', e.message); }
+    let users;
+    try { users = await SB.sbGet('users'); }
+    catch (e) { if (_cache.v) { console.warn('Shiftbase storing, verloop op laatst bekende data:', e.message); return _cache.v; } throw e; }
+    let cons = []; try { cons = await SB.sbGet('contracts'); } catch (e) { console.warn('contracts:', e.message); }
     _cache = { t: Date.now() + 30 * 60000, v: verwerkVerloopData(users, cons) };
   }
   return _cache.v;

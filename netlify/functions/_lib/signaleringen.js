@@ -269,20 +269,18 @@ function aanzegHtml(lijst) {
   }).join('');
   return T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Aanzegtermijn-bewaking') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">Deze contracten lopen binnen <strong>' + C.AANZEG_VENSTER_DAGEN + ' dagen</strong> af en er is volgens het HR Dashboard nog <strong>geen aanzegging of ontslagbevestiging verstuurd</strong>:</p>' + blokken + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0"><tr><td style="padding:12px 16px;background:#e6f7ee;border-radius:8px;border-left:4px solid #009f4b;' + F + 'font-size:12px;color:#006b30;line-height:1.6">&#10003; Verstuur de aanzegging via <strong>HR Dashboard &rarr; Uitstroom &rarr; Ontslag &amp; aanzegging &rarr; Aanzegging niet-verlengen + PDF</strong>. Is het contract verlengd? Zet de verlenging in Shiftbase &mdash; dan verdwijnt deze melding vanzelf.</td></tr></table><p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch bericht &mdash; dagelijkse aanzegtermijn-check (art. 7:668 BW)</p></td></tr>' + T.slaFoot());
 }
-async function aanzegtermijnen(droog) {
-  const rap = { naam: 'aanzegtermijnen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
-  const [med, cons, ontslag] = await Promise.all([SB.getMedewerkers(true), SB.sbGet('contracts').then(c => (c && c.data) || c || []), S.getOntslag(true)]); // incl. archief: een gearchiveerde aanzegging is wél verstuurd
+// v0.25.4: aanzeg-signalen gaan niet meer in een eigen mail maar in de dagelijkse contractmail (contractketen, 10:00),
+// één kaart per persoon. Deze check legt de lijst nog wel vast voor Taken/Overzicht.
+async function aanzegLijst(med) {
+  const [m2, cons, ontslag] = await Promise.all([med ? med : SB.getMedewerkers(true), SB.sbGet('contracts').then(c => (c && c.data) || c || []), S.getOntslag(true)]); // incl. archief: een gearchiveerde aanzegging is wél verstuurd
   const verzE = {}, verzN = {};
   ontslag.forEach(r => { if (String(r.status || '').indexOf('Verzonden') !== 0) return; const e = r.email.toLowerCase(); if (e) verzE[e] = true; const n = normNaam(r.naam); if (n) verzN[n] = true; });
-  const lijst = vindAflopendeContracten(med, cons, verzE, verzN, vandaag0(), C.AANZEG_VENSTER_DAGEN);
-  rap.gevonden = lijst;
-  if (!lijst.length) return rap;
-  const teLaat = lijst.filter(x => x.dagenTotDeadline < 0).length;
-  const subject = teLaat > 0 ? '⚠ Aanzegtermijn: ' + teLaat + ' deadline(s) VERSTREKEN, ' + lijst.length + ' contract(en) lopen af' : 'Aanzegtermijn: ' + lijst.length + ' contract(en) lopen af zonder verstuurde aanzegging';
-  const plain = 'Hallo,\n\nDeze contracten lopen binnen ' + C.AANZEG_VENSTER_DAGEN + ' dagen af en er is volgens het HR Dashboard nog GEEN aanzegging of ontslagbevestiging verstuurd:\n\n' +
-    lijst.map(p => '- ' + p.naam + ' (' + p.winkel + ') - einddatum ' + p.einddatum + ' - ' + (p.dagenTotDeadline < 0 ? 'DEADLINE ' + (-p.dagenTotDeadline) + ' DAGEN VERSTREKEN: pro-rata vergoeding loopt op (' + (-p.dagenTotDeadline) + '/30 maandloon)' : p.dagenTotDeadline === 0 ? 'aanzegdeadline is VANDAAG' : 'aanzegdeadline over ' + p.dagenTotDeadline + ' dagen')).join('\n') +
-    '\n\nVerstuur de aanzegging via HR Dashboard -> Ontslag & aanzegging -> "Aanzegging niet-verlengen + PDF".\nIs het contract verlengd? Zet de verlenging in Shiftbase, dan verdwijnt de melding vanzelf.\n\n(Automatisch bericht - dagelijkse aanzegtermijn-check, art. 7:668 BW)';
-  await mailOfDroog(rap, { to: ontvangers('aanzegtermijn'), subject, text: plain, html: aanzegHtml(lijst), kort: { naam: 'HR-team', aantal: lijst.length, teLaat } });
+  return vindAflopendeContracten(m2, cons, verzE, verzN, vandaag0(), C.AANZEG_VENSTER_DAGEN);
+}
+async function aanzegtermijnen(droog) {
+  const rap = { naam: 'aanzegtermijnen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  rap.gevonden = await aanzegLijst();
+  rap.opmerking = 'Geen eigen mail meer: staat in de dagelijkse contractmail (10:00)';
   return rap;
 }
 
@@ -510,18 +508,47 @@ function blokMail(kleur, kop, intro, items, tip, voet) {
 // ---- 12. Contractketen + proeftijd (dagelijks) ----
 async function contractketen(droog) {
   const rap = { naam: 'contractketen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
-  const [med, per, corr] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true), require('./instellingen').lees('keten_correcties', {})]);
+  const med = await SB.getMedewerkers(true);
+  const [per, corr, aanzeg] = await Promise.all([SB.getContractenPerUser(true), require('./instellingen').lees('keten_correcties', {}),
+    aanzegLijst(med).catch(e => { rap.fouten.push('aanzegtermijnen: ' + e.message); return []; })]);
   const lijst = await zonderVertrekkers(KT.contractSignalen(med, per, vandaag0(), corr || {}), rap);
-  rap.gevonden = lijst;
-  if (!lijst.length) return rap;
-  const items = lijst.map(x => x.soort === 'vast'
-    ? { kleur: '#c0392b', titel: x.naam, sub: x.winkel + ' · contract eindigt ' + x.einddatum + ', verlengd t/m ' + x.verlengdTot, html: '<strong style="color:#c0392b">Van rechtswege vast?</strong> — ' + esc(x.reden) + ' (keten: ' + x.aantal + ' contracten, ' + x.maanden + ' maanden). Het vervolgcontract geldt dan als <strong>onbepaalde tijd</strong>: pas het contract aan (en zet het in Shiftbase op onbepaald) of corrigeer het aantal in het dossier als de telling niet klopt.' }
-    : x.soort === 'keten'
-    ? { kleur: x.vol ? '#c0392b' : '#e8824a', titel: x.naam, sub: x.winkel + ' · contract eindigt ' + x.einddatum + ' (over ' + x.dagenTotEinde + ' dagen)', html: (x.vol ? '<strong style="color:#c0392b">Keten vol</strong> — ' : '<strong>Let op</strong> — ') + esc(x.reden) + '. Keten: ' + x.aantal + ' contract(en), ' + x.maanden + ' maanden.' + (x.vol ? ' Verlengen kan alleen als <strong>onbepaalde tijd</strong>; anders aanzeggen (niet verlengen).' : ' Het volgende contract is het laatste tijdelijke; daarna wordt het vast.') }
-    : { kleur: '#2980b9', titel: x.naam, sub: x.winkel + ' · in dienst ' + x.start, html: 'Proeftijd (indien schriftelijk overeengekomen) eindigt op <strong>' + esc(x.proeftijdEinde) + '</strong>' + (x.dagenTotEinde >= 0 ? ' — over ' + x.dagenTotEinde + ' dagen' : ' — <strong style="color:#c0392b">verstreken</strong>') + '. Plan het proeftijdgesprek en beslis vóór die datum; proeftijdontslag ná de proeftijd is niet meer mogelijk.' });
-  const plain = 'Hallo,\n\nContractsignalen:\n' + lijst.map(x => '- ' + x.naam + ' (' + x.winkel + '): ' + (x.soort === 'vast' ? 'mogelijk van rechtswege vast: ' + x.reden : x.soort === 'keten' ? 'contract eindigt ' + x.einddatum + ' — ' + x.reden : 'proeftijd eindigt ' + x.proeftijdEinde)).join('\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
-  await mailOfDroog(rap, { to: ontvangers('contractketen'), subject: 'Contracten: ' + lijst.filter(x => x.soort === 'keten' || x.soort === 'vast').length + ' ketensignaal/-signalen, ' + lijst.filter(x => x.soort === 'proeftijd').length + ' proeftijd(en)', text: plain, html: blokMail('#e8824a', 'HR &middot; Contractketen &amp; proeftijd', 'Deze contracten vragen een beslissing (ketenregeling art. 7:668a BW: na ' + C.KETEN_MAX_CONTRACTEN + ' tijdelijke contracten of ' + C.KETEN_MAX_MAANDEN + ' maanden wordt het volgende contract onbepaalde tijd; proeftijd art. 7:652 BW):', items, 'Verlengen: zet het nieuwe contract in Shiftbase. Niet verlengen: Uitstroom &rarr; Ontslag &amp; aanzegging &rarr; Aanzegging. CAO-afwijkingen: pas de grenzen aan in config.js (KETEN_*).', 'Dagelijkse contractcheck'), kort: { naam: 'HR-team', aantal: lijst.length } });
+  rap.gevonden = lijst; rap.aanzeg = aanzeg.length;
+  if (!lijst.length && !aanzeg.length) return rap;
+  const mail = contractMail(lijst, aanzeg);
+  await mailOfDroog(rap, { to: ontvangers('contractketen'), subject: mail.subject, text: mail.plain, html: mail.html, kort: { naam: 'HR-team', aantal: mail.personen } });
   return rap;
+}
+// Eén kaart per persoon met alle contractsignalen (aanzegtermijn, keten, van rechtswege vast, proeftijd); urgentste eerst.
+function contractMail(lijst, aanzeg) {
+  const P = {}, pers = x => { const k = normNaam(x.naam) || x.naam; return P[k] || (P[k] = { naam: x.naam, winkel: x.winkel || '-', regels: [], plain: [], score: 9, kleur: '#009f4b', eind: '', dagenTotEinde: null }); };
+  const zet = (p, score, kleur) => { if (score < p.score) { p.score = score; p.kleur = kleur; } };
+  for (const a of aanzeg) {
+    const p = pers(a); p.eind = a.einddatum; p.dagenTotEinde = a.dagenTotEinde; p.dl = a.dagenTotDeadline;
+    if (a.dagenTotDeadline < 0) { zet(p, 0, '#c0392b'); p.regels.push('<strong style="color:#c0392b">Aanzegdeadline ' + (-a.dagenTotDeadline) + ' dagen verstreken</strong> &mdash; nog geen aanzegging verstuurd; pro-rata aanzegvergoeding loopt op: nu ' + (-a.dagenTotDeadline) + '/30 maandloon.'); p.plain.push('AANZEGDEADLINE ' + (-a.dagenTotDeadline) + ' DAGEN VERSTREKEN (' + (-a.dagenTotDeadline) + '/30 maandloon)'); }
+    else if (a.dagenTotDeadline <= 7) { zet(p, 1, '#e8824a'); p.regels.push('<strong style="color:#9a4a1a">Aanzegdeadline ' + (a.dagenTotDeadline === 0 ? 'vandaag' : 'over ' + a.dagenTotDeadline + ' dagen') + '</strong> &mdash; nog geen aanzegging verstuurd: deze week beslissen.'); p.plain.push('aanzegdeadline ' + (a.dagenTotDeadline === 0 ? 'VANDAAG' : 'over ' + a.dagenTotDeadline + ' dagen')); }
+    else { zet(p, 3, '#009f4b'); p.regels.push('Aanzegdeadline over ' + a.dagenTotDeadline + ' dagen &mdash; nog geen aanzegging verstuurd.'); p.plain.push('aanzegdeadline over ' + a.dagenTotDeadline + ' dagen'); }
+  }
+  for (const x of lijst) {
+    const p = pers(x);
+    if (x.soort === 'vast') { zet(p, 1, '#c0392b'); if (!p.eind) p.eind = x.einddatum; p.verlengd = x.verlengdTot; p.regels.push('<strong style="color:#c0392b">Van rechtswege vast?</strong> &mdash; ' + esc(x.reden) + ' (keten: ' + x.aantal + ' contracten, ' + x.maanden + ' maanden). Het vervolgcontract geldt dan als <strong>onbepaalde tijd</strong>: pas het aan (en zet het in Shiftbase op onbepaald) of corrigeer het aantal in het dossier als de telling niet klopt.'); p.plain.push('mogelijk van rechtswege vast: ' + x.reden); }
+    else if (x.soort === 'keten') { zet(p, x.vol ? 2 : 3, x.vol ? '#c0392b' : '#e8824a'); if (!p.eind) { p.eind = x.einddatum; p.dagenTotEinde = x.dagenTotEinde; } p.regels.push((x.vol ? '<strong style="color:#c0392b">Keten vol</strong> &mdash; ' : '<strong>Keten</strong> &mdash; ') + esc(x.reden) + ' (' + x.aantal + ' contract(en), ' + x.maanden + ' maanden).' + (x.vol ? ' Verlengen kan alleen als <strong>onbepaalde tijd</strong>; anders aanzeggen.' : ' Het volgende contract is het laatste tijdelijke; daarna wordt het vast.')); p.plain.push((x.vol ? 'keten vol: ' : 'keten: ') + x.reden); }
+    else { zet(p, x.dagenTotEinde <= 7 ? 1 : 3, '#2980b9'); p.inDienst = x.start; p.regels.push('<strong style="color:#2980b9">Proeftijd</strong> (indien schriftelijk overeengekomen) eindigt op <strong>' + esc(x.proeftijdEinde) + '</strong>' + (x.dagenTotEinde >= 0 ? ' &mdash; over ' + x.dagenTotEinde + ' dagen' : ' &mdash; <strong style="color:#c0392b">verstreken</strong>') + '. Gesprek en beslissing vóór die datum; proeftijdontslag daarna is niet meer mogelijk.'); p.plain.push('proeftijd eindigt ' + x.proeftijdEinde + (x.dagenTotEinde < 0 ? ' (verstreken)' : '')); }
+  }
+  const alle = Object.values(P).sort((a, b) => a.score - b.score || (a.dl != null ? a.dl : 999) - (b.dl != null ? b.dl : 999) || (a.dagenTotEinde != null ? a.dagenTotEinde : 999) - (b.dagenTotEinde != null ? b.dagenTotEinde : 999) || a.naam.localeCompare(b.naam, 'nl'));
+  const sub = p => p.winkel + (p.eind ? ' · contract eindigt ' + p.eind + (p.verlengd ? ', verlengd t/m ' + p.verlengd : p.dagenTotEinde != null ? ' (over ' + p.dagenTotEinde + ' dagen)' : '') : p.inDienst ? ' · in dienst ' + p.inDienst : '');
+  const kaart = p => '<table width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 10px"><tr><td style="padding:14px 16px;background:#f8f3f0;border-radius:8px;border-left:4px solid ' + p.kleur + '"><p style="' + F + 'font-size:14px;font-weight:700;color:#333d3a;margin:0 0 6px">' + esc(p.naam) + ' <span style="font-weight:400;color:#888078;font-size:12px">&middot; ' + esc(sub(p)) + '</span></p>' + p.regels.map(r => '<p style="' + F + 'font-size:12px;color:#555;margin:0 0 4px;line-height:1.6">' + r + '</p>').join('') + '</td></tr></table>';
+  const kop = t => '<p style="' + F + 'font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#888078;margin:18px 0 8px">' + t + '</p>';
+  const nu = alle.filter(p => p.score <= 1), later = alle.filter(p => p.score > 1);
+  const teLaat = aanzeg.filter(a => a.dagenTotDeadline < 0).length, nKeten = lijst.filter(x => x.soort !== 'proeftijd').length, nProef = lijst.filter(x => x.soort === 'proeftijd').length;
+  const delen = [teLaat ? teLaat + ' aanzegdeadline(s) verstreken' : '', nu.length ? nu.length + ' actie deze week' : '', alle.length + ' medewerker(s)'].filter(Boolean);
+  const subject = (teLaat ? '⚠ ' : '') + 'Contracten: ' + delen.join(' · ');
+  const intro = 'Alle contractsignalen van vandaag, <strong>één kaart per medewerker</strong>: aanzegtermijnen (contract loopt binnen ' + C.AANZEG_VENSTER_DAGEN + ' dagen af zonder verstuurde aanzegging, art. 7:668 BW), ketenregeling (na ' + C.KETEN_MAX_CONTRACTEN + ' tijdelijke contracten of ' + C.KETEN_MAX_MAANDEN + ' maanden volgt onbepaalde tijd, art. 7:668a BW) en proeftijden (art. 7:652 BW).' + ' <span style="color:#888078">(' + aanzeg.length + ' zonder aanzegging · ' + nKeten + ' ketensignaal · ' + nProef + ' proeftijd)</span>';
+  const html = T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Contracten &amp; aanzegtermijnen') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 8px">' + intro + '</p>'
+    + (nu.length ? kop('Actie deze week (' + nu.length + ')') + nu.map(kaart).join('') : '') + (later.length ? kop('Komende weken (' + later.length + ')') + later.map(kaart).join('') : '')
+    + '<table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0"><tr><td style="padding:12px 16px;background:#e6f7ee;border-radius:8px;border-left:4px solid #009f4b;' + F + 'font-size:12px;color:#006b30;line-height:1.6">&#10003; <strong>Niet verlengen:</strong> HR Dashboard &rarr; Uitstroom &rarr; Ontslag &amp; aanzegging &rarr; Aanzegging. <strong>Wel verlengen:</strong> zet het nieuwe contract in Shiftbase; dan verdwijnt de melding vanzelf.</td></tr></table><p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch bericht &mdash; dagelijkse contractcheck</p></td></tr>' + T.slaFoot());
+  const pl = p => '- ' + p.naam + ' (' + sub(p) + '): ' + p.plain.join('; ');
+  const plain = 'Hallo,\n\nContractsignalen van vandaag (één regel per medewerker):\n' + (nu.length ? '\nACTIE DEZE WEEK:\n' + nu.map(pl).join('\n') + '\n' : '') + (later.length ? '\nKOMENDE WEKEN:\n' + later.map(pl).join('\n') + '\n' : '') + '\nNiet verlengen: HR Dashboard -> Ontslag & aanzegging -> Aanzegging. Wel verlengen: zet het contract in Shiftbase.\n\n(Automatisch bericht van het SLA HR Dashboard)';
+  return { subject, html, plain, personen: alle.length };
 }
 
 // ---- 13. Verzuim / Wet verbetering poortwachter (dagelijks) ----
@@ -792,4 +819,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };
+module.exports = { CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, bhrScan, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };

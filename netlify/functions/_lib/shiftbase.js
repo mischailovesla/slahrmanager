@@ -12,9 +12,17 @@ const UITGESLOTEN = new Set(SB_UITGESLOTEN_NAMEN.map(normNaam));
 async function sbGet(pad) {
   const key = process.env.SHIFTBASE_KEY;
   if (!key) throw new Error('SHIFTBASE_KEY ontbreekt');
-  const r = await fetch(API + pad, { headers: { Authorization: 'API ' + key, Accept: 'application/json' } });
+  // Shiftbase geeft af en toe kort een 502/503/504 (onderhoud/overbelasting): tot 3x opnieuw proberen met oplopende wachttijd
+  let r = null;
+  for (let poging = 0; poging < 4; poging++) {
+    try { r = await fetch(API + pad, { headers: { Authorization: 'API ' + key, Accept: 'application/json' } }); }
+    catch (e) { r = null; if (poging === 3) throw new Error('Shiftbase niet bereikbaar (' + e.message + ')'); }
+    if (r && ![429, 502, 503, 504].includes(r.status)) break;
+    if (poging < 3) await new Promise(ok => setTimeout(ok, [500, 1200, 2500][poging]));
+  }
   if (r.status === 401 || r.status === 403) throw new Error('Shiftbase weigert de key (HTTP ' + r.status + ')');
   if (r.status === 429) throw new Error('Shiftbase rate limit bereikt (180 req/min). Wacht even.');
+  if ([502, 503, 504].includes(r.status)) throw new Error('Shiftbase is tijdelijk niet bereikbaar (HTTP ' + r.status + '). Probeer het over een paar minuten opnieuw.');
   if (!r.ok) throw new Error('Shiftbase API fout: HTTP ' + r.status);
   const j = await r.json();
   return j && j.data !== undefined ? j.data : j;
@@ -102,7 +110,9 @@ function verwerk(usersLijst, contractsLijst, typeNamen) {
 let _cache = { t: 0, v: null };
 async function getMedewerkers(forceer) {
   if (!forceer && _cache.v && _cache.t > Date.now()) return _cache.v;
-  const users = await sbGet('users');
+  let users;
+  try { users = await sbGet('users'); }
+  catch (e) { if (_cache.v) { console.warn('Shiftbase storing, laatst bekende lijst gebruikt:', e.message); _cache.t = Date.now() + 120000; return _cache.v; } throw e; }
   let cons = [], typeNamen = {};
   try { cons = await sbGet('contracts'); } catch (e) { console.warn('contracts:', e.message); }
   // Contracttypen (Bepaalde tijd / Onbepaalde tijd / Oproep ...) - id -> naam
