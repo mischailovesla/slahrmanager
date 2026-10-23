@@ -42,7 +42,9 @@ button{font-family:inherit}
 .help-knop{position:relative}.help-stip{position:absolute;top:12px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--groen);box-shadow:0 0 0 2px #fff}
 #top-versie{cursor:pointer}
 .help-wrap{display:flex;gap:28px;padding:20px 24px 28px;align-items:flex-start}
-.help-inhoud{flex:0 0 220px;position:sticky;top:12px;display:flex;flex-direction:column;gap:2px}
+#tab-help .sec{overflow:visible}#tab-help .sec>.sh{border-radius:12px 12px 0 0}
+.help-inhoud{flex:0 0 220px;position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto;display:flex;flex-direction:column;gap:2px}
+.help-tekst h2{scroll-margin-top:16px}
 .help-inhoud a{padding:7px 10px;border-radius:8px;color:var(--donker);text-decoration:none;font-size:.86rem}.help-inhoud a:hover{background:var(--zand)}.help-inhoud a.nieuw{font-weight:700;color:var(--groen)}
 .help-tekst{flex:1;min-width:0;max-width:860px;line-height:1.65;font-size:.92rem}
 .help-tekst h2{font-size:1.1rem;margin:28px 0 8px;padding-top:6px}.help-tekst h2:first-child{margin-top:0}

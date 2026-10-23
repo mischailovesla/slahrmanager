@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.31.1', datum: '23-10-2026', titel: 'Help: inhoud scrolt mee', punten: [
+    'De inhoudsopgave links in Help blijft nu in beeld als je naar beneden scrolt.'
+  ] },
   { nummer: '0.31.0', datum: '23-10-2026', titel: 'Help in de app', punten: [
     'Nieuwe knop <b>Help</b> rechts in het menu: uitleg over het hele systeem, een zoekbalk en veelgestelde vragen.',
     '<b>Wat is er nieuw</b>: na elke update zie je een groene stip bij Help tot je de nieuwe punten hebt bekeken.',
