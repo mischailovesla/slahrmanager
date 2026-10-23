@@ -712,7 +712,7 @@ async function laadVerlengingen() {
     admin().from('hr_verlenging').select('*').then(r => { if (r.error) throw new Error(r.error.message); return r.data || []; }).catch(e => { console.warn('hr_verlenging:', e.message); return null; }),
     admin().from('hr_sm_advies').select('*').then(r => { if (r.error) throw new Error(r.error.message); return r.data || []; }).catch(e => { console.warn('hr_sm_advies (migratie 0021):', e.message); return []; })]);
   const besluiten = {}; (bes || []).forEach(b => { besluiten[VL.sleutel(b.medewerker_id, b.contract_eind)] = b; });
-  const adviezen = {}; (adv || []).forEach(a => { adviezen[VL.sleutel(a.medewerker_id, a.contract_eind)] = a; });
+  const adviezen = {}; (adv || []).filter(a => (a.soort || 'verlenging') === 'verlenging').forEach(a => { adviezen[VL.sleutel(a.medewerker_id, a.contract_eind)] = a; });
   return { lijst: VL.overzicht(med, per, besluiten, ontslag, vandaag0(), corr || {}, adviezen), tabelOk: bes !== null };
 }
 async function verlengingen(droog) {

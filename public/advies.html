@@ -50,14 +50,15 @@
   function post(d) { return fetch('/api/advies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }).then(function (r) { return r.json(); }); }
   function fout(m) { card.innerHTML = '<div class="melding rood">' + esc(m) + '</div>'; }
   var LBL = { verlengen: 'Verlengen', niet: 'Niet verlengen', twijfel: 'Twijfel — liever even overleggen' };
+  var LBL_P = { verlengen: 'Doorgaan na de proeftijd', niet: 'Stoppen in de proeftijd', twijfel: 'Twijfel — liever even overleggen' };
   if (!t) { fout('Deze link is niet compleet. Open hem opnieuw vanuit de winkelmail.'); return; }
   post({ t: t }).then(function (r) {
     if (!r.success) return fout(r.bericht);
     var a = r.advies;
     if (a.besloten) { card.innerHTML = '<h1>' + esc(a.naam) + '</h1><div class="melding groen">HR heeft al besloten: <strong>' + esc(a.besloten) + '</strong>. Bedankt!</div>'; return; }
-    keuze = a.huidig ? a.huidig.advies : '';
-    card.innerHTML = '<h1>Verlengen: ' + esc(a.naam) + '?</h1><p class="sub">' + esc(a.winkel) + '</p>'
-      + '<div class="info">Het contract loopt af op <strong>' + esc(a.einddatum) + '</strong>. Wat is jouw advies?' + (a.huidig ? '<br><span style="color:#888078">Je gaf eerder: ' + esc(LBL[a.huidig.advies]) + ' — je kunt het hieronder wijzigen.</span>' : '') + '</div>'
+    keuze = a.huidig ? a.huidig.advies : ''; var P = a.soort === 'proeftijd'; if (P) LBL = LBL_P;
+    card.innerHTML = '<h1>' + (P ? 'Proeftijd: ' + esc(a.naam) : 'Verlengen: ' + esc(a.naam) + '?') + '</h1><p class="sub">' + esc(a.winkel) + '</p>'
+      + '<div class="info">' + (P ? 'De proeftijd eindigt op <strong>' + esc(a.einddatum) + '</strong>. Gaat deze medewerker door? Stoppen kan alleen tót en mét die dag, dus geef je advies zo snel mogelijk.' : 'Het contract loopt af op <strong>' + esc(a.einddatum) + '</strong>. Wat is jouw advies?') + (a.huidig ? '<br><span style="color:#888078">Je gaf eerder: ' + esc(LBL[a.huidig.advies]) + ' — je kunt het hieronder wijzigen.</span>' : '') + '</div>'
       + '<div class="keuze">' + ['verlengen', 'niet', 'twijfel'].map(function (k) { return '<div class="opt' + (keuze === k ? ' sel' : '') + '" data-k="' + k + '">' + LBL[k] + '</div>'; }).join('') + '</div>'
       + '<label class="l" for="opm">Toelichting <span id="verpl" style="font-weight:400;color:#888078">(optioneel)</span></label><textarea id="opm" placeholder="Bijv. functioneren, betrouwbaarheid, beschikbaarheid, wil de medewerker zelf blijven?">' + esc(a.huidig ? a.huidig.opmerking : '') + '</textarea>'
       + '<div id="msg" style="margin-top:14px"></div><button class="btn" id="stuur" style="margin-top:6px">Advies versturen</button>';

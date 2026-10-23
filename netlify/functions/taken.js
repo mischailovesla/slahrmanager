@@ -219,6 +219,17 @@ exports.handler = beveiligd('taken', async (event, g) => {
   const { normNaam } = require('./_lib/util');
   const metVerlenging = new Set(taken.filter(t => t.verlenging).map(t => normNaam(t.naam)));
   if (metVerlenging.size) taken = taken.filter(t => !(metVerlenging.has(normNaam(t.naam)) && (t.bron === 'aanzegtermijnen' || /^contractketen\|(keten|vast)\|/.test(t.sleutel || ''))));
+  // v0.29.0: advies van de store manager over de proeftijd (winkelmail) bij de proeftijdtaak zetten
+  try {
+    const pt = taken.filter(t => /^contractketen\|proeftijd\|/.test(t.sleutel || ''));
+    if (pt.length) {
+      const { data } = await require('./_lib/auth').admin().from('hr_sm_advies').select('naam,advies,opmerking,contract_eind').eq('soort', 'proeftijd').gte('contract_eind', new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10));
+      const LBL = require('./_lib/winkelmail').PROEF_ADVIES;
+      for (const t of pt) { const a = (data || []).find(x => normNaam(x.naam) === normNaam(t.naam)); if (!a) continue;
+        t.sub += ' · advies SM: ' + (LBL[a.advies] || a.advies).toLowerCase() + (a.opmerking ? ' ("' + String(a.opmerking).slice(0, 80) + '")' : '');
+        if (a.advies === 'niet') { t.urgentie = 'rood'; const pd = (t.sub.match(/proeftijd t\/m (\d{2}-\d{2}-\d{4})/) || [])[1]; t.titel = 'Store manager adviseert: stoppen in de proeftijd — brief ' + (pd ? 'uiterlijk ' + pd + ' bij de medewerker' : 'vóór het einde van de proeftijd'); } }
+    }
+  } catch (e) { fouten.push('advies proeftijd: ' + e.message); }
   taken.push(...await uitDatabase());
   taken.push(...await uitChecklists());
   taken.push(...await uitCheckins());

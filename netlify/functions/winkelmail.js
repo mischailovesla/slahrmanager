@@ -20,7 +20,7 @@ exports.handler = beveiligd('winkelmail', async (event, g) => {
     const data = await WM.laad(), w = String(p.winkel || '');
     if (!data.winkels.includes(w)) throw new Error('Onbekende winkel: ' + w);
     const b = WM.bouw(data, w);
-    return { html: WM.html(w, b, { links: false }), leeg: b.leeg, aantallen: { wacht: b.wacht.length, contracten: b.contracten.length, nieuw: b.nieuw.length, vertrek: b.vertrek.length, jubilea: b.jubilea.length, jarig: b.jarig.length }, fouten: data.fouten };
+    return { html: WM.html(w, b, { links: false }), leeg: b.leeg, aantallen: { wacht: b.wacht.length, contracten: b.contracten.length, proeftijd: b.proeftijd.length, nieuw: b.nieuw.length, vertrek: b.vertrek.length, jubilea: b.jubilea.length, jarig: b.jarig.length }, fouten: data.fouten };
   }
   if (g.rol !== 'admin') throw new Error('Alleen een beheerder kan de winkelmail instellen of versturen.');
   if (p.actie === 'opslaan') {

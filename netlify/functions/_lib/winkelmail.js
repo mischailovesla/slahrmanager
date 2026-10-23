@@ -3,6 +3,7 @@
 // Store managers werken niet in het HR-dashboard; ze krijgen per winkel alleen wat ze moeten weten of doen:
 //   1. Wacht op de medewerker  — ontslagbrief nog niet getekend, loonheffingsformulier nog niet binnen
 //   2. Contracten die aflopen  — binnen 6 weken, nog geen besluit → knop "Geef advies" (advies.html, zonder login)
+//   2b. Proeftijd loopt af     — binnen 17 dagen → knop "Geef advies" (doorgaan / stoppen / twijfel) (v0.29.0)
 //   3. Nieuwe medewerkers      — start deze week; welkomstcollectie Academy nog niet af
 //   4. Vertrek                 — laatste werkdag deze of volgende week (+ sleutels/kleding innemen)
 //   5. Jubilea                 — volgende week 1, 2, 5, 10… jaar in dienst
@@ -32,10 +33,11 @@ const isVerz = s => /^(Verzonden|Verstuurd)/.test(String(s || ''));
 const vandaagNL = () => { const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' })); d.setHours(0, 0, 0, 0); return d; };
 
 // ---- advieslink (zonder login, getekend token) ----
-function adviesToken(it) { return require('./uploads').tekenToken({ s: 'advies', m: String(it.mid), e: it.eindIso, n: it.naam, w: it.winkel || '', d: iso(vandaagNL()) }); }
+function adviesToken(it) { return require('./uploads').tekenToken({ s: 'advies', k: it.soort === 'proeftijd' ? 'proeftijd' : 'verlenging', m: String(it.mid), e: it.eindIso, n: it.naam, w: it.winkel || '', d: iso(vandaagNL()) }); }
 function leesAdviesToken(t) {
   const U = require('./uploads'), d = U.leesGetekend(t, 'Ongeldige link.');
   if (d.s !== 'advies' || !d.m || !/^\d{4}-\d{2}-\d{2}$/.test(d.e || '')) throw new Error('Ongeldige link.');
+  d.k = d.k === 'proeftijd' ? 'proeftijd' : 'verlenging';
   if (U.tokenLeeftijdDagen(d.d) > ADVIES_GELDIG_DAGEN) { const e = new Error('Deze link is verlopen. Volgende week staat er een nieuwe in de winkelmail, of mail HR.'); e.verlopen = true; throw e; }
   return d;
 }
@@ -48,7 +50,7 @@ function bouw(data, winkel) {
   const winkelVan = maakWinkelVan(data.med);
   const inWinkel = r => winkelVan(r) === w;
   const dagenSinds = s => { const d = parseNLDatum(String(s || '').split(' ')[0]); return d ? Math.round((v - d) / 864e5) : null; };
-  const b = { wacht: [], contracten: [], nieuw: [], vertrek: [], jubilea: [], jarig: [], cijfers: null };
+  const b = { wacht: [], contracten: [], proeftijd: [], nieuw: [], vertrek: [], jubilea: [], jarig: [], cijfers: null };
 
   // 1. wacht op de medewerker
   for (const r of data.ontslag || []) {
@@ -72,6 +74,10 @@ function bouw(data, winkel) {
       advies: it.smAdvies || null });
   }
   b.contracten.sort((a, c) => a.dagen - c.dagen);
+
+  // 2b. proeftijd loopt af (v0.29.0) — data.proeftijd uit laad(): { naam, mid, winkel, start, eindIso, einddatum, dagen, advies }
+  for (const p of data.proeftijd || []) if (p.winkel === w) b.proeftijd.push(Object.assign({ soort: 'proeftijd' }, p));
+  b.proeftijd.sort((a, c) => a.dagen - c.dagen);
 
   // 3. nieuwe medewerkers: start deze week + welkomstcollectie niet af
   const tot = plus(v, 6);
@@ -110,7 +116,7 @@ function bouw(data, winkel) {
     const wordt = m.leeftijd == null ? null : (d.getTime() === v.getTime() ? m.leeftijd : m.leeftijd + 1);
     const loon = wordt != null && wordt <= (C.JEUGD_LOON_MAX_LEEFTIJD || 20) + 1;
     b.jarig.push({ naam: m.naam, wat: 'Jarig op ' + dagNaam(d) + (loon ? ' — wordt ' + wordt : ''), datum: d, loon,
-      tip: loon ? 'Uurloon aanpassen in Shiftbase per ' + d.getDate() + '-' + (d.getMonth() + 1) + '-' + d.getFullYear() + (wordt >= 21 ? ' (21 jaar: vanaf nu het volwassen loon).' : ' (jeugdloon ' + wordt + ' jaar).') : '' });
+      tip: loon ? 'Uurloon aanpassen in Shiftbase per ' + d.getDate() + '-' + (d.getMonth() + 1) + '-' + d.getFullYear() + ': ' + jeugdloonTekst(wordt) : '' });
   }
   b.jarig.sort((a, c) => a.datum - c.datum);
 
@@ -119,7 +125,7 @@ function bouw(data, winkel) {
     const wv = (data.cijfers.winkels || []).find(x => x.naam === w), t = data.cijfers.totaal;
     if (wv) b.cijfers = { periode: data.cijfers.periode, bestand: wv.bestandEind, instroom: wv.instroom, uitstroom: wv.uitstroom, verloop: wv.verloop, slaVerloop: t ? t.verloop : null };
   }
-  b.leeg = !b.wacht.length && !b.contracten.length && !b.nieuw.length && !b.vertrek.length && !b.jubilea.length && !b.jarig.length;
+  b.leeg = !b.wacht.length && !b.contracten.length && !b.proeftijd.length && !b.nieuw.length && !b.vertrek.length && !b.jubilea.length && !b.jarig.length;
   return b;
 }
 
@@ -151,6 +157,9 @@ function html(winkel, b, opts) {
   }
   const inhoud = blok('Wacht op de medewerker', '#c0392b', b.wacht.map(x => ({ naam: x.naam, html: metDagen(x), tip: x.tip })), 'Spreek ze even aan op de vloer.')
     + blok('Contracten die aflopen', '#e8824a', contr, 'Wil je deze medewerker verlengen? Geef je advies met de knop (geen inlog nodig); HR neemt het besluit en regelt de brief.')
+    + blok('Proeftijd loopt af', '#e8824a', b.proeftijd.map(x => ({ naam: x.naam, tip: '', html: 'Proeftijd eindigt op <strong>' + esc(x.einddatum) + '</strong> (over ' + x.dagen + ' dagen) · in dienst sinds ' + esc(x.start)
+        + (x.advies ? '<br><span style="color:#006b30">✓ Jouw advies: <strong>' + esc(x.advies.label) + '</strong></span> ' + (opts.links !== false ? knop(adviesLink(x), 'Advies wijzigen') : '') : '<br>' + (opts.links !== false ? knop(adviesLink(x), 'Geef je advies') : '<em>[knop: Geef je advies]</em>')) })),
+      'Gaat deze medewerker door na de proeftijd? Stoppen kan alleen tót en mét de laatste dag van de proeftijd, en HR moet de brief dan op tijd versturen: geef je advies dus zo snel mogelijk.')
     + blok('Nieuwe medewerkers', '#009f4b', b.nieuw.map(x => ({ naam: x.naam, html: esc(x.wat), tip: x.tip })))
     + blok('Vertrek', '#888078', b.vertrek.map(x => ({ naam: x.naam, html: esc(x.wat), tip: x.tip })))
     + blok('Jubilea volgende week', '#009f4b', b.jubilea.map(x => ({ naam: x.naam, html: esc(x.wat), tip: 'Laat het niet ongemerkt voorbijgaan: een kaartje of iets lekkers doet veel.' })))
@@ -165,6 +174,7 @@ function plain(winkel, b) {
   const r = [], lijst = (t, l, f) => { if (l.length) r.push('\n' + t.toUpperCase() + '\n' + l.map(f).join('\n')); };
   lijst('Wacht op de medewerker', b.wacht, x => '- ' + x.naam + ': ' + x.wat + (x.dagen != null ? ' (' + x.dagen + ' dagen)' : ''));
   lijst('Contracten die aflopen — geef je advies via de knop in de mail', b.contracten, x => '- ' + x.naam + ': loopt af ' + x.einddatum + (x.advies ? ' — jouw advies: ' + x.advies.label : ''));
+  lijst('Proeftijd loopt af — geef je advies via de knop in de mail', b.proeftijd, x => '- ' + x.naam + ': proeftijd eindigt ' + x.einddatum + (x.advies ? ' — jouw advies: ' + x.advies.label : ''));
   lijst('Nieuwe medewerkers', b.nieuw, x => '- ' + x.naam + ': ' + x.wat);
   lijst('Vertrek', b.vertrek, x => '- ' + x.naam + ': ' + x.wat);
   lijst('Jubilea volgende week', b.jubilea, x => '- ' + x.naam + ': ' + x.wat);
@@ -172,24 +182,68 @@ function plain(winkel, b) {
   return 'Hallo,\n\n' + (b.leeg ? 'Deze week staat er niets open voor ' + winkel + '.' : 'Dit speelt er deze week in ' + winkel + ':') + '\n' + r.join('\n') + '\n\nVragen? Mail HR (hr@ilovesla.com). Niet doorsturen (persoonsgegevens).\n\n(Automatisch weekoverzicht van het SLA HR Dashboard)';
 }
 
+// ---- proeftijd (v0.29.0): eerste arbeidsovereenkomst, proeftijd eindigt binnen PROEFTIJD_DAGEN ----
+const PROEFTIJD_DAGEN = 17; // ruim 2 weken: de mail van volgende maandag komt anders mogelijk te laat
+function proeftijdLijst(med, perUser, ontslag, adviezen, vandaag) {
+  const KT = require('./contracten'), VL = require('./verlenging'), uit = [];
+  const weg = new Set(); (ontslag || []).forEach(r => { if (isVerz(r.status)) { weg.add('n:' + normNaam(r.naam)); if (r.email) weg.add('e:' + String(r.email).toLowerCase()); } });
+  const adv = {}; (adviezen || []).forEach(a => { adv[a.medewerker_id + '|' + a.contract_eind] = a; });
+  for (const m of med || []) {
+    if (weg.has('n:' + normNaam(m.naam)) || (m.email && weg.has('e:' + String(m.email).toLowerCase()))) continue;
+    const cons = perUser[String(m.id)] || []; if (!cons.length) continue;
+    const eerste = KT.overeenkomsten(cons, m.verjaardag)[0]; if (!eerste) continue;
+    const s = parseNLDatum(nl(eerste.start)); if (!s || s > vandaag || (vandaag - s) / 864e5 > 70) continue;
+    const pe = KT.proeftijdEinde(eerste); if (!pe) continue;
+    const pd = new Date(pe.getFullYear(), pe.getMonth(), pe.getDate()), dagen = Math.round((pd - vandaag) / 864e5);
+    if (dagen < 0 || dagen > PROEFTIJD_DAGEN) continue;
+    const a = adv[String(m.id) + '|' + iso(pd)];
+    uit.push({ naam: m.naam, mid: String(m.id), winkel: m.winkelNaam || '', start: nl(eerste.start), eindIso: iso(pd), einddatum: nl(iso(pd)), dagen,
+      advies: a ? { advies: a.advies, label: PROEF_ADVIES[a.advies] || a.advies, opmerking: a.opmerking || '' } : null });
+  }
+  return uit;
+}
+const PROEF_ADVIES = { verlengen: 'Doorgaan na de proeftijd', niet: 'Stoppen in de proeftijd', twijfel: 'Twijfel' };
+
+// ---- jeugdloon (v0.29.0): CAO Horeca, niet-vakkracht; vakkracht apart vermeld ----
+const euro = n => '€ ' + n.toFixed(2).replace('.', ',');
+function jeugdloon(leeftijd) {
+  const J = C.CAO_JEUGDLOON; if (!J) return null;
+  const a = Math.min(Math.max(leeftijd, 15), 21), pct = J.pct[a]; if (!pct) return null;
+  return { bedrag: Math.round(J.basis * pct) / 100, pct, vak: J.vakkracht && J.vakkracht[Math.min(a, 20)] ? Math.round(J.basis * J.vakkracht[Math.min(a, 20)]) / 100 : null, vanaf: nl(J.geldigVanaf) };
+}
+// Na de volgende loonronde (geldigVanaf + 6 maanden) is de tabel verouderd: dan geen bedrag noemen (liever geen bedrag dan een fout bedrag)
+function jeugdloonVerouderd(vandaag) {
+  const m = String((C.CAO_JEUGDLOON || {}).geldigVanaf || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return true;
+  return (vandaag || vandaagNL()) >= new Date(+m[1], +m[2] - 1 + 6, +m[3]);
+}
+function jeugdloonTekst(wordt) {
+  if (jeugdloonVerouderd()) return wordt >= 21 ? 'vanaf 21 jaar het volwassen loon (CAO Horeca).' : 'jeugdloon ' + wordt + ' jaar volgens de actuele CAO Horeca-loontabel.';
+  const j = jeugdloon(wordt); if (!j) return wordt >= 21 ? 'vanaf 21 jaar het volwassen loon.' : 'jeugdloon ' + wordt + ' jaar.';
+  return 'minimaal ' + euro(j.bedrag) + ' per uur' + (wordt >= 21 ? ' (21 jaar: volwassen loon' : ' (' + j.pct + '%') + ', CAO Horeca per ' + j.vanaf + ', niet-vakkracht'
+    + (j.vak && wordt >= 18 && wordt < 21 ? '; vakkracht: ' + euro(j.vak) : '') + '). Verdient hij of zij al meer, dan hoeft er niets te veranderen.';
+}
+
 // ---- ophalen ----
 async function laad() {
   const SB = require('./shiftbase'), S = require('./sheets'), SIG = require('./signaleringen'), VR = require('./verloop'), { admin } = require('./auth');
   const vandaag = vandaagNL(), fouten = [];
   const veilig = async (naam, p) => { try { return await p; } catch (e) { fouten.push(naam + ': ' + e.message); return null; } };
-  const [med, loon, ontslag, verl, academy, offb, vmed] = await Promise.all([
+  const [med, loon, ontslag, verl, academy, offb, vmed, perUser, advP] = await Promise.all([
     SB.getMedewerkers(false),
     veilig('loonheffing', S.getLoonheffing()), veilig('ontslag', S.getOntslag(true)),
     veilig('verlengingen', SIG.laadVerlengingen().then(r => r.lijst)),
     veilig('academy', require('./academy').laad(false).then(r => r.lijst)),
     veilig('offboarding', admin().from('hr_checklists').select('naam,items').eq('type', 'offboarding').is('afgerond_op', null).then(r => r.data || [])),
-    veilig('verloop', VR.laadMedewerkers(false))
+    veilig('verloop', VR.laadMedewerkers(false)),
+    veilig('contracten', SB.getContractenPerUser(false)),
+    veilig('advies proeftijd', admin().from('hr_sm_advies').select('medewerker_id,contract_eind,advies,opmerking,gegeven_op').eq('soort', 'proeftijd').then(r => { if (r.error) throw new Error(r.error.message); return r.data || []; }))
   ]);
+  const proeftijd = proeftijdLijst(med, perUser || {}, ontslag || [], advP || [], vandaag);
   let jubilea = []; try { jubilea = SIG.vindJubilea(med, vandaag).lijst; } catch (e) { fouten.push('jubilea: ' + e.message); }
   let cijfers = null;
   if (vmed) try { const r = VR.berekenVerloop(vmed, new Date(vandaag.getFullYear(), vandaag.getMonth(), 1), 3, vandaag); cijfers = { winkels: r.winkels, totaal: r.totaal, periode: r.maanden[0].label + ' t/m ' + r.maanden[r.maanden.length - 1].label }; } catch (e) { fouten.push('cijfers: ' + e.message); }
   const winkels = Array.from(new Set(med.map(m => m.winkelNaam).filter(Boolean))).filter(w => !C.FRANCHISE_NAAM.test(w)).sort((a, b) => a.localeCompare(b, 'nl'));
-  return { vandaag, med, loon: loon || [], ontslag: ontslag || [], verlengingen: verl || [], academy, offboarding: offb || [], jubilea, cijfers, winkels, fouten };
+  return { vandaag, med, proeftijd, loon: loon || [], ontslag: ontslag || [], verlengingen: verl || [], academy, offboarding: offb || [], jubilea, cijfers, winkels, fouten };
 }
 
 async function instelling() { const v = await require('./instellingen').lees('winkelmail', STANDAARD); return Object.assign({}, STANDAARD, v || {}, { adressen: Object.assign({}, (v && v.adressen) || {}), uit: ((v && v.uit) || []).slice() }); }
@@ -201,6 +255,7 @@ async function verstuurAlles(opts) {
   opts = opts || {};
   const M = require('./mail'), inst = await instelling(), data = await laad();
   const proef = opts.proef || inst.proef, rap = { verstuurd: [], overgeslagen: [], fouten: data.fouten.slice(), proef };
+  if (jeugdloonVerouderd()) rap.fouten.push('CAO-jeugdlonen in config.js (CAO_JEUGDLOON) zijn verouderd: nieuwe loontabel invullen, tot die tijd staat er geen bedrag in de winkelmail');
   for (const w of data.winkels) {
     if (opts.alleenWinkel && w !== opts.alleenWinkel) continue;
     if (!opts.alleenWinkel && inst.uit.includes(w)) { rap.overgeslagen.push({ winkel: w, reden: 'uitgezet' }); continue; }
@@ -209,7 +264,7 @@ async function verstuurAlles(opts) {
     const b = bouw(data, w);
     if (b.leeg && !opts.alleenWinkel) { rap.overgeslagen.push({ winkel: w, reden: 'niets te melden' }); continue; }
     const to = proef ? (C.WINKELMAIL_PROEF || 'mischa@ilovesla.com') : adres;
-    const subject = (proef ? '[Proef → ' + (adres || 'geen adres ingesteld') + '] ' : '') + 'SLA HR · Weekoverzicht ' + w + (b.contracten.filter(x => !x.advies).length ? ' · advies gevraagd' : '');
+    const subject = (proef ? '[Proef → ' + (adres || 'geen adres ingesteld') + '] ' : '') + 'SLA HR · Weekoverzicht ' + w + (b.contracten.concat(b.proeftijd).filter(x => !x.advies).length ? ' · advies gevraagd' : '');
     if (opts.droog) { rap.verstuurd.push({ winkel: w, to, droog: true }); continue; }
     try {
       const id = await M.verstuur({ to, subject, html: html(w, b), text: plain(w, b), tags: [{ name: 'bron', value: 'winkelmail' }] });
@@ -220,4 +275,4 @@ async function verstuurAlles(opts) {
   return rap;
 }
 
-module.exports = { bouw, html, plain, laad, instelling, verstuurAlles, adresVan, adviesToken, leesAdviesToken, adviesLink, STANDAARD, ADVIES_DAGEN, maakWinkelVan };
+module.exports = { proeftijdLijst, jeugdloon, jeugdloonTekst, jeugdloonVerouderd, PROEF_ADVIES, bouw, html, plain, laad, instelling, verstuurAlles, adresVan, adviesToken, leesAdviesToken, adviesLink, STANDAARD, ADVIES_DAGEN, maakWinkelVan };

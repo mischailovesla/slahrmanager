@@ -67,6 +67,14 @@ module.exports = {
   KETEN_ONDERBREKING_MAANDEN: 6,
   KETEN_VENSTER_DAGEN: 60,
   // Standaard looptijden bij SLA (Mischa, 22-10-2026): 7, 12 en 16 maanden. Andere 'hele maanden'-einden in Shiftbase zijn wijzigingen (knips).
+  // v0.29.0: CAO Horeca jeugdlonen (niet-vakkrachten en bbl) — % van het basisloon functiegroep I+II.
+  // Bijwerken bij elke loonronde (1 januari en 1 juli; KHN publiceert de loontabel). Bron: KHN/SHO loontabel 1-7-2026.
+  CAO_JEUGDLOON: {
+    geldigVanaf: '2026-07-01',
+    basis: 14.99,                                       // functiegroep I+II, 21 jaar en ouder (niet-vakkracht)
+    pct: { 15: 35, 16: 45, 17: 55, 18: 65, 19: 75, 20: 85, 21: 100 },
+    vakkracht: { 18: 80, 19: 90, 20: 100 }              // vakkracht: % van het eigen functiegroep-basisloon
+  },
   WINKELMAIL_PROEF: 'mischa@ilovesla.com',   // v0.28.0: proefstand winkelmail → alles hierheen
   KETEN_LOOPTIJDEN_MAANDEN: [7, 12, 16],
   // Fase 4c: contractverlenging als proces — vanaf 60 dagen vóór het einde een besluit vragen, uiterlijk 35 dagen vóór het einde

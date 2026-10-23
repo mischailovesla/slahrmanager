@@ -737,7 +737,7 @@
     var el = g('wm-voorbeeld'); el.style.display = ''; g('wm-v-titel').textContent = 'Voorbeeld · ' + w; g('wm-v-frame').srcdoc = '<p style="font-family:Arial;padding:20px;color:#888">Laden (Shiftbase, dossiers, Academy)…</p>';
     var r = await api('/api/winkelmail', { actie: 'voorbeeld', winkel: w });
     if (!r.success) { g('wm-v-frame').srcdoc = '<p style="font-family:Arial;padding:20px;color:#c0392b">' + esc(r.bericht) + '</p>'; return; }
-    g('wm-v-info').textContent = (r.leeg ? 'Niets te melden: deze winkel krijgt maandag géén mail.' : r.aantallen.wacht + ' wacht · ' + r.aantallen.contracten + ' contracten · ' + r.aantallen.nieuw + ' nieuw · ' + r.aantallen.vertrek + ' vertrek · ' + r.aantallen.jubilea + ' jubilea · ' + (r.aantallen.jarig || 0) + ' jarig') + (r.fouten && r.fouten.length ? ' · niet alles opgehaald: ' + r.fouten.join('; ') : '');
+    g('wm-v-info').textContent = (r.leeg ? 'Niets te melden: deze winkel krijgt maandag géén mail.' : r.aantallen.wacht + ' wacht · ' + r.aantallen.contracten + ' contracten · ' + (r.aantallen.proeftijd || 0) + ' proeftijd · ' + r.aantallen.nieuw + ' nieuw · ' + r.aantallen.vertrek + ' vertrek · ' + r.aantallen.jubilea + ' jubilea · ' + (r.aantallen.jarig || 0) + ' jarig') + (r.fouten && r.fouten.length ? ' · niet alles opgehaald: ' + r.fouten.join('; ') : '');
     g('wm-v-frame').srcdoc = r.html; el.scrollIntoView({ behavior: 'smooth' });
   };
   window.wmProef = async function (w) {
