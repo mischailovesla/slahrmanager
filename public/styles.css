@@ -38,6 +38,21 @@ button{font-family:inherit}
 .lay-drop button.binnenkort{color:var(--grijs-l);cursor:default}
 .lay-drop button.binnenkort small{float:right;font-size:.65rem;letter-spacing:.5px;text-transform:uppercase;margin-top:3px}
 .nav .spacer{flex:1}
+/* v0.31.0: Help */
+.help-knop{position:relative}.help-stip{position:absolute;top:12px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--groen);box-shadow:0 0 0 2px #fff}
+#top-versie{cursor:pointer}
+.help-wrap{display:flex;gap:28px;padding:20px 24px 28px;align-items:flex-start}
+.help-inhoud{flex:0 0 220px;position:sticky;top:12px;display:flex;flex-direction:column;gap:2px}
+.help-inhoud a{padding:7px 10px;border-radius:8px;color:var(--donker);text-decoration:none;font-size:.86rem}.help-inhoud a:hover{background:var(--zand)}.help-inhoud a.nieuw{font-weight:700;color:var(--groen)}
+.help-tekst{flex:1;min-width:0;max-width:860px;line-height:1.65;font-size:.92rem}
+.help-tekst h2{font-size:1.1rem;margin:28px 0 8px;padding-top:6px}.help-tekst h2:first-child{margin-top:0}
+.help-tekst p{margin:0 0 10px}.help-tekst ul,.help-tekst ol{padding-left:20px;margin:0 0 10px}.help-tekst li{margin:4px 0}
+.help-tab{width:100%;border-collapse:collapse;margin:8px 0 12px;font-size:.86rem}.help-tab th,.help-tab td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--lijn);vertical-align:top}.help-tab th{background:var(--zand);font-weight:700}
+.help-versie{border-left:3px solid var(--lijn);padding:4px 0 4px 14px;margin:12px 0}.help-versie.nieuw{border-color:var(--groen);background:var(--groen-l);border-radius:0 8px 8px 0}
+.help-versie .kop{font-weight:700}.help-versie .kop small{font-weight:400;color:var(--grijs);margin-left:6px}
+.help-faq details{border-bottom:1px solid var(--lijn);padding:10px 0}.help-faq summary{cursor:pointer;font-weight:600}.help-faq details p{margin:8px 0 2px}
+.help-leeg{color:var(--grijs);padding:20px 0}
+@media(max-width:760px){.help-wrap{flex-direction:column}.help-inhoud{position:static;flex:none;width:100%;flex-direction:row;flex-wrap:wrap}}
 
 /* main */
 .main{padding:32px 40px;max-width:1600px;margin:0 auto}

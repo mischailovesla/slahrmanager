@@ -14,7 +14,7 @@
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegangslog (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -53,6 +53,7 @@
     if (tab === 'brief' && !vbData) laadBrieven();
     if (tab === 'ontslag' && !omData) laadOntslag();
     if (tab === 'winkelmail') wmLaad();
+    if (tab === 'help') helpRender();
     if (tab === 'ontslag') { laadOndertekeningen(); htLaad(); }
     if (tab === 'overplaatsing') htLaad();
     if (tab === 'sommatie' && !smData) laadSommaties();
@@ -3420,7 +3421,50 @@
     g('voet-versie').title = v.omschrijving || '';
     g('top-versie').textContent = 'NETLIFY · v' + (v.nummer || '?');
   }
-  document.addEventListener('DOMContentLoaded', function () { toonVersie(); init(); });
+  document.addEventListener('DOMContentLoaded', function () { toonVersie(); helpStip(); init(); });
+
+  // ---------- v0.31.0: Help (handleiding, FAQ, wat is er nieuw) ----------
+  var HELP_GEZIEN = 'hr-help-gezien';
+  function leesGezien() { try { return localStorage.getItem(HELP_GEZIEN) || ''; } catch (e) { return ''; } }
+  function zetGezien() { try { localStorage.setItem(HELP_GEZIEN, (window.HR_VERSIE || {}).nummer || ''); } catch (e) { /* zonder opslag geen stip-geheugen */ } }
+  function vergelijk(a, b) { var x = String(a || '0').split('.').map(Number), y = String(b || '0').split('.').map(Number); for (var i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) - (y[i] || 0); } return 0; }
+  var helpGezienBij = '';
+  function helpStip() {
+    var nu = (window.HR_VERSIE || {}).nummer, gezien = leesGezien(); helpGezienBij = gezien;
+    var st = g('help-stip'); if (st) st.style.display = nu && vergelijk(nu, gezien) > 0 ? '' : 'none';
+    var tv = g('top-versie'); if (tv) { tv.title = 'Wat is er nieuw?'; tv.onclick = function () { swT('help', 'Help'); setTimeout(function () { var el = g('help-nieuw'); if (el) el.scrollIntoView({ behavior: 'smooth' }); }, 60); }; }
+  }
+  function helpNieuwHtml() {
+    var lijst = window.HR_VERSIES || [], gezien = helpGezienBij;
+    return '<h2 id="help-nieuw">Wat is er nieuw</h2>' + lijst.map(function (v) {
+      var nieuw = gezien && vergelijk(v.nummer, gezien) > 0;
+      return '<div class="help-versie' + (nieuw ? ' nieuw' : '') + '" data-help-blok="1"><div class="kop">v' + esc(v.nummer) + ' · ' + esc(v.titel) + '<small>' + esc(v.datum) + (nieuw ? ' · nieuw voor jou' : '') + '</small></div><ul>' + v.punten.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ul></div>';
+    }).join('');
+  }
+  window.helpRender = function () {
+    var H = window.HR_HELP || { secties: [], faq: [] }, nu = (window.HR_VERSIE || {}).nummer;
+    var heeftNieuw = nu && vergelijk(nu, helpGezienBij) > 0;
+    g('help-inhoud').innerHTML = '<a href="#" data-help-ga="help-nieuw"' + (heeftNieuw ? ' class="nieuw"' : '') + '>' + (heeftNieuw ? '● ' : '') + 'Wat is er nieuw</a>'
+      + H.secties.map(function (s) { return '<a href="#" data-help-ga="help-' + s.id + '">' + esc(s.titel) + '</a>'; }).join('') + '<a href="#" data-help-ga="help-faq">Veelgestelde vragen</a>';
+    var secties = H.secties.map(function (s) { return '<div data-help-blok="1"><h2 id="help-' + s.id + '">' + esc(s.titel) + '</h2>' + s.html + '</div>'; }).join('');
+    var faq = '<div data-help-blok="1"><h2 id="help-faq">Veelgestelde vragen</h2><div class="help-faq">' + H.faq.map(function (f) { return '<details data-help-blok="1"><summary>' + esc(f.v) + '</summary><p>' + f.a + '</p></details>'; }).join('') + '</div></div>';
+    // nieuw bovenaan als er iets nieuws is, anders onderaan
+    g('help-tekst').innerHTML = (heeftNieuw ? helpNieuwHtml() + secties : secties) + faq + (heeftNieuw ? '' : helpNieuwHtml()) + '<div class="help-leeg" id="help-geen" style="display:none">Niets gevonden. Probeer een ander woord, of vraag het Mischa.</div>';
+    g('help-zoek').value = '';
+    zetGezien(); var st = g('help-stip'); if (st) st.style.display = 'none';
+  };
+  document.addEventListener('click', function (e) {
+    var a = e.target.closest && e.target.closest('a[data-help-ga]'); if (!a) return;
+    e.preventDefault(); var el = g(a.getAttribute('data-help-ga')); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  window.helpZoek = function (q) {
+    q = String(q || '').trim().toLowerCase(); var n = 0;
+    document.querySelectorAll('#help-tekst [data-help-blok]').forEach(function (b) {
+      if (b.tagName === 'DETAILS') { var hit = !q || b.textContent.toLowerCase().indexOf(q) > -1; b.style.display = hit ? '' : 'none'; b.open = !!q && hit; if (hit) n++; return; }
+      var bevat = !q || b.textContent.toLowerCase().indexOf(q) > -1; b.style.display = bevat ? '' : 'none'; if (bevat) n++;
+    });
+    g('help-geen').style.display = n ? 'none' : '';
+  };
 
   // ---------- Fase 4a: Training & certificaten (SLA Academy, alleen lezen) ----------
   var trData = null;

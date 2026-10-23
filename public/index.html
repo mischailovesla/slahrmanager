@@ -42,6 +42,7 @@
   <button data-tab="scorekaart">Scorekaart</button>
   <!-- lifecycle-groepen worden door app.js opgebouwd -->
   <div class="spacer"></div>
+  <button data-tab="help" class="help-knop">Help<span class="help-stip" id="help-stip" style="display:none" title="Nieuw sinds je laatste bezoek"></span></button>
 </div>
 
 <div class="main">
@@ -725,6 +726,16 @@
   </div>
 
   <!-- BEWAARTERMIJNEN (AVG) — v0.27.0 -->
+  <!-- HELP — v0.31.0 (inhoud: public/help.js, nieuws: public/version.js) -->
+  <div class="tc" id="tab-help">
+    <div class="sec">
+      <div class="sh"><div class="st">Help</div><div class="hr2"><input type="search" id="help-zoek" placeholder="Zoek in de help…" oninput="helpZoek(this.value)" style="min-width:240px;padding:7px 12px;border-radius:8px;border:0"></div></div>
+      <div class="help-wrap">
+        <nav class="help-inhoud" id="help-inhoud"></nav>
+        <div class="help-tekst" id="help-tekst"></div>
+      </div>
+    </div>
+  </div>
   <!-- WINKELMAIL STORE MANAGERS — v0.28.0 -->
   <div class="tc" id="tab-winkelmail">
     <div class="sec">
@@ -821,6 +832,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="version.js"></script>
+<script src="help.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
