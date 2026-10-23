@@ -1561,7 +1561,7 @@
   // ---------- Scorekaart per winkel (fase 3c) ----------
   var skData = null, skMaanden = 6, skWinkel = null;
   var SK_KLS = { groen: 'bg', oranje: 'bo', rood: 'br', klein: 'boat', geen: 'boat' };
-  var SK_KORT = { verloop: 'Verloop', vroegPct: 'Weg ≤ 90 d (uitstroom)', uitval90: 'Nieuw weg ≤ 90 d', checkinScore: 'Check-in', checkinLaagPct: 'Lage check-ins', onboarding: 'Onboarding op tijd', verzuimPct: 'Verzuim', meldingsfreq: 'Meldingen p.p./jr', enps: 'eNPS exit', aanzegOpTijd: 'Aanzegging op tijd', loonOpTijd: 'Loonheffing ≤ 7 d', tekenDagen: 'Getekend na', welkomAf: 'Welkom Academy af', certGeldig: 'Certificaat geldig' };
+  var SK_KORT = { verloop: 'Verloop', vroegPct: 'Weg ≤ 90 d (uitstroom)', uitval90: 'Nieuw weg ≤ 90 d', checkinScore: 'Check-in', checkinLaagPct: 'Lage check-ins', onboarding: 'Onboarding op tijd', verzuimPct: 'Verzuim', meldingsfreq: 'Meldingen p.p./jr', enps: 'eNPS exit', aanzegOpTijd: 'Aanzegging op tijd', freqVerzuim: 'Frequent verzuim', verzuimGesprek: 'Verzuimgesprek ≤ 30 d', loonOpTijd: 'Loonheffing ≤ 7 d', tekenDagen: 'Getekend na', welkomAf: 'Welkom Academy af', certGeldig: 'Certificaat geldig' };
   window.laadScorekaart = async function (mnd, vers) {
     if (mnd) skMaanden = mnd;
     [3, 6, 12].forEach(function (m) { g('sk-b' + m).className = 'btn bsm ' + (skMaanden === m ? 'bp' : 'bd'); });

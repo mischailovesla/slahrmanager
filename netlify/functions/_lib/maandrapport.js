@@ -21,7 +21,7 @@ const MAAND = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', '
 const WINKEL_MAANDEN = 3;
 const TRAINING = ['welkomAf', 'certGeldig'];          // stand van nu → apart blok, niet maand-op-maand
 const PRIVE = ['checkinScore', 'checkinLaagPct', 'enps'];
-const DECIMAAL = ['checkinScore', 'meldingsfreq', 'verzuimPct', 'tekenDagen'];
+const DECIMAAL = ['checkinScore', 'meldingsfreq', 'verzuimPct', 'tekenDagen', 'freqVerzuim'];
 const r1 = x => Math.round(x * 10) / 10;
 const pad = n => String(n).padStart(2, '0');
 const sleutelVan = d => d.getFullYear() + '-' + pad(d.getMonth() + 1);

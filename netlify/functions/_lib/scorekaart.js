@@ -22,6 +22,9 @@ const KPIS = [
   { key: 'meldingsfreq', label: 'Ziekmeldingen per medewerker per jaar', eenheid: '', richting: 'laag', groep: 'In dienst', uitleg: 'Aantal ziekmeldingen omgerekend naar een heel jaar per medewerker' },
   { key: 'enps', label: 'eNPS exit-survey', eenheid: '', richting: 'hoog', vergelijk: 'verschil', groep: 'Uitstroom', uitleg: '% promotors (9–10) min % criticasters (0–6) onder vertrekkers' },
   { key: 'aanzegOpTijd', label: 'Aanzegging op tijd', eenheid: '%', richting: 'hoog', groep: 'Uitstroom', uitleg: 'Aanzeggingen die ≥ 30 dagen vóór de einddatum zijn verstuurd (art. 7:668 BW)' },
+  // v0.30.0: frequent verzuim (≥ 3 ziekmeldingen in 12 maanden) en de opvolging met een verzuimgesprek
+  { key: 'freqVerzuim', label: 'Frequent verzuim', eenheid: '% v.d. medewerkers', richting: 'laag', groep: 'In dienst', uitleg: 'Deel van de medewerkers met 3 of meer ziekmeldingen in de 12 maanden tot het einde van de periode' },
+  { key: 'verzuimGesprek', label: 'Verzuimgesprek na frequent verzuim', eenheid: '%', richting: 'hoog', groep: 'In dienst', uitleg: 'Wie in de periode de grens van 3 ziekmeldingen in 12 maanden bereikte: deel met een vastgelegd verzuimgesprek (Gesprekken) binnen 30 dagen' },
   // v0.27.2: doorlooptijden van dossiers
   { key: 'loonOpTijd', label: 'Loonheffing binnen 7 dagen', eenheid: '%', richting: 'hoog', groep: 'Dossiers', uitleg: 'Van de loonheffingsuitnodigingen (verstuurd in de periode, ≥ 7 dagen geleden): deel waarvan het formulier binnen 7 dagen binnen was. Te laat = anoniementarief (52%) op de eerste loonstrook' },
   { key: 'tekenDagen', label: 'Ontslagbrief getekend na', eenheid: 'dagen', richting: 'laag', groep: 'Dossiers', uitleg: 'Mediaan aantal dagen van versturen tot handtekening (ontslagbevestigingen en aanzeggingen verstuurd in de periode)' }
@@ -47,12 +50,12 @@ function sterk(k, v, o) {
   if (k.richting === 'laag') return o > 0 && v / o <= 0.8;
   return o > 0 && v / o >= 1.05;
 }
-const DECIMAAL = ['checkinScore', 'meldingsfreq', 'verzuimPct', 'tekenDagen'];
+const DECIMAAL = ['checkinScore', 'meldingsfreq', 'verzuimPct', 'tekenDagen', 'freqVerzuim'];
 const fmt = (k, v) => v === null || v === undefined ? '-' : (DECIMAAL.includes(k.key) ? r1(v).toFixed(1) : String(Math.round(v))).replace('.', ',') + (k.eenheid === '%' || k.eenheid.indexOf('%') === 0 ? '%' : k.eenheid === '/5' ? '/5' : k.eenheid === 'dagen' ? ' d' : '');
 
 // ---- puur rekenwerk ----
 function bereken(inp) {
-  const { med, verloop, absences, checkins, exits, aanzeggingen, checklists, academy, vandaag } = inp; const dossiers = inp.dossiers || [];
+  const { med, verloop, absences, checkins, exits, aanzeggingen, checklists, academy, vandaag } = inp; const dossiers = inp.dossiers || [], gesprekken = inp.gesprekken || [];
   const maanden = verloop.maanden, vanIso = maanden[0].vanIso, totIsoVol = maanden[maanden.length - 1].totIso;
   const vandaagIso = isoD(vandaag), totIso = totIsoVol > vandaagIso ? vandaagIso : totIsoVol;
   const van = dag(vanIso), tot = dag(totIso);
@@ -60,7 +63,7 @@ function bereken(inp) {
   (med || []).forEach(m => { perId[String(m.id)] = m.winkel; if (m.naam) perNaam[normNaam(m.naam)] = m.winkel; });
   const winkelVan = (id, naam, gegeven) => (id && perId[String(id)]) || (naam && perNaam[normNaam(naam)]) || gegeven || '';
   const namen = verloop.winkels.map(w => w.naam).filter(n => n && n !== '(geen winkel)');
-  const leeg = () => ({ ziekDagen: 0, dienstDagen: 0, meldingen: 0, lopend: 0, ciVerstuurd: 0, ciIngevuld: 0, ciScores: [], ciLaag: 0, ciMaand: maanden.map(() => []), meldMaand: maanden.map(() => 0), ex: [], az: 0, azOpTijd: 0, ob: 0, obOpTijd: 0, mensen: 0, wkTelt: 0, wkAf: 0, ctTelt: 0, ctOk: 0, acad: false , lo7: 0, lo7Ok: 0, teken: []});
+  const leeg = () => ({ ziekDagen: 0, dienstDagen: 0, meldingen: 0, lopend: 0, ciVerstuurd: 0, ciIngevuld: 0, ciScores: [], ciLaag: 0, ciMaand: maanden.map(() => []), meldMaand: maanden.map(() => 0), ex: [], az: 0, azOpTijd: 0, ob: 0, obOpTijd: 0, mensen: 0, wkTelt: 0, wkAf: 0, ctTelt: 0, ctOk: 0, acad: false , lo7: 0, lo7Ok: 0, teken: [], fvMensen: 0, fvFreq: 0, fvMoment: 0, fvGesprek: 0});
   const acc = {}; namen.forEach(n => { acc[n] = leeg(); }); const tot0 = leeg();
   const bij = (w, f) => { if (acc[w]) f(acc[w]); f(tot0); };
 
@@ -105,6 +108,25 @@ function bereken(inp) {
     const w = winkelVan(r.mid, r.naam, ''); const vz = parseNLDatum(r.verzenddatum);
     bij(w, x => { x.az++; if (vz && dagenTussen(vz, eind) >= 30) x.azOpTijd++; });
   }
+  // v0.30.0: frequent verzuim per medewerker (stand einde periode) + opvolging met een verzuimgesprek binnen 30 dagen
+  {
+    const totD = tot, grens = new Date(totD.getTime() - 365 * 864e5), gsPer = {};
+    gesprekken.forEach(gs => { const k = gs.medewerker_id ? 'i:' + gs.medewerker_id : 'n:' + normNaam(gs.naam); (gsPer[k] = gsPer[k] || []).push(String(gs.datum).slice(0, 10)); });
+    for (const m of med || []) {
+      if (!acc[m.winkel]) continue;
+      if (m.start > totIso || (m.eind && m.eind < totIso)) continue;   // in dienst op de einddatum van de periode
+      const ps = periodes[String(m.id)] || [];
+      const n = VZ.meldMomenten(ps).filter(d => { const d0 = dag(d); return d0 > grens && d0 <= totD; }).length;
+      bij(m.winkel, x => { x.fvMensen++; if (n >= C.VERZUIM_FREQUENT_AANTAL) x.fvFreq++; });
+      const gs = (gsPer['i:' + m.id] || []).concat(gsPer['n:' + normNaam(m.naam)] || []);
+      for (const mo of VZ.frequentMomenten(ps)) {
+        if (mo < vanIso || mo > totIso) continue;
+        const plus30 = isoD(new Date(dag(mo).getTime() + 30 * 864e5)), gehad = gs.some(d => d >= mo && d <= plus30);
+        if (!gehad && plus30 > isoD(vandaag)) continue;   // nog binnen de 30 dagen: (nog) niet meetellen
+        bij(m.winkel, x => { x.fvMoment++; if (gehad) x.fvGesprek++; });
+      }
+    }
+  }
   // v0.27.2: doorlooptijden (dossiers verstuurd in de periode)
   for (const d of dossiers) {
     const vi = isoD(d.verzonden); if (vi < vanIso || vi > totIsoVol) continue;
@@ -145,6 +167,8 @@ function bereken(inp) {
       welkomAf: { v: x.wkTelt ? Math.round(x.wkAf / x.wkTelt * 100) : null, n: x.wkTelt, klein: x.wkTelt < MIN_N },
       certGeldig: { v: x.ctTelt ? Math.round(x.ctOk / x.ctTelt * 100) : null, n: x.ctTelt, klein: x.ctTelt < MIN_N },
       aanzegOpTijd: { v: x.az ? Math.round(x.azOpTijd / x.az * 100) : null, n: x.az, klein: false },
+      freqVerzuim: { v: x.fvMensen ? r1(x.fvFreq / x.fvMensen * 100) : null, n: x.fvMensen, klein: x.fvMensen < MIN_N },
+      verzuimGesprek: { v: x.fvMoment ? Math.round(x.fvGesprek / x.fvMoment * 100) : null, n: x.fvMoment, klein: false },
       loonOpTijd: { v: x.lo7 ? Math.round(x.lo7Ok / x.lo7 * 100) : null, n: x.lo7, klein: x.lo7 < MIN_N },
       tekenDagen: { v: x.teken.length ? r1(require('./doorloop').mediaan(x.teken)) : null, n: x.teken.length, klein: x.teken.length < MIN_N }
     };
@@ -181,16 +205,17 @@ const nuNL = () => { const nu = new Date(new Date().toLocaleString('en-US', { ti
 // Ontbrekende tabel/bron → melding in fouten, de rest werkt door. academy = null als de koppeling (nog) niet werkt.
 async function laadBronnen(vanIso, totIso, ververs) {
   const VR = require('./verloop'), SB = require('./shiftbase'), S = require('./sheets'), { admin } = require('./auth');
-  const db = admin(), fouten = [];
+  const db = admin(), fouten = []; let gesprekkenL = [];
   const veilig = async (naam, f) => { try { return await f(); } catch (e) { fouten.push(naam + ': ' + e.message); return []; } };
   const lijst = r => { if (r.error) throw new Error(r.error.message); return r.data || []; };
   const academyP = (async () => { try { const r = await require('./academy').laad(ververs); return r.lijst; } catch (e) { if (process.env.ACADEMY_HR_SLEUTEL) fouten.push('Academy: ' + e.message); return null; } })();
-  const [med, absences, checkins, exits, ontslag, checklists] = await Promise.all([
+  const [med, absences, checkins, exits, ontslag, , checklists] = await Promise.all([
     VR.laadMedewerkers(ververs),
-    veilig('verzuim (Shiftbase)', async () => { const r = await SB.sbGet('absentees?min_date=' + isoD(new Date(dag(vanIso).getTime() - 60 * 864e5)) + '&max_date=' + totIso); return (r && r.data) || r || []; }),
+    veilig('verzuim (Shiftbase)', async () => { const r = await SB.sbGet('absentees?min_date=' + isoD(new Date(dag(vanIso).getTime() - 400 * 864e5)) /* v0.30.0: 12 mnd terug voor frequent verzuim */ + '&max_date=' + totIso); return (r && r.data) || r || []; }),
     veilig('check-ins', async () => lijst(await db.from('hr_checkin').select('medewerker_id,naam,winkel,verstuurd_op,ingevuld_op,score,laag').gte('verstuurd_op', vanIso + 'T00:00:00').lte('verstuurd_op', totIso + 'T23:59:59'))),
     veilig('exit-survey', async () => lijst(await db.from('hr_exit').select('medewerker_id,naam,winkel,nps,ingevuld_op').gte('ingevuld_op', vanIso + 'T00:00:00').lte('ingevuld_op', totIso + 'T23:59:59'))),
     veilig('ontslagdossiers', async () => S.getOntslag(true)),
+    veilig('gesprekken', async () => lijst(await db.from('hr_gesprekken').select('medewerker_id,naam,datum').eq('soort', 'verzuim').gte('datum', vanIso))).then(g => { gesprekkenL = g; return null; }),
     veilig('checklists', async () => lijst(await db.from('hr_checklists').select('type,naam,winkel,medewerker_id,gestart_op,afgerond_op').eq('type', 'onboarding')))
   ]);
   // v0.27.2: doorlooptijden — loonheffing + ontslag/aanzegging met hun 'binnen'-moment (upload, formulier, digitale handtekening)
@@ -198,7 +223,7 @@ async function laadBronnen(vanIso, totIso, ververs) {
   const DL = require('./doorloop');
   const dossiers = await veilig('doorlooptijden', async () => DL.tijdlijn(Object.assign({ loon, ontslag }, await DL.laad())));
   const academy = await academyP;
-  return { med, absences, checkins, exits, aanzeggingen: (ontslag || []).filter(r => r.type === 'aanzegging'), dossiers, checklists, academy, fouten };
+  return { gesprekken: gesprekkenL, med, absences, checkins, exits, aanzeggingen: (ontslag || []).filter(r => r.type === 'aanzegging'), dossiers, checklists, academy, fouten };
 }
 
 async function getScorekaart(maanden, ververs) {

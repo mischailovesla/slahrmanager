@@ -91,4 +91,25 @@ function dossierVerzuim(periodes) {
   return (periodes || []).slice().reverse().map(p => ({ start: ddmm(p.start), eind: p.lopend ? '' : ddmm(p.eind), dagen: p.dagen, lopend: p.lopend, meldingen: p.meldingen, dagVandaag: p.lopend ? p.dagVandaag : null, kalenderdagen: p.kalenderdagen, delen: (p.delen || []).map(d => ({ start: ddmm(d.start), eind: ddmm(d.eind), dagen: d.dagen })), volgendeMijlpaal: p.lopend ? (C.VERZUIM_MIJLPALEN.find(mp => mp.dag >= p.dagVandaag) || null) : null }));
 }
 
-module.exports = { isZiek, ziekteperiodes, verzuimSignalen, dossierVerzuim };
+// v0.30.0: momenten waarop iemand de grens 'frequent verzuim' bereikt (≥ VERZUIM_FREQUENT_AANTAL meldingen in 365 dagen).
+// Elke ziektemelding telt op de startdatum van zijn ziektedeel (zelfde telling als de taak 'Frequent verzuim').
+// Een nieuw moment telt pas weer als het aantal tussendoor onder de grens is gezakt. Geeft ['jjjj-mm-dd', ...].
+// Alle meldmomenten (jjjj-mm-dd, gesorteerd): elk ziektedeel telt als melding; extra samengevoegde meldingen tellen op het eerste deel
+function meldMomenten(periodes) {
+  const meld = [];
+  (periodes || []).forEach(p => (p.delen || [{ start: p.start }]).forEach((d, i) => { const n = p.delen ? (i === 0 ? Math.max(1, (p.meldingen || 1) - p.delen.length + 1) : 1) : (p.meldingen || 1); for (let k = 0; k < n; k++) meld.push(d.start); }));
+  return meld.sort();
+}
+function frequentMomenten(periodes) {
+  const meld = meldMomenten(periodes);
+  const uit = []; let boven = false;
+  for (let i = 0; i < meld.length; i++) {
+    const t = dag(meld[i]), van = new Date(t.getTime() - 365 * 864e5);
+    const n = meld.filter(x => { const d = dag(x); return d > van && d <= t; }).length;
+    if (n >= C.VERZUIM_FREQUENT_AANTAL && !boven) { uit.push(meld[i]); boven = true; }
+    else if (n < C.VERZUIM_FREQUENT_AANTAL) boven = false;
+  }
+  return uit;
+}
+
+module.exports = { isZiek, ziekteperiodes, verzuimSignalen, dossierVerzuim, frequentMomenten, meldMomenten };
