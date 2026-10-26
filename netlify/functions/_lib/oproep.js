@@ -56,6 +56,7 @@ function oproepSignalen(med, perUser, rosters, aanbodPerPersoon, vandaag) {
     let grens = new Date(o.sinds.getTime()); grens.setMonth(grens.getMonth() + C.OPROEP_MAANDEN);
     while (true) { const volgende = new Date(grens.getTime()); volgende.setMonth(volgende.getMonth() + 12); if (Math.round((volgende - vandaag) / 864e5) > C.OPROEP_SIGNAAL_DAGEN) break; grens = volgende; }
     const over = Math.round((grens - vandaag) / 864e5);
+    if (over < -(C.OPROEP_TERUG_DAGEN || 30)) continue;   // v0.31.5: oude grenzen niet meer melden; SLA biedt altijd aan
     if (over > C.OPROEP_SIGNAAL_DAGEN) continue;
     // herhaling: elk jaar opnieuw; laatste aanbod < 12 maanden geleden = klaar
     const sleutelE = String(m.email || '').toLowerCase(), sleutelN = String(m.naam || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();

@@ -88,6 +88,7 @@ module.exports = {
   // Oproepovereenkomst (art. 7:628a lid 5 BW): na 12 maanden verplicht aanbod vaste arbeidsomvang (gemiddelde van die 12 maanden), binnen 1 maand.
   OPROEP_TREFWOORDEN: ['oproep', 'nul', '0-uren', '0 uren', 'min-max', 'min/max', 'flex'],
   OPROEP_MAANDEN: 12,
+  OPROEP_TERUG_DAGEN: 30,           // v0.31.5: grens langer dan 30 dagen geleden = aanbod is al gedaan (SLA doet dat altijd) → geen taak
   OPROEP_SIGNAAL_DAGEN: 30,          // signaal vanaf 30 dagen vóór de 12-maandsgrens
   // Jeugd: minimumjeugdloon stijgt per verjaardag t/m 20 jaar; Arbeidstijdenwet/Nadere regeling kinderarbeid voor < 18.
   JEUGD_LOON_MAX_LEEFTIJD: 20,

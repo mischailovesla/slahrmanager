@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.31.5', datum: '26-10-2026', titel: 'Oproepaanbod: alleen nieuwe meldingen', punten: [
+    'Het dashboard meldt een aanbod vaste arbeidsomvang alleen nog rond de 12-maandsgrens (vanaf 30 dagen ervoor tot 30 dagen erna). Oude grenzen verdwijnen: SLA doet het aanbod altijd.',
+    'Aanbod buiten het dashboard gedaan? Kies bij de taak ⋯ → <i>Aanbod al gedaan</i>; de taak verdwijnt tot de volgende jaargrens.'
+  ] },
   { nummer: '0.31.4', datum: '26-10-2026', titel: 'Takenlijst weer overzichtelijk', punten: [
     '<b>Oproepaanbod</b>: geen taken meer met “gemiddeld 0 u/week”. De roosters worden in blokken opgehaald, wie in 12 maanden geen diensten had valt weg, en bij een verstreken grens telt de meest recente 12-maandsgrens.',
     '<b>Arbeidstijdenwet</b>: één taak per medewerker met alle diensten erin, in plaats van één taak per dienst.',
