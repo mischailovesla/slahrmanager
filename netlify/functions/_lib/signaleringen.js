@@ -825,10 +825,10 @@ function controleerData(users, per, med, vandaagIso, grensIso) {
     const cons = per[id] || [], p = (soort, tekst) => uit.push({ naam, winkel, soort, tekst, email: String(u.email || '') });
     if (e && cons.length && e < cons[0].start) p('nooit-begonnen', 'Uit dienst op ' + nl(e) + ', eerste contract start ' + nl(cons[0].start) + '. Is diegene nooit begonnen? Verwijder dan het contract (telt nu niet mee in het verloop).');
     cons.forEach(c => { if (c.eind && c.eind < c.start) p('contract-omgedraaid', 'Contract ' + nl(c.start) + ' → ' + nl(c.eind) + (c.functie ? ' (' + c.functie + ')' : '') + '.'); });
-    for (let i = 1; i < cons.length; i++) { const a = cons[i - 1], b = cons[i]; if (a.eind && b.start <= a.eind && !(a.start === b.start && a.eind === b.eind)) p('overlap', 'Contract tot ' + nl(a.eind) + ' en volgend contract vanaf ' + nl(b.start) + '.'); }
+    for (let i = 1; i < cons.length; i++) { const a = cons[i - 1], b = cons[i]; if (a.eind && b.start < a.eind && !(a.start === b.start && a.eind === b.eind)) p('overlap', 'Contract tot ' + nl(a.eind) + ' en volgend contract vanaf ' + nl(b.start) + '.'); }
     if (actief && !cons.length) p('geen-contract', 'Actief in Shiftbase maar zonder contract: geen contracttype, functie of einddatum bekend.');
     if (actief && cons.length) { const l = cons[cons.length - 1]; if (l.eind && l.eind < zevenTerug) p('contract-verlopen', 'Laatste contract eindigde ' + nl(l.eind) + ' en er staat geen nieuw contract. Verlengd? Zet het contract in Shiftbase. Vertrokken? Zet de uitdienstdatum.'); }
-    if (e && e < vandaagIso && cons.some(c => c.start <= e && c.eind && c.eind > isoDag(plusDagen(new Date(e + 'T00:00:00'), 31)))) p('contract-na-uitdienst', 'Uit dienst op ' + nl(e) + ', maar het contract loopt nog door tot ' + nl(cons.filter(c => c.start <= e && c.eind > e).map(c => c.eind).sort().pop()) + '.');
+    if (e && e < vandaagIso && e >= isoDag(plusDagen(new Date(vandaagIso + 'T00:00:00'), -60)) && cons.some(c => c.start <= e && c.eind && c.eind > isoDag(plusDagen(new Date(e + 'T00:00:00'), 31)))) p('contract-na-uitdienst', 'Uit dienst op ' + nl(e) + ', maar het contract loopt nog door tot ' + nl(cons.filter(c => c.start <= e && c.eind > e).map(c => c.eind).sort().pop()) + '.');
     if (actief && !String(u.birthdate || u.birth_date || u.date_of_birth || '').match(/^\d{4}-\d{2}-\d{2}/)) p('geen-geboortedatum', 'Nodig voor jeugdloon en de ATW-check.');
     if (actief && String(u.email || '').indexOf('@') === -1) p('geen-email', 'Zonder e-mailadres kunnen loonheffing, check-in en brieven niet automatisch.');
   }
@@ -848,12 +848,35 @@ async function datacontrole(droog) {
   } catch (e) { rap.fouten.push('dossiercontrole: ' + e.message); }
   rap.gevonden = lijst; rap.perSoort = {}; lijst.forEach(x => { rap.perSoort[x.soort] = (rap.perSoort[x.soort] || 0) + 1; });
   if (!lijst.length) return rap;
+  // v0.31.3: overzichtelijk: eerst een tabel per soort (aantal + wat te doen), dan per soort max. DC_MAX voorbeelden
+  const DC_ACTIE = {
+    'dossier': 'Corrigeer het ontslagdossier (✎ Gegevens wijzigen) of de uitdienstdatum in Shiftbase — anders gaat het niet automatisch naar salaris.',
+    'nooit-begonnen': 'Nooit begonnen? Verwijder het contract in Shiftbase.',
+    'contract-omgedraaid': 'Einddatum en startdatum van het contract omgedraaid: corrigeer het contract.',
+    'contract-verlopen': 'Verlengd? Zet het nieuwe contract in Shiftbase. Vertrokken? Zet de uitdienstdatum.',
+    'overlap': 'Twee contracten lopen tegelijk: pas de einddatum van het eerste aan.',
+    'geen-contract': 'Voeg het contract toe in Shiftbase.',
+    'contract-na-uitdienst': 'Recent uit dienst, maar het contract loopt door: zet de einddatum van het contract op de uitdienstdatum.',
+    'geen-geboortedatum': 'Vul de geboortedatum in (nodig voor jeugdloon en arbeidstijden).',
+    'geen-email': 'Vul het e-mailadres in (nodig voor loonheffing, check-in en brieven).'
+  };
+  const DC_MAX = 8, volgorde = ['dossier'].concat(Object.keys(DC_SOORTEN).filter(k => k !== 'dossier'));
   for (const [deel, team] of teams(lijst)) {
-    const items = deel.map(x => ({ kleur: DC_SOORTEN[x.soort][1], titel: x.naam, sub: x.winkel + ' · ' + DC_SOORTEN[x.soort][0], html: esc(x.tekst) }));
-    const n = s => deel.filter(x => x.soort === s).length, ernstig = n('nooit-begonnen') + n('contract-omgedraaid') + n('contract-verlopen');
-    const plain = 'Hallo,\n\nShiftbase-datacontrole:\n' + deel.map(x => '- ' + x.naam + ' (' + x.winkel + ') — ' + DC_SOORTEN[x.soort][0] + ': ' + x.tekst).join('\n') + '\n\nPas het aan in Shiftbase (medewerker → Wijzig / Contracten); volgende week staat het er dan niet meer in.\n\n(Automatisch bericht van het SLA HR Dashboard)';
-    await mailOfDroog(rap, { team, to: ontvangers('datacontrole'), subject: 'Shiftbase-datacontrole: ' + deel.length + ' punt(en)' + (ernstig ? ', ' + ernstig + ' met datums/contracten' : ''), text: plain,
-      html: blokMail('#e8824a', 'HR &middot; Shiftbase-datacontrole', 'Deze gegevens in Shiftbase kloppen waarschijnlijk niet. Ze vertekenen het verloop, de contractsignalen of de brieven:', items, 'Aanpassen in Shiftbase: medewerker &rarr; <strong>Wijzig</strong> (uitdienstdatum, geboortedatum, e-mail) of <strong>Contracten</strong>. Volgende week staat het er dan niet meer in.', 'Wekelijkse datacontrole'), kort: { naam: 'HR-team', aantal: deel.length } });
+    const per = {}; deel.forEach(x => { (per[x.soort] = per[x.soort] || []).push(x); });
+    const soorten = volgorde.filter(k => per[k]);
+    const urgent = ['dossier', 'nooit-begonnen', 'contract-omgedraaid', 'contract-verlopen'].reduce((n, k) => n + (per[k] || []).length, 0);
+    const tabel = '<table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:0 0 18px">' + soorten.map(k => '<tr><td style="' + F + 'font-size:13px;padding:7px 10px;border-bottom:1px solid #eee"><span style="display:inline-block;width:8px;height:8px;border-radius:4px;background:' + DC_SOORTEN[k][1] + ';margin-right:8px"></span>' + esc(DC_SOORTEN[k][0]) + '</td><td style="' + F + 'font-size:13px;font-weight:700;padding:7px 10px;border-bottom:1px solid #eee;text-align:right">' + per[k].length + '</td></tr>').join('') + '</table>';
+    const blokken = soorten.map(k => {
+      const l = per[k], toon = l.slice(0, DC_MAX);
+      return '<p style="' + F + 'font-size:13px;font-weight:700;color:' + DC_SOORTEN[k][1] + ';margin:20px 0 4px">' + esc(DC_SOORTEN[k][0]) + ' (' + l.length + ')</p><p style="' + F + 'font-size:12px;color:#666;margin:0 0 8px">' + esc(DC_ACTIE[k] || '') + '</p>'
+        + toon.map(x => '<p style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 6px;padding-left:10px;border-left:3px solid ' + DC_SOORTEN[k][1] + '"><strong>' + esc(x.naam) + '</strong> <span style="color:#888078">· ' + esc(x.winkel) + '</span><br><span style="font-size:12px;color:#666">' + esc(x.tekst) + '</span></p>').join('')
+        + (l.length > DC_MAX ? '<p style="' + F + 'font-size:12px;color:#888078;margin:4px 0 0">… en nog ' + (l.length - DC_MAX) + '. De volledige lijst staat in het dashboard: Signaleringen → Shiftbase-datacontrole → Droogloop.</p>' : '');
+    }).join('');
+    const plain = 'Hallo,\n\nShiftbase-datacontrole: ' + deel.length + ' punt(en).\n\n' + soorten.map(k => DC_SOORTEN[k][0] + ' (' + per[k].length + ') — ' + (DC_ACTIE[k] || '') + '\n' + per[k].slice(0, DC_MAX).map(x => '- ' + x.naam + ' (' + x.winkel + '): ' + x.tekst).join('\n') + (per[k].length > DC_MAX ? '\n- … en nog ' + (per[k].length - DC_MAX) : '')).join('\n\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
+    const intro = '<strong>' + deel.length + ' punt(en)</strong> in Shiftbase of de dossiers kloppen waarschijnlijk niet' + (urgent ? ', waarvan <strong>' + urgent + ' met voorrang</strong> (bovenaan)' : '') + '. Per soort staat erbij wat je moet doen.';
+    await mailOfDroog(rap, { team, to: ontvangers('datacontrole'), subject: 'Shiftbase-datacontrole: ' + deel.length + ' punt(en)' + (urgent ? ' · ' + urgent + ' met voorrang' : ''), text: plain,
+      html: T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Shiftbase-datacontrole') + '<tr><td style="padding:30px 34px 26px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 12px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 16px">' + intro + '</p>' + tabel + blokken + '<p style="' + F + 'font-size:11px;color:#aaa;margin:22px 0 0;text-align:center">Wekelijkse datacontrole (maandag) · aangepast in Shiftbase = volgende week weg</p></td></tr>' + T.slaFoot()),
+      kort: { naam: 'HR-team', aantal: deel.length } });
   }
   return rap;
 }

@@ -1815,6 +1815,9 @@
   }
   window.vlOpslaan = async function (bevestigVol) {
     var besluit = vlKeuze(); if (!besluit) { toast('Kies een besluit', 'err'); return; }
+    // v0.31.2: altijd bevestigen voor wie het besluit is (voorkomt een besluit bij de verkeerde medewerker)
+    var lbl = (document.querySelector('input[name="vl-besluit"]:checked') || {}).parentElement; lbl = lbl ? lbl.textContent.trim() : besluit;
+    if (!bevestigVol && !confirm('Besluit vastleggen voor ' + vlItem.naam + ' (' + (vlItem.winkel || '-') + ', contract t/m ' + vlItem.einddatum + '):\n\n' + lbl + '\n\nKlopt dat?')) return;
     var p = { mid: g('vl-mid').value, eindIso: g('vl-eind').value, startIso: g('vl-start').value, naam: vlItem.naam, email: vlItem.email, winkel: vlItem.winkel, besluit: besluit, nieuweEind: g('vl-nieuwe-eind').value, advies: g('vl-advies').value, adviesOpmerking: g('vl-advies-opm').value, notitie: g('vl-notitie').value, bevestigVol: bevestigVol ? 1 : 0 };
     g('vl-sbtn').disabled = true;
     var r = await api('/api/verlenging', p);

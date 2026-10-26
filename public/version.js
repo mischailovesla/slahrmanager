@@ -2,6 +2,16 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.31.3', datum: '26-10-2026', titel: 'Datacontrole-mail overzichtelijker', punten: [
+    'De maandagmail <b>Shiftbase-datacontrole</b> begint met een tabel per soort (aantal), daarna per soort wat je moet doen en maximaal 8 voorbeelden.',
+    'Geen valse meldingen meer over overlappende contracten: een contract dat eindigt op de dag dat het volgende begint is normaal in Shiftbase.',
+    '<i>Contract loopt door na uitdienst</i> alleen nog voor wie in de laatste 60 dagen is vertrokken.',
+    'Dossiercontrole: 1 dag verschil tussen dossier en Shiftbase is geen fout meer, en medewerkers van HQ, keuken en logistiek worden nu wel gevonden.'
+  ] },
+  { nummer: '0.31.2', datum: '23-10-2026', titel: 'Besluiten: wie en wanneer', punten: [
+    'Bij een contracttaak met een besluit staat nu wie het vastlegde en wanneer, bijv. “besluit: Medewerker stopt zelf (Mischa, 22-10)”.',
+    'Bij <b>Besluit vastleggen</b> vraagt het dashboard eerst: “Besluit vastleggen voor [naam] … Klopt dat?” — zo komt een besluit niet per ongeluk bij de verkeerde medewerker.'
+  ] },
   { nummer: '0.31.1', datum: '23-10-2026', titel: 'Help: inhoud scrolt mee', punten: [
     'De inhoudsopgave links in Help blijft nu in beeld als je naar beneden scrolt.'
   ] },

@@ -58,7 +58,8 @@ function controleer(rijen, med, actief, vandaag) {
     else {
       if (eind) {
         const sbEind = String(m.eind || '');
-        if (sbEind && sbEind !== isoVan(eind)) p('uitdienst-anders', 'Shiftbase: uit dienst ' + isoNaarNl(sbEind) + ', dossier: ' + r.einddatum + '. Welke klopt? Pas de andere aan (salaris rekent met de einddatum).');
+        const verschil = sbEind ? Math.abs(Math.round((new Date(sbEind + 'T00:00:00') - eind) / 864e5)) : 0;   // v0.31.3: 1 dag verschil = Shiftbase-notatie, geen fout
+        if (sbEind && verschil > 1) p('uitdienst-anders', 'Shiftbase: uit dienst ' + isoNaarNl(sbEind) + ', dossier: ' + r.einddatum + '. Welke klopt? Pas de andere aan (salaris rekent met de einddatum).');
         else if (!sbEind && (eind - vandaag) / 864e5 <= UITDIENST_VOORUIT) p('uitdienst-leeg', 'Einddatum ' + r.einddatum + (eind < vandaag ? ' is verstreken' : ' nadert') + ', maar in Shiftbase staat nog geen uitdienstdatum.');
       }
       const a = actId[String(m.id)] || actNaam[normNaam(m.naam)];
@@ -71,9 +72,19 @@ function controleer(rijen, med, actief, vandaag) {
   return uit;
 }
 
+// v0.31.3: alle Shiftbase-gebruikers (ook HQ/Keuken/Logistiek, die de verloopcijfers bewust overslaan) — 10 min cache
+let _users = { t: 0, v: null };
+async function alleGebruikers() {
+  if (_users.v && _users.t > Date.now()) return _users.v;
+  const lijst = await require('./shiftbase').sbGet('users');
+  const v = (lijst || []).map(rec => { const u = (rec && rec.User) || rec || {}; let e = String(u.enddate || '').trim(); if (e === '0000-00-00') e = '';
+    return { id: String(u.id || ''), naam: ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim(), email: String(u.email || '').trim().toLowerCase(), start: String(u.startdate || ''), eind: e }; });
+  _users = { t: Date.now() + 600000, v };
+  return v;
+}
 async function laad(rijen) {
-  const VR = require('./verloop'), SB = require('./shiftbase');
-  const [med, actief] = await Promise.all([VR.laadMedewerkers(false), SB.getMedewerkers(false).catch(() => [])]);
+  const SB = require('./shiftbase');
+  const [med, actief] = await Promise.all([alleGebruikers().catch(() => require('./verloop').laadMedewerkers(false)), SB.getMedewerkers(false).catch(() => [])]);
   const vandaag = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/Amsterdam' }));
   return controleer(rijen, med, actief, vandaag);
 }
