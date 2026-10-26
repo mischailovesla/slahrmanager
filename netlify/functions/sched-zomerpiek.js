@@ -1,8 +1,9 @@
 // Scheduled function (v0.26.0): zomerpiek (maandag 09:05 zomertijd / een uur eerder in de wintertijd)
-// Cron in UTC: '5 7 * * 1'. Droogloop tot env SIGNALERINGEN_ACTIEF=1.
+// Cron in UTC: '25 6 * * 1'. Droogloop tot env SIGNALERINGEN_ACTIEF=1.
+// v0.32.3: vervroegd naar UTC '25 6 * * 1' (07:xx winter / 08:xx zomer), zodat het in het HR-dagoverzicht van 09:00 staat.
 const { schedule } = require('@netlify/functions');
 const SIG = require('./_lib/signaleringen');
-exports.handler = schedule('5 7 * * 1', async () => {
+exports.handler = schedule('25 6 * * 1', async () => {
   const rap = await SIG.draai('zomerpiek', false, 'schedule');
   console.log(JSON.stringify({ check: rap.naam, droog: rap.droog, gevonden: rap.gevonden.length, verstuurd: rap.verstuurd.length, fouten: rap.fouten }));
   return { statusCode: 200 };
