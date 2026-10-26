@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.31.4', datum: '26-10-2026', titel: 'Takenlijst weer overzichtelijk', punten: [
+    '<b>Oproepaanbod</b>: geen taken meer met “gemiddeld 0 u/week”. De roosters worden in blokken opgehaald, wie in 12 maanden geen diensten had valt weg, en bij een verstreken grens telt de meest recente 12-maandsgrens.',
+    '<b>Arbeidstijdenwet</b>: één taak per medewerker met alle diensten erin, in plaats van één taak per dienst.',
+    'Een geboortedatum die niet kan kloppen (bijv. 0 jaar oud) geeft geen jeugdloon- of ATW-taken meer, maar een melding <i>Geboortedatum klopt niet</i> in de datacontrole.'
+  ] },
   { nummer: '0.31.3', datum: '26-10-2026', titel: 'Datacontrole-mail overzichtelijker', punten: [
     'De maandagmail <b>Shiftbase-datacontrole</b> begint met een tabel per soort (aantal), daarna per soort wat je moet doen en maximaal 8 voorbeelden.',
     'Geen valse meldingen meer over overlappende contracten: een contract dat eindigt op de dag dat het volgende begint is normaal in Shiftbase.',

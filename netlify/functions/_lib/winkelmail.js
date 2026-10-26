@@ -114,7 +114,7 @@ function bouw(data, winkel) {
     const d = new Date(+vm[1], +vm[2] - 1, +vm[3]); if (d < v || d > zondag) continue;
     // v0.28.2: jeugdloon — t/m 21 jaar stijgt het (minimum)uurloon op de verjaardag; dat moet de SM handmatig in Shiftbase aanpassen
     const wordt = m.leeftijd == null ? null : (d.getTime() === v.getTime() ? m.leeftijd : m.leeftijd + 1);
-    const loon = wordt != null && wordt <= (C.JEUGD_LOON_MAX_LEEFTIJD || 20) + 1;
+    const loon = wordt != null && wordt >= 14 && wordt <= (C.JEUGD_LOON_MAX_LEEFTIJD || 20) + 1;
     b.jarig.push({ naam: m.naam, wat: 'Jarig op ' + dagNaam(d) + (loon ? ' — wordt ' + wordt : ''), datum: d, loon,
       tip: loon ? 'Uurloon aanpassen in Shiftbase per ' + d.getDate() + '-' + (d.getMonth() + 1) + '-' + d.getFullYear() + ': ' + jeugdloonTekst(wordt) : '' });
   }

@@ -52,15 +52,20 @@ function oproepSignalen(med, perUser, rosters, aanbodPerPersoon, vandaag) {
   const uit = [];
   for (const m of med || []) {
     const o = oproepSinds(perUser[String(m.id)] || [], vandaag); if (!o) continue;
-    const grens = new Date(o.sinds.getTime()); grens.setMonth(grens.getMonth() + C.OPROEP_MAANDEN);
+    // v0.31.4: de plicht komt elk jaar terug — neem de meest recente 12-maandsgrens (niet de eerste van jaren geleden)
+    let grens = new Date(o.sinds.getTime()); grens.setMonth(grens.getMonth() + C.OPROEP_MAANDEN);
+    while (true) { const volgende = new Date(grens.getTime()); volgende.setMonth(volgende.getMonth() + 12); if (Math.round((volgende - vandaag) / 864e5) > C.OPROEP_SIGNAAL_DAGEN) break; grens = volgende; }
     const over = Math.round((grens - vandaag) / 864e5);
     if (over > C.OPROEP_SIGNAAL_DAGEN) continue;
     // herhaling: elk jaar opnieuw; laatste aanbod < 12 maanden geleden = klaar
     const sleutelE = String(m.email || '').toLowerCase(), sleutelN = String(m.naam || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
     const laatste = (sleutelE && aanbodPerPersoon[sleutelE]) || aanbodPerPersoon[sleutelN] || '';
     if (laatste && Math.round((vandaag - dag(laatste)) / 864e5) < 365) continue;
-    const van = new Date(Math.max(grens.getTime() - 365 * 864e5, o.sinds.getTime())), tot = new Date(Math.min(grens.getTime(), vandaag.getTime()));
+    // grens al voorbij: het aanbod moet nu alsnog → gemiddelde over de laatste 12 maanden tot vandaag (v0.31.4)
+    const eindRef = over < 0 ? vandaag : new Date(Math.min(grens.getTime(), vandaag.getTime()));
+    const van = new Date(Math.max(eindRef.getTime() - 365 * 864e5, o.sinds.getTime())), tot = eindRef;
     const g = gemiddeldeUren(rosters, m.id, van, tot);
+    if (!g.diensten) continue;   // v0.31.4: geen diensten in die 12 maanden = niets om aan te bieden (of niet meer actief)
     uit.push({ naam: m.naam, email: m.email || '', winkel: m.winkelNaam || '-', sinds: ddmm(iso(o.sinds)), grens: ddmm(iso(grens)), over, teLaat: over < 0, contractType: o.contract.type, gemPerWeek: g.perWeek, gemPerMaand: g.perMaand, diensten: g.diensten, periode: ddmm(iso(van)) + ' t/m ' + ddmm(iso(tot)), laatsteAanbod: laatste ? ddmm(laatste) : '' });
   }
   return uit.sort((a, b) => a.over - b.over);

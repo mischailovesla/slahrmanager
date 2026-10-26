@@ -17,7 +17,7 @@ function verjaardagen(med, vandaag) {
   vandaag = vandaag || new Date();
   const uit = [];
   for (const m of med || []) {
-    if (m.leeftijd == null || m.leeftijd > C.JEUGD_LOON_MAX_LEEFTIJD || !m.verjaardag) continue;
+    if (m.leeftijd == null || m.leeftijd > C.JEUGD_LOON_MAX_LEEFTIJD || m.leeftijd < 13 || !m.verjaardag) continue;
     const vj = dag(m.verjaardag); const over = Math.round((vj - vandaag) / 864e5);
     if (over < 0 || over > C.JEUGD_VERJAARDAG_DAGEN) continue;
     uit.push({ naam: m.naam, email: m.email || '', winkel: m.winkelNaam || '-', wordt: m.leeftijd + 1, op: ddmm(m.verjaardag), over });
@@ -39,7 +39,7 @@ function atwOvertredingen(med, rosters, vandaag) {
   const perUser = {};
   for (const r0 of rosters || []) {
     const r = (r0 && r0.Roster) || r0 || {};
-    const uid = String(r.user_id || ''), m = byId[uid]; if (!m || m.leeftijd == null || m.leeftijd >= 18) continue;
+    const uid = String(r.user_id || ''), m = byId[uid]; if (!m || m.leeftijd == null || m.leeftijd >= 18 || m.leeftijd < 13) continue;   // v0.31.4: < 13 = geboortedatum fout ingevuld (datacontrole meldt het)
     const dt = String(r.date || ''); if (!dt) continue;
     const s = minuten(r.starttime), e = minuten(r.endtime);
     let uren = (s != null && e != null) ? ((e >= s ? e - s : e + 1440 - s) / 60) : (r.hours != null ? Number(r.hours) : 0);

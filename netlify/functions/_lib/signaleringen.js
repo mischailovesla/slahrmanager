@@ -646,7 +646,14 @@ async function oproepaanbod(droog) {
   const [med, per, aanbod] = await Promise.all([SB.getMedewerkers(true), SB.getContractenPerUser(true), S.getOproepaanbod().catch(() => [])]);
   const kandidaat = med.filter(m => OP.oproepSinds(per[String(m.id)] || [], vandaag));
   if (!kandidaat.length) return rap;
-  const ros = await SB.sbGet('rosters?min_date=' + isoDag(plusDagen(vandaag, -400)) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || []).catch(e => { rap.fouten.push('roosters: ' + e.message); return []; });
+  // v0.31.4: roosters in blokken van 3 maanden ophalen (één grote periode gaf leeg terug → iedereen 0 u/week)
+  let ros = [];
+  for (let d = -400; d < 0; d += 92) {
+    const blok = await SB.sbGet('rosters?min_date=' + isoDag(plusDagen(vandaag, d)) + '&max_date=' + isoDag(plusDagen(vandaag, Math.min(d + 91, 0)))).then(r => (r && r.data) || r || []).catch(e => { rap.fouten.push('roosters: ' + e.message); return null; });
+    if (blok === null) { rap.gevonden = []; return rap; }   // liever geen taken dan taken met verkeerde uren
+    ros = ros.concat(blok);
+  }
+  if (!ros.length) { rap.fouten.push('roosters: niets opgehaald — check overgeslagen'); return rap; }
   const laatste = {};
   for (const r of aanbod) { const d = parseNLDatum(r.verzenddatum); if (!d) continue; const isoD = isoDag(d); const e = String(r.email || '').toLowerCase(), n = normNaam(r.naam); if (e && (!laatste[e] || laatste[e] < isoD)) laatste[e] = isoD; if (n && (!laatste[n] || laatste[n] < isoD)) laatste[n] = isoD; }
   const lijst = await zonderVertrekkers(OP.oproepSignalen(med, per, ros, laatste, vandaag), rap);
@@ -801,6 +808,7 @@ const DC_SOORTEN = {
   'geen-contract': ['Actief zonder contract', '#e8824a'],
   'contract-na-uitdienst': ['Contract loopt door na de uitdienstdatum', '#e8824a'],
   'geen-geboortedatum': ['Geboortedatum ontbreekt', '#2980b9'],
+  'geboortedatum-vreemd': ['Geboortedatum klopt niet', '#c0392b'],   // v0.31.4
   'geen-email': ['E-mailadres ontbreekt', '#2980b9'],
   'dossier': ['Ontslagdossier wijkt af van Shiftbase', '#c0392b']   // v0.27.2
 };
@@ -829,7 +837,9 @@ function controleerData(users, per, med, vandaagIso, grensIso) {
     if (actief && !cons.length) p('geen-contract', 'Actief in Shiftbase maar zonder contract: geen contracttype, functie of einddatum bekend.');
     if (actief && cons.length) { const l = cons[cons.length - 1]; if (l.eind && l.eind < zevenTerug) p('contract-verlopen', 'Laatste contract eindigde ' + nl(l.eind) + ' en er staat geen nieuw contract. Verlengd? Zet het contract in Shiftbase. Vertrokken? Zet de uitdienstdatum.'); }
     if (e && e < vandaagIso && e >= isoDag(plusDagen(new Date(vandaagIso + 'T00:00:00'), -60)) && cons.some(c => c.start <= e && c.eind && c.eind > isoDag(plusDagen(new Date(e + 'T00:00:00'), 31)))) p('contract-na-uitdienst', 'Uit dienst op ' + nl(e) + ', maar het contract loopt nog door tot ' + nl(cons.filter(c => c.start <= e && c.eind > e).map(c => c.eind).sort().pop()) + '.');
-    if (actief && !String(u.birthdate || u.birth_date || u.date_of_birth || '').match(/^\d{4}-\d{2}-\d{2}/)) p('geen-geboortedatum', 'Nodig voor jeugdloon en de ATW-check.');
+    const gbd = String(u.birthdate || u.birth_date || u.date_of_birth || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (actief && (!gbd || gbd[1] === '0000')) p('geen-geboortedatum', 'Nodig voor jeugdloon en de ATW-check.');
+    else if (actief && gbd) { const lft = (+vandaagIso.slice(0, 4)) - (+gbd[1]); if (lft < 13 || lft > 80) p('geboortedatum-vreemd', 'Geboortedatum ' + gbd[3] + '-' + gbd[2] + '-' + gbd[1] + ' (' + lft + ' jaar) kan niet kloppen — waarschijnlijk een typfout. Telt nu niet mee voor jeugdloon en ATW.'); }
     if (actief && String(u.email || '').indexOf('@') === -1) p('geen-email', 'Zonder e-mailadres kunnen loonheffing, check-in en brieven niet automatisch.');
   }
   const volg = Object.keys(DC_SOORTEN);
@@ -858,6 +868,7 @@ async function datacontrole(droog) {
     'geen-contract': 'Voeg het contract toe in Shiftbase.',
     'contract-na-uitdienst': 'Recent uit dienst, maar het contract loopt door: zet de einddatum van het contract op de uitdienstdatum.',
     'geen-geboortedatum': 'Vul de geboortedatum in (nodig voor jeugdloon en arbeidstijden).',
+    'geboortedatum-vreemd': 'Corrigeer de geboortedatum in Shiftbase (medewerker → Wijzig).',
     'geen-email': 'Vul het e-mailadres in (nodig voor loonheffing, check-in en brieven).'
   };
   const DC_MAX = 8, volgorde = ['dossier'].concat(Object.keys(DC_SOORTEN).filter(k => k !== 'dossier'));

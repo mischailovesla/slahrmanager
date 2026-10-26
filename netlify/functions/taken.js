@@ -219,6 +219,19 @@ exports.handler = beveiligd('taken', async (event, g) => {
     if (naam === 'nieuwe-medewerkers') items = (items || []).filter(x => !loonVerstuurd(x));
     taken.push(...uitCheck(naam, items, runs[naam].tijd));
   }
+  // v0.31.4: Arbeidstijdenwet-afwijkingen per medewerker samenvoegen (één taak met de diensten erin, i.p.v. één taak per dienst)
+  {
+    const atw = taken.filter(t => /^jeugd\|atw\|/.test(t.sleutel || '')), per = {};
+    atw.forEach(t => { (per[t.naam] = per[t.naam] || []).push(t); });
+    if (atw.length) {
+      taken = taken.filter(t => !/^jeugd\|atw\|/.test(t.sleutel || ''));
+      for (const n of Object.keys(per)) {
+        const l = per[n], e = l[0], data = l.map(t => (t.sub.split(' · ')[2] || '').split(' ')[0]).filter(Boolean);
+        taken.push(Object.assign({}, e, { sleutel: 'jeugd|atw|' + n, titel: l.length === 1 ? e.titel : 'Arbeidstijdenwet: ' + l.length + ' diensten aanpassen' + ((e.titel.match(/\(\d+ jaar\)/) || [''])[0] ? ' ' + e.titel.match(/\(\d+ jaar\)/)[0] : ''),
+          sub: l.length === 1 ? e.sub : n + ' · ' + (e.winkel || '-') + ' · ' + data.join(', ') + ' — ' + (e.sub.split(' · ').slice(3).join(' · ') || '') }));
+      }
+    }
+  }
   // Fase 4c: wie een verlengingstaak heeft, krijgt geen losse aanzeg- of ketentaak meer (die info zit in de verlengingstaak)
   const { normNaam } = require('./_lib/util');
   const metVerlenging = new Set(taken.filter(t => t.verlenging).map(t => normNaam(t.naam)));
