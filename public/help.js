@@ -26,7 +26,7 @@ window.HR_HELP = {
       + '<tr><td>Jubilea volgende week</td><td>maandag</td><td>HR</td></tr>'
       + '<tr><td>Winkelmail per winkel</td><td>maandag 07:50</td><td>store manager</td></tr>'
       + '</tbody></table>'
-      + '<p><b>Mails aan HR:</b> alle automatische meldingen voor HR komen gebundeld in één <b>HR-overzicht</b> (maandag en donderdag om 09:00, na de salarisronde van 08:30). Alleen <i>mail niet aangekomen</i> en een lage check-in komen direct.</p>'
+      + '<p><b>Mails aan HR:</b> alle automatische meldingen voor HR komen gebundeld in één <b>HR-weekoverzicht</b> (maandag om 09:00, na de salarisronde van 08:30). Alleen <i>mail niet aangekomen</i> en een lage check-in komen direct.</p>'
       + '<p>Signalen over keukenmedewerkers gaan naar Jop. Automatische mails gaan alleen echt de deur uit als <code>SIGNALERINGEN_ACTIEF=1</code> in Netlify staat; zie ook <b>Signaleringen</b> voor de laatste runs.</p>' },
     { id: 'instroom', titel: 'Instroom: loonheffing en starters', html:
       '<ul><li><b>Loonheffing</b> — nieuwe medewerkers uit Shiftbase krijgen een uitnodiging (NL/EN) met een uploadlink. Automatisch als dat aan staat op de tab Loonheffing; anders staat het als taak klaar.</li>'
@@ -58,7 +58,7 @@ window.HR_HELP = {
       '<p>Elke maandag 07:50 krijgt elke winkel een mail met wat er speelt. Een winkel zonder iets te melden krijgt niets. Keuken gaat naar Jop.</p>'
       + '<table class="help-tab"><thead><tr><th>Blok</th><th>Wat de store manager doet</th></tr></thead><tbody>'
       + '<tr><td>Wacht op de medewerker</td><td>aanspreken op de vloer</td></tr>'
-      + '<tr><td>Contracten die aflopen (6 weken, geen besluit)</td><td>advies geven via de knop</td></tr>'
+      + '<tr><td>Contracten die aflopen (8 weken, geen besluit)</td><td>advies geven via de knop</td></tr>'
       + '<tr><td>Proeftijd loopt af (17 dagen)</td><td>advies geven via de knop</td></tr>'
       + '<tr><td>Nieuwe medewerkers / welkomstcollectie Academy</td><td>inwerken, buddy</td></tr>'
       + '<tr><td>Vertrek deze en volgende week</td><td>sleutels en kleding innemen</td></tr>'

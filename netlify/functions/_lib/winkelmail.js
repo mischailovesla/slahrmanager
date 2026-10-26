@@ -2,7 +2,7 @@
 // v0.28.0: wekelijkse winkelmail aan de store manager (maandag, zonder login)
 // Store managers werken niet in het HR-dashboard; ze krijgen per winkel alleen wat ze moeten weten of doen:
 //   1. Wacht op de medewerker  — ontslagbrief nog niet getekend, loonheffingsformulier nog niet binnen
-//   2. Contracten die aflopen  — binnen 6 weken, nog geen besluit → knop "Geef advies" (advies.html, zonder login)
+//   2. Contracten die aflopen  — binnen 8 weken, nog geen besluit → knop "Geef advies" (advies.html, zonder login)
 //   2b. Proeftijd loopt af     — binnen 17 dagen → knop "Geef advies" (doorgaan / stoppen / twijfel) (v0.29.0)
 //   3. Nieuwe medewerkers      — start deze week; welkomstcollectie Academy nog niet af
 //   4. Vertrek                 — laatste werkdag deze of volgende week (+ sleutels/kleding innemen)
@@ -21,7 +21,7 @@ const { normNaam, parseNLDatum } = require('./util');
 
 const F = 'font-family:Arial,sans-serif;';
 const esc = T.esc;
-const ADVIES_DAGEN = 42;           // contracten die binnen 6 weken aflopen
+const ADVIES_DAGEN = 56;           // v0.32.3: contracten die binnen 8 weken aflopen (was 6): SM ziet het ~3 maandagen vóór de besluitdeadline (35 dagen)
 const ADVIES_GELDIG_DAGEN = 21;    // advieslink 3 weken geldig
 const STANDAARD = { aan: false, proef: true, adressen: {}, uit: [] };
 

@@ -989,7 +989,7 @@ async function winkelmail(droog) {
   return rap;
 }
 
-// ---- 25. v0.32.0: HR-overzicht — alle interne meldingen sinds het vorige overzicht in één mail (v0.32.3: ma + do 09:00) ----
+// ---- 25. v0.32.0: HR-overzicht — alle interne meldingen sinds het vorige overzicht in één mail (v0.32.3: maandag 09:00) ----
 const DAG_LABEL = { 'contractketen': 'Contracten', 'verlengingen': 'Verlengingen', 'aanzegtermijnen': 'Aanzegtermijnen', 'verzuim': 'Verzuim', 'jeugd': 'Jeugd (ATW / jeugdloon)', 'oproepaanbod': 'Oproepaanbod', 'stille-afwezigen': 'Stille afwezigen', 'weekend-beschikbaarheid': 'Weekendbeschikbaarheid', 'vakantiepieken': 'Vakantiepieken', 'datacontrole': 'Shiftbase-datacontrole', 'jubilea': 'Jubilea', 'zomerpiek': 'Zomerpiek', 'salaris': 'Naar salaris', 'nieuwe-medewerkers': 'Nieuwe medewerkers', 'bewaartermijnen': 'Bewaartermijnen (AVG)', 'data-hygiene': 'Shiftbase aanvullen', 'mto': 'MTO', 'checkin': 'Check-in' };
 function tekstNaarHtml(t) {
   const regels = String(t || '').split('\n').map(r => r.trimEnd()).filter(r => r && !/^Hallo,?$/i.test(r) && !/^\(Automatisch bericht/i.test(r));
@@ -1007,7 +1007,7 @@ async function dagoverzicht(droog) {
   if (!(await bundelAan())) { rap.gepauzeerd = true; return rap; }
   const db = admin();
   const { data: vorige } = await db.from('hr_signaleringen').select('tijdstip').eq('check', 'dagoverzicht').eq('droog', false).order('tijdstip', { ascending: false }).limit(1);
-  const vanaf = (vorige && vorige[0] && vorige[0].tijdstip) || new Date(Date.now() - 4 * 864e5).toISOString(); // v0.32.3: ma + do → max. 4 dagen terug
+  const vanaf = (vorige && vorige[0] && vorige[0].tijdstip) || new Date(Date.now() - 8 * 864e5).toISOString(); // v0.32.3: wekelijks (maandag) → max. 8 dagen terug
   const { data, error } = await db.from('hr_signaleringen').select('check,tijdstip,bundel:details->bundel').eq('droog', false).gt('tijdstip', vanaf).order('tijdstip', { ascending: true }).limit(1000);
   if (error) { rap.fouten.push('hr_signaleringen: ' + error.message); return rap; }
   const groepen = {};
@@ -1032,11 +1032,11 @@ function maakDagMail(items, k, to, test) {
     const site = require('./uploads').site();
     const inhoud = items.map(it => '<h3 style="' + F + 'font-size:15px;color:#333d3a;margin:22px 0 4px;padding-top:12px;border-top:1px solid #eee">' + esc(DAG_LABEL[it.check] || it.check) + '</h3><p style="' + F + 'font-size:12px;color:#888078;margin:0 0 6px">' + esc(it.subject) + '</p>' + tekstNaarHtml(it.text)).join('');
     const lijst = '<ul style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 6px;padding-left:18px">' + items.map(it => '<li>' + esc(it.subject) + '</li>').join('') + '</ul>';
-    const html = T.slaWrap(T.slaHead('#333d3a', 'HR &middot; Overzicht ' + esc(dagNL)) + '<tr><td style="padding:30px 34px 26px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 10px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 10px">Alle automatische HR-meldingen sinds het vorige overzicht, in één mail (' + items.length + '):</p>' + lijst
+    const html = T.slaWrap(T.slaHead('#333d3a', 'HR &middot; Weekoverzicht ' + esc(dagNL)) + '<tr><td style="padding:30px 34px 26px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 10px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 10px">Alle automatische HR-meldingen van de afgelopen week, in één mail (' + items.length + '):</p>' + lijst
       + '<p style="margin:14px 0 4px"><a href="' + esc(site) + '" style="display:inline-block;padding:9px 18px;background:#009f4b;color:#fff;border-radius:6px;text-decoration:none;font-weight:700;' + F + 'font-size:13px">Open de takenlijst</a></p>' + inhoud
-      + '<p style="' + F + 'font-size:11px;color:#aaa;margin:22px 0 0;text-align:center">HR-overzicht (maandag en donderdag 09:00) · alles staat ook als taak in het dashboard</p></td></tr>' + T.slaFoot());
-    const plain = 'Hallo,\n\nHR-overzicht (' + items.length + ' melding(en)):\n\n' + items.map(it => '== ' + (DAG_LABEL[it.check] || it.check) + ' — ' + it.subject + '\n' + String(it.text || '').replace(/^Hallo,?\s*/i, '')).join('\n\n') + '\n\n' + site;
-    const subject = (test ? '[TEST] ' : '') + (k.indexOf(String(C.KEUKEN_EMAIL || '~')) > -1 && g.to.length === 1 ? 'Keuken · ' : '') + 'HR-overzicht ' + dagNL + ': ' + items.length + ' melding(en)';
+      + '<p style="' + F + 'font-size:11px;color:#aaa;margin:22px 0 0;text-align:center">HR-weekoverzicht (maandag 09:00) · alles staat ook als taak in het dashboard</p></td></tr>' + T.slaFoot());
+    const plain = 'Hallo,\n\nHR-weekoverzicht (' + items.length + ' melding(en)):\n\n' + items.map(it => '== ' + (DAG_LABEL[it.check] || it.check) + ' — ' + it.subject + '\n' + String(it.text || '').replace(/^Hallo,?\s*/i, '')).join('\n\n') + '\n\n' + site;
+    const subject = (test ? '[TEST] ' : '') + (k.indexOf(String(C.KEUKEN_EMAIL || '~')) > -1 && g.to.length === 1 ? 'Keuken · ' : '') + 'HR-weekoverzicht ' + dagNL + ': ' + items.length + ' melding(en)';
     return { subject, plain, html };
   }
 }
@@ -1053,7 +1053,7 @@ async function dagoverzichtTest(naar) {
   items.sort((a, b) => a.tijd < b.tijd ? -1 : 1);
   const m = maakDagMail(items, '', [naar], true);
   await M.verstuur({ to: naar, subject: m.subject, text: m.plain, html: m.html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'dagoverzicht-test' }] });
-  return { bericht: 'Test-HR-overzicht met ' + items.length + ' onderwerp(en) verstuurd naar ' + naar + '.' };
+  return { bericht: 'Test-weekoverzicht met ' + items.length + ' onderwerp(en) verstuurd naar ' + naar + '.' };
 }
 
 const CHECKS = { 'dagoverzicht': dagoverzicht, 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };

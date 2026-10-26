@@ -2,10 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
-  { nummer: '0.32.3', datum: '26-10-2026', titel: 'HR-overzicht op maandag en donderdag om 09:00', punten: [
-    'Het HR-overzicht (was: dagoverzicht) komt nu <b>twee keer per week</b>: maandag en donderdag om <b>09:00</b>, zomer en winter.',
-    'Op die dagen gaat om 08:30 alles automatisch naar salaris. In het overzicht van 09:00 zie je dus meteen wat er naar Mahdia is gestuurd.',
-    'Dagelijkse signalen (contracten, verzuim) staan tussendoor gewoon als taak op het Overzicht in het dashboard.'
+  { nummer: '0.32.3', datum: '26-10-2026', titel: 'HR-weekoverzicht op maandag om 09:00', punten: [
+    'Het HR-overzicht (was: dagoverzicht) is nu een <b>weekoverzicht</b>: elke maandag om <b>09:00</b>, zomer en winter.',
+    'Op maandag gaat om 08:30 alles automatisch naar salaris; in het weekoverzicht zie je meteen wat er naar Mahdia is gestuurd. Wat donderdag naar salaris gaat, staat in het overzicht van de maandag erna.',
+    'Van dagelijkse controles (contracten, verzuim) staat alleen de laatste stand in de mail. Tussendoor zie je ze als taak op het Overzicht in het dashboard.',
+    'Winkelmail: aflopende contracten staan er nu <b>8 weken</b> van tevoren in (was 6). De store manager krijgt zo een paar maandagen de tijd om advies te geven, vóór HR uiterlijk 35 dagen voor het einde beslist.'
   ] },
   { nummer: '0.32.2', datum: '26-10-2026', titel: 'Datacontrole maandelijks, weekendbeschikbaarheid uit de mail', punten: [
     'De Shiftbase-datacontrole komt nu <b>één keer per maand</b> (op de 1e) als aparte mail, niet meer elke maandag in het dagoverzicht.',
