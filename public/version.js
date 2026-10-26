@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.32.0', datum: '26-10-2026', titel: 'Eén HR-dagoverzicht in plaats van losse mails', punten: [
+    'Alle automatische meldingen voor HR (contracten, verzuim, jeugd, oproepaanbod, datacontrole, jubilea, salaris, nieuwe medewerkers enz.) komen nu in <b>één mail per werkdag</b> rond 11:00. Maandag bevat ook het weekend.',
+    'Mails aan medewerkers gaan gewoon direct. Alleen <i>mail niet aangekomen</i> en een lage check-in komen ook nog los, omdat die snel opvolging nodig hebben.',
+    'Keukenmeldingen gaan in een eigen dagoverzicht naar Jop.'
+  ] },
   { nummer: '0.31.5', datum: '26-10-2026', titel: 'Oproepaanbod: alleen nieuwe meldingen', punten: [
     'Het dashboard meldt een aanbod vaste arbeidsomvang alleen nog rond de 12-maandsgrens (vanaf 30 dagen ervoor tot 30 dagen erna). Oude grenzen verdwijnen: SLA doet het aanbod altijd.',
     'Aanbod buiten het dashboard gedaan? Kies bij de taak ⋯ → <i>Aanbod al gedaan</i>; de taak verdwijnt tot de volgende jaargrens.'

@@ -64,9 +64,20 @@ function teams(lijst) {
 }
 
 // Verzendhulp: in droogloop alleen registreren
+// v0.32.0: interne mails (aan HR of Jop) bundelen in één HR-dagoverzicht per dag (check 'dagoverzicht').
+// Instelling 'hr_bundel' (standaard aan). Mails aan medewerkers gaan altijd direct; 'mail niet aangekomen' ook (zelden en urgent).
+const BUNDEL_NIET = new Set(['mail-bounces', 'dagoverzicht']);
+async function bundelAan() { try { return (await require('./instellingen').lees('hr_bundel', true)) !== false; } catch (e) { return true; } }
+async function bundel(rap, msg) {
+  if (BUNDEL_NIET.has(rap.naam) || !(await bundelAan())) return false;
+  (rap.bundel = rap.bundel || []).push({ to: msg.to, subject: msg.subject, text: msg.text || '' });
+  return true;
+}
 async function mailOfDroog(rap, opts, doen) {
   if (opts.team) { opts = Object.assign({}, opts, { to: opts.team.to, subject: opts.team.prefix + opts.subject, kort: Object.assign({}, opts.kort, { naam: 'Keuken' }) }); delete opts.team; }
   if (!actief() || rap.droog) { rap.verstuurd.push(Object.assign({ droog: true }, opts.kort)); return; }
+  // interne samenvatting (to = lijst van HR/keuken) → in het dagoverzicht; medewerkers krijgen hun mail (to = één adres) altijd direct
+  if (Array.isArray(opts.to) && await bundel(rap, opts)) { if (doen) await doen(); rap.verstuurd.push(Object.assign({ gebundeld: true }, opts.kort)); return; }
   try {
     const id = await M.verstuur({ to: opts.to, subject: opts.subject, text: opts.text, html: opts.html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: rap.naam }] });
     if (doen) await doen();
@@ -250,7 +261,9 @@ async function nieuweMedewerkers(droog) {
     const regel = p => '- ' + p.naam + ' (' + p.winkel + ', start ' + p.start + (p.deadline ? ', deadline ' + p.deadline : '') + (p.fout ? ' — FOUT: ' + p.fout : '') + ')';
     const plain = 'Hallo,\n\n' + (verstuurd.length ? 'Automatisch verstuurd (indiensttredings- en loonheffingsformulier, NL + EN):\n' + verstuurd.map(regel).join('\n') + '\n\n' : '') + (meld.length ? 'Kon NIET automatisch (geen e-mailadres in Shiftbase of fout) — handmatig versturen:\n' + meld.map(regel).join('\n') + '\n\n' : '') + '(Automatisch bericht van het SLA HR Dashboard)';
     const html = T.slaWrap(T.slaHead('#009f4b', 'HR &middot; Nieuwe medewerkers') + '<tr><td style="padding:32px 36px 28px"><pre style="' + F + 'font-size:13px;color:#333d3a;white-space:pre-wrap;margin:0">' + esc(plain) + '</pre></td></tr>' + T.slaFoot());
-    const id = await M.verstuur({ to: naar, subject: pre + 'Nieuwe medewerkers: ' + verstuurd.length + ' uitnodiging(en) automatisch verstuurd' + (meld.length ? ', ' + meld.length + ' handmatig' : ''), text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'nieuwe-medewerkers' }] }).catch(e => { rap.fouten.push('HR-overzicht: ' + e.message); return null; });
+    const ondNM = pre + 'Nieuwe medewerkers: ' + verstuurd.length + ' uitnodiging(en) automatisch verstuurd' + (meld.length ? ', ' + meld.length + ' handmatig' : '');
+    if (await bundel(rap, { to: naar, subject: ondNM, text: plain })) continue;   // v0.32.0
+    const id = await M.verstuur({ to: naar, subject: ondNM, text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'nieuwe-medewerkers' }] }).catch(e => { rap.fouten.push('HR-overzicht: ' + e.message); return null; });
     if (id) await M.logMail({ door: 'signalering', bron: 'signalering', type: 'nieuwe-medewerkers', naar: naar.join(','), naam: 'HR-team', onderwerp: 'Nieuwe medewerkers (automatisch)', taal: 'NL', rij: 0, resend_id: id });
     }
     return rap;
@@ -982,7 +995,48 @@ async function winkelmail(droog) {
   return rap;
 }
 
-const CHECKS = { 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
+// ---- 25. v0.32.0: HR-dagoverzicht — alle interne meldingen van de afgelopen dag in één mail (werkdagen) ----
+const DAG_LABEL = { 'contractketen': 'Contracten', 'verlengingen': 'Verlengingen', 'aanzegtermijnen': 'Aanzegtermijnen', 'verzuim': 'Verzuim', 'jeugd': 'Jeugd (ATW / jeugdloon)', 'oproepaanbod': 'Oproepaanbod', 'stille-afwezigen': 'Stille afwezigen', 'weekend-beschikbaarheid': 'Weekendbeschikbaarheid', 'vakantiepieken': 'Vakantiepieken', 'datacontrole': 'Shiftbase-datacontrole', 'jubilea': 'Jubilea', 'zomerpiek': 'Zomerpiek', 'salaris': 'Naar salaris', 'nieuwe-medewerkers': 'Nieuwe medewerkers', 'bewaartermijnen': 'Bewaartermijnen (AVG)', 'data-hygiene': 'Shiftbase aanvullen', 'mto': 'MTO', 'checkin': 'Check-in' };
+function tekstNaarHtml(t) {
+  const regels = String(t || '').split('\n').map(r => r.trimEnd()).filter(r => r && !/^Hallo,?$/i.test(r) && !/^\(Automatisch bericht/i.test(r));
+  let h = '', inLijst = false;
+  for (const r of regels) {
+    const li = r.match(/^\s*[-•]\s+(.*)$/);
+    if (li) { if (!inLijst) { h += '<ul style="' + F + 'font-size:13px;color:#333d3a;margin:4px 0 10px;padding-left:18px">'; inLijst = true; } h += '<li style="margin:2px 0">' + esc(li[1]) + '</li>'; }
+    else { if (inLijst) { h += '</ul>'; inLijst = false; } h += '<p style="' + F + 'font-size:13px;color:#555;margin:6px 0">' + esc(r) + '</p>'; }
+  }
+  return h + (inLijst ? '</ul>' : '');
+}
+async function dagoverzicht(droog) {
+  const rap = { naam: 'dagoverzicht', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  if (!(await bundelAan())) { rap.gepauzeerd = true; return rap; }
+  const db = admin();
+  const { data: vorige } = await db.from('hr_signaleringen').select('tijdstip').eq('check', 'dagoverzicht').eq('droog', false).order('tijdstip', { ascending: false }).limit(1);
+  const vanaf = (vorige && vorige[0] && vorige[0].tijdstip) || new Date(Date.now() - 36 * 36e5).toISOString();
+  const { data, error } = await db.from('hr_signaleringen').select('check,tijdstip,bundel:details->bundel').eq('droog', false).gt('tijdstip', vanaf).order('tijdstip', { ascending: true }).limit(1000);
+  if (error) { rap.fouten.push('hr_signaleringen: ' + error.message); return rap; }
+  const groepen = {};
+  for (const r of data || []) for (const b of (Array.isArray(r.bundel) ? r.bundel : [])) {
+    const to = (Array.isArray(b.to) ? b.to : String(b.to || '').split(',')).map(s => String(s).trim()).filter(Boolean).sort();
+    const k = to.join(','); (groepen[k] = groepen[k] || { to, items: [] }).items.push({ check: r.check, tijd: r.tijdstip, subject: b.subject, text: b.text });
+  }
+  const dagNL = new Date().toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: '2-digit', month: '2-digit' });
+  for (const k of Object.keys(groepen)) {
+    const g = groepen[k], items = g.items; rap.gevonden.push({ naam: k, aantal: items.length });
+    const site = require('./uploads').site();
+    const inhoud = items.map(it => '<h3 style="' + F + 'font-size:15px;color:#333d3a;margin:22px 0 4px;padding-top:12px;border-top:1px solid #eee">' + esc(DAG_LABEL[it.check] || it.check) + '</h3><p style="' + F + 'font-size:12px;color:#888078;margin:0 0 6px">' + esc(it.subject) + '</p>' + tekstNaarHtml(it.text)).join('');
+    const lijst = '<ul style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 6px;padding-left:18px">' + items.map(it => '<li>' + esc(it.subject) + '</li>').join('') + '</ul>';
+    const html = T.slaWrap(T.slaHead('#333d3a', 'HR &middot; Dagoverzicht ' + esc(dagNL)) + '<tr><td style="padding:30px 34px 26px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 10px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 10px">Alle automatische HR-meldingen sinds het vorige overzicht, in één mail (' + items.length + '):</p>' + lijst
+      + '<p style="margin:14px 0 4px"><a href="' + esc(site) + '" style="display:inline-block;padding:9px 18px;background:#009f4b;color:#fff;border-radius:6px;text-decoration:none;font-weight:700;' + F + 'font-size:13px">Open de takenlijst</a></p>' + inhoud
+      + '<p style="' + F + 'font-size:11px;color:#aaa;margin:22px 0 0;text-align:center">HR-dagoverzicht (werkdagen) · alles staat ook als taak in het dashboard</p></td></tr>' + T.slaFoot());
+    const plain = 'Hallo,\n\nHR-dagoverzicht (' + items.length + ' melding(en)):\n\n' + items.map(it => '== ' + (DAG_LABEL[it.check] || it.check) + ' — ' + it.subject + '\n' + String(it.text || '').replace(/^Hallo,?\s*/i, '')).join('\n\n') + '\n\n' + site;
+    const subject = (k.indexOf(String(C.KEUKEN_EMAIL || '~')) > -1 && g.to.length === 1 ? 'Keuken · ' : '') + 'HR-dagoverzicht ' + dagNL + ': ' + items.length + ' melding(en)';
+    await mailOfDroog(rap, { to: g.to, subject, text: plain, html, kort: { naam: 'dagoverzicht', aantal: items.length } });
+  }
+  return rap;
+}
+
+const CHECKS = { 'dagoverzicht': dagoverzicht, 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 // ---- Automatisch naar salaris (maandag + donderdag) ----
@@ -1045,7 +1099,9 @@ async function salaris(droog) {
       + (H.length ? 'Kon niet automatisch — graag handmatig via de knop "→ Salaris":\n' + H.map(regel).join('\n') + '\n\n' : '')
       + (Fo.length ? 'Fouten:\n' + Fo.map(f => '- ' + f).join('\n') + '\n\n' : '') + '(Automatisch bericht van het SLA HR Dashboard, maandag en donderdag)';
     const html = T.slaWrap(T.slaHead('#2b6cb0', 'HR &middot; Naar salaris') + '<tr><td style="padding:32px 36px 28px"><pre style="' + F + 'font-size:13px;color:#333d3a;white-space:pre-wrap;margin:0">' + esc(plain) + '</pre></td></tr>' + T.slaFoot());
-    try { await M.verstuur({ to: team ? team.to : ontvangers('salaris'), subject: (team ? team.prefix : '') + 'Naar salaris: ' + V.length + ' dossier(s) verstuurd' + (H.length ? ', ' + H.length + ' handmatig' : ''), text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'salaris' }] }); }
+    const ondSal = (team ? team.prefix : '') + 'Naar salaris: ' + V.length + ' dossier(s) verstuurd' + (H.length ? ', ' + H.length + ' handmatig' : '');
+    if (await bundel(rap, { to: team ? team.to : ontvangers('salaris'), subject: ondSal, text: plain })) continue;   // v0.32.0
+    try { await M.verstuur({ to: team ? team.to : ontvangers('salaris'), subject: ondSal, text: plain, html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'salaris' }] }); }
     catch (e) { rap.fouten.push('HR-overzicht: ' + e.message); }
   }
   }

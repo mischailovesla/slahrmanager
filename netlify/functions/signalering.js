@@ -8,6 +8,7 @@ const { beveiligd, body, admin, logActie } = require('./_lib/auth');
 const SIG = require('./_lib/signaleringen');
 
 const OMSCHRIJVING = {
+  'dagoverzicht': { label: 'HR-dagoverzicht', wanneer: 'werkdagen 11:00 (winter 10:00)', wat: 'Bundelt alle interne HR-meldingen van de afgelopen dag (contracten, verzuim, datacontrole, salaris enz.) in één mail aan HR; keuken apart aan Jop. Maandag bevat ook het weekend. Mails aan medewerkers en "mail niet aangekomen" gaan direct.' },
   'winkelmail': { label: 'Winkelmail store managers', wanneer: 'maandag 07:50', wat: 'Per winkel een weekoverzicht aan de store manager: wie nog moet tekenen of een formulier inleveren, aflopende contracten (met knop om advies te geven), nieuwe medewerkers, vertrek en jubilea. Instellen via Beheer → Winkelmail; in de proefstand krijgt Mischa alle mails.' },
   'mail-bounces': { label: 'Mail niet aangekomen', wanneer: 'elk uur 08:20–22:20', wat: 'Controleert bij Resend of verstuurde mails zijn afgeleverd. Bounce of spam-melding → mail aan HR (keuken: Jop) en een taak in de takenlijst, zodat je het adres kunt corrigeren en opnieuw kunt versturen.' },
   'jubilea': { label: 'Jubilea', wanneer: 'maandag 09:10', wat: 'Mail aan HR (keuken: Jop): wie volgende week 1, 2, 5, 10, 15 of 20 jaar in dienst is, zodat de store manager er iets mee kan doen.' },
