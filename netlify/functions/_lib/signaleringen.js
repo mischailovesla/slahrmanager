@@ -66,7 +66,7 @@ function teams(lijst) {
 // Verzendhulp: in droogloop alleen registreren
 // v0.32.0: interne mails (aan HR of Jop) bundelen in één HR-dagoverzicht per dag (check 'dagoverzicht').
 // Instelling 'hr_bundel' (standaard aan). Mails aan medewerkers gaan altijd direct; 'mail niet aangekomen' ook (zelden en urgent).
-const BUNDEL_NIET = new Set(['mail-bounces', 'dagoverzicht']);
+const BUNDEL_NIET = new Set(['mail-bounces', 'dagoverzicht', 'datacontrole']); // v0.32.2: datacontrole = maandelijkse losse mail
 async function bundelAan() { try { return (await require('./instellingen').lees('hr_bundel', true)) !== false; } catch (e) { return true; } }
 async function bundel(rap, msg) {
   if (BUNDEL_NIET.has(rap.naam) || !(await bundelAan())) return false;
@@ -409,13 +409,7 @@ async function weekendBeschikbaarheid(droog) {
   const lijst = await zonderVertrekkers(W.bepaalWeekendOntwijkers(med, ros, abs, vandaag, weken, C.WEEKEND_UITGESLOTEN_WINKELS), rap);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
-  const _alle = lijst;
-  for (const [lijst, team] of teams(_alle)) {
-  let plain = 'Hallo,\n\nDeze medewerkers hadden de afgelopen ' + weken + ' volledige weekenden (vr t/m zo) geen enkele weekenddienst, terwijl ze in dezelfde periode wel doordeweeks werkten. Goedgekeurd verlof en net gestarte medewerkers zijn uitgefilterd:\n', vorige = '';
-  lijst.forEach(p => { if (p.winkel !== vorige) { plain += '\n' + p.winkel + ':\n'; vorige = p.winkel; } plain += '- ' + p.naam + ' - ' + p.doordeweeks + ' doordeweekse dienst(en), laatste weekenddienst: ' + (p.laatsteWeekendDienst || 'niet gevonden in de laatste ' + Math.round((weken * 7 + 56) / 7) + ' weken') + '\n  Onderbouwing voor de brief: "' + p.onderbouwing + '"\n'; });
-  plain += '\nLET OP: dit is gebaseerd op het rooster (ingeroosterd), niet op opgegeven beschikbaarheid. Check bij twijfel de beschikbaarheid in Shiftbase.\nVerstuur de kennisgeving via HR Dashboard -> Beschikbaarheid (de onderbouwing kun je zo overnemen).\n\n(Automatisch wekelijks bericht van het SLA HR systeem)';
-  await mailOfDroog(rap, { team, to: ontvangers('weekendBeschikbaarheid'), subject: 'Weekendbeschikbaarheid: ' + lijst.length + ' medewerker(s) ' + weken + ' weekenden zonder dienst (wel doordeweeks actief)', text: plain, html: weekendHtml(lijst, weken), kort: { naam: 'HR-team', aantal: lijst.length } });
-  }
+  // v0.32.2: geen mail meer aan HR (ook niet in het dagoverzicht); de bevindingen staan als taak in het dashboard.
   return rap;
 }
 
@@ -899,7 +893,7 @@ async function datacontrole(droog) {
     const plain = 'Hallo,\n\nShiftbase-datacontrole: ' + deel.length + ' punt(en).\n\n' + soorten.map(k => DC_SOORTEN[k][0] + ' (' + per[k].length + ') — ' + (DC_ACTIE[k] || '') + '\n' + per[k].slice(0, DC_MAX).map(x => '- ' + x.naam + ' (' + x.winkel + '): ' + x.tekst).join('\n') + (per[k].length > DC_MAX ? '\n- … en nog ' + (per[k].length - DC_MAX) : '')).join('\n\n') + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
     const intro = '<strong>' + deel.length + ' punt(en)</strong> in Shiftbase of de dossiers kloppen waarschijnlijk niet' + (urgent ? ', waarvan <strong>' + urgent + ' met voorrang</strong> (bovenaan)' : '') + '. Per soort staat erbij wat je moet doen.';
     await mailOfDroog(rap, { team, to: ontvangers('datacontrole'), subject: 'Shiftbase-datacontrole: ' + deel.length + ' punt(en)' + (urgent ? ' · ' + urgent + ' met voorrang' : ''), text: plain,
-      html: T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Shiftbase-datacontrole') + '<tr><td style="padding:30px 34px 26px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 12px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 16px">' + intro + '</p>' + tabel + blokken + '<p style="' + F + 'font-size:11px;color:#aaa;margin:22px 0 0;text-align:center">Wekelijkse datacontrole (maandag) · aangepast in Shiftbase = volgende week weg</p></td></tr>' + T.slaFoot()),
+      html: T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Shiftbase-datacontrole') + '<tr><td style="padding:30px 34px 26px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 12px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 16px">' + intro + '</p>' + tabel + blokken + '<p style="' + F + 'font-size:11px;color:#aaa;margin:22px 0 0;text-align:center">Maandelijkse datacontrole (1e van de maand) · aangepast in Shiftbase = volgende maand weg</p></td></tr>' + T.slaFoot()),
       kort: { naam: 'HR-team', aantal: deel.length } });
   }
   return rap;

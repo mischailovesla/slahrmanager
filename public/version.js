@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.32.2', datum: '26-10-2026', titel: 'Datacontrole maandelijks, weekendbeschikbaarheid uit de mail', punten: [
+    'De Shiftbase-datacontrole komt nu <b>één keer per maand</b> (op de 1e) als aparte mail, niet meer elke maandag in het dagoverzicht.',
+    'Weekendbeschikbaarheid staat niet meer in de mail. Wie drie weekenden geen dienst had, zie je nog wel als taak op het Overzicht.'
+  ] },
   { nummer: '0.32.1', datum: '26-10-2026', titel: 'Test-dagoverzicht', punten: [
     'Een test van het HR-dagoverzicht kan naar jezelf: draai bij Signaleringen een paar checks als Droogloop; de test bundelt die voorbeelden in één mail.'
   ] },
