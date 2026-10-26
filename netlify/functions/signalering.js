@@ -40,6 +40,7 @@ const OMSCHRIJVING = {
 exports.handler = beveiligd('signalering', async (event, g) => {
   if (event.httpMethod === 'POST') {
     const p = body(event);
+    if (p.check === 'dagoverzicht' && p.test) return SIG.dagoverzichtTest(g.email);   // v0.32.1: test-dagmail alleen naar jezelf
     if (!SIG.CHECKS[p.check]) throw new Error('Onbekende check: ' + p.check);
     const droog = p.droog !== false;
     const rap = await SIG.draai(p.check, droog, 'handmatig:' + g.email);

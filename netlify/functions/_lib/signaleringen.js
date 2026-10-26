@@ -75,7 +75,7 @@ async function bundel(rap, msg) {
 }
 async function mailOfDroog(rap, opts, doen) {
   if (opts.team) { opts = Object.assign({}, opts, { to: opts.team.to, subject: opts.team.prefix + opts.subject, kort: Object.assign({}, opts.kort, { naam: 'Keuken' }) }); delete opts.team; }
-  if (!actief() || rap.droog) { rap.verstuurd.push(Object.assign({ droog: true }, opts.kort)); return; }
+  if (!actief() || rap.droog) { if (Array.isArray(opts.to)) (rap.voorbeeld = rap.voorbeeld || []).push({ to: opts.to, subject: opts.subject, text: opts.text || '' }); rap.verstuurd.push(Object.assign({ droog: true }, opts.kort)); return; }   // v0.32.1: voorbeeld voor de test-dagmail
   // interne samenvatting (to = lijst van HR/keuken) → in het dagoverzicht; medewerkers krijgen hun mail (to = één adres) altijd direct
   if (Array.isArray(opts.to) && await bundel(rap, opts)) { if (doen) await doen(); rap.verstuurd.push(Object.assign({ gebundeld: true }, opts.kort)); return; }
   try {
@@ -1020,9 +1020,17 @@ async function dagoverzicht(droog) {
     const to = (Array.isArray(b.to) ? b.to : String(b.to || '').split(',')).map(s => String(s).trim()).filter(Boolean).sort();
     const k = to.join(','); (groepen[k] = groepen[k] || { to, items: [] }).items.push({ check: r.check, tijd: r.tijdstip, subject: b.subject, text: b.text });
   }
-  const dagNL = new Date().toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: '2-digit', month: '2-digit' });
   for (const k of Object.keys(groepen)) {
     const g = groepen[k], items = g.items; rap.gevonden.push({ naam: k, aantal: items.length });
+    const m = maakDagMail(items, k, g.to);
+    await mailOfDroog(rap, { to: g.to, subject: m.subject, text: m.plain, html: m.html, kort: { naam: 'dagoverzicht', aantal: items.length } });
+  }
+  return rap;
+}
+function maakDagMail(items, k, to, test) {
+  const dagNL = new Date().toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', weekday: 'short', day: '2-digit', month: '2-digit' });
+  {
+    const g = { to };
     const site = require('./uploads').site();
     const inhoud = items.map(it => '<h3 style="' + F + 'font-size:15px;color:#333d3a;margin:22px 0 4px;padding-top:12px;border-top:1px solid #eee">' + esc(DAG_LABEL[it.check] || it.check) + '</h3><p style="' + F + 'font-size:12px;color:#888078;margin:0 0 6px">' + esc(it.subject) + '</p>' + tekstNaarHtml(it.text)).join('');
     const lijst = '<ul style="' + F + 'font-size:13px;color:#333d3a;margin:0 0 6px;padding-left:18px">' + items.map(it => '<li>' + esc(it.subject) + '</li>').join('') + '</ul>';
@@ -1030,10 +1038,24 @@ async function dagoverzicht(droog) {
       + '<p style="margin:14px 0 4px"><a href="' + esc(site) + '" style="display:inline-block;padding:9px 18px;background:#009f4b;color:#fff;border-radius:6px;text-decoration:none;font-weight:700;' + F + 'font-size:13px">Open de takenlijst</a></p>' + inhoud
       + '<p style="' + F + 'font-size:11px;color:#aaa;margin:22px 0 0;text-align:center">HR-dagoverzicht (werkdagen) · alles staat ook als taak in het dashboard</p></td></tr>' + T.slaFoot());
     const plain = 'Hallo,\n\nHR-dagoverzicht (' + items.length + ' melding(en)):\n\n' + items.map(it => '== ' + (DAG_LABEL[it.check] || it.check) + ' — ' + it.subject + '\n' + String(it.text || '').replace(/^Hallo,?\s*/i, '')).join('\n\n') + '\n\n' + site;
-    const subject = (k.indexOf(String(C.KEUKEN_EMAIL || '~')) > -1 && g.to.length === 1 ? 'Keuken · ' : '') + 'HR-dagoverzicht ' + dagNL + ': ' + items.length + ' melding(en)';
-    await mailOfDroog(rap, { to: g.to, subject, text: plain, html, kort: { naam: 'dagoverzicht', aantal: items.length } });
+    const subject = (test ? '[TEST] ' : '') + (k.indexOf(String(C.KEUKEN_EMAIL || '~')) > -1 && g.to.length === 1 ? 'Keuken · ' : '') + 'HR-dagoverzicht ' + dagNL + ': ' + items.length + ' melding(en)';
+    return { subject, plain, html };
   }
-  return rap;
+}
+// v0.32.1: testversie — bundelt de voorbeelden uit droogloop-runs van het afgelopen uur (Signaleringen → Droogloop) en stuurt alleen naar `naar`
+async function dagoverzichtTest(naar) {
+  const { data, error } = await admin().from('hr_signaleringen').select('check,tijdstip,voorbeeld:details->voorbeeld').eq('droog', true).gt('tijdstip', new Date(Date.now() - 2 * 36e5).toISOString()).order('tijdstip', { ascending: false }).limit(300);
+  if (error) throw new Error('hr_signaleringen: ' + error.message);
+  const gezien = new Set(), items = [];
+  for (const r of data || []) {
+    if (gezien.has(r.check) || !Array.isArray(r.voorbeeld) || !r.voorbeeld.length) continue; gezien.add(r.check);
+    for (const b of r.voorbeeld) { const to = (Array.isArray(b.to) ? b.to : [b.to]).join(','); if (C.KEUKEN_EMAIL && to === String(C.KEUKEN_EMAIL)) continue; items.push({ check: r.check, tijd: r.tijdstip, subject: b.subject, text: b.text }); }
+  }
+  if (!items.length) return { bericht: 'Geen voorbeelden gevonden: draai eerst bij Signaleringen een paar checks als Droogloop (bijv. contracten, verzuim, datacontrole, jubilea) en probeer het dan opnieuw.' };
+  items.sort((a, b) => a.tijd < b.tijd ? -1 : 1);
+  const m = maakDagMail(items, '', [naar], true);
+  await M.verstuur({ to: naar, subject: m.subject, text: m.plain, html: m.html, tags: [{ name: 'bron', value: 'signalering' }, { name: 'type', value: 'dagoverzicht-test' }] });
+  return { bericht: 'Test-dagoverzicht met ' + items.length + ' onderwerp(en) verstuurd naar ' + naar + '.' };
 }
 
 const CHECKS = { 'dagoverzicht': dagoverzicht, 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
@@ -1165,4 +1187,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { vindJubilea, controleerData, bepaalZomerpiek, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };
+module.exports = { dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };

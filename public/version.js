@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.32.1', datum: '26-10-2026', titel: 'Test-dagoverzicht', punten: [
+    'Een test van het HR-dagoverzicht kan naar jezelf: draai bij Signaleringen een paar checks als Droogloop; de test bundelt die voorbeelden in één mail.'
+  ] },
   { nummer: '0.32.0', datum: '26-10-2026', titel: 'Eén HR-dagoverzicht in plaats van losse mails', punten: [
     'Alle automatische meldingen voor HR (contracten, verzuim, jeugd, oproepaanbod, datacontrole, jubilea, salaris, nieuwe medewerkers enz.) komen nu in <b>één mail per werkdag</b> rond 11:00. Maandag bevat ook het weekend.',
     'Mails aan medewerkers gaan gewoon direct. Alleen <i>mail niet aangekomen</i> en een lage check-in komen ook nog los, omdat die snel opvolging nodig hebben.',
