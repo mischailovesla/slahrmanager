@@ -57,4 +57,13 @@ assert.ok(b.tekst.includes('tijd voor tijd') && !b.tekst.includes('Referentiefun
 assert.ok(b.tekst.includes('104 weken 70%') && b.tekst.includes('twee (2) wachtdagen') && !b.tekst.includes('95%'));
 b = m({});
 assert.ok(b.tekst.includes('38 urige werkweek') && b.tekst.includes('Pensioenfonds Horeca & Catering') && b.tekst.includes('CAO Horeca van toepassing') && b.tekst.includes('95%') && b.tekst.includes('één (1) wachtdag'));
+// deeltijd: fulltime maandsalaris wordt naar rato omgerekend en genoemd
+b = m({ uren: 24, bedrag: '3800' });
+assert.ok(b.tekst.includes('gemiddeld 24 uur per week'));
+assert.ok(b.tekst.includes('op basis van een 38 urige werkweek') && b.tekst.includes('zijnde € 2.400,00 bruto per maand'));
+assert.ok(b.samenvatting.includes('€ 2.400,00/mnd (fulltime € 3.800,00)'));
+b = m({ bv: 'SLA Holding BV', uren: 32, bedrag: '4000' });
+assert.ok(b.tekst.includes('40 urige werkweek') && b.tekst.includes('zijnde € 3.200,00 bruto per maand'));
+b = m({ uren: 38 });
+assert.ok(!b.tekst.includes('naar rato'));
 console.log('contractmaatwerk tests OK');

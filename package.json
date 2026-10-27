@@ -1,6 +1,6 @@
 {
   "name": "sla-hr-dashboard",
-  "version": "0.33.4",
+  "version": "0.33.5",
   "private": true,
   "description": "SLA HR Dashboard - Netlify versie (login, Overzicht, Dossier, vinkjes/archiveren, loonheffingsmails, vrije brieven met PDF)",
   "scripts": {

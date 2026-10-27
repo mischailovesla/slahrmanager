@@ -34,6 +34,8 @@ const maandTekst = n => n === 1 ? 'één (1) maand' : n === 2 ? 'twee (2) maande
 // (dus ook geen functie-indeling Horeca en een eigen overwerkregeling). Alleen voor de holding.
 const isHolding = bv => /holding/i.test(String(bv || ''));
 const fulltimeVan = bv => isHolding(bv) ? 40 : 38;
+// v0.33.5: deeltijd — het ingevulde maandsalaris is het fulltime bedrag; het deeltijdsalaris = fulltime × uren / fulltime-uren
+const naarRato = (v, uren, ft) => Math.round(bedrag(v) * uren / ft * 100) / 100;
 const plaatsUit = adres => { const m = String(adres || '').match(/\d{4}\s?[A-Z]{2}\s+(.+)$/); return m ? m[1].trim() : 'Amsterdam'; };
 
 // ---- Huisregels (bijlage, woordelijk uit de Shiftbase-template) ----
@@ -183,7 +185,7 @@ function bouw(p) {
   // Salaris
   const loonZin = f => f.loon === 'uur'
     ? 'het bruto uurloon van werknemer bedraagt ' + euro(f.bedrag) + ' (exclusief vakantietoeslag).'
-    : 'het brutosalaris van werknemer bedraagt ' + euro(f.bedrag) + ' per maand (exclusief vakantietoeslag) op basis van een ' + ft + ' urige werkweek' + (f.uren > 0 && f.uren < ft ? '; werknemer ontvangt dit salaris naar rato van de overeengekomen arbeidsduur' : '') + '.';
+    : 'het brutosalaris van werknemer bedraagt ' + euro(f.bedrag) + ' per maand (exclusief vakantietoeslag) op basis van een ' + ft + ' urige werkweek' + (f.uren > 0 && f.uren < ft ? '. Bij de overeengekomen arbeidsduur van gemiddeld ' + String(f.uren).replace('.', ',') + ' uur per week ontvangt werknemer dit salaris naar rato, zijnde ' + euro(naarRato(f.bedrag, f.uren, ft)) + ' bruto per maand (exclusief vakantietoeslag)' : '') + '.';
   const uit = 'De uitbetaling van het loon vindt plaats op de laatste dag van de periode onder verstrekking van een loonstrook. Werknemer geeft hierbij aan werkgever toestemming de opgaven zoals bedoeld in artikel 7.626 BW (loonstrook) en 7.655 BW elektronisch te verstrekken op het opgegeven privé e-mailadres.';
   A('salaris', 'Salaris.', c.fasering ? faseKop(0) + loonZin(f1) + '\n\n' + faseKop(1) + loonZin(f2) + '\n\n' + uit : cap(loonZin(f1)) + '\n\n' + uit);
 
@@ -226,7 +228,7 @@ function bouw(p) {
   tekst += '\n\n\n**' + c.bv + '**\n' + c.vertegenwoordiger + '\n\n\n______________________________\nDatum:\n\n\n**De werknemer**\n' + c.naam + '\n\n\n................................................\nDatum:';
   tekst += '\n\n\n**BIJLAGE: HUISREGELS SLA**\n\nWe hebben er niet heel veel, maar de huisregels die we hebben vinden we ook echt heel belangrijk. Wat zijn de huisregels ook alweer?\n\n' + HUISREGELS.map(h => '- ' + h).join('\n');
 
-  const vormTekst = f => (f.vorm === 'oproep' ? '0 uren' : String(f.uren).replace('.', ',') + ' u/wk') + ', ' + euro(f.bedrag) + (f.loon === 'uur' ? '/uur' : '/mnd');
+  const vormTekst = f => (f.vorm === 'oproep' ? '0 uren' : String(f.uren).replace('.', ',') + ' u/wk') + ', ' + (f.loon === 'maand' && f.uren > 0 && f.uren < ft ? euro(naarRato(f.bedrag, f.uren, ft)) + '/mnd (fulltime ' + euro(f.bedrag) + ')' : euro(f.bedrag) + (f.loon === 'uur' ? '/uur' : '/mnd'));
   const samenvatting = [
     c.soort === 'bepaald' ? 'Bepaalde tijd ' + startNL + ' t/m ' + nl(c.eind) : 'Onbepaalde tijd vanaf ' + startNL,
     c.fasering ? 'Fase 1 t/m ' + nl(f1.tot) + ': ' + vormTekst(f1) + ' · Fase 2 vanaf ' + nl(f2.van) + ': ' + vormTekst(f2) : vormTekst(f1),
@@ -239,4 +241,4 @@ function bouw(p) {
 // Voor het logboek (hr_brieven): zonder BSN en IBAN
 const redigeer = tekst => String(tekst || '').replace(/^\*\*BSN:\*\*.*$/m, '**BSN:** (alleen in de PDF)').replace(/^\*\*IBAN:\*\*.*$/m, '**IBAN:** (alleen in de PDF)');
 
-module.exports = { isHolding, fulltimeVan, bouw, lees, controleer, redigeer, eindVan, euro, parseDatum, nl, HUISREGELS };
+module.exports = { naarRato, isHolding, fulltimeVan, bouw, lees, controleer, redigeer, eindVan, euro, parseDatum, nl, HUISREGELS };

@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.33.5', datum: '27-10-2026', titel: 'Contract op maat: deeltijd', punten: [
+    'Bij een deeltijdcontract (bijv. 24 of 32 uur) vul je het <b>fulltime</b> maandsalaris in. Het contract noemt dan beide bedragen: het fulltime salaris (38 uur, holding 40 uur) én het salaris naar rato voor de afgesproken uren. Ook de samenvatting toont het deeltijdbedrag.'
+  ] },
   { nummer: '0.33.4', datum: '27-10-2026', titel: 'Herinnering adres aanvullen', punten: [
     'Medewerkers zonder adres in Shiftbase krijgen op de <b>1e van elke maand</b> zelf een mail (NL/EN) om hun adres aan te vullen in de Shiftbase-app. Wie uit dienst gaat, krijgt hem niet.',
     'Een ontbrekende <b>functie</b> blijft een taak voor HR: die hoort bij het contract en kan de medewerker niet zelf invullen.'
