@@ -517,6 +517,22 @@ async function dataHygiene(droog) {
     html: T.slaWrap(T.slaHead('#e8824a', 'HR &middot; Datakwaliteit Shiftbase') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 20px">Maandelijkse check over <strong>' + ov.totaal + ' actieve medewerkers</strong>: <strong>' + ov.totAdres + '</strong> zonder adres (' + pct(ov.totAdres) + '%), <strong>' + ov.totFunctie + '</strong> zonder functie (' + pct(ov.totFunctie) + '%). Compleet aangevulde profielen betekenen complete juridische brieven vanuit het dashboard.</p>' + blokken + '<p style="' + F + 'font-size:11px;color:#aaa;margin:18px 0 0;text-align:center">Automatisch maandelijks bericht - aanvullen kan direct in Shiftbase</p></td></tr>' + T.slaFoot()),
     kort: { naam: 'HR-team', aantal: rap.gevonden.length } });
   }
+  // v0.33.4: medewerkers zonder adres krijgen zelf een herinnering (NL/EN) om hun gegevens in Shiftbase bij te werken.
+  // Functie vult HR in (staat bij het contract), dus daarvoor geen mail aan de medewerker. Vertrekkers slaan we over.
+  let zonder = _medH.filter(m => !m.adres && m.email && m.email.indexOf('@') > 0);
+  zonder = await zonderVertrekkers(zonder, rap);
+  rap.medewerkers = zonder.length;
+  for (const m of zonder) {
+    const vn = esc(m.voornaam || String(m.naam).split(' ')[0]);
+    const plain = 'Hoi ' + (m.voornaam || m.naam) + ',\n\nIn Shiftbase ontbreekt je adres. Dat hebben we nodig voor je loonstrook, jaaropgave en officiële brieven. Wil je het even aanvullen? Open de Shiftbase-app (of app.shiftbase.com), ga naar je profiel en vul bij je persoonlijke gegevens je straat, huisnummer, postcode en woonplaats in.\n\nLukt het niet? Geef je adres dan door aan je store manager of mail ' + C.HR_EMAIL + '.\n\n---\n\nHi ' + (m.voornaam || m.naam) + ',\n\nYour address is missing in Shiftbase. We need it for your payslip, annual statement and official letters. Could you add it? Open the Shiftbase app (or app.shiftbase.com), go to your profile and fill in your street, house number, postcode and city under your personal details.\n\nNot working? Give your address to your store manager or email ' + C.HR_EMAIL + '.\n\nSLA HR Team';
+    const blok = (titel, tekst, knop) => '<p style="' + F + 'font-size:15px;font-weight:700;color:#333d3a;margin:0 0 10px">' + titel + '</p><p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 18px">' + tekst + '</p>';
+    const html = T.slaWrap(T.slaHead('#009f4b', 'Je gegevens in Shiftbase') + '<tr><td style="padding:32px 36px 28px">'
+      + blok('Hoi ' + vn + ',', 'In Shiftbase ontbreekt je <strong>adres</strong>. Dat hebben we nodig voor je loonstrook, jaaropgave en officiële brieven. Wil je het even aanvullen? Open de Shiftbase-app (of app.shiftbase.com), ga naar je <strong>profiel</strong> en vul bij je persoonlijke gegevens je straat, huisnummer, postcode en woonplaats in. Lukt het niet? Geef je adres dan door aan je store manager of mail <a href="mailto:' + C.HR_EMAIL + '" style="color:#009f4b">' + C.HR_EMAIL + '</a>.')
+      + '<hr style="border:none;border-top:1px solid #eee;margin:4px 0 20px">'
+      + blok('Hi ' + vn + ',', 'Your <strong>address</strong> is missing in Shiftbase. We need it for your payslip, annual statement and official letters. Could you add it? Open the Shiftbase app (or app.shiftbase.com), go to your <strong>profile</strong> and fill in your street, house number, postcode and city under your personal details. Not working? Give your address to your store manager or email <a href="mailto:' + C.HR_EMAIL + '" style="color:#009f4b">' + C.HR_EMAIL + '</a>.')
+      + '<p style="' + F + 'font-size:14px;color:#333d3a;margin:6px 0 0">Hartelijke groet / Kind regards,<br><strong>SLA HR Team</strong></p></td></tr>' + T.slaFoot());
+    await mailOfDroog(rap, { to: m.email, subject: 'Vul je adres aan in Shiftbase / Please add your address in Shiftbase', text: plain, html, kort: { naam: m.naam, email: m.email } });
+  }
   return rap;
 }
 
