@@ -77,6 +77,7 @@ function verwerk(usersLijst, contractsLijst, typeNamen) {
       if (eigen.length && !code && SB_DEPT_CODE[did]) { code = SB_DEPT_CODE[did]; winkelNaam = WINKEL_BV_MAP[code].naam; }
       if (!winkelNaam && t.name) winkelNaam = String(t.name).replace(/^SLA\s*/i, '').trim();
     }
+    if (!code && /^hq$/i.test(winkelNaam)) code = 'HO'; // v0.33.1: kantoor → SLA Holding BV
     if (alleenFranchise || require('./config').FRANCHISE_NAAM.test(winkelNaam)) continue;
     const naam = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
     if (!naam || UITGESLOTEN.has(normNaam(naam))) continue;

@@ -300,7 +300,9 @@ module.exports = {
     VS: { naam: 'Voorstraat',       adres: 'Voorstraat 52, 3512 AR Utrecht', bv: 'SLA Utrecht BV' },
     HC: { naam: 'Hoog Catharijne',  adres: 'Catharijne Esplanade 45, 3511 WK Utrecht', bv: 'SLA H.C. BV' },
     KP: { naam: 'Kerkplein',        adres: 'Kerkplein 4a, 2513 AZ Den Haag', bv: 'SLA Den Haag BV' },
-    OB: { naam: 'Oude Binnenweg',   adres: 'Oude Binnenweg 150A, 3012 JH Rotterdam', bv: 'SLA Rotterdam BV' }
+    OB: { naam: 'Oude Binnenweg',   adres: 'Oude Binnenweg 150A, 3012 JH Rotterdam', bv: 'SLA Rotterdam BV' },
+    // v0.33.1: kantoor (Shiftbase-team 'HQ') valt onder SLA Holding BV. Naam blijft 'HQ', want daar zijn uitsluitingen op ingesteld.
+    HO: { naam: 'HQ',               adres: 'Amstelveenseweg 124, 1075 XL Amsterdam', bv: 'SLA Holding BV' }
   },
 
   // Shiftbase department_id -> winkelcode (uit Shiftbase.gs v9.4)
