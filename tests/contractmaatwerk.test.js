@@ -45,4 +45,16 @@ assert.ok(/\*\*Artikel 13 Aanvullende afspraken\.\*\*[\s\S]*\*\*Artikel 14 Nader
 // BSN en IBAN alleen in de PDF-tekst, niet in het logboek
 const red = CM.redigeer(m({}).tekst);
 assert.ok(!red.includes('123456789') && !red.includes('NL00TEST'));
+// SLA Holding BV: 40 uur fulltime en pensioen via a.s.r.
+b = m({ bv: 'SLA Holding BV', uren: 40 });
+assert.ok(b.tekst.includes('fulltime werkweek bij werkgever bedraagt 40 uur'));
+assert.ok(b.tekst.includes('op basis van een 40 urige werkweek'));
+assert.ok(b.tekst.includes('ondergebracht bij a.s.r.') && !b.tekst.includes('Pensioenfonds Horeca'));
+assert.ok(!b.let_op.some(x => /fulltime/.test(x)));
+assert.ok(!/CAO/.test(b.tekst), 'holding: geen cao-verwijzingen');
+assert.ok(b.tekst.includes('geen collectieve arbeidsovereenkomst (cao) van toepassing'));
+assert.ok(b.tekst.includes('tijd voor tijd') && !b.tekst.includes('Referentiefuncties'));
+assert.ok(b.tekst.includes('104 weken 70%') && b.tekst.includes('twee (2) wachtdagen') && !b.tekst.includes('95%'));
+b = m({});
+assert.ok(b.tekst.includes('38 urige werkweek') && b.tekst.includes('Pensioenfonds Horeca & Catering') && b.tekst.includes('CAO Horeca van toepassing') && b.tekst.includes('95%') && b.tekst.includes('één (1) wachtdag'));
 console.log('contractmaatwerk tests OK');

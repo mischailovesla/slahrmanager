@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.33.3', datum: '27-10-2026', titel: 'Contract op maat: afspraken holding', punten: [
+    'Kies je bij Contract op maat <b>HQ · SLA Holding BV</b>, dan staat in het contract een fulltime werkweek van <b>40 uur</b> (salaris op basis van 40 uur) en <b>pensioen via a.s.r.</b> in plaats van Pensioenfonds Horeca &amp; Catering. Voor de winkels blijft het 38 uur en PH&amp;C.',
+    'De holding valt <b>niet onder een cao</b>: het contract zegt dan dat er geen cao van toepassing is, zonder functie-indeling Horeca, en overwerk wordt gecompenseerd in vrije tijd (tijd voor tijd).',
+    'Ziekte bij de holding: <b>70%</b> loondoorbetaling (maximaal 104 weken, het eerste jaar minimaal het minimumloon) en <b>2 wachtdagen</b>. Winkels: 95% / 75% en 1 wachtdag.'
+  ] },
   { nummer: '0.33.1', datum: '27-10-2026', titel: 'Kantoor onder SLA Holding BV', punten: [
     'Medewerkers van kantoor (team HQ in Shiftbase) vallen nu onder <b>SLA Holding BV</b>, Amstelveenseweg 124 in Amsterdam. Bij contract op maat, brieven, waarschuwingen en overplaatsingen kun je HQ als werkgever kiezen; de BV vult zich vanzelf in.',
     'HQ blijft uitgesloten van de winkelmail, de weekend- en stille-afwezigencontrole en het verloop per winkel.'

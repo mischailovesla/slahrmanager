@@ -3426,6 +3426,12 @@
     x.setDate(Math.min(d0.getDate(), new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); x.setDate(x.getDate() - 1);
     g('cm-eind').value = cmIso(x);
   }
+  // v0.33.2: holding = 40 uur fulltime; de standaard-uren volgen de gekozen werkgever (tenzij al aangepast)
+  function cmFulltime() {
+    var w = cmWinkels.find(function (x) { return x.code === g('cm-winkel').value; }) || {}, ft = /holding/i.test(w.bv || '') ? '40' : '38';
+    ['cm-f1-uren', 'cm-f2-uren'].forEach(function (id) { var el = g(id); if (el.value === '38' || el.value === '40' || !el.value) el.value = ft; });
+    g('cm-ref').disabled = ft === '40'; if (ft === '40') g('cm-ref').value = ''; else if (!g('cm-ref').value) g('cm-ref').value = 'A.5.I'; // holding: geen cao, dus geen functie-indeling Horeca
+  }
   function cmZicht() {
     var fas = g('cm-fasering').checked;
     g('cm-fase2').style.display = fas ? '' : 'none'; g('cm-fase1-kop').style.display = fas ? '' : 'none';
@@ -3505,14 +3511,14 @@
       if (!m) return;
       g('cm-naam').value = m.naam || ''; g('cm-email').value = m.email || '';
       if (m.adres) { var a = m.adres.split(/,\s*/); g('cm-adres').value = a[0] || ''; g('cm-pcp').value = a.slice(1).join(', '); }
-      if (m.winkelCode && cmWinkels.some(function (w) { return w.code === m.winkelCode; })) g('cm-winkel').value = m.winkelCode;
+      if (m.winkelCode && cmWinkels.some(function (w) { return w.code === m.winkelCode; })) { g('cm-winkel').value = m.winkelCode; cmFulltime(); }
       if (m.functie) g('cm-functie').value = m.functie;
       if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
       cmControle();
     });
     var tab = g('tab-contractmaatwerk');
     tab.addEventListener('input', function (e) { if (e.target.id === 'cm-zoek') return; if (e.target.id === 'cm-start' || e.target.id === 'cm-maanden') cmEindAuto(); cmZicht(); cmControle(); });
-    tab.addEventListener('change', function (e) { if (e.target.id === 'cm-start' || e.target.id === 'cm-maanden') cmEindAuto(); cmZicht(); cmControle(); });
+    tab.addEventListener('change', function (e) { if (e.target.id === 'cm-start' || e.target.id === 'cm-maanden') cmEindAuto(); if (e.target.id === 'cm-winkel') cmFulltime(); cmZicht(); cmControle(); });
     cmZicht();
   })();
 
