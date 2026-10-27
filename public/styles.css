@@ -369,3 +369,6 @@ td .lay-sub.cel-kort{max-width:200px}
 .vrl-duur{display:flex;gap:18px;align-items:flex-end;background:var(--zand);border-radius:10px;padding:12px 18px 10px;margin-bottom:16px;flex-wrap:wrap}
 .vrl-duur-i{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:86px}.vrl-duur-b{height:60px;width:26px;background:#fff;border-radius:4px;display:flex;align-items:flex-end;overflow:hidden}.vrl-duur-b div{width:100%;background:var(--oranje)}
 .vrl-duur-t{margin-left:auto;align-self:center}
+
+/* v0.33.0: contract op maat */
+.cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}@media(max-width:900px){.cm-grid{grid-template-columns:1fr}}.cm-kop{font-weight:700;font-size:.9rem;color:var(--donker);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid #eee}.cm-grid>div>.cm-kop:first-child{margin-top:0}.cm-sub{font-weight:600;font-size:.82rem;color:#009f4b;margin:6px 0 8px}#tab-contractmaatwerk .fg input[type=number],#tab-contractmaatwerk textarea{width:100%;padding:10px 14px;border:1.5px solid #e8e2de;border-radius:8px;font-size:.88rem;font-family:inherit;outline:none;color:var(--donker);background:#fff}#tab-contractmaatwerk textarea{resize:vertical;line-height:1.6}#tab-contractmaatwerk .chk{display:block}

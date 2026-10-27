@@ -7,14 +7,14 @@
 
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
-    { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['checkin', 'Check-in 30/60']] },
+    { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['checkin', 'Check-in 30/60']] },
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegangslog (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -51,6 +51,7 @@
     if (tab === 'dossier') { setTimeout(function () { g('dos-zoek').focus(); }, 50); if (!g('dos-inhoud').innerHTML) renderMedewerkersLijst(); }
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
     if (tab === 'brief' && !vbData) laadBrieven();
+    if (tab === 'contractmaatwerk' && !cmData) cmLaad();
     if (tab === 'ontslag' && !omData) laadOntslag();
     if (tab === 'winkelmail') wmLaad();
     if (tab === 'help') helpRender();
@@ -3413,6 +3414,107 @@
     if (!p.naam) { toast('Vul eerst de naam in', 'err'); return; }
     vbOpenPrintBrief({ titel: p.categorie, onderwerp: p.onderwerp, naam: p.naam, bv: p.bv, bodyHtml: vbAlineas(p.tekst) });
   };
+
+
+  // ---------- Contract op maat (v0.33.0) ----------
+  var cmData = null, cmWinkels = [], cmTimer = null;
+  function cmIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function cmEindAuto() {
+    var s = g('cm-start').value, m = parseInt(g('cm-maanden').value, 10);
+    if (!s || !m) return;
+    var p = s.split('-'), d0 = new Date(+p[0], +p[1] - 1, +p[2]), x = new Date(d0.getFullYear(), d0.getMonth() + m, 1);
+    x.setDate(Math.min(d0.getDate(), new Date(x.getFullYear(), x.getMonth() + 1, 0).getDate())); x.setDate(x.getDate() - 1);
+    g('cm-eind').value = cmIso(x);
+  }
+  function cmZicht() {
+    var fas = g('cm-fasering').checked;
+    g('cm-fase2').style.display = fas ? '' : 'none'; g('cm-fase1-kop').style.display = fas ? '' : 'none';
+    g('cm-ns-opties').style.display = g('cm-ns').checked ? '' : 'none';
+    document.querySelectorAll('.cm-bepaald').forEach(function (el) { el.style.display = g('cm-soort').value === 'bepaald' ? '' : 'none'; });
+    ['f1', 'f2'].forEach(function (f) {
+      var opr = g('cm-' + f + '-vorm').value === 'oproep';
+      document.querySelector('.cm-' + f + '-uren').style.display = opr ? 'none' : '';
+      if (opr) g('cm-' + f + '-loon').value = 'uur';
+    });
+    if (fas && g('cm-f1-tot').value) { var p = g('cm-f1-tot').value.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2] + 1); g('cm-fase2-kop').textContent = 'Fase 2 — met ingang van ' + d.toLocaleDateString('nl-NL'); }
+    else g('cm-fase2-kop').textContent = 'Fase 2';
+  }
+  function cmLees() {
+    var w = cmWinkels.find(function (x) { return x.code === g('cm-winkel').value; }) || {};
+    var fase = function (f) { return { vorm: g('cm-' + f + '-vorm').value, uren: g('cm-' + f + '-uren').value, loon: g('cm-' + f + '-loon').value, bedrag: g('cm-' + f + '-bedrag').value }; };
+    var f1 = fase('f1');
+    var p = {
+      naam: g('cm-naam').value.trim(), email: g('cm-email').value.trim(), adres: g('cm-adres').value.trim(), postcodePlaats: g('cm-pcp').value.trim(),
+      geboortedatum: g('cm-gebdat').value.trim(), geboorteplaats: g('cm-gebpl').value.trim(), bsn: g('cm-bsn').value.trim(), iban: g('cm-iban').value.trim(),
+      bv: w.bv || '', bvAdres: w.adres || '', standplaats: '', vertegenwoordiger: g('cm-vert').value.trim(),
+      functie: g('cm-functie').value.trim(), referentie: g('cm-ref').value.trim(),
+      soort: g('cm-soort').value, startdatum: g('cm-start').value, maanden: g('cm-maanden').value, einddatum: g('cm-eind').value,
+      proeftijd: g('cm-proef').value, opzegWn: g('cm-opzeg').value,
+      vorm: f1.vorm, uren: f1.uren, loonsoort: f1.loon, bedrag: f1.bedrag,
+      fasering: { aan: g('cm-fasering').checked, fase1: Object.assign(f1, { tot: g('cm-f1-tot').value }), fase2: fase('f2') },
+      ns: { aan: g('cm-ns').checked, klasse: g('cm-ns-klasse').value, prive: g('cm-ns-prive').checked, ingang: g('cm-ns-ingang').value },
+      extra: g('cm-extra').value
+    };
+    if (p.soort === 'onbepaald') { p.maanden = ''; p.einddatum = ''; }
+    return p;
+  }
+  function cmToonCheck(r) {
+    var h = '';
+    if (r.samenvatting) h += '<div class="alert grijs" style="margin:0 0 8px;font-size:.82rem"><strong>Samenvatting:</strong> ' + esc(r.samenvatting) + '</div>';
+    if (r.fouten && r.fouten.length) h += '<div class="alert rood" style="margin:0 0 8px;font-size:.82rem"><strong>Nog niet compleet:</strong><ul style="margin:4px 0 0 18px;padding:0">' + r.fouten.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
+    if (r.let_op && r.let_op.length) h += '<div class="alert geel" style="margin:0 0 8px;font-size:.82rem"><strong>Let op:</strong><ul style="margin:4px 0 0 18px;padding:0">' + r.let_op.map(function (f) { return '<li>' + esc(f) + '</li>'; }).join('') + '</ul></div>';
+    g('cm-check').innerHTML = h;
+  }
+  function cmControle() {
+    clearTimeout(cmTimer);
+    cmTimer = setTimeout(async function () { var r = await api('/api/contract-maatwerk', Object.assign(cmLees(), { actie: 'controle' })); if (r.success) cmToonCheck(r); }, 500);
+  }
+  window.cmLaad = async function () {
+    var d = await api('/api/contract-maatwerk');
+    if (!d.success) { toast('Contract op maat: ' + d.bericht, 'err'); return; }
+    cmData = d.rijen; cmWinkels = d.winkels || [];
+    var sel = g('cm-winkel');
+    if (!sel.options.length) sel.innerHTML = '<option value="">— kies de winkel —</option>' + cmWinkels.map(function (w) { return '<option value="' + esc(w.code) + '">' + esc(w.naam) + ' · ' + esc(w.bv) + '</option>'; }).join('');
+    g('cm-count').textContent = cmData.length;
+    g('cm-body').innerHTML = cmData.length ? cmData.map(function (r) { return '<tr><td><strong>' + esc(r.naam) + '</strong><br><small>' + esc(r.email) + '</small></td><td>' + esc(r.bv) + '</td><td>' + esc(r.onderwerp) + '</td><td>' + esc(r.verzenddatum) + '</td></tr>'; }).join('')
+      : '<tr><td colspan="4" style="color:#999">Nog geen contracten op maat verstuurd.</td></tr>';
+  };
+  window.cmPdf = async function () {
+    var p = cmLees();
+    toast('PDF maken…', 'ok');
+    var r = await api('/api/contract-maatwerk', Object.assign(p, { actie: 'pdf' }));
+    if (!r.success) { toast(r.bericht, 'err'); cmControle(); return; }
+    downloadB64(r.pdf, r.bestandsnaam || 'Arbeidsovereenkomst.pdf');
+  };
+  window.cmVerstuur = async function () {
+    var p = cmLees();
+    if (!p.email) { toast('Vul het e-mailadres van de medewerker in', 'err'); return; }
+    var c = await api('/api/contract-maatwerk', Object.assign({}, p, { actie: 'controle' }));
+    if (!c.success) { toast(c.bericht, 'err'); return; }
+    cmToonCheck(c);
+    if (c.fouten.length) { toast('Het contract is nog niet compleet', 'err'); return; }
+    if (!confirm('Contract versturen naar ' + p.email + '?\n\n' + c.samenvatting + (c.let_op.length ? '\n\nLet op:\n- ' + c.let_op.join('\n- ') : '') + '\n\nBekijk bij twijfel eerst de PDF.')) return;
+    var b = g('cm-sbtn'); b.disabled = true; b.textContent = 'Versturen…';
+    var r = await api('/api/contract-maatwerk', Object.assign(p, { actie: 'versturen' }));
+    b.disabled = false; b.textContent = 'Verstuur ter ondertekening';
+    if (r.success) { toast(r.bericht, 'ok'); cmLaad(); } else toast('Fout: ' + r.bericht, 'err');
+  };
+  (function () {
+    if (!g('tab-contractmaatwerk')) return;
+    koppelSbZoek('cm-zoek', 'cm-zoek-res', function (m) {
+      if (!m) return;
+      g('cm-naam').value = m.naam || ''; g('cm-email').value = m.email || '';
+      if (m.adres) { var a = m.adres.split(/,\s*/); g('cm-adres').value = a[0] || ''; g('cm-pcp').value = a.slice(1).join(', '); }
+      if (m.winkelCode && cmWinkels.some(function (w) { return w.code === m.winkelCode; })) g('cm-winkel').value = m.winkelCode;
+      if (m.functie) g('cm-functie').value = m.functie;
+      if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+      cmControle();
+    });
+    var tab = g('tab-contractmaatwerk');
+    tab.addEventListener('input', function (e) { if (e.target.id === 'cm-zoek') return; if (e.target.id === 'cm-start' || e.target.id === 'cm-maanden') cmEindAuto(); cmZicht(); cmControle(); });
+    tab.addEventListener('change', function (e) { if (e.target.id === 'cm-start' || e.target.id === 'cm-maanden') cmEindAuto(); cmZicht(); cmControle(); });
+    cmZicht();
+  })();
 
   // ---------- Toast ----------
   function toast(msg, type) { var t = g('toast'); t.textContent = msg; t.className = 'toast ' + (type === 'ok' ? 'tok' : 'terr') + ' show'; setTimeout(function () { t.classList.remove('show'); }, 3400); }

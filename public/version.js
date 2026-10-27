@@ -2,6 +2,13 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.33.0', datum: '27-10-2026', titel: 'Contract op maat', punten: [
+    'Nieuw onder Instroom: <b>Contract op maat</b>, voor afwijkende contracten die niet in Shiftbase kunnen. De tekst is gelijk aan de Shiftbase-template (Store Manager, bepaalde tijd).',
+    'Bouwstenen: <b>fasering</b> (bijv. eerst een nulurencontract met uurloon, daarna vaste uren met maandsalaris), <b>NS Business Card</b> (2e of 1e klas, met of zonder privégebruik) en een vrij artikel <b>Aanvullende afspraken</b>. Artikelen worden automatisch doorgenummerd.',
+    'Het dashboard controleert onderweg o.a. de proeftijd (geen proeftijd bij een contract van 6 maanden of korter) en of fase 2 aansluit op fase 1.',
+    'PDF bekijken of direct versturen: de medewerker ondertekent digitaal, net als bij de andere brieven. BSN en IBAN staan alleen in de PDF, niet in het logboek.',
+    'Zet het contract daarna nog wel in Shiftbase (bij fasering ook de overgang), voor het rooster en de salarisadministratie.'
+  ] },
   { nummer: '0.32.3', datum: '26-10-2026', titel: 'HR-weekoverzicht op maandag om 09:00', punten: [
     'Het HR-overzicht (was: dagoverzicht) is nu een <b>weekoverzicht</b>: elke maandag om <b>09:00</b>, zomer en winter.',
     'Op maandag gaat om 08:30 alles automatisch naar salaris; in het weekoverzicht zie je meteen wat er naar Mahdia is gestuurd. Wat donderdag naar salaris gaat, staat in het overzicht van de maandag erna.',

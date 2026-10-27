@@ -16,7 +16,7 @@ exports.handler = async (event) => {
   try {
     const p = body(event);
     const tok = U.leesToken(p.t);
-    if (!['ontslag', 'overplaatsing', 'oproep', 'waarschuwing', 'beschikbaarheid'].includes(tok.s)) throw new Error('Voor dit document is digitaal ondertekenen niet beschikbaar.');
+    if (!['ontslag', 'overplaatsing', 'oproep', 'waarschuwing', 'beschikbaarheid', 'contract'].includes(tok.s)) throw new Error('Voor dit document is digitaal ondertekenen niet beschikbaar.');
     const h = event.headers || {};
     const ip = h['x-nf-client-connection-ip'] || h['client-ip'] || String(h['x-forwarded-for'] || '').split(',')[0].trim() || '';
     const ua = h['user-agent'] || '';

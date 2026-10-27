@@ -219,6 +219,82 @@
     </div>
   </div>
 
+  <!-- CONTRACT OP MAAT (v0.33.0) -->
+  <div class="tc" id="tab-contractmaatwerk">
+    <div class="sec">
+      <div class="sh"><div class="st">📄 Contract op maat</div></div>
+      <div class="alert grijs" style="margin:0 0 14px;font-size:.82rem"><strong>Alleen voor afwijkende contracten</strong> die je niet in Shiftbase kunt maken, zoals eerst een nulurencontract en daarna vaste uren, of een NS Business Card. De tekst is gelijk aan de Shiftbase-template (Store Manager, bepaalde tijd), met de bouwstenen die je hieronder aanzet. <strong>Let op:</strong> zet het contract (en bij fasering ook de overgang) daarna nog wel in Shiftbase, voor het rooster en de salarisadministratie.</div>
+      <div class="cm-grid">
+        <div>
+          <div class="cm-kop">1. Medewerker</div>
+          <div class="fg"><label>Zoek in Shiftbase <span style="color:#888;font-weight:400">(vult naam, e-mail, adres en winkel in)</span></label>
+            <div class="zoeklijst" style="position:relative"><input type="text" id="cm-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="cm-zoek-res"></div></div></div>
+          <div class="fr"><div class="fg"><label>Naam</label><input type="text" id="cm-naam" placeholder="Voornaam Achternaam"></div>
+            <div class="fg"><label>E-mail</label><input type="email" id="cm-email" placeholder="medewerker@email.com"></div></div>
+          <div class="fr"><div class="fg"><label>Adres</label><input type="text" id="cm-adres" placeholder="Straat 1"></div>
+            <div class="fg"><label>Postcode en woonplaats</label><input type="text" id="cm-pcp" placeholder="1234 AB Amsterdam"></div></div>
+          <div class="fr"><div class="fg"><label>Geboortedatum <span style="color:#888;font-weight:400">(optioneel)</span></label><input type="text" id="cm-gebdat" placeholder="dd-mm-jjjj"></div>
+            <div class="fg"><label>Geboorteplaats <span style="color:#888;font-weight:400">(optioneel)</span></label><input type="text" id="cm-gebpl"></div></div>
+          <div class="fr"><div class="fg"><label>BSN <span style="color:#888;font-weight:400">(optioneel, alleen in de PDF)</span></label><input type="text" id="cm-bsn" autocomplete="off"></div>
+            <div class="fg"><label>IBAN <span style="color:#888;font-weight:400">(optioneel, alleen in de PDF)</span></label><input type="text" id="cm-iban" autocomplete="off"></div></div>
+
+          <div class="cm-kop">2. Werkgever en functie</div>
+          <div class="fr"><div class="fg"><label>Winkel / werkgever</label><select id="cm-winkel"></select></div>
+            <div class="fg"><label>Vertegenwoordigd door</label><input type="text" id="cm-vert" value="Ymke Peverelli"></div></div>
+          <div class="fr"><div class="fg"><label>Functie</label><input type="text" id="cm-functie" value="Store Manager"></div>
+            <div class="fg"><label>Referentiefunctie(s) <span style="color:#888;font-weight:400">(Handboek Horeca)</span></label><input type="text" id="cm-ref" value="A.5.I"></div></div>
+
+          <div class="cm-kop">3. Duur</div>
+          <div class="fr"><div class="fg"><label>Soort contract</label><select id="cm-soort"><option value="bepaald">Bepaalde tijd</option><option value="onbepaald">Onbepaalde tijd</option></select></div>
+            <div class="fg"><label>Startdatum</label><input type="date" id="cm-start"></div></div>
+          <div class="fr cm-bepaald"><div class="fg"><label>Duur (maanden)</label><input type="number" id="cm-maanden" min="1" max="36" value="12"></div>
+            <div class="fg"><label>Einddatum <span style="color:#888;font-weight:400">(automatisch)</span></label><input type="date" id="cm-eind"></div></div>
+          <div class="fr"><div class="fg"><label>Proeftijd</label><select id="cm-proef"><option value="0">Geen</option><option value="1" selected>1 maand</option><option value="2">2 maanden</option></select></div>
+            <div class="fg"><label>Opzegtermijn werknemer</label><select id="cm-opzeg"><option value="1">1 maand</option><option value="2" selected>2 maanden (werkgever 4)</option><option value="3">3 maanden (werkgever 6)</option></select></div></div>
+        </div>
+        <div>
+          <div class="cm-kop">4. Uren en loon</div>
+          <label class="chk" style="margin:0 0 10px"><input type="checkbox" id="cm-fasering"> <strong>Fasering</strong> — eerst andere afspraken (bijv. nulurencontract), daarna vaste uren</label>
+          <div id="cm-fase1-kop" class="cm-sub" style="display:none">Fase 1 — vanaf de startdatum</div>
+          <div class="fr"><div class="fg"><label>Contractvorm</label><select id="cm-f1-vorm"><option value="vast">Vaste uren</option><option value="oproep">Nulurencontract (oproep)</option></select></div>
+            <div class="fg cm-f1-uren"><label>Uren per week</label><input type="number" id="cm-f1-uren" min="1" max="60" step="0.5" value="38"></div></div>
+          <div class="fr"><div class="fg"><label>Loon</label><select id="cm-f1-loon"><option value="maand">Maandsalaris (bruto)</option><option value="uur">Uurloon (bruto)</option></select></div>
+            <div class="fg"><label>Bedrag in €</label><input type="text" id="cm-f1-bedrag" placeholder="bijv. 3250,00"></div></div>
+          <div id="cm-fase2" style="display:none">
+            <div class="fg"><label>Fase 1 loopt tot en met</label><input type="date" id="cm-f1-tot"></div>
+            <div class="cm-sub" id="cm-fase2-kop">Fase 2</div>
+            <div class="fr"><div class="fg"><label>Contractvorm</label><select id="cm-f2-vorm"><option value="vast">Vaste uren</option><option value="oproep">Nulurencontract (oproep)</option></select></div>
+              <div class="fg cm-f2-uren"><label>Uren per week</label><input type="number" id="cm-f2-uren" min="1" max="60" step="0.5" value="38"></div></div>
+            <div class="fr"><div class="fg"><label>Loon</label><select id="cm-f2-loon"><option value="maand">Maandsalaris (bruto)</option><option value="uur">Uurloon (bruto)</option></select></div>
+              <div class="fg"><label>Bedrag in €</label><input type="text" id="cm-f2-bedrag" placeholder="bijv. 3250,00"></div></div>
+          </div>
+
+          <div class="cm-kop">5. Reiskosten</div>
+          <label class="chk" style="margin:0 0 10px"><input type="checkbox" id="cm-ns"> <strong>NS Business Card</strong> (in plaats van "geen reiskostenvergoeding")</label>
+          <div id="cm-ns-opties" style="display:none">
+            <div class="fr"><div class="fg"><label>Klasse</label><select id="cm-ns-klasse"><option value="2">2e klas</option><option value="1">1e klas</option></select></div>
+              <div class="fg"><label>Ingangsdatum <span style="color:#888;font-weight:400">(leeg = startdatum)</span></label><input type="date" id="cm-ns-ingang"></div></div>
+            <label class="chk"><input type="checkbox" id="cm-ns-prive"> Ook privégebruik toegestaan</label>
+          </div>
+
+          <div class="cm-kop">6. Aanvullende afspraken <span style="color:#888;font-weight:400;font-size:.8rem">(optioneel, eigen artikel)</span></div>
+          <div class="fg"><textarea id="cm-extra" rows="4" style="min-height:90px" placeholder="Bijv. afspraken over een opleiding, een telefoon of thuiswerken. Leeg laten als er niets extra is."></textarea></div>
+
+          <div id="cm-check" style="margin-top:14px"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+            <button class="btn bd" onclick="cmPdf()">⬇ PDF bekijken</button>
+            <button class="btn bp" id="cm-sbtn" onclick="cmVerstuur()">Verstuur ter ondertekening</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Verstuurde contracten op maat <span class="pill" id="cm-count">-</span></div><div class="hr2"><button class="btn bd bsm" onclick="cmLaad()">↻</button></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>BV</th><th>Contract</th><th>Verstuurd op</th></tr></thead><tbody id="cm-body"></tbody></table></div>
+      <div class="lay-sub" style="margin-top:8px">Of het contract al is ondertekend, zie je bij Ontslag &amp; aanzegging → Digitaal ondertekenen en in het dossier van de medewerker.</div>
+    </div>
+  </div>
+
   <!-- Modal vrije brief -->
   <div class="mo" id="vb-modal"><div class="modal">
     <div class="mh"><div class="mti">✉ Vrije brief in SLA-huisstijl</div><button class="mc" onclick="closeVbModal()">×</button></div>
