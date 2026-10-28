@@ -3,7 +3,7 @@
 // GET                                              -> { soorten, winkels, huisregels, standaardHuisregels, instelling }
 // POST { actie:'docx', soort, winkel }             -> { base64, bestandsnaam }
 // POST { actie:'zip', soorten?:[], winkels?:[] }   -> { base64, bestandsnaam }   (leeg = alle)
-// POST { actie:'opslaan', huisregels:[], vertegenwoordiger }   (alleen beheerder; geldt ook voor Contract op maat)
+// POST { actie:'opslaan', huisregels:[] }   (alleen beheerder; geldt ook voor Contract op maat). Vertegenwoordiger staat vast: C.AFZENDER_NAAM (v0.34.3)
 // Logica: _lib/shiftbasetemplates.js
 // ============================================================
 const { beveiligd, body, logActie } = require('./_lib/auth');
@@ -33,11 +33,10 @@ exports.handler = beveiligd('shiftbase-templates', async (event, g) => {
     if (g.rol !== 'admin') throw new Error('Alleen een beheerder kan de huisregels wijzigen.');
     const regels = (Array.isArray(p.huisregels) ? p.huisregels : String(p.huisregels || '').split('\n')).map(s => String(s).replace(/^\s*[•\-*]\s*/, '').trim()).filter(Boolean);
     if (regels.length < 5) throw new Error('Er staan maar ' + regels.length + ' huisregels in de lijst. Klopt dat? Minimaal 5.');
-    const vert = String(p.vertegenwoordiger || '').trim() || SB.STANDAARD.vertegenwoordiger;
+    const vert = SB.STANDAARD.vertegenwoordiger;
     const I = require('./_lib/instellingen');
     const oud = await SB.huisregels();
     await I.schrijf('huisregels', regels, g.email);
-    await I.schrijf('shiftbase_templates', Object.assign({}, await SB.instelling(), { vertegenwoordiger: vert }), g.email);
     const erbij = regels.filter(r => !oud.includes(r)).length, eraf = oud.filter(r => !regels.includes(r)).length;
     await logActie({ door: g.email, actie: 'instelling', bron: 'shiftbase-templates', veld: 'huisregels', nieuw: regels.length + ' regels', details: erbij + ' nieuw/gewijzigd, ' + eraf + ' weg · vertegenwoordiger ' + vert });
     return { bericht: 'Opgeslagen (' + regels.length + ' huisregels). Download de templates opnieuw en zet ze in Shiftbase.', huisregels: regels, instelling: { vertegenwoordiger: vert } };

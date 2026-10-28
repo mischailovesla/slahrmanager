@@ -50,6 +50,11 @@ for (const s of SB.SOORTEN) {
 }
 assert.throws(() => SB.maak('nieuw-sm', 'HO', {}), /Onbekende winkel/);
 
+// v0.34.3: werkgever altijd vertegenwoordigd door de eigenaar
+assert.strictEqual(SB.STANDAARD.vertegenwoordiger, 'Jop van de Graaf');
+{ const d = Z.lees(SB.maak('nieuw-sm', 'CB', { huisregels: ['x'], vertegenwoordiger: SB.STANDAARD.vertegenwoordiger }).data).find(e => e.naam === 'word/document.xml').data.toString('utf8');
+  assert.ok(d.includes('Jop van de Graaf') && !/Jodi Ko(?! \()/.test(d.replace(/<[^>]+>/g, ''))); }
+
 // bundel: per winkel een map
 const b = Z.lees(SB.bundel(['nieuw-sm', 'verlenging-sm'], ['VS', 'CB'], { huisregels: CM.HUISREGELS }));
 assert.strictEqual(b.length, 4);

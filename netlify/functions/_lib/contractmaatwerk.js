@@ -96,7 +96,7 @@ function lees(p) {
     naam: String(p.naam || '').trim(), adres: String(p.adres || '').trim(), postcodePlaats: String(p.postcodePlaats || '').trim(),
     geboortedatum: String(p.geboortedatum || '').trim(), geboorteplaats: String(p.geboorteplaats || '').trim(),
     bsn: String(p.bsn || '').replace(/\D/g, ''), iban: String(p.iban || '').replace(/\s/g, '').toUpperCase(),
-    bv: String(p.bv || '').trim(), bvAdres: String(p.bvAdres || '').trim(), vertegenwoordiger: String(p.vertegenwoordiger || '').trim() || 'Ymke Peverelli',
+    bv: String(p.bv || '').trim(), bvAdres: String(p.bvAdres || '').trim(), vertegenwoordiger: String(p.vertegenwoordiger || '').trim() || require('./config').AFZENDER_NAAM || 'Jop van de Graaf',
     functie: String(p.functie || '').trim(), referentie: String(p.referentie || '').trim(), standplaats: String(p.standplaats || '').trim(),
     soort, start, maanden, eind, proeftijd: parseInt(p.proeftijd, 10) || 0, opzegWn: parseInt(p.opzegWn, 10) || 1,
     fasering, fasen,

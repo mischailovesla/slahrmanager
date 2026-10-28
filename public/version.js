@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.34.3', datum: '28-10-2026', titel: 'Contracten op naam van de eigenaar', punten: [
+    'Alle Shiftbase-templates en Contract op maat zeggen nu: werkgever vertegenwoordigd door <b>Jop van de Graaf</b> (eigenaar). Bij een wissel van operations manager hoeft er niets te veranderen.'
+  ] },
   { nummer: '0.34.2', datum: '28-10-2026', titel: 'Fix: Shiftbase-templates downloaden', punten: [
     'Downloaden van Shiftbase-templates gaf de melding “no such file or directory”. Opgelost: het dashboard vindt de templates nu ook na het online zetten.'
   ] },

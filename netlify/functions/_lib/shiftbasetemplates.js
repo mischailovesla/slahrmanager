@@ -21,7 +21,8 @@ const SOORTEN = [
   { key: 'verlenging-sm',        groep: 'verlenging', titel: 'Verlenging Store Manager' },
   { key: 'onbepaald-slamaker',   groep: 'verlenging', titel: 'Sla maker voortzetten voor onbepaalde tijd' }
 ];
-const STANDAARD = { vertegenwoordiger: 'Jodi Ko' };
+// v0.34.3: de werkgever tekent altijd namens de eigenaar (C.AFZENDER_NAAM = Jop van de Graaf), niet namens een operations manager
+const STANDAARD = { vertegenwoordiger: C.AFZENDER_NAAM || 'Jop van de Graaf' };
 // v0.34.2: na bundelen (esbuild) is __dirname de map van de function, niet _lib — daarom meerdere plekken proberen
 const KANDIDATEN = [
   path.join(__dirname, 'assets', 'shiftbase'),
@@ -55,7 +56,7 @@ async function huisregels() {
   const v = await require('./instellingen').lees('huisregels', null);
   return Array.isArray(v) && v.length ? v.map(String) : require('./contractmaatwerk').HUISREGELS.slice();
 }
-async function instelling() { const v = await require('./instellingen').lees('shiftbase_templates', null); return Object.assign({}, STANDAARD, v || {}); }
+async function instelling() { const v = await require('./instellingen').lees('shiftbase_templates', null); return Object.assign({}, v || {}, STANDAARD); }   // vertegenwoordiger staat vast
 
 // Puur: vult de markers in document.xml in
 function vul(xml, w, opts) {

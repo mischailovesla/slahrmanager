@@ -3538,9 +3538,8 @@
     if (!d.success) { toast('Shiftbase-templates: ' + d.bericht, 'err'); return; }
     sbtData = d; sbtRender();
     g('sbt-hr').value = d.huisregels.join('\n'); g('sbt-hr-count').textContent = d.huisregels.length;
-    g('sbt-vert').value = (d.instelling && d.instelling.vertegenwoordiger) || '';
     var adm = window._ikRol === 'admin';
-    g('sbt-hr').readOnly = !adm; g('sbt-vert').readOnly = !adm; g('sbt-opslaan').disabled = !adm;
+    g('sbt-hr').readOnly = !adm; g('sbt-opslaan').disabled = !adm;
     g('sbt-hr-info').textContent = adm ? '' : 'Alleen een beheerder kan de huisregels wijzigen.';
   };
   window.sbtDocx = async function (soort, winkel) {
@@ -3558,7 +3557,7 @@
     var regels = g('sbt-hr').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
     if (!confirm(regels.length + ' huisregels opslaan?\n\nDit geldt voor alle Shiftbase-templates en voor Contract op maat. Zet daarna de nieuwe templates in Shiftbase.')) return;
     var b = g('sbt-opslaan'); b.disabled = true;
-    var r = await api('/api/shiftbase-templates', { actie: 'opslaan', huisregels: regels, vertegenwoordiger: g('sbt-vert').value });
+    var r = await api('/api/shiftbase-templates', { actie: 'opslaan', huisregels: regels });
     b.disabled = false;
     if (r.success) { toast(r.bericht, 'ok'); sbtLaad(); } else toast(r.bericht, 'err');
   };
