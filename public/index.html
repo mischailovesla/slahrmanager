@@ -116,11 +116,7 @@
 
   <!-- ONTSLAG & AANZEGGING -->
   <div class="tc" id="tab-ontslag">
-    <div class="sec" id="ond-sec">
-      <div class="sh"><div class="st">Digitaal ondertekenen <span class="pill" id="ond-count">-</span></div><div class="hr2"><label class="btn bd bsm" style="cursor:pointer">Controleer een PDF<input type="file" accept="application/pdf" style="display:none" onchange="ondControleer(this)"></label><button class="btn bd bsm" onclick="laadOndertekeningen()">↻</button></div></div>
-      <div class="lay-sub" style="padding:10px 24px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span class="tbar" id="ond-filter"><button type="button" class="tb sel" data-ond-f="wacht">Wacht op handtekening</button><button type="button" class="tb" data-ond-f="alles">Alles</button></span><span title="De medewerker ondertekent via de link in de mail: code per mail, naam typen en akkoord, eventueel met de vinger tekenen. De ondertekende PDF (met bewijsspoor) komt in het dossier en gaat mee naar salaris.">ⓘ Zo werkt het</span> <span id="ond-ctrl"></span></div>
-      <div class="tw"><table><thead><tr><th>Medewerker</th><th>Document</th><th>Verstuurd</th><th>Status</th><th>Vingerafdruk</th><th></th></tr></thead><tbody id="ond-body"><tr><td colspan="6" class="leeg grijs">Laden…</td></tr></tbody></table></div>
-    </div>
+    <div class="sec ond-blok" data-soort="ontslag" data-titel="Digitaal ondertekenen"></div>
     <div class="sec">
       <div class="sh"><div class="st">Ontslag &amp; aanzegging <span class="pill" id="om-count">-</span></div>
         <div class="hr2"><span class="tbar"><button type="button" class="tb sel" data-afg-f="om-body" data-v="lopend">Lopend</button><button type="button" class="tb" data-afg-f="om-body" data-v="afgerond">Afgerond</button><button type="button" class="tb" data-afg-f="om-body" data-v="alles">Alles</button></span><input class="sb" type="text" placeholder="Zoek in alles..." oninput="flt('om-body',this.value);afgZoek('om-body',this.value)"><button class="btn bd bsm" data-srt-knop="om-body" onclick="srtKnop('om-body')" title="Sorteer op datum: nieuw → oud, oud → nieuw, uit">⇅ Sorteer op datum</button><button class="btn bd bsm" onclick="laadOntslag()">↻</button><button class="btn bp bsm" onclick="openOntslagMail(null)">Nieuwe mail + PDF</button></div></div>
@@ -188,6 +184,7 @@
         <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('op-body',this.value)"><button class="btn bd bsm" onclick="laadOverplaatsingen()">↻</button><button class="btn bp bsm" onclick="openOpModal(null)">Nieuwe overplaatsing</button></div></div>
       <div class="tw"><table><thead><tr><th>Naam</th><th>Type</th><th>Email</th><th>Van → naar</th><th>Standplaats</th><th>Ingangsdatum</th><th>Mail</th><th>Ondertekend</th><th>Herinneringen</th><th>Actie</th></tr></thead><tbody id="op-body"></tbody></table></div>
     </div>
+    <div class="sec ond-blok" data-soort="overplaatsing" data-titel="Digitaal ondertekenen"></div>
   </div>
 
   <!-- Modal overplaatsing -->
@@ -314,8 +311,9 @@
     <div class="sec">
       <div class="sh"><div class="st">Verstuurde contracten op maat <span class="pill" id="cm-count">-</span></div><div class="hr2"><button class="btn bd bsm" onclick="cmLaad()">↻</button></div></div>
       <div class="tw"><table><thead><tr><th>Naam</th><th>BV</th><th>Contract</th><th>Verstuurd op</th></tr></thead><tbody id="cm-body"></tbody></table></div>
-      <div class="lay-sub" style="margin-top:8px">Of het contract al is ondertekend, zie je bij Ontslag &amp; aanzegging → Digitaal ondertekenen en in het dossier van de medewerker.</div>
+      <div class="lay-sub" style="margin-top:8px">Of het contract al is ondertekend, zie je hieronder bij <b>Ondertekening contracten op maat</b> en in het dossier van de medewerker.</div>
     </div>
+    <div class="sec ond-blok" data-soort="contract" data-titel="Ondertekening contracten op maat"></div>
   </div>
 
   <!-- Modal vrije brief -->
@@ -365,6 +363,7 @@
       <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Winkel</th><th>BV</th><th>Datum overtreding</th><th>Overtreden regels</th><th>Taal</th><th>Status</th><th>Actie</th></tr></thead><tbody id="wr-body"></tbody></table></div>
     </div>
     <div class="alert grijs"><strong>Werkwijze:</strong> vink de overtreden huisregel(s) aan (woordelijk uit de contractbijlage), beschrijf feitelijk wat is geconstateerd en verstuur. De waarschuwing wordt als PDF in SLA-briefopmaak meegestuurd en komt in het dossier. Dossieropbouw: waarschuwing → (herhaling) tweede waarschuwing → sommatie/ontslagtraject.</div>
+    <div class="sec ond-blok" data-soort="waarschuwing" data-titel="Digitaal ondertekenen"></div>
   </div>
   <div class="mo" id="wr-modal"><div class="modal" style="width:820px">
     <div class="mh" style="background:#c0392b"><div class="mti">⚠ Officiële schriftelijke waarschuwing + PDF</div><button class="mc" onclick="closeWrModal()">×</button></div>
@@ -391,6 +390,7 @@
       <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Winkel</th><th>BV</th><th>Ingangsdatum</th><th>Onderbouwing</th><th>Taal</th><th>Status</th><th>Actie</th></tr></thead><tbody id="bk-body"></tbody></table></div>
     </div>
     <div class="alert grijs"><strong>Huisregel:</strong> "Je bent minimaal 2 diensten op vrijdag, zaterdag of zondag beschikbaar." Kies een medewerker uit Shiftbase: de onderbouwing (laatste 8 weekenden, ingeroosterd vs. verlof vs. doordeweeks) wordt automatisch uit het rooster berekend. De wekelijkse signalering (maandag 09:45) mailt HR wie 3 weekenden op rij geen weekenddienst had maar wél doordeweeks werkte.</div>
+    <div class="sec ond-blok" data-soort="beschikbaarheid" data-titel="Digitaal ondertekenen"></div>
   </div>
   <div class="mo" id="bk-modal"><div class="modal">
     <div class="mh"><div class="mti">📅 Kennisgeving weekendbeschikbaarheid + PDF</div><button class="mc" onclick="closeBkModal()">×</button></div>
@@ -602,6 +602,7 @@
       <div class="tw"><table><thead><tr><th>Naam</th><th>Email</th><th>Winkel</th><th>Oproep sinds</th><th>Gem. u/week</th><th>Aangeboden</th><th>Ingangsdatum</th><th>Reageren vóór</th><th>Verstuurd</th><th>Reactie</th><th>Actie</th></tr></thead><tbody id="opr-body"></tbody></table></div>
     </div>
     <div class="alert grijs"><strong>Wet:</strong> na 12 maanden oproepwerk moet de werkgever binnen een maand schriftelijk een vaste arbeidsomvang aanbieden van ten minste het gemiddelde aantal uren van die 12 maanden (art. 7:628a lid 5 BW). De medewerker mag weigeren; dan jaarlijks opnieuw aanbieden. Zonder aanbod kan de medewerker loon claimen over de niet-aangeboden uren. Het gemiddelde komt uit de Shiftbase-roosters; controleer het en rond naar boven af.</div>
+    <div class="sec ond-blok" data-soort="oproep" data-titel="Digitaal ondertekenen"></div>
   </div>
   <div class="mo" id="opr-modal"><div class="modal">
     <div class="mh"><div class="mti">📄 Aanbod vaste arbeidsomvang + PDF</div><button class="mc" onclick="closeOprModal()">×</button></div>

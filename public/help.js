@@ -53,7 +53,7 @@ window.HR_HELP = {
     { id: 'tekenen', titel: 'Digitaal ondertekenen', html:
       '<ul><li>Brieven met een PDF krijgen een persoonlijke tekenlink. De medewerker vraagt een code aan per mail, leest de PDF en tekent (naam + eventueel handtekening).</li>'
       + '<li>Soorten: <i>akkoord</i> (ontslag, overplaatsing, contract op maat), <i>gezien</i> (waarschuwing, beschikbaarheid) en <i>keuze</i> (oproepaanbod: aanvaard of afgewezen, met opmerking).</li>'
-      + '<li>De medewerker krijgt daarna zelf de volledig getekende PDF. Het blok <b>Digitaal ondertekenen</b> bovenaan Uitstroom toont wat nog wacht; <b>Intrekken</b> maakt een link ongeldig.</li>'
+      + '<li>De medewerker krijgt daarna zelf de volledig getekende PDF. Elk tabblad toont onderaan (bij Ontslag bovenaan) een blok <b>Digitaal ondertekenen</b> met alleen zijn eigen documenten: ontslag bij Ontslag &amp; aanzegging, contracten bij Contract op maat, enz.; <b>Intrekken</b> maakt een link ongeldig.</li>'
       + '<li>Links verlopen na 60 dagen. Nieuwe link nodig? ⋯ → 🔗 Uploadlink.</li></ul>' },
     { id: 'winkelmail', titel: 'Winkelmail voor store managers', html:
       '<p>Elke maandag 07:50 krijgt elke winkel een mail met wat er speelt. Een winkel zonder iets te melden krijgt niets. Keuken gaat naar Jop.</p>'
