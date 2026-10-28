@@ -55,6 +55,15 @@ assert.strictEqual(SB.STANDAARD.vertegenwoordiger, 'Jop van de Graaf');
 { const d = Z.lees(SB.maak('nieuw-sm', 'CB', { huisregels: ['x'], vertegenwoordiger: SB.STANDAARD.vertegenwoordiger }).data).find(e => e.naam === 'word/document.xml').data.toString('utf8');
   assert.ok(d.includes('Jop van de Graaf') && !/Jodi Ko(?! \()/.test(d.replace(/<[^>]+>/g, ''))); }
 
+// v0.34.4: partijen als tabel; titel Store Manager klopt
+for (const s of SB.SOORTEN) {
+  const d = Z.lees(SB.maak(s.key, 'CB', { huisregels: ['x'], vertegenwoordiger: 'Jop van de Graaf' }).data).find(e => e.naam === 'word/document.xml').data.toString('utf8');
+  assert.ok((d.match(/<w:tbl>/g) || []).length >= 2, s.key + ': partijen-tabellen');
+  assert.ok(d.includes('Bedrijfsnaam:') && d.includes('{first_name} {prefix_name} {last_name}'), s.key + ': partijen-inhoud');
+}
+{ const d = Z.lees(SB.maak('nieuw-sm', 'CB', { huisregels: ['x'] }).data).find(e => e.naam === 'word/document.xml').data.toString('utf8');
+  assert.ok(d.includes('Contract Store Manager') && !d.includes('Contract Sla maker')); }
+
 // bundel: per winkel een map
 const b = Z.lees(SB.bundel(['nieuw-sm', 'verlenging-sm'], ['VS', 'CB'], { huisregels: CM.HUISREGELS }));
 assert.strictEqual(b.length, 4);

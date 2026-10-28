@@ -98,10 +98,52 @@ def bijlage(x):
   if i < 0 or x.find('</w:body>', i) < 0: raise SystemExit('geen sectPr')
   return x[:i] + blok + x[i:]
 
+# ---- v0.34.4: partijen-blok als tabel (Shiftbase trok tabs/regeleinden scheef bij het uploaden) ----
+TOP = re.compile(r'<w:tbl>.*?</w:tbl>|<w:p[ >].*?</w:p>', re.S)
+def rpr_van(p):
+  m = re.search(r'<w:r[ >].*?(<w:rPr>.*?</w:rPr>)', p, re.S)
+  r = m.group(1) if m else '<w:rPr/>'
+  return re.sub(r'<w:(b|bCs|highlight|u)( [^>]*)?/>', '', r)
+def run(t, rpr, vet=False):
+  if vet: rpr = rpr.replace('<w:rPr>', '<w:rPr><w:b/><w:bCs/>', 1) if rpr != '<w:rPr/>' else '<w:rPr><w:b/><w:bCs/></w:rPr>'
+  return '<w:r>' + rpr + '<w:t xml:space="preserve">' + t.replace('&', '&amp;') + '</w:t></w:r>'
+def cel(t, w, rpr, vet=False):
+  return ('<w:tc><w:tcPr><w:tcW w:w="%d" w:type="dxa"/></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="40"/></w:pPr>' % w) + run(t, rpr, vet) + '</w:p></w:tc>'
+def tabel(rijen, rpr):
+  geen = ''.join('<w:%s w:val="nil"/>' % k for k in ('top', 'left', 'bottom', 'right', 'insideH', 'insideV'))
+  x = ('<w:tbl><w:tblPr><w:tblW w:w="9000" w:type="dxa"/><w:tblBorders>' + geen + '</w:tblBorders><w:tblLayout w:type="fixed"/>'
+       '<w:tblCellMar><w:left w:w="0" w:type="dxa"/><w:right w:w="113" w:type="dxa"/></w:tblCellMar><w:tblLook w:val="0000"/></w:tblPr>'
+       '<w:tblGrid><w:gridCol w:w="2800"/><w:gridCol w:w="6200"/></w:tblGrid>')
+  for l, v in rijen: x += '<w:tr>' + cel(l, 2800, rpr, True) + cel(v, 6200, rpr) + '</w:tr>'
+  return x + '</w:tbl><w:p><w:pPr><w:spacing w:before="0" w:after="0"/></w:pPr></w:p>'
+def partijen(x, key):
+  els = [(m.start(), m.end(), m.group(0)) for m in TOP.finditer(x, x.find('<w:body>'))]
+  tk = [tekst(e[2]).strip() for e in els]
+  i0 = next(i for i, t in enumerate(tk) if t.startswith('De ondergetekenden'))
+  i1 = next(i for i in range(i0 + 1, len(els)) if 'vertegenwoordigd door' in tk[i])
+  i2 = next(i for i in range(i1 + 1, len(els)) if tk[i] == 'en')
+  i3 = next(i for i in range(i2 + 1, len(els)) if 'hierna te noemen' in tk[i] and 'werknemer' in tk[i])
+  rpr = rpr_van(els[i0][2])
+  wn = ''.join(e[2] for e in els[i2 + 1:i3])
+  werkgever = [('Bedrijfsnaam:', '[[BV]]'), ('Adres:', '[[ADRES]]'), ('Postcode en plaats:', '[[POSTCODE_PLAATS]]')]
+  werknemer = [('Naam:', '{first_name} {prefix_name} {last_name}'), ('Adres:', '{address}'), ('Postcode en woonplaats:', '{postal_code} {city}'),
+               ('Geboortedatum:', '{date_of_birth}'), ('Geboorteplaats:', '{place_of_birth}')]
+  if '{ssn}' in wn: werknemer += [('BSN:', '{ssn}')]
+  if '{bank_account}' in wn: werknemer += [('IBAN:', '{bank_account}')]
+  # van achter naar voren vervangen, zodat posities kloppen
+  x = x[:els[i2][1]] + tabel(werknemer, rpr) + x[els[i3][0]:]
+  x = x[:els[i0][1]] + tabel(werkgever, rpr) + x[els[i1][0]:]
+  return x
+# Titel van de senior-template stond verkeerd ("Contract Sla maker")
+TITELS = { 'nieuw-sm': 'Contract Store Manager' }
+
 def verwerk(x, key):
   x = TXT.sub(lambda m: m.group(1) + vervang_t(m.group(2)) + m.group(3), x)
   log = []
   x = gelijktrekken(x, key, log)
+  x = partijen(x, key)
+  if key in TITELS:
+    x = PARA.sub(lambda m: zet_tekst(m.group(0), TITELS[key]) if tekst(m.group(0)).strip() == 'Contract Sla maker' else m.group(0), x)
   paras = [(m.start(), m.end(), m.group(0)) for m in PARA.finditer(x)]
   bul = [i for i, (_, _, p) in enumerate(paras) if tekst(p).lstrip().startswith('•')]
   if not bul:

@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.34.4', datum: '28-10-2026', titel: 'Shiftbase-templates: gegevens in een tabel', punten: [
+    'De gegevens van werkgever en werknemer bovenaan de contracten staan nu in een tabel (zonder lijnen). Shiftbase zette ze bij het uploaden scheef.',
+    'Het Store Manager-contract had als titel nog “Contract Sla maker”. Dat is nu “Contract Store Manager”.'
+  ] },
   { nummer: '0.34.3', datum: '28-10-2026', titel: 'Contracten op naam van de eigenaar', punten: [
     'Alle Shiftbase-templates en Contract op maat zeggen nu: werkgever vertegenwoordigd door <b>Jop van de Graaf</b> (eigenaar). Bij een wissel van operations manager hoeft er niets te veranderen.'
   ] },
