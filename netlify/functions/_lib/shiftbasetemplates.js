@@ -22,7 +22,20 @@ const SOORTEN = [
   { key: 'onbepaald-slamaker',   groep: 'verlenging', titel: 'Sla maker voortzetten voor onbepaalde tijd' }
 ];
 const STANDAARD = { vertegenwoordiger: 'Jodi Ko' };
-const MASTER_DIR = path.join(__dirname, 'assets', 'shiftbase');
+// v0.34.2: na bundelen (esbuild) is __dirname de map van de function, niet _lib — daarom meerdere plekken proberen
+const KANDIDATEN = [
+  path.join(__dirname, 'assets', 'shiftbase'),
+  path.join(__dirname, '_lib', 'assets', 'shiftbase'),
+  path.join(process.env.LAMBDA_TASK_ROOT || '/var/task', 'netlify', 'functions', '_lib', 'assets', 'shiftbase'),
+  path.join(process.cwd(), 'netlify', 'functions', '_lib', 'assets', 'shiftbase')
+];
+let _masterDir = null;
+function masterDir() {
+  if (_masterDir) return _masterDir;
+  _masterDir = KANDIDATEN.find(d => { try { return fs.existsSync(path.join(d, 'nieuw-slamaker.docx')); } catch (e) { return false; } });
+  if (!_masterDir) throw new Error('Shiftbase-masters niet gevonden (gezocht in: ' + KANDIDATEN.join(', ') + ')');
+  return _masterDir;
+}
 
 const xmlEsc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const isHolding = bv => /holding/i.test(String(bv || ''));
@@ -59,7 +72,7 @@ function vul(xml, w, opts) {
   return x;
 }
 
-function master(key) { return fs.readFileSync(path.join(MASTER_DIR, soort(key).key + '.docx')); }
+function master(key) { return fs.readFileSync(path.join(masterDir(), soort(key).key + '.docx')); }
 const veilig = s => String(s).replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim();
 function bestandsnaam(key, w) { return veilig(w.naam + ' - ' + soort(key).titel) + '.docx'; }
 

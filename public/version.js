@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.34.2', datum: '28-10-2026', titel: 'Fix: Shiftbase-templates downloaden', punten: [
+    'Downloaden van Shiftbase-templates gaf de melding “no such file or directory”. Opgelost: het dashboard vindt de templates nu ook na het online zetten.'
+  ] },
   { nummer: '0.34.1', datum: '28-10-2026', titel: 'Shiftbase-templates gelijkgetrokken', punten: [
     'Alle contracttemplates zeggen nu hetzelfde: loon <b>rond de 14e van de volgende maand</b>, werktijden <b>vanaf 09.00</b> en functie-indeling Sla maker <b>A.3.I</b>, Junior Store Manager A.4.I en Store Manager A.5.I.',
     'De regel “eerste zes maanden alleen loon als je hebt gewerkt” staat alleen nog in het eerste contract van een Sla maker (oproep). Bij verlengingen, onbepaalde tijd en vaste uren is hij weg.',
