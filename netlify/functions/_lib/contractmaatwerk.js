@@ -54,7 +54,7 @@ const HUISREGELS = [
   'Je mag koffie, thee en water drinken tijdens je dienst. Als je zin hebt in een ander drankje zoals sapjes, smoothies of fris, reken je die bij een collega af met personeelskorting.',
   'Bij een dienst langer dan 5,5 uur mag je een salade, bowl of soep eten. Hierbij kies je een salade van het menu of een reguliere stel-zelf-samen met 1 premium. Bij een dienst korter dan 5,5 uur kun je voor of na je dienst een salade, bowl of soep afrekenen voor de personeelsprijs.',
   'Het is niet de bedoeling dat je eten mee naar huis neemt, behalve als je bedrijfsleider hier toestemming voor heeft gegeven.',
-  'Als je niet aan het werk bent krijg je – in alle winkels van SLA – op vertoon van je Apprendo account 25% korting.',
+  'Als je niet aan het werk bent krijg je – in alle winkels van SLA – op vertoon van je SLAcademy-account 25% korting.',
   'Als je niet aan het werk bent gedraag je je als klant. Je komt niet achter de counter.',
   'Gesprekken voer je op gepaste toon en nooit als er klanten geholpen moeten worden.',
   'Je praat nooit over klanten of over de kwaliteit of houdbaarheid van het eten als andere klanten dit kunnen horen.',
