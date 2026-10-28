@@ -38,6 +38,7 @@ exports.handler = beveiligd('contract-maatwerk', async (event, g) => {
     return { rijen, winkels };
   }
   const p = body(event), actie = String(p.actie || 'controle');
+  if (actie !== 'controle') p._huisregels = await require('./_lib/shiftbasetemplates').huisregels();   // v0.34.0: centrale huisregels
   const b = CM.bouw(p);
   if (actie === 'controle') return { fouten: b.fouten, let_op: b.let_op, samenvatting: b.samenvatting };
   if (b.fouten.length) throw new Error(b.fouten.join(' '));

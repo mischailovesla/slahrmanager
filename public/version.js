@@ -2,6 +2,18 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.34.1', datum: '28-10-2026', titel: 'Shiftbase-templates gelijkgetrokken', punten: [
+    'Alle contracttemplates zeggen nu hetzelfde: loon <b>rond de 14e van de volgende maand</b>, werktijden <b>vanaf 09.00</b> en functie-indeling Sla maker <b>A.3.I</b>, Junior Store Manager A.4.I en Store Manager A.5.I.',
+    'De regel “eerste zes maanden alleen loon als je hebt gewerkt” staat alleen nog in het eerste contract van een Sla maker (oproep). Bij verlengingen, onbepaalde tijd en vaste uren is hij weg.',
+    'Store Manager-contracten zeggen niet meer “indien opgeroepen”: zij hebben vaste uren.',
+    'Verlengingen gebruiken de functie uit Shiftbase ({job_title}) en hebben nu ook de huisregels als bijlage.'
+  ] },
+  { nummer: '0.34.0', datum: '28-10-2026', titel: 'Shiftbase-templates per winkel', punten: [
+    'Nieuw onder Instroom: <b>Shiftbase-templates</b>. Per winkel download je de contracttemplates voor Shiftbase als Word-bestand: Sla maker, Junior Store Manager en Store Manager, plus de verlengingen en het Sla maker-contract voor onbepaalde tijd. BV, adres, standplaats en plaats van ondertekening staan er per winkel al goed in.',
+    'Downloaden kan per template, per winkel als zip, per soort voor alle winkels, of alles in één keer.',
+    'De <b>huisregels</b> beheer je nu op één plek. Ze gaan in de templates én in Contract op maat. De korting staat er nu met je <b>SLAcademy-account</b> in, niet meer met Apprendo.',
+    'HQ (SLA Holding BV) staat er niet bij: deze teksten gaan uit van de cao Horeca, 38 uur en PH&amp;C.'
+  ] },
   { nummer: '0.33.5', datum: '27-10-2026', titel: 'Contract op maat: deeltijd', punten: [
     'Bij een deeltijdcontract (bijv. 24 of 32 uur) vul je het <b>fulltime</b> maandsalaris in. Het contract noemt dan beide bedragen: het fulltime salaris (38 uur, holding 40 uur) én het salaris naar rato voor de afgesproken uren. Ook de samenvatting toont het deeltijdbedrag.'
   ] },

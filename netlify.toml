@@ -5,7 +5,7 @@
 [functions]
   node_bundler = "esbuild"
   # handtekening-PNG meebundelen met de functions (stap 3d)
-  included_files = ["netlify/functions/_lib/assets/*"]
+  included_files = ["netlify/functions/_lib/assets/*", "netlify/functions/_lib/assets/shiftbase/*"]
 
 # /api/* -> functions, zodat de frontend geen /.netlify/functions/ hoeft te kennen
 [[redirects]]

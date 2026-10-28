@@ -7,14 +7,14 @@
 
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
-    { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['checkin', 'Check-in 30/60']] },
+    { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['sbtemplates', 'Shiftbase-templates'], ['checkin', 'Check-in 30/60']] },
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegangslog (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -52,6 +52,7 @@
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
     if (tab === 'brief' && !vbData) laadBrieven();
     if (tab === 'contractmaatwerk' && !cmData) cmLaad();
+    if (tab === 'sbtemplates' && !sbtData) sbtLaad();
     if (tab === 'ontslag' && !omData) laadOntslag();
     if (tab === 'winkelmail') wmLaad();
     if (tab === 'help') helpRender();
@@ -3520,6 +3521,51 @@
     tab.addEventListener('input', function (e) { if (e.target.id === 'cm-zoek') return; if (e.target.id === 'cm-start' || e.target.id === 'cm-maanden') cmEindAuto(); cmZicht(); cmControle(); });
     tab.addEventListener('change', function (e) { if (e.target.id === 'cm-start' || e.target.id === 'cm-maanden') cmEindAuto(); if (e.target.id === 'cm-winkel') cmFulltime(); cmZicht(); cmControle(); });
     cmZicht();
+  })();
+
+  // ---------- Shiftbase-templates (v0.34.0) ----------
+  var sbtData = null, sbtGroep = '';
+  function sbtSoorten() { return (sbtData ? sbtData.soorten : []).filter(function (s) { return !sbtGroep || s.groep === sbtGroep; }); }
+  function sbtRender() {
+    var so = sbtSoorten();
+    g('sbt-kop').innerHTML = '<tr><th>Winkel</th>' + so.map(function (s) { return '<th style="white-space:normal;min-width:110px">' + esc(s.titel) + '<br><a href="#" style="font-weight:400" onclick="sbtZip(\'\', \'' + s.key + '\');return false">⬇ alle winkels</a></th>'; }).join('') + '<th></th></tr>';
+    g('sbt-body').innerHTML = sbtData.winkels.map(function (w) {
+      return '<tr><td><strong>' + esc(w.naam) + '</strong><br><small>' + esc(w.bv) + ' · ' + esc(w.plaats) + '</small></td>' + so.map(function (s) { return '<td><button class="btn bd bsm" onclick="sbtDocx(\'' + s.key + '\', \'' + w.code + '\')">⬇ .docx</button></td>'; }).join('') + '<td><button class="btn bp bsm" onclick="sbtZip(\'' + w.code + '\', \'\')">⬇ zip</button></td></tr>';
+    }).join('');
+  }
+  window.sbtLaad = async function () {
+    var d = await api('/api/shiftbase-templates');
+    if (!d.success) { toast('Shiftbase-templates: ' + d.bericht, 'err'); return; }
+    sbtData = d; sbtRender();
+    g('sbt-hr').value = d.huisregels.join('\n'); g('sbt-hr-count').textContent = d.huisregels.length;
+    g('sbt-vert').value = (d.instelling && d.instelling.vertegenwoordiger) || '';
+    var adm = window._ikRol === 'admin';
+    g('sbt-hr').readOnly = !adm; g('sbt-vert').readOnly = !adm; g('sbt-opslaan').disabled = !adm;
+    g('sbt-hr-info').textContent = adm ? '' : 'Alleen een beheerder kan de huisregels wijzigen.';
+  };
+  window.sbtDocx = async function (soort, winkel) {
+    toast('Template maken…', 'ok');
+    var r = await api('/api/shiftbase-templates', { actie: 'docx', soort: soort, winkel: winkel });
+    if (r.success) downloadB64(r.base64, r.bestandsnaam); else toast(r.bericht, 'err');
+  };
+  window.sbtZip = async function (winkel, soort) {
+    var soorten = soort ? [soort] : sbtSoorten().map(function (s) { return s.key; });
+    toast('Zip maken…', 'ok');
+    var r = await api('/api/shiftbase-templates', { actie: 'zip', winkels: winkel ? [winkel] : [], soorten: soorten });
+    if (r.success) downloadB64(r.base64, r.bestandsnaam); else toast(r.bericht, 'err');
+  };
+  window.sbtOpslaan = async function () {
+    var regels = g('sbt-hr').value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (!confirm(regels.length + ' huisregels opslaan?\n\nDit geldt voor alle Shiftbase-templates en voor Contract op maat. Zet daarna de nieuwe templates in Shiftbase.')) return;
+    var b = g('sbt-opslaan'); b.disabled = true;
+    var r = await api('/api/shiftbase-templates', { actie: 'opslaan', huisregels: regels, vertegenwoordiger: g('sbt-vert').value });
+    b.disabled = false;
+    if (r.success) { toast(r.bericht, 'ok'); sbtLaad(); } else toast(r.bericht, 'err');
+  };
+  window.sbtStandaard = function () { if (sbtData && confirm('De standaardlijst in het tekstvak zetten? Er wordt pas iets opgeslagen als je op Opslaan klikt.')) g('sbt-hr').value = sbtData.standaardHuisregels.join('\n'); };
+  (function () {
+    var t = g('sbt-groep'); if (!t) return;
+    t.addEventListener('click', function (e) { var b = e.target.closest('[data-g]'); if (!b) return; t.querySelectorAll('.tb').forEach(function (x) { x.classList.toggle('sel', x === b); }); sbtGroep = b.getAttribute('data-g'); if (sbtData) sbtRender(); });
   })();
 
   // ---------- Toast ----------

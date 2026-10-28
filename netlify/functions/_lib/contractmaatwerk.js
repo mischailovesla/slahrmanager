@@ -226,7 +226,7 @@ function bouw(p) {
   // Ondertekening: werkgever op een lijn van underscores, werknemer op puntjes — P.maakOpgemaakteBrief zet de digitale
   // handtekening van de medewerker op de eerste puntjesregel ná een regel met "de werknemer".
   tekst += '\n\n\n**' + c.bv + '**\n' + c.vertegenwoordiger + '\n\n\n______________________________\nDatum:\n\n\n**De werknemer**\n' + c.naam + '\n\n\n................................................\nDatum:';
-  tekst += '\n\n\n**BIJLAGE: HUISREGELS SLA**\n\nWe hebben er niet heel veel, maar de huisregels die we hebben vinden we ook echt heel belangrijk. Wat zijn de huisregels ook alweer?\n\n' + HUISREGELS.map(h => '- ' + h).join('\n');
+  tekst += '\n\n\n**BIJLAGE: HUISREGELS SLA**\n\nWe hebben er niet heel veel, maar de huisregels die we hebben vinden we ook echt heel belangrijk. Wat zijn de huisregels ook alweer?\n\n' + (Array.isArray(p._huisregels) && p._huisregels.length ? p._huisregels : HUISREGELS).map(h => '- ' + h).join('\n');
 
   const vormTekst = f => (f.vorm === 'oproep' ? '0 uren' : String(f.uren).replace('.', ',') + ' u/wk') + ', ' + (f.loon === 'maand' && f.uren > 0 && f.uren < ft ? euro(naarRato(f.bedrag, f.uren, ft)) + '/mnd (fulltime ' + euro(f.bedrag) + ')' : euro(f.bedrag) + (f.loon === 'uur' ? '/uur' : '/mnd'));
   const samenvatting = [
