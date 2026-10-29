@@ -3503,8 +3503,29 @@
     var sel = g('cm-winkel');
     if (!sel.options.length) sel.innerHTML = '<option value="">— kies de winkel —</option>' + cmWinkels.map(function (w) { return '<option value="' + esc(w.code) + '">' + esc(w.naam) + ' · ' + esc(w.bv) + '</option>'; }).join('');
     g('cm-count').textContent = cmData.length;
-    g('cm-body').innerHTML = cmData.length ? cmData.map(function (r) { return '<tr><td><strong>' + esc(r.naam) + '</strong><br><small>' + esc(r.email) + '</small></td><td>' + esc(r.bv) + '</td><td>' + esc(r.onderwerp) + '</td><td>' + esc(r.verzenddatum) + '</td></tr>'; }).join('')
-      : '<tr><td colspan="4" style="color:#999">Nog geen contracten op maat verstuurd.</td></tr>';
+    g('cm-body').innerHTML = cmData.length ? cmData.map(function (r) { return '<tr><td><strong>' + esc(r.naam) + '</strong><br><small>' + esc(r.email) + '</small></td><td>' + esc(r.bv) + '</td><td>' + esc(r.onderwerp) + '</td><td>' + esc(r.verzenddatum) + '</td><td><button class="btn bd bsm" title="Zet dit contract terug in het formulier om het aan te passen en opnieuw te versturen" onclick="cmHergebruik(' + Number(r.rij) + ')">✎ Opnieuw gebruiken</button></td></tr>'; }).join('')
+      : '<tr><td colspan="5" style="color:#999">Nog geen contracten op maat verstuurd.</td></tr>';
+  };
+  // v0.35.0: verstuurd contract terug in het formulier (BSN en IBAN staan niet in het logboek → opnieuw invullen)
+  window.cmHergebruik = async function (rij) {
+    var d = await api('/api/contract-maatwerk', { actie: 'formulier', rij: rij });
+    if (!d.success) { toast(d.bericht, 'err'); return; }
+    var f = d.formulier, z = function (id, v) { g(id).value = v == null ? '' : v; };
+    z('cm-naam', f.naam); z('cm-email', f.email); z('cm-adres', f.adres); z('cm-pcp', f.postcodePlaats); z('cm-gebdat', f.geboortedatum); z('cm-gebpl', f.geboorteplaats);
+    z('cm-bsn', ''); z('cm-iban', '');
+    if (d.winkel) { z('cm-winkel', d.winkel); cmFulltime(); }
+    else toast('Werkgever ' + f.bv + ' niet gevonden in de lijst: kies de winkel zelf', 'err');
+    z('cm-vert', f.vertegenwoordiger); z('cm-functie', f.functie); z('cm-ref', f.referentie);
+    z('cm-soort', f.soort); z('cm-start', f.startdatum); z('cm-maanden', f.maanden); z('cm-eind', f.einddatum); z('cm-proef', f.proeftijd); z('cm-opzeg', f.opzegWn);
+    var fa = f.fasering || {};
+    ['f1', 'f2'].forEach(function (k, i) { var x = (i ? fa.fase2 : fa.fase1) || {}; z('cm-' + k + '-vorm', x.vorm || 'vast'); if (x.uren) z('cm-' + k + '-uren', x.uren); z('cm-' + k + '-loon', x.loon || 'maand'); z('cm-' + k + '-bedrag', x.bedrag); });
+    g('cm-fasering').checked = !!fa.aan; z('cm-f1-tot', (fa.fase1 || {}).tot || '');
+    g('cm-ns').checked = !!f.ns.aan; z('cm-ns-klasse', f.ns.klasse || '2'); g('cm-ns-prive').checked = !!f.ns.prive; z('cm-ns-ingang', f.ns.ingang);
+    z('cm-extra', f.extra);
+    cmZicht(); cmControle();
+    g('tab-contractmaatwerk').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(function () { g('cm-iban').focus(); }, 400);
+    toast('Contract van ' + f.naam + ' staat in het formulier. Vul BSN en IBAN opnieuw in, pas aan en verstuur. De oude ondertekenlink vervalt dan vanzelf.', 'ok');
   };
   window.cmPdf = async function () {
     var p = cmLees();

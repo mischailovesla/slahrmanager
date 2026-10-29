@@ -3,6 +3,7 @@
 // GET  /api/contract-maatwerk                         -> { rijen (verstuurde contracten), winkels [{code,naam,bv,adres}] }
 // POST { actie:'controle', ...formulier }             -> { fouten, let_op, samenvatting }
 // POST { actie:'pdf', ...formulier }                  -> { pdf (base64), bestandsnaam }  — verstuurt en logt niets
+// POST { actie:'formulier', rij }                    -> { formulier, winkel } — v0.35.0: verstuurd contract terug in het formulier (zonder BSN/IBAN)
 // POST { actie:'versturen', email, ...formulier }     -> mail met PDF + link om digitaal te ondertekenen,
 //      log in hr_brieven (categorie 'Contract op maat', zonder BSN/IBAN) + hr_ondertekening + hr_mails + hr_acties
 // Tekst en bouwstenen: _lib/contractmaatwerk.js
@@ -38,6 +39,13 @@ exports.handler = beveiligd('contract-maatwerk', async (event, g) => {
     return { rijen, winkels };
   }
   const p = body(event), actie = String(p.actie || 'controle');
+  if (actie === 'formulier') {   // v0.35.0: verstuurd contract terugzetten in het formulier ("Opnieuw gebruiken")
+    const r = (await S.getBrieven()).find(x => String(x.rij) === String(p.rij) && x.categorie === CATEGORIE);
+    if (!r) throw new Error('Dit contract staat niet (meer) in het logboek.');
+    const f = CM.terugLezen(r.tekst);
+    const codes = Object.keys(C.WINKEL_BV_MAP), w = codes.find(k => C.WINKEL_BV_MAP[k].bv === f.bv && C.WINKEL_BV_MAP[k].adres === f.bvAdres) || codes.find(k => C.WINKEL_BV_MAP[k].bv === f.bv) || '';
+    return { formulier: Object.assign(f, { email: r.email }), winkel: w, verstuurd: r.verzenddatum };
+  }
   if (actie !== 'controle') p._huisregels = await require('./_lib/shiftbasetemplates').huisregels();   // v0.34.0: centrale huisregels
   const b = CM.bouw(p);
   if (actie === 'controle') return { fouten: b.fouten, let_op: b.let_op, samenvatting: b.samenvatting };

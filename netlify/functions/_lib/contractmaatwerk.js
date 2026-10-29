@@ -241,4 +241,49 @@ function bouw(p) {
 // Voor het logboek (hr_brieven): zonder BSN en IBAN
 const redigeer = tekst => String(tekst || '').replace(/^\*\*BSN:\*\*.*$/m, '**BSN:** (alleen in de PDF)').replace(/^\*\*IBAN:\*\*.*$/m, '**IBAN:** (alleen in de PDF)');
 
-module.exports = { naarRato, isHolding, fulltimeVan, bouw, lees, controleer, redigeer, eindVan, euro, parseDatum, nl, HUISREGELS };
+// v0.35.0: "Opnieuw gebruiken" — een verstuurd contract (de tekst uit het logboek) terug omzetten naar formuliervelden,
+// zodat HR na intrekken een gecorrigeerde versie kan versturen zonder alles opnieuw in te vullen.
+// BSN en IBAN staan niet in het logboek en komen dus leeg terug (die vult HR opnieuw in).
+function terugLezen(tekst) {
+  const t = String(tekst || '').replace(/\r/g, '');
+  const iso = s => { const m = String(s || '').match(/(\d{2})-(\d{2})-(\d{4})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; };
+  const blok = (van, tot) => { const a = t.indexOf(van); if (a < 0) return ''; const b = t.indexOf(tot, a + van.length); return b < 0 ? '' : t.slice(a + van.length, b); };
+  const veld = (b, label) => { const m = b.match(new RegExp('^\\*\\*' + label.replace(/[()]/g, '\\$&') + ':\\*\\* (.*)$', 'm')); return m ? m[1].trim() : ''; };
+  const wg = blok('De ondergetekenden:', 'hierbij vertegenwoordigd door'), wn = blok('hierna te noemen: **"werkgever"**', 'hierna te noemen: **"werknemer"**');
+  if (!wg || !wn) throw new Error('Dit contract kan niet worden teruggelezen (onbekende opbouw).');
+  // Artikelen: titel → tekst
+  const art = {}, re = /\*\*Artikel \d+ (.+?)\*\*\n\n/g; let m, vorige = null;
+  while ((m = re.exec(t))) { if (vorige) art[vorige.titel] = t.slice(vorige.start, m.index).trim(); vorige = { titel: m[1], start: re.lastIndex }; }
+  if (vorige) art[vorige.titel] = t.slice(vorige.start).trim();
+  const aard = art['Aard dienstverband.'] || '', opz = art['Tussentijdse opzegging.'] || art['Opzegging.'] || '';
+  const fun = art['Functie, taak en standplaats.'] || '', werk = art['Werktijden.'] || '', sal = art['Salaris.'] || '';
+  const fasering = /kent twee fasen/.test(aard);
+  const fase = (w, s) => {
+    const oproep = /oproepbasis/.test(w), u = w.match(/gemiddeld ([\d,]+) uur per week/), uur = s.match(/bruto uurloon van werknemer bedraagt € ([\d.,]+)/), mnd = s.match(/brutosalaris van werknemer bedraagt € ([\d.,]+) per maand/);
+    return { vorm: oproep ? 'oproep' : 'vast', uren: oproep ? '' : (u ? u[1].replace(',', '.') : ''), loon: uur ? 'uur' : 'maand', bedrag: (uur || mnd || [])[1] || '' };
+  };
+  const knip = (s, i) => { const d = s.split(/\*\*Fase [12]\*\* /); return d[i] || ''; };
+  const f1 = fasering ? fase(knip(werk, 1), knip(sal, 1)) : fase(werk, sal);
+  const f2 = fasering ? fase(knip(werk, 2), knip(sal, 2)) : { vorm: 'vast', uren: f1.uren || '', loon: 'maand', bedrag: '' };
+  if (fasering) { const tot = werk.match(/\*\*Fase 1\*\* \(van \S+ tot en met (\d{2}-\d{2}-\d{4})\)/); f1.tot = tot ? iso(tot[1]) : ''; }
+  const fm = fun.match(/in de functie van ([\s\S]+?)(?: \(die bij de indeling is vergeleken met de referentienummer\(s\) ([\s\S]+?) in het Handboek Referentiefuncties Bedrijfstak Horeca\))?\. De inhoud van de functie/);
+  const ops = opz.match(/Voor werknemer geldt een opzegtermijn van (?:\S+ \((\d+)\)|(\d+)) maand/);
+  const nsT = art['Reiskosten en NS Business Card.'] || '', ex = art['Aanvullende afspraken.'] || '';
+  const vert = t.match(/hierbij vertegenwoordigd door (.+),\n/);
+  const soort = /voor onbepaalde tijd/.test(aard) ? 'onbepaald' : 'bepaald';
+  const p = {
+    naam: veld(wn, 'Naam'), adres: veld(wn, 'Adres'), postcodePlaats: veld(wn, 'Postcode en woonplaats'), geboortedatum: veld(wn, 'Geboortedatum'), geboorteplaats: veld(wn, 'Geboorteplaats'), bsn: '', iban: '',
+    bv: veld(wg, 'Bedrijfsnaam'), bvAdres: [veld(wg, 'Adres'), veld(wg, 'Postcode en plaats')].filter(Boolean).join(', '), standplaats: '', vertegenwoordiger: vert ? vert[1].trim() : '',
+    functie: fm ? fm[1].trim() : '', referentie: fm && fm[2] ? fm[2].trim() : '',
+    soort, startdatum: iso((aard.match(/met ingang van (\d{2}-\d{2}-\d{4}) beschikbaar/) || [])[1]),
+    maanden: soort === 'bepaald' ? ((aard.match(/voor de duur van (\d+) maanden/) || [])[1] || '') : '', einddatum: soort === 'bepaald' ? iso((aard.match(/van rechtswege op (\d{2}-\d{2}-\d{4})/) || [])[1]) : '',
+    proeftijd: ((aard.match(/proeftijd van (\d+) maand/) || [])[1]) || '0', opzegWn: ops ? (ops[1] || ops[2]) : '1',
+    vorm: f1.vorm, uren: f1.uren, loonsoort: f1.loon, bedrag: f1.bedrag,
+    fasering: { aan: fasering, fase1: f1, fase2: f2 },
+    ns: nsT ? { aan: true, klasse: /\(eerste klas\)/.test(nsT) ? '1' : '2', prive: /ook privé gebruiken/.test(nsT), ingang: iso((nsT.match(/met ingang van (\d{2}-\d{2}-\d{4}) een NS Business Card/) || [])[1]) } : { aan: false, klasse: '2', prive: false, ingang: '' },
+    extra: ex ? ex.split('\n\nVoor zover deze aanvullende afspraken afwijken')[0].trim() : ''
+  };
+  return p;
+}
+
+module.exports = { naarRato, isHolding, fulltimeVan, bouw, lees, controleer, redigeer, terugLezen, eindVan, euro, parseDatum, nl, HUISREGELS };

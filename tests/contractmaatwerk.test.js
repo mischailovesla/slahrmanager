@@ -67,3 +67,27 @@ assert.ok(b.tekst.includes('40 urige werkweek') && b.tekst.includes('zijnde € 
 b = m({ uren: 38 });
 assert.ok(!b.tekst.includes('naar rato'));
 console.log('contractmaatwerk tests OK');
+
+// v0.35.0: opnieuw gebruiken — logboektekst (zonder BSN/IBAN) terug naar formulier; opnieuw opbouwen geeft exact dezelfde tekst
+const hr = ['Regel een', 'Regel twee'];
+const rondje = (o) => {
+  const p = Object.assign({}, basis, { geboortedatum: '01-02-1999', geboorteplaats: 'Utrecht', vertegenwoordiger: 'Jop van de Graaf', _huisregels: hr }, o);
+  const b1 = CM.bouw(p); assert.deepStrictEqual(b1.fouten, [], JSON.stringify(b1.fouten));
+  const terug = CM.terugLezen(CM.redigeer(b1.tekst));
+  assert.strictEqual(terug.iban, ''); assert.strictEqual(terug.bsn, '');
+  const b2 = CM.bouw(Object.assign(terug, { bsn: p.bsn, iban: 'NL99NEUW0000000001', _huisregels: hr }));
+  assert.strictEqual(b2.tekst, b1.tekst.replace('NL00TEST0123456789', 'NL99NEUW0000000001'));
+  assert.strictEqual(b2.samenvatting, b1.samenvatting);
+  return terug;
+};
+let tr = rondje({});
+assert.strictEqual(tr.naam, 'Test Persoon'); assert.strictEqual(tr.startdatum, '2026-11-01'); assert.strictEqual(tr.maanden, '12'); assert.strictEqual(tr.opzegWn, '2');
+rondje({ uren: 32, bedrag: '3.250,00' });                                   // deeltijd met maandsalaris naar rato
+rondje({ vorm: 'oproep', loonsoort: 'uur', bedrag: '16,50', proeftijd: 0, maanden: 6, opzegWn: 1 });
+rondje({ soort: 'onbepaald', maanden: '', proeftijd: 2, opzegWn: 3 });
+rondje({ bv: 'SLA Holding BV', referentie: '', uren: 40, bedrag: '4000' });
+rondje({ maanden: '', einddatum: '2027-03-15', proeftijd: 0 });
+tr = rondje({ fasering: { aan: true, fase1: { vorm: 'oproep', loon: 'uur', bedrag: '16,50', tot: '2026-11-30' }, fase2: { vorm: 'vast', uren: 36, loon: 'maand', bedrag: '3250' } },
+  ns: { aan: true, klasse: '1', prive: true, ingang: '2026-12-01' }, extra: 'Werknemer volgt een opleiding.\n\nDe kosten zijn voor werkgever.' });
+assert.strictEqual(tr.fasering.fase1.tot, '2026-11-30'); assert.strictEqual(tr.ns.klasse, '1'); assert.ok(tr.extra.includes('kosten zijn voor werkgever'));
+assert.throws(() => CM.terugLezen('Beste Lisa, dit is geen contract.'));

@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.34.6', datum: '29-10-2026', titel: 'Contract op maat: opnieuw gebruiken', punten: [
+    'Bij <b>Verstuurde contracten op maat</b> staat per contract de knop <b>Opnieuw gebruiken</b>. Die zet het contract terug in het formulier, zodat je een fout (bijv. een verkeerd IBAN) kunt verbeteren en het opnieuw kunt versturen.',
+    'BSN en IBAN staan om privacyredenen niet in het logboek. Die vul je dus opnieuw in. Al het andere (uren, loon, data, fasering, NS Business Card, aanvullende afspraken) komt terug zoals het verstuurd is.',
+    'Bij opnieuw versturen vervalt de oude ondertekenlink vanzelf. Je kunt hem ook eerst zelf intrekken.'
+  ] },
   { nummer: '0.34.5', datum: '28-10-2026', titel: 'Ondertekeningen per onderwerp', punten: [
     'Het blok <b>Digitaal ondertekenen</b> toont per tabblad alleen de eigen documenten. Bij Ontslag &amp; aanzegging staan alleen nog ontslagbrieven en aanzeggingen.',
     'Contracten op maat zie je nu onderaan <b>Contract op maat</b>. Overplaatsingen, waarschuwingen, beschikbaarheidsbrieven en oproepaanbiedingen hebben ook elk hun eigen blok op hun tabblad.'
