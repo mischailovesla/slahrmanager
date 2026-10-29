@@ -211,7 +211,11 @@ exports.handler = beveiligd('taken', async (event, g) => {
   let loonAl = null;
   try { const { normNaam: nn } = require('./_lib/util'); loonAl = new Set(); (await S.getLoonheffing()).forEach(r => { if (r.email) loonAl.add('e:' + String(r.email).trim().toLowerCase()); if (r.naam) loonAl.add('n:' + nn(r.naam)); }); loonAl.nn = nn; } catch (e) { loonAl = null; }
   const loonVerstuurd = x => loonAl && ((x.email && loonAl.has('e:' + String(x.email).trim().toLowerCase())) || (x.naam && loonAl.has('n:' + loonAl.nn(x.naam))));
-  for (const naam of ALLE_CHECKS) if (runs[naam]) {
+  // v0.34.7: datakwaliteit (Shiftbase aanvullen) hoort niet in 'Te doen' — die staat in het maandrapport en bij Signaleringen.
+  // Alleen het aantal gaat mee, voor één regel in de voettekst.
+  const BUITEN_TAKEN = new Set(['data-hygiene']);
+  const buiten = { dataHygiene: runs['data-hygiene'] ? (runs['data-hygiene'].gevonden || []).length : 0 };
+  for (const naam of ALLE_CHECKS) if (runs[naam] && !BUITEN_TAKEN.has(naam)) {
     let items = vertrek && OVERBODIG_BIJ_ONTSLAG.has(naam) ? (runs[naam].gevonden || []).filter(x => !VT(vertrek, x)) : runs[naam].gevonden;
     // v0.26.2: de checks draaien 's ochtends; is er daarna een ontslagbevestiging/aanzegging verstuurd, dan is de verlengingstaak klaar
     // (behalve 'tegenstrijdig': besloten te verlengen terwijl er een brief is verstuurd — die moet juist blijven staan)
@@ -266,6 +270,6 @@ exports.handler = beveiligd('taken', async (event, g) => {
   const rang = { rood: 0, oranje: 1, grijs: 2 };
   taken.sort((a, b) => rang[a.urgentie] - rang[b.urgentie] || String(a.naam || '').localeCompare(String(b.naam || ''), 'nl'));
   const stand = Object.keys(runs).filter(k => ALLE_CHECKS.includes(k)).map(k => ({ check: k, tijd: stempelNL(runs[k].tijd), aantal: (runs[k].gevonden || []).length }));
-  return { taken, aantallen: { rood: taken.filter(t => t.urgentie === 'rood').length, oranje: taken.filter(t => t.urgentie === 'oranje').length, grijs: taken.filter(t => t.urgentie === 'grijs').length }, verborgen, stand, live, fouten };
+  return { taken, aantallen: { rood: taken.filter(t => t.urgentie === 'rood').length, oranje: taken.filter(t => t.urgentie === 'oranje').length, grijs: taken.filter(t => t.urgentie === 'grijs').length }, verborgen, stand, live, fouten, buiten };
 });
 exports._uitCheck = uitCheck; // tests

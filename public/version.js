@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.34.7', datum: '29-10-2026', titel: 'Te doen: alleen echte acties', punten: [
+    'De meldingen <b>Shiftbase aanvullen: adres/functie ontbreekt</b> staan niet meer in <b>Te doen</b> op het Overzicht. Ze verdrongen de taken met een deadline.',
+    'Je vindt ze nog in het maandelijkse datakwaliteitsrapport (1e van de maand) en bij <b>Signaleringen</b>. Onderaan Te doen staat hoeveel profielen nog onvolledig zijn.'
+  ] },
   { nummer: '0.34.6', datum: '29-10-2026', titel: 'Contract op maat: opnieuw gebruiken', punten: [
     'Bij <b>Verstuurde contracten op maat</b> staat per contract de knop <b>Opnieuw gebruiken</b>. Die zet het contract terug in het formulier, zodat je een fout (bijv. een verkeerd IBAN) kunt verbeteren en het opnieuw kunt versturen.',
     'BSN en IBAN staan om privacyredenen niet in het logboek. Die vul je dus opnieuw in. Al het andere (uren, loon, data, fasering, NS Business Card, aanvullende afspraken) komt terug zoals het verstuurd is.',

@@ -2729,7 +2729,7 @@
       if (groep.length > max) h += '<button type="button" class="tk-meer" data-tk-groep="' + tt.k + '">' + (open ? 'Minder tonen' : 'Toon alle ' + groep.length + ' (' + (groep.length - max) + ' meer)') + '</button>';
     });
     el.innerHTML = h || '<div class="leeg grijs">✓ Niets te doen' + (tkFilter !== 'alle' || tkThemaSel || winkelFilter() ? ' in deze selectie' : '') + '</div>';
-    g('tk-voet').textContent = (d.live ? 'Verse stand uit de checks. ' : 'Stand van de laatste automatische checks (↻ Verse stand draait ze nu). ') + (d.verborgen ? d.verborgen + ' afgehandeld verborgen. ' : '') + (d.fouten && d.fouten.length ? 'Fouten: ' + d.fouten.join('; ') : '');
+    g('tk-voet').textContent = (d.live ? 'Verse stand uit de checks. ' : 'Stand van de laatste automatische checks (↻ Verse stand draait ze nu). ') + (d.verborgen ? d.verborgen + ' afgehandeld verborgen. ' : '') + (d.buiten && d.buiten.dataHygiene ? d.buiten.dataHygiene + ' onvolledige Shiftbase-profielen staan niet hier maar in het maandrapport (1e van de maand) en bij Signaleringen. ' : '') + (d.fouten && d.fouten.length ? 'Fouten: ' + d.fouten.join('; ') : '');
   }
   document.addEventListener('click', function (e) { var b = e.target.closest && e.target.closest('button[data-tk-groep]'); if (!b) return; var k = b.getAttribute('data-tk-groep'); tkOpenGroep[k] = !tkOpenGroep[k]; renderTaken(); });
   document.addEventListener('click', async function (e) {
