@@ -170,6 +170,7 @@ module.exports = {
   ACADEMY_CACHE_MIN: 15,               // zo lang onthoudt een function de Academy-stand
   ACADEMY_NOOIT_INGELOGD_DAGEN: 7,     // welkomstmail zoveel dagen geleden en nog nooit ingelogd = signaal
   ACADEMY_WELKOM_DAGEN: 21,            // welkomstcollectie af binnen zoveel dagen na de eerste werkdag (zelfde norm als de onboarding-checklist)
+  ACADEMY_AFTEKENEN_TAKEN: false,      // v0.34.8: 'Aftekenen ... te laat' (observaties) nog niet in Te doen — store managers zijn nog niet ingelicht. Op true zetten na de uitleg.
   ACADEMY_CERT_WAARSCHUW_DAGEN: 30,    // certificaat verloopt binnen zoveel dagen = oranje (Academy gebruikt dezelfde grens)
   UITSTROOMREDENEN: ['Eigen keuze: andere baan', 'Eigen keuze: studie/verhuizing', 'Eigen keuze: werk/privé of rooster', 'Einde tijdelijk contract (niet verlengd door SLA)', 'Proeftijd', 'Functioneren', 'Gedrag/huisregels', 'Ontslag op staande voet', 'Wederzijds goedvinden', 'Langdurig ziek', 'Overig/onbekend'],
   LOON_AUTO_MIN_DAGEN: 3,          // automatische loonheffingsuitnodiging: deadline = startdatum, maar minstens vandaag + 3 dagen

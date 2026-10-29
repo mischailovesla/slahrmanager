@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.34.8', datum: '29-10-2026', titel: 'Aftekenen observaties tijdelijk uit Te doen', punten: [
+    'De meldingen <b>Aftekenen: SLA Maker … te laat</b> staan niet meer in Te doen. De store managers weten nog niet dat zij deze observaties in de Academy moeten aftekenen.',
+    'In het dossier en in de Academy blijft de status zichtbaar. Zodra de store managers zijn ingelicht, gaat de melding met één instelling weer aan.'
+  ] },
   { nummer: '0.34.7', datum: '29-10-2026', titel: 'Te doen: alleen echte acties', punten: [
     'De meldingen <b>Shiftbase aanvullen: adres/functie ontbreekt</b> staan niet meer in <b>Te doen</b> op het Overzicht. Ze verdrongen de taken met een deadline.',
     'Je vindt ze nog in het maandelijkse datakwaliteitsrapport (1e van de maand) en bij <b>Signaleringen</b>. Onderaan Te doen staat hoeveel profielen nog onvolledig zijn.'

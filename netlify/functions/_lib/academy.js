@@ -86,7 +86,7 @@ function signalen(lijst, vandaag) {
         titel: 'Welkomstcollectie Academy niet af na ' + b.dagenInDienst + ' dagen (' + w.af + '/' + w.totaal + ')',
         sub: basis.naam + ' · ' + (basis.winkel || '-') + ' · in dienst ' + nl(m.start) + (b.welkomOpen.length ? ' · open: ' + b.welkomOpen.slice(0, 4).join(', ') + (b.welkomOpen.length > 4 ? ' …' : '') : '') + (b.ingelogd ? '' : ' · nog nooit ingelogd') }));
     }
-    if (b.aftekenProbleem.length) {
+    if (C.ACADEMY_AFTEKENEN_TAKEN && b.aftekenProbleem.length) {
       uit.push(Object.assign({}, basis, { soort: 'aftekenen', urgentie: 'oranje', sleutel: 'academy|aftekenen|' + (m.mid || m.id),
         titel: 'Aftekenen: ' + b.aftekenProbleem.map(a => a.observatie + ' ' + AFT_LABEL[a.status]).join(', '),
         sub: basis.naam + ' · ' + (basis.winkel || '-') + ' · in dienst ' + nl(m.start) + ' · ' + b.aftekenProbleem.map(a => a.deadline ? 'deadline ' + nl(a.deadline) : a.op ? 'laatst ' + nl(a.op) : '').filter(Boolean).join(' · ') + ' · observatie in Academy door Store Manager/trainer' }));
