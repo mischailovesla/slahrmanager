@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.36.1', datum: '30-10-2026', titel: 'Tijd tot eerste dienst in Scorekaart en onder Instroom', punten: [
+    '<b>Dagen tot eerste dienst</b> staat nu als indicator in de <b>Scorekaart</b> en in het <b>HR-maandrapport</b> (PDF en mail): per maand, vorige maand, verschil, 12 maanden en per winkel, vergeleken met het SLA-gemiddelde. Hier tellen ook medewerkers mee die alweer vertrokken zijn.',
+    'De details per medewerker staan op een eigen pagina: <b>Instroom → Tijd tot eerste dienst</b> (berekent vanzelf bij openen). Het blok is van het Overzicht verhuisd.'
+  ] },
   { nummer: '0.36.0', datum: '30-10-2026', titel: 'Instroom-KPI: tijd tot eerste dienst', punten: [
     'Op het Overzicht staat onder Lopende dossiers het blok <b>Instroom: tijd tot eerste dienst</b>. Kies een datum en klik <b>Bereken</b>: je ziet hoeveel dagen er gemiddeld (en als mediaan) zitten tussen de indienstdatum in Shiftbase en de eerste geroosterde dienst, per winkel en per medewerker.',
     'Ook zichtbaar: wie nog <b>geen dienst</b> heeft, en wie al een dienst had <b>vóór de indienstdatum</b> (gewerkt of gepland voordat het contract liep). Alleen medewerkers die nu in dienst zijn tellen mee.'

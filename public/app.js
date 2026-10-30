@@ -7,14 +7,14 @@
 
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
-    { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['sbtemplates', 'Shiftbase-templates'], ['checkin', 'Check-in 30/60']] },
+    { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['sbtemplates', 'Shiftbase-templates'], ['checkin', 'Check-in 30/60'], ['eerstedienst', 'Tijd tot eerste dienst']] },
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegangslog (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -50,6 +50,7 @@
     if (knop) { knop.classList.add('active'); var grp = knop.closest('.lay-groep'); if (grp) grp.querySelector('.lay-kop').classList.add('kop-actief'); }
     if (tab === 'dossier') { setTimeout(function () { g('dos-zoek').focus(); }, 50); if (!g('dos-inhoud').innerHTML) renderMedewerkersLijst(); }
     if (tab === 'loonheffing' && !lhData) laadLoonheffing();
+    if (tab === 'eerstedienst' && !window._sdGeladen) { window._sdGeladen = true; setTimeout(function () { laadStartdienst(); }, 50); } // v0.36.1
     if (tab === 'brief' && !vbData) laadBrieven();
     if (tab === 'contractmaatwerk' && !cmData) cmLaad();
     if (tab === 'sbtemplates' && !sbtData) sbtLaad();
@@ -123,6 +124,7 @@
     loonheffing: ['Loonheffingsverklaring', 'Uitnodigingen voor nieuwe medewerkers, ontvangen formulieren en doorsturen naar salaris.'],
     contract: ['Contracten & starters', 'Nieuwe starters uit Shiftbase met hun contract- en formulierstatus.'],
     checkin: ['Check-in 30/60', 'Korte check-in voor nieuwe medewerkers op dag 30 en 60; lage scores volg je hier op.'],
+    eerstedienst: ['Tijd tot eerste dienst', 'Hoeveel dagen zitten er tussen de indienstdatum en de eerste geroosterde dienst in Shiftbase? Per winkel en per medewerker.'],
     loonheffingskorting: ['Loonheffingskorting', 'Loonheffingskorting aan- of uitzetten voor bestaande medewerkers.'],
     oproepaanbod: ['Oproepaanbod', 'Aanbod vaste arbeidsomvang na 12 maanden oproepwerk (art. 7:628a BW).'],
     overplaatsing: ['Overplaatsing', 'Overplaatsing naar een andere BV of standplaatswijziging, met brief en doorgeven aan salaris.'],
@@ -1674,7 +1676,7 @@
   // ---------- Scorekaart per winkel (fase 3c) ----------
   var skData = null, skMaanden = 6, skWinkel = null;
   var SK_KLS = { groen: 'bg', oranje: 'bo', rood: 'br', klein: 'boat', geen: 'boat' };
-  var SK_KORT = { verloop: 'Verloop', vroegPct: 'Weg ≤ 90 d (uitstroom)', uitval90: 'Nieuw weg ≤ 90 d', checkinScore: 'Check-in', checkinLaagPct: 'Lage check-ins', onboarding: 'Onboarding op tijd', verzuimPct: 'Verzuim', meldingsfreq: 'Meldingen p.p./jr', enps: 'eNPS exit', aanzegOpTijd: 'Aanzegging op tijd', freqVerzuim: 'Frequent verzuim', verzuimGesprek: 'Verzuimgesprek ≤ 30 d', loonOpTijd: 'Loonheffing ≤ 7 d', tekenDagen: 'Getekend na', welkomAf: 'Welkom Academy af', certGeldig: 'Certificaat geldig' };
+  var SK_KORT = { eersteDienst: 'Dagen tot 1e dienst', verloop: 'Verloop', vroegPct: 'Weg ≤ 90 d (uitstroom)', uitval90: 'Nieuw weg ≤ 90 d', checkinScore: 'Check-in', checkinLaagPct: 'Lage check-ins', onboarding: 'Onboarding op tijd', verzuimPct: 'Verzuim', meldingsfreq: 'Meldingen p.p./jr', enps: 'eNPS exit', aanzegOpTijd: 'Aanzegging op tijd', freqVerzuim: 'Frequent verzuim', verzuimGesprek: 'Verzuimgesprek ≤ 30 d', loonOpTijd: 'Loonheffing ≤ 7 d', tekenDagen: 'Getekend na', welkomAf: 'Welkom Academy af', certGeldig: 'Certificaat geldig' };
   window.laadScorekaart = async function (mnd, vers) {
     if (mnd) skMaanden = mnd;
     [3, 6, 12].forEach(function (m) { g('sk-b' + m).className = 'btn bsm ' + (skMaanden === m ? 'bp' : 'bd'); });

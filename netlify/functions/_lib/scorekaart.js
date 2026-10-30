@@ -15,6 +15,8 @@ const KPIS = [
   { key: 'uitval90', label: 'Nieuwe medewerkers weg ≤ 90 dagen', eenheid: '% v.d. instroom', richting: 'laag', groep: 'Instroom', uitleg: 'Van wie in de periode begon en 90 dagen kón halen: deel dat binnen 90 dagen vertrok' },
   { key: 'checkinScore', label: 'Check-in score', eenheid: '/5', richting: 'hoog', groep: 'Instroom', uitleg: 'Gemiddelde van de schaalvragen in de check-in na 30/60 dagen' },
   { key: 'checkinLaagPct', label: 'Lage check-ins', eenheid: '%', richting: 'laag', groep: 'Instroom', uitleg: 'Deel van de ingevulde check-ins met een lage score of een alarm-antwoord' },
+  // v0.36.1: dagen tussen indienstdatum en eerste geroosterde dienst (Shiftbase) — details onder Instroom → Tijd tot eerste dienst
+  { key: 'eersteDienst', label: 'Dagen tot eerste dienst', eenheid: 'dagen', richting: 'laag', groep: 'Instroom', uitleg: 'Gemiddeld aantal dagen tussen de indienstdatum (Shiftbase) en de eerste geroosterde dienst, voor wie in de periode begon en al een dienst heeft. Een dienst vóór de indienstdatum telt als 0.' },
   { key: 'onboarding', label: 'Onboarding binnen 21 dagen af', eenheid: '%', richting: 'hoog', groep: 'Instroom', uitleg: 'Onboarding-checklists die binnen 21 dagen zijn afgerond' },
   { key: 'welkomAf', label: 'Welkomstcollectie Academy af', eenheid: '%', richting: 'hoog', groep: 'Training', uitleg: 'Nu: van wie sinds de Academy-start begon en ≥ 21 dagen in dienst is, deel met de welkomstcollectie helemaal af' },
   { key: 'certGeldig', label: 'Certificaat voedselveiligheid geldig', eenheid: '%', richting: 'hoog', groep: 'Training', uitleg: 'Nu: deel van de medewerkers met alle verplichte certificaten (Basis voedselveiligheid, HACCP) geldig in Academy' },
@@ -50,7 +52,7 @@ function sterk(k, v, o) {
   if (k.richting === 'laag') return o > 0 && v / o <= 0.8;
   return o > 0 && v / o >= 1.05;
 }
-const DECIMAAL = ['checkinScore', 'meldingsfreq', 'verzuimPct', 'tekenDagen', 'freqVerzuim'];
+const DECIMAAL = ['checkinScore', 'meldingsfreq', 'verzuimPct', 'tekenDagen', 'freqVerzuim', 'eersteDienst'];
 const fmt = (k, v) => v === null || v === undefined ? '-' : (DECIMAAL.includes(k.key) ? r1(v).toFixed(1) : String(Math.round(v))).replace('.', ',') + (k.eenheid === '%' || k.eenheid.indexOf('%') === 0 ? '%' : k.eenheid === '/5' ? '/5' : k.eenheid === 'dagen' ? ' d' : '');
 
 // ---- puur rekenwerk ----
@@ -63,7 +65,7 @@ function bereken(inp) {
   (med || []).forEach(m => { perId[String(m.id)] = m.winkel; if (m.naam) perNaam[normNaam(m.naam)] = m.winkel; });
   const winkelVan = (id, naam, gegeven) => (id && perId[String(id)]) || (naam && perNaam[normNaam(naam)]) || gegeven || '';
   const namen = verloop.winkels.map(w => w.naam).filter(n => n && n !== '(geen winkel)');
-  const leeg = () => ({ ziekDagen: 0, dienstDagen: 0, meldingen: 0, lopend: 0, ciVerstuurd: 0, ciIngevuld: 0, ciScores: [], ciLaag: 0, ciMaand: maanden.map(() => []), meldMaand: maanden.map(() => 0), ex: [], az: 0, azOpTijd: 0, ob: 0, obOpTijd: 0, mensen: 0, wkTelt: 0, wkAf: 0, ctTelt: 0, ctOk: 0, acad: false , lo7: 0, lo7Ok: 0, teken: [], fvMensen: 0, fvFreq: 0, fvMoment: 0, fvGesprek: 0});
+  const leeg = () => ({ ziekDagen: 0, dienstDagen: 0, meldingen: 0, lopend: 0, ciVerstuurd: 0, ciIngevuld: 0, ciScores: [], ciLaag: 0, ciMaand: maanden.map(() => []), meldMaand: maanden.map(() => 0), ex: [], az: 0, azOpTijd: 0, ob: 0, obOpTijd: 0, mensen: 0, wkTelt: 0, wkAf: 0, ctTelt: 0, ctOk: 0, acad: false , ed: [], lo7: 0, lo7Ok: 0, teken: [], fvMensen: 0, fvFreq: 0, fvMoment: 0, fvGesprek: 0});
   const acc = {}; namen.forEach(n => { acc[n] = leeg(); }); const tot0 = leeg();
   const bij = (w, f) => { if (acc[w]) f(acc[w]); f(tot0); };
 
@@ -134,6 +136,18 @@ function bereken(inp) {
     if (d.soort === 'loonheffing') { if (dagenTussen(d.verzonden, vandaag) >= 7) bij(w, x => { x.lo7++; if (d.binnen && (d.binnen - d.verzonden) / 864e5 <= 7) x.lo7Ok++; }); }
     else if (d.binnen) { const dd = (d.binnen - d.verzonden) / 864e5; bij(w, x => { x.teken.push(dd); }); }
   }
+  // v0.36.1: dagen tot eerste geroosterde dienst, voor wie in de periode begon
+  if (inp.rosters) {
+    const eerste = {}, plusD = (iso, n) => isoD(new Date(dag(iso).getTime() + n * 864e5));
+    for (const r0 of inp.rosters) { const r = (r0 && r0.Roster) || r0 || {}; const u = String(r.user_id || ''), d = String(r.date || '').slice(0, 10); if (u && /^\d{4}-\d{2}-\d{2}$/.test(d)) (eerste[u] = eerste[u] || []).push(d); }
+    for (const m of med || []) {
+      if (!m.start || m.start < vanIso || m.start > totIso) continue;
+      const grens = plusD(m.start, -30), ds = (eerste[String(m.id)] || []).filter(d => d >= grens).sort();
+      if (!ds.length) continue;
+      const dd = Math.max(0, dagenTussen(dag(m.start), dag(ds[0])));
+      bij(m.winkel, x => { x.ed.push(dd); });
+    }
+  }
   // onboarding-checklists gestart in de periode die 21 dagen de tijd hebben gehad (of al af zijn)
   for (const c of checklists || []) {
     if (c.type !== 'onboarding' || !c.gestart_op) continue; const gs = new Date(c.gestart_op); const gi = isoD(gs); if (gi < vanIso || gi > totIsoVol) continue;
@@ -160,6 +174,7 @@ function bereken(inp) {
       uitval90: { v: vr && vr.cohort['90'] ? vr.cohort['90'].pct : null, n: vr && vr.cohort['90'] ? vr.cohort['90'].n : 0, klein: !vr || !vr.cohort['90'] || vr.cohort['90'].n < MIN_N },
       checkinScore: { v: x.ciScores.length ? r1(gem(x.ciScores)) : null, n: x.ciScores.length, klein: x.ciScores.length < MIN_N },
       checkinLaagPct: { v: x.ciIngevuld ? Math.round(x.ciLaag / x.ciIngevuld * 100) : null, n: x.ciIngevuld, klein: x.ciIngevuld < MIN_N },
+      eersteDienst: { v: x.ed.length ? r1(gem(x.ed)) : null, n: x.ed.length, klein: x.ed.length < MIN_N },
       onboarding: { v: x.ob ? Math.round(x.obOpTijd / x.ob * 100) : null, n: x.ob, klein: false },
       verzuimPct: { v: x.dienstDagen ? r1(x.ziekDagen / x.dienstDagen * 100) : null, n: x.mensen, klein: x.mensen < MIN_N },
       meldingsfreq: { v: x.dienstDagen ? r1(x.meldingen / (x.dienstDagen / 365)) : null, n: x.mensen, klein: x.mensen < MIN_N },
@@ -222,8 +237,19 @@ async function laadBronnen(vanIso, totIso, ververs) {
   const loon = await veilig('loonheffing', async () => S.getLoonheffing(true));
   const DL = require('./doorloop');
   const dossiers = await veilig('doorlooptijden', async () => DL.tijdlijn(Object.assign({ loon, ontslag }, await DL.laad())));
+  // v0.36.1: rooster voor 'dagen tot eerste dienst' (vanaf 30 dagen vóór de periode t/m 6 weken na vandaag), in blokken van 31 dagen
+  const rosters = await veilig('rooster (Shiftbase)', async () => {
+    const plusD = (iso, n) => isoD(new Date(dag(iso).getTime() + n * 864e5)), vandaagIso = isoD(nuNL());
+    const tot = plusD(totIso < vandaagIso ? totIso : vandaagIso, 42), uit = [], blokken = [];
+    for (let a = plusD(vanIso, -30); a <= tot; a = plusD(a, 31)) blokken.push([a, plusD(a, 30) < tot ? plusD(a, 30) : tot]);
+    for (let i = 0; i < blokken.length; i += 4) { // max. 4 tegelijk (Shiftbase: 180 verzoeken per minuut)
+      const delen = await Promise.all(blokken.slice(i, i + 4).map(([a, b]) => SB.sbGet('rosters?min_date=' + a + '&max_date=' + b)));
+      delen.forEach(r => uit.push(...((r && r.data) || r || [])));
+    }
+    return uit;
+  });
   const academy = await academyP;
-  return { gesprekken: gesprekkenL, med, absences, checkins, exits, aanzeggingen: (ontslag || []).filter(r => r.type === 'aanzegging'), dossiers, checklists, academy, fouten };
+  return { rosters, gesprekken: gesprekkenL, med, absences, checkins, exits, aanzeggingen: (ontslag || []).filter(r => r.type === 'aanzegging'), dossiers, checklists, academy, fouten };
 }
 
 async function getScorekaart(maanden, ververs) {
