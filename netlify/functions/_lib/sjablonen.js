@@ -28,8 +28,9 @@ function prefillLoonUrl(naam) { return naam ? U.uploadLink('loon', naam) : C.UPL
 function prefillOntslagUrl(naam) { return naam ? U.uploadLink('ontslag', naam) : C.UPLOAD_ONTSLAG; }
 function overplaatsingUploadUrl(naam) { return naam ? U.uploadLink('overplaatsing', naam) : C.UPLOAD_ONTSLAG; }
 function prefillKortingUrl(naam) { return naam ? U.uploadLink('korting', naam) : C.UPLOAD_LOON; }
-// Indiensttredingsformulier: bestand in public/ van het dashboard zelf (voorheen een Google Drive-exportlink, INDIENSTLINK)
-function indienstLink() { return U.site() + '/Indiensttredingsformulier_SLA.xlsx'; }
+// v0.35.0: indiensttredingsformulier is een webformulier (public/indienst.html) met een persoonlijke link.
+// Zonder naam (lege preview / bewerkbare tekst) de generieke link; personaliseerUploadLinks maakt hem persoonlijk.
+function indienstLink(naam) { return naam ? require('./indienst').link(naam) : U.site() + '/indienst.html'; }
 // Generieke upload-links in een (door HR bewerkte) tekst vervangen door de persoonlijke
 function personaliseerUploadLinks(body, naam) {
   if (!body || !naam) return body;
@@ -37,7 +38,13 @@ function personaliseerUploadLinks(body, naam) {
   const [oudLoon, oudOntslag] = C.UPLOAD_OUDE_LINKS || [];
   if (oudLoon) s = s.split(oudLoon).join(C.UPLOAD_LOON);
   if (oudOntslag) s = s.split(oudOntslag).join(C.UPLOAD_ONTSLAG);
-  return s.split(C.UPLOAD_LOON).join(prefillLoonUrl(naam)).split(C.UPLOAD_ONTSLAG).join(prefillOntslagUrl(naam));
+  s = s.split(C.UPLOAD_LOON).join(prefillLoonUrl(naam)).split(C.UPLOAD_ONTSLAG).join(prefillOntslagUrl(naam));
+  // v0.35.0: oude Excel-link en de generieke formulierlink → persoonlijke link naar het webformulier
+  if (/\/(Indiensttredingsformulier_SLA\.xlsx|indienst\.html)(?!\?t=)/.test(s)) {
+    const pers = indienstLink(naam);
+    s = s.replace(new RegExp('https?://[^\\s"\'<>]*/(?:Indiensttredingsformulier_SLA\\.xlsx|indienst\\.html)(?!\\?t=)', 'g'), pers);
+  }
+  return s;
 }
 
 // --- Loonheffing: uitnodiging ------------------------------------------------
@@ -49,9 +56,9 @@ function loonUitnodigingHtml(naam, dl, isEN) {
   const L = isEN ? {
     head: 'Welcome to SLA', greet: 'Hi ', intro: 'We are really happy you are joining SLA! We are looking forward to welcoming you to the team.',
     intro2: 'To make sure your first salary is paid correctly and on time, we just need two forms from you. It only takes a few minutes.',
-    s1: 'Fill in the employment registration form', s1b: 'Download form',
+    s1: 'Fill in the employment registration form online', s1b: 'Fill in form',
     s2: 'Fill in and sign the payroll tax statement (loonheffingsverklaring)', s2b: 'Go to the form',
-    s3: 'Upload both forms via your personal link', s3b: 'Upload forms',
+    s3: 'Upload the payroll tax statement via your personal link', s3b: 'Upload form',
     dlTxt: 'It would be great to receive them by <strong>' + d + '</strong>.',
     waarom: '<strong>Why the payroll tax statement?</strong> Without it, Dutch law requires us to withhold the anonymous tax rate (52%). With the form you simply pay the normal rate.',
     q: 'Questions or need a hand? Just email us at <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a> or ask your Store Manager.',
@@ -59,9 +66,9 @@ function loonUitnodigingHtml(naam, dl, isEN) {
   } : {
     head: 'Welkom bij SLA', greet: 'Hoi ', intro: 'Wat leuk dat je bij SLA komt werken! We kijken ernaar uit om je in het team te verwelkomen.',
     intro2: 'Om je eerste salaris goed en op tijd uit te betalen, hebben we nog twee formulieren van je nodig. Dat kost je maar een paar minuten.',
-    s1: 'Vul het indiensttredingsformulier in', s1b: 'Download formulier',
+    s1: 'Vul het indiensttredingsformulier online in', s1b: 'Formulier invullen',
     s2: 'Vul de loonheffingsverklaring in en onderteken hem', s2b: 'Naar het formulier',
-    s3: 'Upload beide formulieren via je persoonlijke link', s3b: 'Formulieren uploaden',
+    s3: 'Upload de loonheffingsverklaring via je persoonlijke link', s3b: 'Formulier uploaden',
     dlTxt: 'Fijn als we ze uiterlijk <strong>' + d + '</strong> binnen hebben.',
     waarom: '<strong>Waarom die loonheffingsverklaring?</strong> Zonder dit formulier moeten we volgens de wet het anoniementarief (52%) inhouden. Met het formulier betaal je gewoon het normale tarief.',
     q: 'Vragen of hulp nodig? Mail ons gerust op <a href="mailto:hr@ilovesla.com" style="color:#009f4b">hr@ilovesla.com</a> of vraag het aan je Store Manager.',
@@ -71,7 +78,7 @@ function loonUitnodigingHtml(naam, dl, isEN) {
   const db = dl ? '<p style="' + P + '">' + L.dlTxt + '</p>' : '';
   return slaWrap(slaHead('#009f4b', L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:16px;font-weight:700;color:#333d3a;margin:0 0 14px">' + L.greet + v + ',</p>'
     + '<p style="' + P + '">' + L.intro + '</p><p style="' + P + ';margin-bottom:20px">' + L.intro2 + '</p>'
-    + slaStep(1, L.s1, indienstLink(), L.s1b, isEN) + slaStep(2, L.s2, isEN ? C.LB_FORMULIER_EN : C.LB_FORMULIER_NL, L.s2b, isEN) + slaStep(3, L.s3, prefillLoonUrl(naam), L.s3b, isEN)
+    + slaStep(1, L.s1, indienstLink(naam), L.s1b, isEN) + slaStep(2, L.s2, isEN ? C.LB_FORMULIER_EN : C.LB_FORMULIER_NL, L.s2b, isEN) + slaStep(3, L.s3, prefillLoonUrl(naam), L.s3b, isEN)
     + '<div style="height:8px"></div>' + db
     + '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:20px"><tr><td style="padding:12px 14px;background:#e6f7ee;border-radius:8px;' + F + 'font-size:12.5px;color:#006b30;line-height:1.6">' + L.waarom + '</td></tr></table>'
     + '<p style="' + P + '">' + L.q + '</p><p style="' + P + '">' + L.bye + '</p><p style="' + F + 'font-size:14px;color:#333d3a;margin:0">' + L.sign + '<br><strong>' + L.team + '</strong></p></td></tr>' + slaFoot());
@@ -79,8 +86,8 @@ function loonUitnodigingHtml(naam, dl, isEN) {
 function loonUitnodigingPlain(naam, dl, isEN) {
   const v = voornaamVan(naam) || (isEN ? '[Name]' : '[Naam]');
   return isEN
-    ? 'Hi ' + v + ',\n\nWe are really happy you are joining SLA! We are looking forward to welcoming you to the team.\n\nTo make sure your first salary is paid correctly and on time, we just need two forms from you. It only takes a few minutes:\n\n1. Fill in the employment registration form:\n' + indienstLink() + '\n\n2. Fill in and sign the payroll tax statement (loonheffingsverklaring):\n' + C.LB_FORMULIER_EN + '\n\n3. Upload both forms via your personal link:\n' + C.UPLOAD_LOON + '\n\n' + (dl ? 'It would be great to receive them by ' + dl + '.\n\n' : '') + 'Why the payroll tax statement? Without it, Dutch law requires us to withhold the anonymous tax rate (52%). With the form you simply pay the normal rate.\n\nQuestions or need a hand? Just email hr@ilovesla.com or ask your Store Manager.\n\nSee you soon!\n\nWarm regards,\nThe SLA HR team'
-    : 'Hoi ' + v + ',\n\nWat leuk dat je bij SLA komt werken! We kijken ernaar uit om je in het team te verwelkomen.\n\nOm je eerste salaris goed en op tijd uit te betalen, hebben we nog twee formulieren van je nodig. Dat kost je maar een paar minuten:\n\n1. Vul het indiensttredingsformulier in:\n' + indienstLink() + '\n\n2. Vul de loonheffingsverklaring in en onderteken hem:\n' + C.LB_FORMULIER_NL + '\n\n3. Upload beide formulieren via je persoonlijke link:\n' + C.UPLOAD_LOON + '\n\n' + (dl ? 'Fijn als we ze uiterlijk ' + dl + ' binnen hebben.\n\n' : '') + 'Waarom die loonheffingsverklaring? Zonder dit formulier moeten we volgens de wet het anoniementarief (52%) inhouden. Met het formulier betaal je gewoon het normale tarief.\n\nVragen of hulp nodig? Mail ons gerust op hr@ilovesla.com of vraag het aan je Store Manager.\n\nTot snel!\n\nHartelijke groet,\nHet HR-team van SLA';
+    ? 'Hi ' + v + ',\n\nWe are really happy you are joining SLA! We are looking forward to welcoming you to the team.\n\nTo make sure your first salary is paid correctly and on time, we just need two forms from you. It only takes a few minutes:\n\n1. Fill in the employment registration form online:\n' + indienstLink() + '\n\n2. Fill in and sign the payroll tax statement (loonheffingsverklaring):\n' + C.LB_FORMULIER_EN + '\n\n3. Upload the payroll tax statement via your personal link:\n' + C.UPLOAD_LOON + '\n\n' + (dl ? 'It would be great to receive them by ' + dl + '.\n\n' : '') + 'Why the payroll tax statement? Without it, Dutch law requires us to withhold the anonymous tax rate (52%). With the form you simply pay the normal rate.\n\nQuestions or need a hand? Just email hr@ilovesla.com or ask your Store Manager.\n\nSee you soon!\n\nWarm regards,\nThe SLA HR team'
+    : 'Hoi ' + v + ',\n\nWat leuk dat je bij SLA komt werken! We kijken ernaar uit om je in het team te verwelkomen.\n\nOm je eerste salaris goed en op tijd uit te betalen, hebben we nog twee formulieren van je nodig. Dat kost je maar een paar minuten:\n\n1. Vul het indiensttredingsformulier online in:\n' + indienstLink() + '\n\n2. Vul de loonheffingsverklaring in en onderteken hem:\n' + C.LB_FORMULIER_NL + '\n\n3. Upload de loonheffingsverklaring via je persoonlijke link:\n' + C.UPLOAD_LOON + '\n\n' + (dl ? 'Fijn als we ze uiterlijk ' + dl + ' binnen hebben.\n\n' : '') + 'Waarom die loonheffingsverklaring? Zonder dit formulier moeten we volgens de wet het anoniementarief (52%) inhouden. Met het formulier betaal je gewoon het normale tarief.\n\nVragen of hulp nodig? Mail ons gerust op hr@ilovesla.com of vraag het aan je Store Manager.\n\nTot snel!\n\nHartelijke groet,\nHet HR-team van SLA';
 }
 
 // --- Loonheffing: herinnering (buildLoonHerHtml) --------------------------------

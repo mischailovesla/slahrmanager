@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#009f4b">
+<title>SLA · Indiensttredingsformulier</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--groen:#009f4b;--donker:#333d3a;--grijs:#888078;--zand:#f8f3f0;--lijn:#e8e2de;--rood:#c0392b}
+  *{box-sizing:border-box}body{margin:0;font-family:'DM Sans',Arial,sans-serif;background:var(--zand);color:var(--donker);line-height:1.5}
+  .wrap{max-width:620px;margin:0 auto;padding:28px 16px 48px}
+  .logo{font-size:30px;font-weight:700;color:var(--groen);letter-spacing:1px}.logo small{display:block;font-size:11px;color:var(--grijs);font-weight:500;letter-spacing:0}
+  .card{background:#fff;border-radius:14px;padding:26px 24px;margin-top:20px;box-shadow:0 6px 24px rgba(51,61,58,.08)}
+  h1{font-size:1.15rem;margin:0 0 6px}.sub{color:var(--grijs);font-size:.9rem;margin:0 0 18px}
+  h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--groen);margin:22px 0 10px;padding-top:14px;border-top:1px solid var(--lijn)}
+  .rij{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  @media (max-width:520px){.rij{grid-template-columns:1fr}}
+  .fg{margin:0 0 14px}label.kop{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--grijs);margin-bottom:5px}
+  label.kop i{font-style:normal;font-weight:400;text-transform:none}
+  input,select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--lijn);border-radius:8px;font:inherit;font-size:.95rem;background:#fff;color:var(--donker)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--groen)}
+  .fg.fout input,.fg.fout select,.fg.fout textarea{border-color:var(--rood);background:#fdf3f2}
+  .fm{display:none;color:var(--rood);font-size:.78rem;margin-top:4px}.fg.fout .fm{display:block}
+  .hint{color:var(--grijs);font-size:.76rem;margin-top:4px}
+  .akkoord{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;margin:18px 0}.akkoord input{width:auto;margin-top:4px}
+  .btn{width:100%;padding:14px;border:0;border-radius:10px;background:var(--groen);color:#fff;font:inherit;font-size:1rem;font-weight:700;cursor:pointer}.btn:disabled{opacity:.5;cursor:default}
+  .melding{border-radius:8px;padding:12px 14px;font-size:.88rem;margin:0 0 16px;border-left:4px solid}.melding.rood{background:#fdecea;color:#8a1c12;border-color:var(--rood)}.melding.groen{background:#e6f7ee;color:#006b30;border-color:var(--groen)}
+  .voet{margin-top:22px;font-size:.75rem;color:var(--grijs);text-align:center}
+  .taal{float:right;font-size:.8rem}.taal a{color:var(--grijs);text-decoration:none;margin-left:8px}.taal a.sel{color:var(--groen);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="taal"><a href="#" data-taal="nl" class="sel">NL</a><a href="#" data-taal="en">EN</a></div>
+  <div class="logo">SLA<small>the good food bar · HR</small></div>
+  <div class="card" id="card"><p class="sub">Even geduld…</p></div>
+  <div class="voet" id="voet"></div>
+</div>
+<script>
+(function () {
+  var t = new URLSearchParams(location.search).get('t') || '', info = null, taal = /^en/i.test(navigator.language) ? 'en' : 'nl', waarden = {}, fouten = {}, klaar = false;
+  var TX = {
+    nl: { titel: 'Indiensttredingsformulier', hallo: 'Hoi {n}, welkom bij SLA! Vul hieronder je gegevens in. Dat duurt een paar minuten. We gebruiken ze voor je contract en je salaris.',
+      s1: 'Jouw werk', s2: 'Persoonlijke gegevens', s3: 'Adres en contact', s4: 'Salaris',
+      vestiging: 'Bij welke vestiging kom je in dienst', kies: '— Kies je vestiging —', voornaam: 'Voornaam', voorletters: 'Voorletters', tussenvoegsel: 'Tussenvoegsel', achternaam: 'Achternaam',
+      geslacht: 'Geslacht', gV: 'Vrouw', gM: 'Man', gX: 'Anders / zeg ik liever niet', kiesG: '— Kies —', adres: 'Straat + huisnummer', postcode: 'Postcode', woonplaats: 'Woonplaats',
+      mobiel: 'Mobiel nummer', email: 'E-mailadres', nationaliteit: 'Nationaliteit', bsn: 'BSN (burgerservicenummer)', bsnHint: 'Staat op je paspoort, ID-kaart of rijbewijs.',
+      geboortedatum: 'Geboortedatum', datumIndienst: 'Datum in dienst', uren: 'Aantal uren per week', urenHint: 'Zoals afgesproken met je Store Manager. 0 = oproepcontract.',
+      functie: 'Functie', iban: 'IBAN-nummer', ibanHint: 'Je eigen bankrekening, bijv. NL00 BANK 0123 4567 89.', opmerkingen: 'Eventuele opmerkingen', opt: 'optioneel',
+      akkoord: 'Ik verklaar dat deze gegevens kloppen.', akkoordNodig: 'Vink aan dat de gegevens kloppen.', verstuur: 'Verstuur formulier', bezig: 'Bezig met versturen…',
+      klaar: 'Bedankt! Je indiensttredingsformulier is ontvangen. Vergeet niet ook je loonheffingsverklaring te uploaden via de link in de e-mail.', fout: 'Er ging iets mis: ', controleer: 'Controleer de rood gemarkeerde velden.',
+      ongeldigLink: 'Deze link is niet geldig of verlopen. Gebruik de link uit de e-mail van HR of mail hr@ilovesla.com.',
+      F: { leeg: 'Vul dit veld in.', ongeldig: 'Dit klopt niet, controleer het even.', leeftijd: 'Controleer je geboortedatum.', bereik: 'Controleer de datum van indiensttreding.' },
+      Fx: { bsn: 'Dit is geen geldig BSN (9 cijfers).', iban: 'Dit is geen geldig IBAN.', email: 'Dit is geen geldig e-mailadres.', mobiel: 'Vul een geldig telefoonnummer in.' },
+      voet: 'Je gegevens worden versleuteld opgeslagen in de beveiligde HR-omgeving van SLA en zijn alleen zichtbaar voor HR en de salarisadministratie. Vragen? <a href="mailto:hr@ilovesla.com" style="color:var(--groen)">hr@ilovesla.com</a>' },
+    en: { titel: 'Employment registration form', hallo: 'Hi {n}, welcome to SLA! Please fill in your details below. It only takes a few minutes. We use them for your contract and your salary.',
+      s1: 'Your job', s2: 'Personal details', s3: 'Address and contact', s4: 'Salary',
+      vestiging: 'Which location will you work at', kies: '— Choose your location —', voornaam: 'First name', voorletters: 'Initials', tussenvoegsel: 'Name prefix (e.g. van, de)', achternaam: 'Last name',
+      geslacht: 'Gender', gV: 'Female', gM: 'Male', gX: 'Other / prefer not to say', kiesG: '— Choose —', adres: 'Street + house number', postcode: 'Postal code', woonplaats: 'City',
+      mobiel: 'Mobile number', email: 'E-mail address', nationaliteit: 'Nationality', bsn: 'BSN (Dutch citizen service number)', bsnHint: 'Shown on your passport, ID card or driving licence.',
+      geboortedatum: 'Date of birth', datumIndienst: 'Start date', uren: 'Hours per week', urenHint: 'As agreed with your Store Manager. 0 = on-call contract.',
+      functie: 'Job title', iban: 'IBAN', ibanHint: 'Your own bank account, e.g. NL00 BANK 0123 4567 89.', opmerkingen: 'Comments', opt: 'optional',
+      akkoord: 'I confirm that these details are correct.', akkoordNodig: 'Please confirm that the details are correct.', verstuur: 'Send form', bezig: 'Sending…',
+      klaar: 'Thank you! We have received your employment registration form. Do not forget to upload your payroll tax statement via the link in the e-mail.', fout: 'Something went wrong: ', controleer: 'Please check the fields marked in red.',
+      ongeldigLink: 'This link is not valid or has expired. Use the link from the HR e-mail or contact hr@ilovesla.com.',
+      F: { leeg: 'Please fill in this field.', ongeldig: 'This does not look right, please check.', leeftijd: 'Please check your date of birth.', bereik: 'Please check your start date.' },
+      Fx: { bsn: 'This is not a valid BSN (9 digits).', iban: 'This is not a valid IBAN.', email: 'This is not a valid e-mail address.', mobiel: 'Please enter a valid phone number.' },
+      voet: 'Your details are stored encrypted in SLA\'s secure HR environment and are only visible to HR and payroll. Questions? <a href="mailto:hr@ilovesla.com" style="color:var(--groen)">hr@ilovesla.com</a>' }
+  };
+  var VERPLICHT = ['vestiging', 'voornaam', 'voorletters', 'achternaam', 'geslacht', 'adres', 'postcode', 'woonplaats', 'mobiel', 'email', 'nationaliteit', 'bsn', 'geboortedatum', 'datumIndienst', 'uren', 'functie', 'iban'];
+  var g = function (id) { return document.getElementById(id); }, tx = function (k) { return TX[taal][k]; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  function bsnOk(s) { var d = String(s || '').replace(/\D/g, ''); if (d.length === 8) d = '0' + d; if (d.length !== 9 || /^0+$/.test(d)) return false; var som = 0; for (var i = 0; i < 8; i++) som += (+d[i]) * (9 - i); return (som - +d[8]) % 11 === 0; }
+  function ibanOk(s) { var i = String(s || '').replace(/[\s.-]/g, '').toUpperCase(); if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(i)) return false; var r = (i.slice(4) + i.slice(0, 4)).replace(/[A-Z]/g, function (c) { return String(c.charCodeAt(0) - 55); }), rest = 0; for (var k = 0; k < r.length; k++) rest = (rest * 10 + +r[k]) % 97; return rest === 1; }
+  function controleLokaal(k) {
+    var v = String(waarden[k] == null ? '' : waarden[k]).trim();
+    if (!v) return VERPLICHT.indexOf(k) > -1 ? 'leeg' : '';
+    if (k === 'bsn' && !bsnOk(v)) return 'ongeldig';
+    if (k === 'iban' && !ibanOk(v)) return 'ongeldig';
+    if (k === 'email' && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v)) return 'ongeldig';
+    if (k === 'mobiel' && !/^\+?\d{9,15}$/.test(v.replace(/[\s()-]/g, ''))) return 'ongeldig';
+    return '';
+  }
+  function foutTekst(k, code) { return code === 'ongeldig' && TX[taal].Fx[k] ? TX[taal].Fx[k] : TX[taal].F[code] || TX[taal].F.ongeldig; }
+  function veld(k, type, extra) {
+    extra = extra || {}; var opt = VERPLICHT.indexOf(k) < 0, v = waarden[k] == null ? '' : waarden[k], inp;
+    if (type === 'select') inp = '<select data-k="' + k + '"><option value="">' + esc(extra.leeg) + '</option>' + extra.opties.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(v) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+    else if (type === 'textarea') inp = '<textarea data-k="' + k + '" rows="3">' + esc(v) + '</textarea>';
+    else inp = '<input data-k="' + k + '" type="' + type + '" value="' + esc(v) + '"' + (extra.attr || '') + '>';
+    return '<div class="fg' + (fouten[k] ? ' fout' : '') + '" id="fg-' + k + '"><label class="kop">' + esc(tx(k)) + (opt ? ' <i>(' + tx('opt') + ')</i>' : '') + '</label>' + inp
+      + '<div class="fm">' + esc(fouten[k] ? foutTekst(k, fouten[k]) : '') + '</div>' + (extra.hint ? '<div class="hint">' + esc(tx(extra.hint)) + '</div>' : '') + '</div>';
+  }
+  function render() {
+    g('voet').innerHTML = tx('voet');
+    if (!info) return;
+    if (klaar) { g('card').innerHTML = '<h1>✓ ' + esc(tx('titel')) + '</h1><div class="melding groen">' + esc(tx('klaar')) + '</div>'; return; }
+    var h = '<h1>' + esc(tx('titel')) + '</h1><p class="sub">' + esc(tx('hallo').replace('{n}', (waarden.voornaam || info.naam.split(' ')[0]))) + '</p><div id="melding"></div>';
+    h += '<h2>' + esc(tx('s1')) + '</h2>' + veld('vestiging', 'select', { leeg: tx('kies'), opties: info.winkels.map(function (w) { return [w.code, w.naam]; }) })
+      + '<div class="rij">' + veld('datumIndienst', 'date') + veld('uren', 'number', { attr: ' min="0" max="48" step="0.5" inputmode="decimal"', hint: 'urenHint' }) + '</div>' + veld('functie', 'text');
+    h += '<h2>' + esc(tx('s2')) + '</h2><div class="rij">' + veld('voornaam', 'text', { attr: ' autocomplete="given-name"' }) + veld('voorletters', 'text', { attr: ' maxlength="12"' }) + '</div>'
+      + '<div class="rij">' + veld('tussenvoegsel', 'text', { attr: ' maxlength="20"' }) + veld('achternaam', 'text', { attr: ' autocomplete="family-name"' }) + '</div>'
+      + '<div class="rij">' + veld('geslacht', 'select', { leeg: tx('kiesG'), opties: [['V', tx('gV')], ['M', tx('gM')], ['X', tx('gX')]] }) + veld('geboortedatum', 'date', { attr: ' autocomplete="bday"' }) + '</div>'
+      + veld('nationaliteit', 'text');
+    h += '<h2>' + esc(tx('s3')) + '</h2>' + veld('adres', 'text', { attr: ' autocomplete="street-address"' }) + '<div class="rij">' + veld('postcode', 'text', { attr: ' autocomplete="postal-code" maxlength="10"' }) + veld('woonplaats', 'text', { attr: ' autocomplete="address-level2"' }) + '</div>'
+      + '<div class="rij">' + veld('mobiel', 'tel', { attr: ' autocomplete="tel" inputmode="tel"' }) + veld('email', 'email', { attr: ' autocomplete="email"' }) + '</div>';
+    h += '<h2>' + esc(tx('s4')) + '</h2>' + veld('bsn', 'text', { attr: ' inputmode="numeric" maxlength="11" autocomplete="off"', hint: 'bsnHint' }) + veld('iban', 'text', { attr: ' autocomplete="off" maxlength="42" style="text-transform:uppercase"', hint: 'ibanHint' })
+      + veld('opmerkingen', 'textarea');
+    h += '<label class="akkoord"><input type="checkbox" id="akkoord"' + (waarden._akkoord ? ' checked' : '') + '> <span>' + esc(tx('akkoord')) + '</span></label><button class="btn" id="btn">' + esc(tx('verstuur')) + '</button>';
+    g('card').innerHTML = h;
+    document.querySelectorAll('[data-k]').forEach(function (el) {
+      var k = el.getAttribute('data-k');
+      el.addEventListener('input', function () { waarden[k] = el.value; if (fouten[k]) { fouten[k] = controleLokaal(k); toonFout(k); } });
+      el.addEventListener('change', function () { waarden[k] = el.value; });
+      el.addEventListener('blur', function () { waarden[k] = el.value; if (String(el.value).trim()) { fouten[k] = controleLokaal(k); toonFout(k); } });
+    });
+    g('akkoord').onchange = function () { waarden._akkoord = g('akkoord').checked; };
+    g('btn').onclick = verstuur;
+  }
+  function toonFout(k) { var fg = g('fg-' + k); if (!fg) return; fg.classList.toggle('fout', !!fouten[k]); fg.querySelector('.fm').textContent = fouten[k] ? foutTekst(k, fouten[k]) : ''; }
+  function melding(cls, tekst) { g('melding').innerHTML = '<div class="melding ' + cls + '">' + esc(tekst) + '</div>'; g('melding').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  async function post(b) { var r = await fetch('/api/indienst', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ t: t }, b)) }); return r.json(); }
+  async function verstuur() {
+    fouten = {}; VERPLICHT.forEach(function (k) { var c = controleLokaal(k); if (c) fouten[k] = c; });
+    if (Object.keys(fouten).length) { render(); melding('rood', tx('controleer')); return; }
+    if (!waarden._akkoord) { melding('rood', tx('akkoordNodig')); return; }
+    var btn = g('btn'); btn.disabled = true; btn.textContent = tx('bezig');
+    try {
+      var geg = {}; Object.keys(waarden).forEach(function (k) { if (k[0] !== '_') geg[k] = waarden[k]; });
+      var r = await post({ stap: 'verstuur', gegevens: geg });
+      if (r.fouten) { fouten = r.fouten; render(); melding('rood', tx('controleer')); return; }
+      if (!r.success) throw new Error(r.bericht);
+      klaar = true; render(); window.scrollTo(0, 0);
+    } catch (e) { melding('rood', tx('fout') + e.message); btn.disabled = false; btn.textContent = tx('verstuur'); }
+  }
+  document.querySelectorAll('[data-taal]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); taal = a.getAttribute('data-taal'); document.querySelectorAll('[data-taal]').forEach(function (x) { x.classList.toggle('sel', x === a); }); render(); }; });
+  (async function () {
+    document.querySelectorAll('[data-taal]').forEach(function (x) { x.classList.toggle('sel', x.getAttribute('data-taal') === taal); });
+    try {
+      var r = await post({}); if (!r.success) throw new Error(r.bericht);
+      info = r; waarden = Object.assign({ functie: 'SLA worker' }, r.voorinvullen || {}); render();
+    } catch (e) { render(); g('card').innerHTML = '<div class="melding rood">' + esc(tx('ongeldigLink')) + '</div>'; }
+  })();
+})();
+</script>
+</body>
+</html>

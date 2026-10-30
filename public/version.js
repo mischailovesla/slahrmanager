@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.35.0', datum: '30-10-2026', titel: 'Indiensttredingsformulier digitaal', punten: [
+    'Nieuwe medewerkers vullen het indiensttredingsformulier nu <b>online</b> in via een persoonlijke link in de welkomstmail (stap 1), in het Nederlands of Engels. Het Excel-bestand is niet meer nodig.',
+    'De vestiging kiezen ze uit een vaste lijst: alle eigen winkels plus HQ. Dus geen "Amsterdam" meer. De BV wordt er automatisch bij gezet.',
+    'Het formulier controleert BSN (11-proef), IBAN, e-mail, telefoonnummer en datums meteen. Vestiging, startdatum en functie staan al ingevuld als de medewerker al in Shiftbase staat.',
+    'Na versturen komt er automatisch een nette PDF in het dossier (Loonheffingsverklaring → Indiensttreding) en gaat die mee naar de salarisadministratie. In het dossier zie je de gegevens ook in één oogopslag. BSN en IBAN staan alleen in de PDF, niet in het logboek.'
+  ] },
   { nummer: '0.34.10', datum: '30-10-2026', titel: 'Geen check meer op uitdienstdatum Shiftbase', punten: [
     'De meldingen <b>Geen uitdienstdatum in Shiftbase</b> en <b>Uitdienstdatum Shiftbase wijkt af</b> zijn weg. Bij ontslag wordt in Shiftbase geen aparte uitdienstdatum gezet; die datum hoort alleen bij een aflopend contract.',
     'De einddatum in het dossier is leidend. Een dossier gaat daardoor ook niet meer onnodig vast op deze melding voordat het automatisch naar salaris gaat.'

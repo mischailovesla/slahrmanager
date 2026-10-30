@@ -549,6 +549,17 @@
         + (kt.besluiten && kt.besluiten.length ? kt.besluiten.map(function (b) { return '<div style="margin-top:4px"><span class="badge boat">Besluit (einde ' + esc(b.eind) + ')</span> <b>' + esc(b.label) + '</b>' + (b.nieuweEind ? ' t/m ' + esc(b.nieuweEind) : '') + (b.advies && b.advies !== 'Niet gevraagd' ? ' · SM: ' + esc(b.advies) + (b.adviesOpmerking ? ' (' + esc(b.adviesOpmerking) + ')' : '') : '') + '<span class="lay-sub"> · ' + esc(b.door) + ' ' + esc(b.op) + (b.notitie ? ' · ' + esc(b.notitie) : '') + '</span></div>'; }).join('') : '')
         + (!kt.onbepaald && kt.mid ? '<div style="margin-top:6px"><button class="btn bd bsm" onclick="ketenCorrigeer(\'' + esc(kt.mid) + '\', \'' + esc(kt.huidigStart) + '\', ' + kt.aantal + ', ' + (kt.gecorrigeerd ? 1 : 0) + ')">Aantal contracten corrigeren</button></div>' : '') + '</div>';
     }
+    // v0.35.0: digitaal indiensttredingsformulier (BSN en IBAN staan alleen in de PDF)
+    if (d.indienstFormulier) {
+      var fi = d.indienstFormulier, ing = fi.ingevuld ? new Date(fi.ingevuld).toLocaleDateString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '';
+      var fiNaam = [fi.voornaam, fi.tussenvoegsel, fi.achternaam].filter(Boolean).join(' ');
+      h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Indiensttredingsformulier' + (ing ? ' (ingevuld ' + esc(ing) + ')' : '') + '</label><div class="kv">'
+        + '<div><b>' + esc(fi.vestigingNaam || fi.vestiging || '-') + '</b>' + (fi.bv ? ' · ' + esc(fi.bv) : '') + ' · in dienst ' + esc(fi.datumIndienst || '?') + ' · ' + esc(fi.uren === '0' ? 'oproep (0 u)' : (fi.uren || '?') + ' u/week') + ' · ' + esc(fi.functie || '-') + '</div>'
+        + '<div class="lay-sub">' + esc(fiNaam) + (fi.voorletters ? ' (' + esc(fi.voorletters) + ')' : '') + ' · geb. ' + esc(fi.geboortedatum || '?') + ' · ' + esc(fi.nationaliteit || '') + '</div>'
+        + '<div class="lay-sub">' + esc([fi.adres, [fi.postcode, fi.woonplaats].filter(Boolean).join(' ')].filter(Boolean).join(', ')) + ' · ' + esc(fi.mobiel || '') + ' · ' + esc(fi.email || '') + '</div>'
+        + (fi.opmerkingen ? '<div class="lay-sub"><i>"' + esc(fi.opmerkingen) + '"</i></div>' : '')
+        + '<div class="lay-sub">BSN en IBAN staan in de PDF (bij Loonheffingsverklaring → Indiensttreding).</div></div>';
+    }
     // Fase 3a: check-ins dag 30/60
     if (d.checkins && d.checkins.length) {
       h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Check-in 30/60 dagen</label><div class="kv">';

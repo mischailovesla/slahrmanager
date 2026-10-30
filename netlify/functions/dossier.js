@@ -96,7 +96,10 @@ async function laad(qs) {
   // Fase 4a: Academy (training, certificaten, aftekenen)
   let academy = null, academyFout = '';
   try { academy = await require('./_lib/academy').voorPersoon({ mid: persoon && persoon.id, email: email || (persoon && persoon.email), naam: naam || (persoon && persoon.naam) }); } catch (e) { academyFout = e.message; }
-  return { persoon, naam, email, contract, verlof, verzuim, keten, checkins, gesprekken, academy, academyFout, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
+  // v0.35.0: gegevens uit het digitale indiensttredingsformulier (zonder BSN/IBAN)
+  let indienstFormulier = null;
+  try { indienstFormulier = await require('./_lib/indienst').gegevensVan(naam || (persoon && persoon.naam), email); } catch (e) { indienstFormulier = null; }
+  return { persoon, naam, email, contract, verlof, verzuim, keten, checkins, gesprekken, academy, academyFout, indienstFormulier, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
 }
 exports.laad = laad;
 exports.handler = beveiligd('dossier', async (event) => laad(event.queryStringParameters || {}));
