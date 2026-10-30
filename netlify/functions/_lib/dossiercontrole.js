@@ -1,5 +1,5 @@
 // ============================================================
-// v0.27.2: dossiercontrole — klopt een lopend ontslag-/aanzeggingsdossier met Shiftbase, vóór het naar salaris gaat?
+// v0.27.2: dossiercontrole — klopt een lopend ontslag-/aanzeggingsdossier met Shiftbase (BV, e-mail, datums), vóór het naar salaris gaat?
 //   controleer(rijen, med, actief, vandaag)  puur: rijen = getOntslag(), med = verloop.laadMedewerkers (ook vertrokken),
 //                                             actief = shiftbase.getMedewerkers (voor de BV). Geeft { [rij]: [signaal] }.
 //   signaal = { soort, ernst: 'rood'|'oranje'|'blauw', tekst }
@@ -11,20 +11,15 @@ const SOORTEN = {
   'datum': ['Datum onleesbaar', 'rood'],
   'volgorde': ['Einddatum vóór opzegdatum', 'rood'],
   'niet-gevonden': ['Niet gevonden in Shiftbase', 'oranje'],
-  'uitdienst-anders': ['Uitdienstdatum Shiftbase wijkt af', 'oranje'],
-  'uitdienst-leeg': ['Geen uitdienstdatum in Shiftbase', 'oranje'],
   'bv-anders': ['BV wijkt af van Shiftbase', 'oranje'],
   'email-anders': ['E-mail wijkt af van Shiftbase', 'blauw']
 };
-const UITDIENST_VOORUIT = 14; // geen uitdienstdatum in Shiftbase melden vanaf 14 dagen vóór de einddatum
 
 function nlDatum(s) {
   const m = String(s || '').trim().match(/^(\d{2})-(\d{2})-(\d{4})$/); if (!m) return null;
   const d = new Date(+m[3], +m[2] - 1, +m[1]);
   return d.getDate() === +m[1] && d.getMonth() === +m[2] - 1 ? d : null;
 }
-const isoNaarNl = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : String(s || ''); };
-const isoVan = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 const bvNorm = s => String(s || '').toLowerCase().replace(/\b(b\.?v\.?|bv)\b/g, '').replace(/[^a-z0-9]/g, '');
 
 // Alleen lopende dossiers: verstuurd, niet verwerkt/gearchiveerd en nog niet naar salaris
@@ -56,12 +51,8 @@ function controleer(rijen, med, actief, vandaag) {
     const m = (r.mid && perId[String(r.mid)]) || (em && perEmail[em]) || perNaam[normNaam(r.naam)] || null;
     if (!m) p('niet-gevonden', 'Geen medewerker met deze naam of e-mail in Shiftbase: controleer de spelling of het e-mailadres.');
     else {
-      if (eind) {
-        const sbEind = String(m.eind || '');
-        const verschil = sbEind ? Math.abs(Math.round((new Date(sbEind + 'T00:00:00') - eind) / 864e5)) : 0;   // v0.31.3: 1 dag verschil = Shiftbase-notatie, geen fout
-        if (sbEind && verschil > 1) p('uitdienst-anders', 'Shiftbase: uit dienst ' + isoNaarNl(sbEind) + ', dossier: ' + r.einddatum + '. Welke klopt? Pas de andere aan (salaris rekent met de einddatum).');
-        else if (!sbEind && (eind - vandaag) / 864e5 <= UITDIENST_VOORUIT) p('uitdienst-leeg', 'Einddatum ' + r.einddatum + (eind < vandaag ? ' is verstreken' : ' nadert') + ', maar in Shiftbase staat nog geen uitdienstdatum.');
-      }
+      // v0.34.10: geen vergelijking meer met de uitdienstdatum in Shiftbase — die wordt bij ontslag niet gezet,
+      // alleen bij een aflopend contract. De einddatum in het dossier is leidend.
       const a = actId[String(m.id)] || actNaam[normNaam(m.naam)];
       if (a && a.winkelBv && r.bedrijf && bvNorm(a.winkelBv) !== bvNorm(r.bedrijf)) p('bv-anders', 'Dossier: ' + r.bedrijf + ', Shiftbase (' + (a.winkelNaam || 'winkel') + '): ' + a.winkelBv + '. Klopt de BV op de brief?');
       const sbEm = String(m.email || '').trim().toLowerCase();

@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.34.10', datum: '30-10-2026', titel: 'Geen check meer op uitdienstdatum Shiftbase', punten: [
+    'De meldingen <b>Geen uitdienstdatum in Shiftbase</b> en <b>Uitdienstdatum Shiftbase wijkt af</b> zijn weg. Bij ontslag wordt in Shiftbase geen aparte uitdienstdatum gezet; die datum hoort alleen bij een aflopend contract.',
+    'De einddatum in het dossier is leidend. Een dossier gaat daardoor ook niet meer onnodig vast op deze melding voordat het automatisch naar salaris gaat.'
+  ] },
   { nummer: '0.34.9', datum: '30-10-2026', titel: 'Te doen op datum', punten: [
     'De taken in <b>Te doen</b> staan nu per groep op datum: de vroegste deadline bovenaan (bijv. bij Contracten &amp; verlengingen de datum van <i>besluit nodig vóór</i>).',
     'Taken zonder datum staan onderaan hun groep; een urgente (rode) taak zonder datum telt als vandaag en staat dus bovenaan.'

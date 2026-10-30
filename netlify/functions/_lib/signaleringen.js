@@ -873,7 +873,7 @@ async function datacontrole(droog) {
   const vandaag = vandaag0(), grens = new Date(vandaag.getFullYear() - 1, vandaag.getMonth(), vandaag.getDate());
   const [users, per, med] = await Promise.all([SB.sbGet('users'), SB.getContractenPerUser(true), SB.getMedewerkers(true)]);
   const lijst = controleerData(users, per, med, isoDag(vandaag), isoDag(grens));
-  // v0.27.2: lopende ontslagdossiers die niet kloppen met Shiftbase (einddatum, BV, e-mail, onleesbare datums)
+  // v0.27.2: lopende ontslagdossiers die niet kloppen met Shiftbase (BV, e-mail, onleesbare datums)
   try {
     const ontslag = await S.getOntslag(), ctl = await require('./dossiercontrole').laad(ontslag);
     const winkelVan = {}; (med || []).forEach(m => { winkelVan[normNaam(m.naam)] = m.winkelNaam || '-'; });
@@ -883,7 +883,7 @@ async function datacontrole(droog) {
   if (!lijst.length) return rap;
   // v0.31.3: overzichtelijk: eerst een tabel per soort (aantal + wat te doen), dan per soort max. DC_MAX voorbeelden
   const DC_ACTIE = {
-    'dossier': 'Corrigeer het ontslagdossier (✎ Gegevens wijzigen) of de uitdienstdatum in Shiftbase — anders gaat het niet automatisch naar salaris.',
+    'dossier': 'Corrigeer het ontslagdossier (✎ Gegevens wijzigen) of de gegevens in Shiftbase — anders gaat het niet automatisch naar salaris.',
     'nooit-begonnen': 'Nooit begonnen? Verwijder het contract in Shiftbase.',
     'contract-omgedraaid': 'Einddatum en startdatum van het contract omgedraaid: corrigeer het contract.',
     'contract-verlopen': 'Verlengd? Zet het nieuwe contract in Shiftbase. Vertrokken? Zet de uitdienstdatum.',
