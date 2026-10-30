@@ -13,6 +13,8 @@ const S = new Proxy({}, {
     if (naam === 'bron') return bron;
     if (naam === 'KLEUR') return impl().KLEUR;
     const f = impl()[naam];
+    // v0.35.1: loonheffingsrijen krijgen .indienstRetour (indiensttredingsformulier teruggestuurd door HR)
+    if (naam === 'getLoonheffing' && typeof f === 'function') return async (...a) => require('./indienst').annoteer(await f(...a));
     return typeof f === 'function' ? (...a) => f(...a) : f;
   },
   // Toekenningen (tests die functies mocken) komen op de actieve implementatie terecht

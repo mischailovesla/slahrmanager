@@ -26,3 +26,16 @@ assert.ok(/indienst\.html\?t=/.test(T.loonUitnodigingHtml ? T.loonUitnodigingHtm
 // PDF
 I.maakPdf(I.valideer(goed, nu).schoon, { tijd: nu.toISOString() }).then(b => { assert.ok(b.length > 1000); assert.strictEqual(Buffer.from(b.slice(0, 5)).toString(), '%PDF-'); console.log('indienst tests OK'); })
   .catch(e => { console.error('✗ indienst PDF: ' + e.message); process.exitCode = 1; });
+// v0.35.1: retour sturen
+{
+  const rijen = [{ naam: 'Danique Test', docUrl2: 'sb:11111111-1111-1111-1111-111111111111:indienst' }, { naam: 'Annabel Test', docUrl2: 'sb:22222222-2222-2222-2222-222222222222:indienst' }];
+  const lijst = { 'danique test': { reden: 'Vestiging klopt niet', velden: ['vestiging'], ref: rijen[0].docUrl2, op: '2026-10-30T10:00:00Z' }, 'annabel test': { reden: 'x', ref: 'sb:oud' } };
+  I.annoteerMet(rijen, lijst);
+  assert.strictEqual(rijen[0].indienstRetour.reden, 'Vestiging klopt niet'); // actief: nog hetzelfde formulier
+  assert.strictEqual(rijen[1].indienstRetour, undefined);                   // vervallen: er is een nieuwer formulier
+  const m = I.retourMail('Danique Test', 'Je hebt Amsterdam ingevuld.', ['vestiging'], false);
+  assert.ok(/indienst\.html\?t=/.test(m.html) && /Amsterdam ingevuld/.test(m.text) && /Vestiging/.test(m.text) && /BSN en IBAN/.test(m.text));
+  assert.ok(/Location/.test(I.retourMail('Danique Test', 'x', ['vestiging'], true).text));
+  assert.deepStrictEqual(I.RETOUR_VELDEN.adres.velden, ['adres', 'postcode', 'woonplaats']);
+  console.log('indienst retour tests OK');
+}

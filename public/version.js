@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.35.1', datum: '30-10-2026', titel: 'Indiensttredingsformulier retour sturen', punten: [
+    'Klopt er iets niet in een ingeleverd indiensttredingsformulier (bijv. <b>vestiging "Amsterdam"</b>)? Klik bij Overzicht → Klaar voor salaris (onder ⋯) of op de tab Loonheffing op <b>↩ Indienst retour</b>. Vink aan wat er moet worden aangepast en schrijf een korte reden; er zijn snelknoppen voor vestiging, startdatum en uren.',
+    'De medewerker krijgt een mail met jouw reden en een link naar het online formulier. De velden die je aanwees zijn oranje gemarkeerd; de rest staat al ingevuld (BSN en IBAN vullen ze opnieuw in). Bij de vestiging moeten ze bewust opnieuw kiezen.',
+    'Zolang het formulier retour is, staat het in de nieuwe stap <b>Indienst retour</b> en gaat het dossier niet naar salaris, ook niet automatisch. Komt het aangepaste formulier binnen, dan staat het vanzelf weer bij Klaar voor salaris. Met <b>Herinner</b> stuur je de vraag nog eens; met <b>Retour intrekken</b> keur je het oude formulier toch goed.'
+  ] },
   { nummer: '0.35.0', datum: '30-10-2026', titel: 'Indiensttredingsformulier digitaal', punten: [
     'Nieuwe medewerkers vullen het indiensttredingsformulier nu <b>online</b> in via een persoonlijke link in de welkomstmail (stap 1), in het Nederlands of Engels. Het Excel-bestand is niet meer nodig.',
     'De vestiging kiezen ze uit een vaste lijst: alle eigen winkels plus HQ. Dus geen "Amsterdam" meer. De BV wordt er automatisch bij gezet.',

@@ -443,6 +443,16 @@
     </div>
     <div class="mf"><button class="btn bd" onclick="omwSluit()">Annuleren</button><button class="btn bp" id="omw-btn" onclick="omwOpslaan()">Opslaan</button></div>
   </div></div>
+  <div class="mo" id="ir-modal"><div class="modal" style="max-width:560px">
+    <div class="mh" style="background:#f5a623"><div class="mti" id="ir-titel">Indiensttredingsformulier retour sturen</div><button class="mc" onclick="irSluit()">×</button></div>
+    <div class="mb2">
+      <div class="alert geel" style="margin:0 0 14px;font-size:.84rem">De medewerker krijgt een mail met jouw reden en een link naar het online formulier. De gegevens staan al ingevuld (BSN en IBAN vult de medewerker opnieuw in). Zolang het formulier retour is, gaat het dossier <b>niet</b> naar salaris.</div>
+      <div class="fg"><label>Wat moet er worden aangepast?</label><div id="ir-velden" style="display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.88rem"></div></div>
+      <div class="fg"><label>Reden / toelichting voor de medewerker</label><div id="ir-snel" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div><textarea id="ir-reden" rows="4" placeholder="bijv. Je hebt Amsterdam ingevuld als vestiging. Kies de winkel waar je gaat werken (bijv. Ceintuurbaan)."></textarea></div>
+      <div id="ir-melding"></div>
+    </div>
+    <div class="mf"><button class="btn bd" onclick="irSluit()">Annuleren</button><button class="btn bp" id="ir-btn" onclick="irVerstuur()">Retour sturen</button></div>
+  </div></div>
   <div class="mo" id="du-modal"><div class="modal" style="max-width:620px">
     <div class="mh" style="background:#333d3a"><div class="mti" id="du-titel">Document uploaden</div><button class="mc" onclick="closeDocUpload()">×</button></div>
     <div class="mb2">

@@ -114,6 +114,7 @@ async function opslaan(tok, s, meta) {
   const bestand = { key: 'indienst', label: 'Indiensttredingsformulier', pad, naam_orig: bestandsnaam, bytes: bytes.length, mime: 'application/pdf', bron: 'webformulier', gegevens: zonderGevoelig(s, winkel) };
   const { data, error } = await db.from('hr_uploads').insert({ soort: 'loon', naam: tok.n, email: s.email || null, bestanden: [bestand], ip: (meta && meta.ip) || null }).select('id').single();
   if (error) throw new Error('hr_uploads: ' + error.message);
+  try { if (await retourVoor(tok.n)) await zetRetour(tok.n, null, 'medewerker (nieuw formulier)'); } catch (e) { /* vervalt ook vanzelf via ref */ }
   return { id: data.id, ref: 'sb:' + data.id + ':indienst', bestandsnaam, winkel };
 }
 async function gegevensVan(naam, email) {
@@ -140,4 +141,75 @@ async function voorinvullen(naam) {
 }
 const link = naam => require('./uploads').site() + '/indienst.html' + (naam ? '?t=' + require('./uploads').maakToken('loon', naam) : '');
 
-module.exports = { WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link };
+// ---- v0.35.1: retour sturen ---------------------------------------------------------------
+// HR keurt een ingeleverd indiensttredingsformulier af (bijv. verkeerde vestiging) en stuurt het terug met een reden.
+// Opslag: hr_instellingen 'indienst_retour' = { [normNaam]: { naam, email, reden, velden[], ref, op, door, herinnerd } }.
+// Een retour is actief zolang het formulier in het dossier nog hetzelfde is (ref); zodra er een nieuw formulier
+// binnenkomt (webformulier of upload) vervalt de retour vanzelf. Zolang hij actief is gaat er niets naar salaris.
+const RETOUR_SLEUTEL = 'indienst_retour';
+// Wat HR kan aanwijzen → velden in het webformulier
+const RETOUR_VELDEN = {
+  vestiging: { nl: 'Vestiging', en: 'Location', velden: ['vestiging'] },
+  datumIndienst: { nl: 'Datum in dienst', en: 'Start date', velden: ['datumIndienst'] },
+  uren: { nl: 'Uren per week', en: 'Hours per week', velden: ['uren'] },
+  functie: { nl: 'Functie', en: 'Job title', velden: ['functie'] },
+  naam: { nl: 'Naam / voorletters', en: 'Name / initials', velden: ['voornaam', 'voorletters', 'tussenvoegsel', 'achternaam'] },
+  geboortedatum: { nl: 'Geboortedatum', en: 'Date of birth', velden: ['geboortedatum'] },
+  adres: { nl: 'Adres', en: 'Address', velden: ['adres', 'postcode', 'woonplaats'] },
+  contact: { nl: 'Telefoon / e-mail', en: 'Phone / e-mail', velden: ['mobiel', 'email'] },
+  bsn: { nl: 'BSN', en: 'BSN', velden: ['bsn'] },
+  iban: { nl: 'IBAN', en: 'IBAN', velden: ['iban'] }
+};
+const lijstRetour = async () => (await require('./instellingen').lees(RETOUR_SLEUTEL, {})) || {};
+// Rijen uit getLoonheffing verrijken met .indienstRetour (puur als `lijst` wordt meegegeven)
+function annoteerMet(rijen, lijst) {
+  for (const r of rijen || []) {
+    const x = lijst[normNaam(r.naam)];
+    if (x && String(x.ref || '') === String(r.docUrl2 || '')) r.indienstRetour = { reden: x.reden, velden: x.velden || [], op: x.op, door: x.door, herinnerd: x.herinnerd || 0 };
+  }
+  return rijen;
+}
+async function annoteer(rijen) { try { return annoteerMet(rijen, await lijstRetour()); } catch (e) { return rijen; } }
+async function retourVoor(naam) { const x = (await lijstRetour())[normNaam(naam)]; return x || null; }
+async function zetRetour(naam, waarde, door) {
+  const I = require('./instellingen'); I.vergeet(RETOUR_SLEUTEL);
+  const lijst = Object.assign({}, await lijstRetour()), k = normNaam(naam);
+  if (waarde) lijst[k] = waarde; else delete lijst[k];
+  await I.schrijf(RETOUR_SLEUTEL, lijst, door);
+}
+function retourMail(naam, reden, velden, isEN) {
+  const T = require('./sjablonen'), e = T.esc, url = link(naam), v = String(naam || '').trim().split(/\s+/)[0] || '';
+  const lbl = (velden || []).map(k => RETOUR_VELDEN[k] ? RETOUR_VELDEN[k][isEN ? 'en' : 'nl'] : '').filter(Boolean);
+  const L = isEN ? { onderwerp: 'Please update your employment registration form', head: 'One small change', hoi: 'Hi ', intro: 'Thank you for sending your employment registration form! We checked it and there is one thing we need you to change before we can pass it on to payroll:', wat: 'Please check', knop: 'Update form', na: 'Your other details are already filled in. For your security you need to enter your BSN and IBAN again.', q: 'Questions? Just reply to this e-mail or contact hr@ilovesla.com.', groet: 'Warm regards,', team: 'The SLA HR team' }
+    : { onderwerp: 'Wil je je indiensttredingsformulier even aanpassen?', head: 'Even een aanpassing', hoi: 'Hoi ', intro: 'Bedankt voor het insturen van je indiensttredingsformulier! We hebben het gecontroleerd en er moet nog één ding worden aangepast voordat we het aan de salarisadministratie kunnen doorgeven:', wat: 'Controleer', knop: 'Formulier aanpassen', na: 'Je andere gegevens staan al ingevuld. Je BSN en IBAN vul je voor de veiligheid opnieuw in.', q: 'Vragen? Beantwoord gewoon deze mail of mail hr@ilovesla.com.', groet: 'Hartelijke groet,', team: 'Het HR-team van SLA' };
+  const P = 'font-family:Arial,sans-serif;font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 14px';
+  const html = T.slaWrap(T.slaHead('#f5a623', L.head) + '<tr><td style="padding:32px 36px 28px"><p style="' + P + ';font-size:16px;font-weight:700">' + L.hoi + e(v) + ',</p><p style="' + P + '">' + L.intro + '</p>'
+    + '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:16px"><tr><td style="padding:14px 16px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;font-family:Arial,sans-serif;font-size:14px;color:#333d3a;line-height:1.6">' + e(reden).replace(/\n/g, '<br>') + (lbl.length ? '<br><span style="font-size:12.5px;color:#7a5c00">' + L.wat + ': <strong>' + e(lbl.join(', ')) + '</strong></span>' : '') + '</td></tr></table>'
+    + '<p style="margin:0 0 16px"><a href="' + url + '" style="display:inline-block;background:#009f4b;color:#fff;font-family:Arial,sans-serif;font-size:14px;font-weight:700;padding:12px 24px;border-radius:6px;text-decoration:none">' + L.knop + ' &rarr;</a></p>'
+    + '<p style="' + P + ';font-size:12.5px;color:#888078">' + L.na + '</p><p style="' + P + '">' + L.q + '</p><p style="' + P + ';margin:0">' + L.groet + '<br><strong>' + L.team + '</strong></p></td></tr>' + T.slaFoot());
+  const text = L.hoi + v + ',\n\n' + L.intro + '\n\n' + reden + (lbl.length ? '\n' + L.wat + ': ' + lbl.join(', ') : '') + '\n\n' + L.knop + ':\n' + url + '\n\n' + L.na + '\n\n' + L.q + '\n\n' + L.groet + '\n' + L.team;
+  return { subject: L.onderwerp, html, text };
+}
+// HR-actie: retour sturen (of opnieuw sturen als herinnering)
+async function stuurRetour(r, p, door) {
+  const reden = tekst(p.reden, 600); if (!reden) throw new Error('Geef een reden op: wat moet de medewerker aanpassen?');
+  const velden = (p.velden || []).filter(k => RETOUR_VELDEN[k]);
+  if (!r.docUrl2) throw new Error('Er is nog geen indiensttredingsformulier van ' + r.naam + ' om retour te sturen.');
+  if (r.salaris) throw new Error('De documenten van ' + r.naam + ' zijn al naar de salarisadministratie gestuurd (' + r.salaris + '). Corrigeer het daar, of stuur na de correctie opnieuw.');
+  const to = String(r.email || '').trim(); if (to.indexOf('@') < 0) throw new Error('Geen e-mailadres bekend voor ' + r.naam + '.');
+  const oud = await retourVoor(r.naam), herinner = !!(oud && String(oud.ref || '') === String(r.docUrl2 || '') && p.herinner);
+  const isEN = String(r.taal || '').toUpperCase() === 'EN', m = retourMail(r.naam, reden, velden, isEN), M = require('./mail');
+  const resendId = await M.verstuur({ to, subject: m.subject, text: m.text, html: m.html, tags: [{ name: 'bron', value: 'loonheffing' }, { name: 'type', value: 'indienst-retour' }] });
+  await zetRetour(r.naam, { naam: r.naam, email: to, reden, velden, ref: r.docUrl2, op: herinner ? oud.op : new Date().toISOString(), door, herinnerd: herinner ? (oud.herinnerd || 0) + 1 : 0 }, door);
+  await M.logMail({ door, bron: 'loonheffing', type: 'indienst-retour', naar: to, naam: r.naam, onderwerp: m.subject, taal: isEN ? 'EN' : 'NL', rij: r.rij, resend_id: resendId });
+  await require('./auth').logActie({ door, actie: 'mail', bron: 'loonheffing', veld: 'indienst-retour', rij: r.rij, naam: r.naam, nieuw: to, details: (herinner ? 'Herinnering retour: ' : 'Indiensttredingsformulier retour: ') + reden + (velden.length ? ' [' + velden.join(', ') + ']' : '') });
+  return { bericht: (herinner ? 'Herinnering verstuurd' : 'Formulier retour gestuurd') + ' naar ' + to + '. Zodra ' + r.naam.split(' ')[0] + ' het aangepaste formulier instuurt, staat het weer klaar voor salaris.' };
+}
+async function trekRetourIn(r, door) {
+  await zetRetour(r.naam, null, door);
+  await require('./auth').logActie({ door, actie: 'wijzig', bron: 'loonheffing', veld: 'indienst-retour', rij: r.rij, naam: r.naam, nieuw: 'ingetrokken', details: 'Retour indiensttredingsformulier ingetrokken' });
+  return { bericht: 'Retour ingetrokken: het formulier van ' + r.naam + ' staat weer klaar voor salaris.' };
+}
+
+module.exports = { WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link,
+  RETOUR_VELDEN, annoteer, annoteerMet, retourVoor, zetRetour, retourMail, stuurRetour, trekRetourIn };

@@ -420,7 +420,8 @@
     var loon = f(o.loonheffing);
     proc.push({ naam: 'Instroom · loonheffing', stappen: [
       { naam: 'Wacht op formulier', items: loon.filter(function (r) { return r.ontvangen !== 'Ja'; }).map(function (r) { return kaart(r, 'deadline ' + esc(r.deadline || '-') + ' · ' + (r.aantalHer || 0) + 'x herinnerd', dagenSinds(r.status), lmBtn(r).replace('>Mail<', '>Herinner<'), [bUp('loonheffing', r, false), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)], true); }) },
-      { naam: 'Klaar voor salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && !r.salaris; }).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst'), dagenSinds(r.status), bSal('loonheffing', r), [lmBtn(r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)]); }) },
+      { naam: 'Indienst retour', items: loon.filter(function (r) { return r.indienstRetour && !r.salaris; }).map(function (r) { return kaart(r, '↩ ' + esc(r.indienstRetour.reden) + ' · ' + bDoc(r.docUrl2, 'Indienst (oud)'), irDagen(r), irKnop(r, 'herinner'), [irKnop(r, 'intrekken'), bDoc(r.docUrl, 'Loonheffing'), dosBtn(r.naam, r.email)], true); }) },
+      { naam: 'Klaar voor salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && !r.salaris && !r.indienstRetour; }).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst'), dagenSinds(r.status), bSal('loonheffing', r), [irKnop(r, 'retour'), lmBtn(r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)]); }) },
     ] });
     var ont = f(o.ontslag), tp = function (r) { return (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + ' · ' + esc(r.bedrijf || '-') + ' · einde ' + esc(r.einddatum || '-') + bCtl(r); };
     proc.push({ naam: 'Uitstroom', stappen: [
@@ -624,6 +625,49 @@
   // ---------- Loonheffing-tab ----------
   var lhData = null, lhTemplates = [];
   function lmBtn(r) { return '<button class="btn bp bsm" data-lm-rij="' + r.rij + '">Mail</button>'; }
+  // v0.35.1: indiensttredingsformulier retour sturen (met reden), herinneren of intrekken
+  var IR_VELDEN = [['vestiging', 'Vestiging'], ['datumIndienst', 'Datum in dienst'], ['uren', 'Uren per week'], ['functie', 'Functie'], ['naam', 'Naam / voorletters'], ['geboortedatum', 'Geboortedatum'], ['adres', 'Adres'], ['contact', 'Telefoon / e-mail'], ['bsn', 'BSN'], ['iban', 'IBAN']];
+  var IR_SNEL = [['Vestiging', 'vestiging', 'Je hebt geen (of een verkeerde) vestiging ingevuld. Kies de SLA-winkel waar je gaat werken.'], ['Startdatum', 'datumIndienst', 'De datum van indiensttreding klopt niet. Vul de datum in van je eerste werkdag.'], ['Uren', 'uren', 'Het aantal uren per week klopt niet met wat je met je Store Manager hebt afgesproken.'], ['Onleesbaar', '', 'Het formulier is niet goed leesbaar of niet volledig ingevuld. Vul het online formulier in.']];
+  var irRij = null;
+  function irKnop(r, actie) {
+    var lbl = { retour: '↩ Indienst retour', herinner: 'Herinner', intrekken: '✕ Retour intrekken' }[actie];
+    return '<button class="btn ' + (actie === 'herinner' ? 'bp' : 'bd') + ' bsm" data-ir="' + actie + '" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="' + (actie === 'retour' ? 'Formulier terugsturen met een reden (bijv. verkeerde vestiging)' : actie === 'herinner' ? 'Retourvraag nog eens mailen' : 'Formulier toch goedkeuren: weer klaar voor salaris') + '">' + lbl + '</button>';
+  }
+  function irDagen(r) { var d = r.indienstRetour && r.indienstRetour.op ? Math.floor((Date.now() - new Date(r.indienstRetour.op).getTime()) / 864e5) : null; return d; }
+  window.irSluit = function () { g('ir-modal').classList.remove('open'); };
+  window.irVerstuur = async function () {
+    var velden = [].slice.call(document.querySelectorAll('#ir-velden input:checked')).map(function (x) { return x.value; }), reden = g('ir-reden').value.trim();
+    if (!reden) { g('ir-melding').innerHTML = '<div class="alert rood">Geef een reden op, zodat de medewerker weet wat er moet worden aangepast.</div>'; return; }
+    var btn = g('ir-btn'); btn.disabled = true; btn.textContent = 'Versturen…';
+    var r = await api('/api/indienst-retour', { actie: 'retour', rij: irRij.rij, reden: reden, velden: velden });
+    btn.disabled = false; btn.textContent = 'Retour sturen';
+    if (!r.success) { g('ir-melding').innerHTML = '<div class="alert rood">' + esc(r.bericht) + '</div>'; return; }
+    irSluit(); toast(r.bericht, 'ok'); irHerlaad();
+  };
+  function irHerlaad() { try { if (typeof laadOverzicht === 'function') laadOverzicht(); } catch (e) {} try { if (typeof window.laadLoonheffing === 'function') window.laadLoonheffing(); } catch (e) {} }
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-ir]'); if (!b) return;
+    var actie = b.getAttribute('data-ir'), rij = Number(b.getAttribute('data-rij')), naam = b.getAttribute('data-naam');
+    if (actie === 'retour') {
+      irRij = { rij: rij, naam: naam };
+      g('ir-titel').textContent = 'Indiensttredingsformulier retour · ' + naam;
+      g('ir-velden').innerHTML = IR_VELDEN.map(function (v) { return '<label style="display:flex;gap:6px;align-items:center;font-weight:400;text-transform:none;letter-spacing:0;margin:0"><input type="checkbox" value="' + v[0] + '" style="width:auto"> ' + esc(v[1]) + '</label>'; }).join('');
+      g('ir-snel').innerHTML = IR_SNEL.map(function (x, i) { return '<button type="button" class="btn bd bsm" data-ir-snel="' + i + '">' + esc(x[0]) + '</button>'; }).join('');
+      g('ir-reden').value = ''; g('ir-melding').innerHTML = ''; g('ir-modal').classList.add('open');
+      return;
+    }
+    if (actie === 'intrekken' && !confirm('Retour intrekken voor ' + naam + '?\n\nHet huidige indiensttredingsformulier wordt dan toch goedgekeurd en staat weer klaar voor salaris.')) return;
+    if (actie === 'herinner' && !confirm('De retourvraag nog eens mailen naar ' + naam + '?')) return;
+    b.disabled = true;
+    var r = await api('/api/indienst-retour', { actie: actie, rij: rij });
+    b.disabled = false; toast(r.bericht, r.success ? 'ok' : 'err'); if (r.success) irHerlaad();
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-ir-snel]'); if (!b) return;
+    var x = IR_SNEL[Number(b.getAttribute('data-ir-snel'))], ta = g('ir-reden');
+    ta.value = (ta.value.trim() ? ta.value.trim() + '\n' : '') + x[2];
+    if (x[1]) { var cb = document.querySelector('#ir-velden input[value="' + x[1] + '"]'); if (cb) cb.checked = true; }
+  });
   var lhAuto = false, lhSal = false;
   window.lhSalToggle = async function () {
     if (!confirm(lhSal ? 'Automatisch naar salaris uitzetten?' : 'Automatisch naar salaris aanzetten? Elke maandag en donderdag gaat dan alles wat klaar is (en nog niet verstuurd) naar de salarisadministratie.')) return;
@@ -651,7 +695,7 @@
     g('lh-auto-knop').textContent = lhAuto ? 'Uitzetten' : 'Aanzetten'; g('lh-auto-knop').className = 'btn bsm ' + (lhAuto ? 'bd' : 'bp');
     g('lh-count').textContent = lhData.filter(function (r) { return !isAfgLh(r); }).length + ' lopend · ' + lhData.filter(isAfgLh).length + ' afgerond';
     g('lh-body').innerHTML = lhData.map(function (r) {
-      return '<tr' + (isAfgLh(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
+      return '<tr' + (isAfgLh(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + (r.indienstRetour ? ' <span class="badge bo" title="' + esc(r.indienstRetour.reden) + '">↩ retour</span>' : '') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + (r.docUrl2 && !r.salaris ? irKnop(r, r.indienstRetour ? 'intrekken' : 'retour') : '') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('lh-body');
   };

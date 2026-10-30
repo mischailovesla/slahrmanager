@@ -1114,6 +1114,7 @@ async function salaris(droog) {
       const item = { type, naam: r.naam, rij: r.rij, winkel: medW[normNaam(r.naam)] || '' };
       const blok = (ctl[r.rij] || []).filter(c => c.ernst !== 'blauw');
       if (blok.length) { rap.handmatig.push(Object.assign({ reden: 'dossiercontrole: ' + blok.map(c => c.label + ' (' + c.tekst + ')').join('; ') }, item)); continue; }
+      if (type === 'loonheffing' && r.indienstRetour) { rap.handmatig.push(Object.assign({ reden: 'indiensttredingsformulier retour gestuurd: ' + r.indienstRetour.reden }, item)); continue; } // v0.35.1
       const oud = [r.docUrl, r.docUrl2].filter(u => u && !U.isRef(u));
       if (oud.length) { rap.handmatig.push(Object.assign({ reden: 'document staat nog in Google Drive (oud formulier)' }, item)); continue; }
       rap.gevonden.push(item);
