@@ -264,6 +264,10 @@ exports.handler = beveiligd('taken', async (event, g) => {
   let loonAl = null;
   try { const { normNaam: nn } = require('./_lib/util'); loonAl = new Set(); (await S.getLoonheffing()).forEach(r => { if (r.email) loonAl.add('e:' + String(r.email).trim().toLowerCase()); if (r.naam) loonAl.add('n:' + nn(r.naam)); }); loonAl.nn = nn; } catch (e) { loonAl = null; }
   const loonVerstuurd = x => loonAl && ((x.email && loonAl.has('e:' + String(x.email).trim().toLowerCase())) || (x.naam && loonAl.has('n:' + loonAl.nn(x.naam))));
+  // v0.35.6: loonheffingsverklaring inmiddels ontvangen (na de laatste check-run)? Dan geen 'niet ontvangen'-taak meer.
+  let loonBinnen = null;
+  try { const { normNaam: nn2 } = require('./_lib/util'); loonBinnen = new Set(); (await S.getLoonheffing()).filter(r => r.ontvangen === 'Ja' || r.salaris || r.mahdia === 'Ja').forEach(r => { if (r.email) loonBinnen.add('e:' + String(r.email).trim().toLowerCase()); if (r.naam) loonBinnen.add('n:' + nn2(r.naam)); }); loonBinnen.nn = nn2; } catch (e) { loonBinnen = null; }
+  const loonOntvangen = x => loonBinnen && ((x.email && loonBinnen.has('e:' + String(x.email).trim().toLowerCase())) || (x.naam && loonBinnen.has('n:' + loonBinnen.nn(x.naam))));
   // v0.34.7: datakwaliteit (Shiftbase aanvullen) hoort niet in 'Te doen' — die staat in het maandrapport en bij Signaleringen.
   // Alleen het aantal gaat mee, voor één regel in de voettekst.
   const BUITEN_TAKEN = new Set(['data-hygiene']);
@@ -274,6 +278,7 @@ exports.handler = beveiligd('taken', async (event, g) => {
     // (behalve 'tegenstrijdig': besloten te verlengen terwijl er een brief is verstuurd — die moet juist blijven staan)
     if (vertrek && naam === 'verlengingen') items = (items || []).filter(x => x.status === 'tegenstrijdig' || !VT(vertrek, x));
     if (naam === 'nieuwe-medewerkers') items = (items || []).filter(x => !loonVerstuurd(x));
+    if (naam === 'loonheffing-herinneringen') items = (items || []).filter(x => !loonOntvangen(x));
     taken.push(...uitCheck(naam, items, runs[naam].tijd));
   }
   // v0.31.4: Arbeidstijdenwet-afwijkingen per medewerker samenvoegen (één taak met de diensten erin, i.p.v. één taak per dienst)

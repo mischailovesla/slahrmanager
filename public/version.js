@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.35.6', datum: '30-10-2026', titel: 'Te doen klopt met de pijplijn + winkel bij de naam', punten: [
+    '<b>Loonheffingsverklaring niet ontvangen</b> verdwijnt nu meteen uit Te doen zodra de verklaring binnen is. Voorheen bleef de taak staan tot de volgende automatische check (bijv. bij Danique, die al bij Klaar voor salaris stond).',
+    'In de pijplijn (Instroom, Uitstroom, Overplaatsing) staat de <b>winkel</b> nu naast de naam van de medewerker.'
+  ] },
   { nummer: '0.35.5', datum: '30-10-2026', titel: 'Indiensttredingsformulier: "Klopt dit?"-waarschuwingen', punten: [
     'Het formulier vraagt nu om bevestiging bij antwoorden die kunnen kloppen maar opvallen: <b>jonger dan 16 of 67+</b>, een <b>startdatum</b> meer dan 2 weken geleden of meer dan 3 maanden vooruit, <b>meer dan 38 uur</b> per week, een <b>buitenlands IBAN of adres</b>, en een <b>tikfout in het maildomein</b> (bijv. gmial.com → "Bedoel je gmail.com?").',
     'De medewerker vinkt "Ja, dit klopt" aan en kan dan versturen. Wat bevestigd is, zie je in de controle als blauw label <b>Medewerker bevestigde: …</b>.'

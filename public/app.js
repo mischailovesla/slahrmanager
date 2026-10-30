@@ -410,7 +410,8 @@
   function meerMenu(knoppen) { knoppen = knoppen.filter(Boolean); return knoppen.length ? '<span class="meer"><button class="btn bd bsm" data-meer="1" title="Meer acties">⋯</button><div class="meer-menu">' + knoppen.join('') + '</div></span>' : ''; }
   function kaart(r, sub, dagen, hoofd, meer, wachtStap) {
     var kl = dagen == null ? '' : wachtStap && dagen > 14 ? 'br' : wachtStap && dagen > 7 ? 'bo' : 'boat';
-    return '<div class="ov-kaart' + (kl === 'br' ? ' laat' : kl === 'bo' ? ' traag' : '') + '"><div class="ov-kaart-t"><button class="ov-kaart-naam" data-dos-naam="' + esc(r.naam) + '" data-dos-email="' + esc(r.email || '') + '">' + esc(r.naam) + '</button>'
+    var wk = winkelVanPersoon(r.naam, r.email); // v0.35.6: winkel bij de naam
+    return '<div class="ov-kaart' + (kl === 'br' ? ' laat' : kl === 'bo' ? ' traag' : '') + '"><div class="ov-kaart-t"><button class="ov-kaart-naam" data-dos-naam="' + esc(r.naam) + '" data-dos-email="' + esc(r.email || '') + '">' + esc(r.naam) + '</button>' + (wk ? '<span class="ov-wk-w" style="margin-left:6px;flex:1">' + esc(wk) + '</span>' : '')
       + (dagen != null ? '<span class="badge ' + kl + '" title="Dagen sinds versturen">' + dagen + ' d</span>' : '') + '</div><div class="ov-kaart-s">' + sub + '</div><div class="ov-kaart-a">' + (hoofd || '') + meerMenu(meer) + '</div></div>';
   }
   function renderPijp() {
@@ -2928,6 +2929,7 @@
     persoonIndex = { email: {}, naam: {}, id: {} };
     medewerkers.forEach(function (m) { var w = m.winkelNaam || ''; if (m.email) persoonIndex.email[m.email.toLowerCase()] = w; persoonIndex.naam[normN(m.naam)] = w; persoonIndex.id[m.id] = w; });
   }
+  function winkelVanPersoon(naam, email) { if (!medewerkers || !medewerkers.length) return ''; if (!persoonIndex) bouwPersoonIndex(); return (email && persoonIndex.email[String(email).toLowerCase()]) || persoonIndex.naam[normN(naam)] || ''; }
   function hoortBijWinkel(naam, email, w) {
     if (!persoonIndex) bouwPersoonIndex();
     var pw = (email && persoonIndex.email[String(email).toLowerCase()]) || persoonIndex.naam[normN(naam)];
