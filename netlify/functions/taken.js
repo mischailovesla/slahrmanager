@@ -33,6 +33,7 @@ function uitCheck(naam, items, tijd) {
   const t = [];
   const bron = { bron: naam, stand: stempelNL(tijd) };
   for (const g of items || []) {
+    const n0 = t.length;
     if (naam === 'nieuwe-medewerkers') t.push(Object.assign({}, bron, { urgentie: 'rood', sleutel: naam + '|' + g.naam, titel: 'Loonheffingsuitnodiging versturen', sub: g.naam + ' · ' + (g.winkel || '-') + ' · start ' + (g.start || '?') + ' — zonder verklaring geldt het anoniementarief (52%)', naam: g.naam, email: g.email || '', winkel: g.winkel || '', actie: { soort: 'loonmail', persoon: { naam: g.naam, email: g.email || '' }, label: 'Uitnodiging' }, extra: { soort: 'onboarding', label: 'Onboarding starten' } }));
     else if (naam === 'aanzegtermijnen') {
       const laat = g.dagenTotDeadline < 0, snel = g.dagenTotDeadline <= 7, totEinde = Math.min(Math.max((g.dagenTotEinde || 0) + 1, 1), 90);
@@ -84,15 +85,45 @@ function uitCheck(naam, items, tijd) {
     else if (naam === 'jeugd' && g.soort === 'verjaardag') t.push(Object.assign({}, bron, { urgentie: 'grijs', afhandelbaar: true, afhandelOpties: [{ label: 'Doorgegeven aan salaris', dagen: 30, opmerking: 'jeugdloon doorgegeven' }], sleutel: naam + '|verjaardag|' + g.naam + '|' + g.op, titel: 'Minimumjeugdloon: wordt ' + g.wordt + ' op ' + g.op + ' — doorgeven aan salaris', sub: g.naam + ' · ' + (g.winkel || '-'), naam: g.naam, email: g.email || '', winkel: g.winkel || '', actie: { soort: 'dossier', label: 'Dossier' } }));
     else if (naam === 'oproepaanbod') t.push(Object.assign({}, bron, { afhandelbaar: true, afhandelOpties: [{ label: 'Aanbod al gedaan (buiten het dashboard)', dagen: 330, opmerking: 'aanbod gedaan' }], urgentie: g.teLaat || g.over <= 7 ? 'rood' : 'oranje', sleutel: naam + '|' + g.naam, titel: 'Aanbod vaste arbeidsomvang versturen' + (g.teLaat ? ' — ' + (-g.over) + ' dagen over de 12-maandsgrens' : ' (grens over ' + g.over + ' dagen)'), sub: g.naam + ' · ' + (g.winkel || '-') + ' · oproep sinds ' + g.sinds + ' · gemiddeld ' + g.gemPerWeek + ' u/week', naam: g.naam, email: g.email || '', winkel: g.winkel || '', actie: { soort: 'oproep', persoon: g, label: 'Aanbod' }, extra: { soort: 'dossier', label: 'Dossier' } }));
     else if (naam === 'data-hygiene') t.push(Object.assign({}, bron, { urgentie: 'grijs', afhandelbaar: true, sleutel: naam + '|' + g.naam, titel: 'Shiftbase aanvullen: ' + (g.mist || 'gegevens') + ' ontbreekt', sub: g.naam + ' · ' + (g.winkel || '-'), naam: g.naam, winkel: g.winkel || '', actie: { soort: 'link', url: 'https://app.shiftbase.com', label: 'Shiftbase' } }));
+    // v0.34.9: sorteerdatum (ISO) zodat de takenlijst op datum kan
+    const dt = datumVoor(naam, g);
+    for (let i = n0; i < t.length; i++) if (!t[i].datum && dt) t[i].datum = dt;
   }
   return t;
+}
+
+// v0.34.9: ISO-datum (jjjj-mm-dd) uit Date, ISO- of NL-notatie (dd-mm-jjjj); anders null
+function isoVan(x) {
+  if (!x) return null;
+  if (x instanceof Date) return isNaN(x) ? null : x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0');
+  const s = String(x).trim();
+  let m = s.match(/^(\d{4})-(\d{2})-(\d{2})/); if (m) return m[1] + '-' + m[2] + '-' + m[3];
+  m = s.match(/(\d{1,2})[-/](\d{1,2})[-/](\d{4})/); if (m) return m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0');
+  return null;
+}
+function overDagen(n) { if (n == null || isNaN(n)) return null; const d = new Date(new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }) + 'T12:00:00'); d.setDate(d.getDate() + Number(n)); return isoVan(d); }
+// De datum waar de taak om draait: deadline, einddatum, mijlpaal of verzenddatum
+function datumVoor(naam, g) {
+  switch (naam) {
+    case 'nieuwe-medewerkers': return isoVan(g.start);
+    case 'aanzegtermijnen': return overDagen(g.dagenTotDeadline) || isoVan(g.einddatum);
+    case 'loonheffing-herinneringen': return isoVan(g.deadline);
+    case 'ontslag-herinneringen': case 'korting-herinneringen': return isoVan(g.verzonden);
+    case 'stille-afwezigen': return isoVan(g.laatsteDienst);
+    case 'verlengingen': return isoVan(g.deadline) || isoVan(g.eindIso) || isoVan(g.einddatum);
+    case 'contractketen': return isoVan(g.soort === 'proeftijd' ? g.proeftijdEinde : g.soort === 'vast' ? g.verlengdTot : g.einddatum);
+    case 'verzuim': return g.soort === 'mijlpaal' ? overDagen(g.over) : isoVan(g.soort === 'frequent' ? g.laatste : g.sinds);
+    case 'jeugd': return isoVan(g.soort === 'atw' ? g.datum : g.op);
+    case 'oproepaanbod': return overDagen(g.over);
+    default: return null;
+  }
 }
 
 async function uitDatabase() {
   const t = [];
   const [som, opl] = await Promise.all([S.getSommatie(), S.getOverplaatsing()]);
-  for (const r of som) if (r.verwerkt !== 'Ja' && /finale|staande voet|oproep/i.test(r.type || '')) t.push({ bron: 'dossier', urgentie: 'oranje', sleutel: 'som|' + r.rij, titel: r.type + ' afhandelen (gesprek gepland ' + (r.datumAfspraak || '?') + ')', sub: r.naam + ' · ' + (r.bv || '') + ' · verstuurd ' + (r.verzenddatum || '?'), naam: r.naam, email: r.email, actie: { soort: 'tab', tab: 'sommatie', zoek: r.naam, label: 'Sommaties' }, extra: { soort: 'dossier', label: 'Dossier' } });
-  for (const r of opl) if (String(r.status || '').indexOf('Verstuurd') === 0 && r.ondertekend !== 'Ja') { const d = parseNLDatum(r.verzenddatum), dagen = d ? -dagenTot(d) : 0; if (dagen >= 7) t.push({ bron: 'dossier', urgentie: 'grijs', sleutel: 'opl|' + r.rij, titel: 'Overplaatsing nog niet ondertekend (niet verplicht)', sub: r.naam + ' · ' + r.huidigeBV + ' → ' + r.nieuweBV + ' · verstuurd ' + r.verzenddatum, naam: r.naam, email: r.email, actie: { soort: 'archiveer', type: 'overplaatsing', rij: r.rij, label: 'Archiveren' }, extra: { soort: 'tab', tab: 'overplaatsing', zoek: r.naam, label: 'Overplaatsing' } }); }
+  for (const r of som) if (r.verwerkt !== 'Ja' && /finale|staande voet|oproep/i.test(r.type || '')) t.push({ bron: 'dossier', urgentie: 'oranje', sleutel: 'som|' + r.rij, datum: isoVan(r.datumAfspraak), titel: r.type + ' afhandelen (gesprek gepland ' + (r.datumAfspraak || '?') + ')', sub: r.naam + ' · ' + (r.bv || '') + ' · verstuurd ' + (r.verzenddatum || '?'), naam: r.naam, email: r.email, actie: { soort: 'tab', tab: 'sommatie', zoek: r.naam, label: 'Sommaties' }, extra: { soort: 'dossier', label: 'Dossier' } });
+  for (const r of opl) if (String(r.status || '').indexOf('Verstuurd') === 0 && r.ondertekend !== 'Ja') { const d = parseNLDatum(r.verzenddatum), dagen = d ? -dagenTot(d) : 0; if (dagen >= 7) t.push({ bron: 'dossier', urgentie: 'grijs', sleutel: 'opl|' + r.rij, datum: isoVan(r.verzenddatum), titel: 'Overplaatsing nog niet ondertekend (niet verplicht)', sub: r.naam + ' · ' + r.huidigeBV + ' → ' + r.nieuweBV + ' · verstuurd ' + r.verzenddatum, naam: r.naam, email: r.email, actie: { soort: 'archiveer', type: 'overplaatsing', rij: r.rij, label: 'Archiveren' }, extra: { soort: 'tab', tab: 'overplaatsing', zoek: r.naam, label: 'Overplaatsing' } }); }
   return t;
 }
 
@@ -104,7 +135,7 @@ async function uitCheckins() {
     for (const r of data || []) {
       const delen = String(r.laag_reden || '').split(' · ').filter(Boolean), alarm = delen.some(x => !/\d\/5$/.test(x));
       const dagen = Math.round((Date.now() - new Date(r.ingevuld_op).getTime()) / 864e5);
-      t.push({ bron: 'checkin', urgentie: alarm || (r.score != null && Number(r.score) <= 2.5) || dagen >= 3 ? 'rood' : 'oranje', sleutel: 'checkin|' + r.id,
+      t.push({ bron: 'checkin', urgentie: alarm || (r.score != null && Number(r.score) <= 2.5) || dagen >= 3 ? 'rood' : 'oranje', sleutel: 'checkin|' + r.id, datum: isoVan(r.ingevuld_op),
         titel: 'Check-in dag ' + r.moment + ': lage score — even bellen', sub: r.naam + ' · ' + (r.winkel || '-') + (r.score != null ? ' · gem. ' + String(r.score).replace('.', ',') + '/5' : '') + (delen.length ? ' · ' + delen.slice(0, 2).join(' · ') : '') + (r.opmerking ? ' · "' + String(r.opmerking).slice(0, 80) + '"' : '') + (dagen ? ' · ' + dagen + ' dagen geleden' : ''),
         naam: r.naam, email: r.email || '', winkel: r.winkel || '', actie: { soort: 'checkin-opvolgen', id: r.id, label: 'Gesprek / opgevolgd', aanleiding: 'Lage check-in dag ' + r.moment + (delen.length ? ': ' + delen.join(' · ') : '') + (r.opmerking ? ' — "' + r.opmerking + '"' : '') }, extra: { soort: 'tab', tab: 'checkin', zoek: r.naam, label: 'Antwoorden' } });
     }
@@ -121,7 +152,7 @@ async function uitMtoActies() {
     const TH = {}; require('./_lib/mto-vragen').THEMAS.forEach(x => { TH[x.key] = x.nl; });
     for (const a of data || []) {
       const over = Math.round((new Date(vandaag) - new Date(a.deadline)) / 864e5);
-      t.push({ bron: 'mto-actie', urgentie: over > 0 ? 'rood' : 'oranje', sleutel: 'mto-actie|' + a.id,
+      t.push({ bron: 'mto-actie', urgentie: over > 0 ? 'rood' : 'oranje', sleutel: 'mto-actie|' + a.id, datum: isoVan(a.deadline),
         titel: 'MTO-actie' + (over > 0 ? ' — ' + over + ' dagen over de deadline' : over === 0 ? ' — deadline vandaag' : ' — deadline over ' + (-over) + ' dagen') + ': ' + a.titel,
         sub: (a.winkel || 'SLA-breed') + (a.thema ? ' · ' + (TH[a.thema] || a.thema) : '') + (a.eigenaar ? ' · eigenaar ' + a.eigenaar : '') + ' · ' + a.status,
         winkel: a.winkel || '', actie: { soort: 'mto-actie', id: a.id, label: 'Bijwerken' }, extra: { soort: 'tab', tab: 'mto', label: 'MTO' } });
@@ -139,7 +170,7 @@ async function uitGesprekken() {
     for (const r of await G.openVervolgen()) {
       if (r.vervolgDatum > grens) continue;
       const over = Math.round((new Date(vandaag) - new Date(r.vervolgDatum)) / 864e5);
-      t.push({ bron: 'gesprek', urgentie: over > C.GESPREK_VERVOLG_TE_LAAT_DAGEN ? 'rood' : over >= 0 ? 'oranje' : 'grijs', sleutel: 'gesprek|' + r.id,
+      t.push({ bron: 'gesprek', urgentie: over > C.GESPREK_VERVOLG_TE_LAAT_DAGEN ? 'rood' : over >= 0 ? 'oranje' : 'grijs', sleutel: 'gesprek|' + r.id, datum: isoVan(r.vervolgDatum),
         titel: 'Vervolg ' + r.soortLabel.toLowerCase() + (over > 0 ? ' — ' + over + ' dagen over tijd' : over === 0 ? ' — vandaag' : ' — op ' + r.vervolgNL),
         sub: r.naam + ' · ' + (r.winkel || '-') + ' · gesprek ' + r.datumNL + (r.afspraken ? ' · afspraak: ' + r.afspraken.slice(0, 90) : ''),
         naam: r.naam, email: r.email || '', winkel: r.winkel || '', actie: { soort: 'gesprek-vervolg', id: r.id, gs: r.soort, label: 'Vervolggesprek vastleggen', aanleiding: 'Vervolg op ' + r.soortLabel.toLowerCase() + ' van ' + r.datumNL + (r.afspraken ? '. Afspraak was: ' + r.afspraken : '') }, extra: { soort: 'gesprek-af', id: r.id, label: '✓ Afvinken' } });
@@ -174,7 +205,7 @@ async function uitChecklists() {
       const items = c.items || [], open = items.filter(i => !i.klaar);
       if (!open.length) continue;
       const dagen = Math.round((Date.now() - new Date(c.gestart_op).getTime()) / 864e5);
-      t.push({ bron: 'checklist', urgentie: c.type === 'offboarding' || dagen > 14 ? 'oranje' : 'grijs', sleutel: 'chk|' + c.id, titel: (c.type === 'onboarding' ? 'Onboarding' : 'Offboarding') + ': ' + open.length + ' van ' + items.length + ' punten open', sub: c.naam + ' · ' + (c.winkel || '-') + ' · gestart ' + dagen + ' dagen geleden · volgende: ' + open[0].label, naam: c.naam, email: c.email || '', winkel: c.winkel || '', actie: { soort: 'checklist', id: c.id, label: 'Checklist' } });
+      t.push({ bron: 'checklist', urgentie: c.type === 'offboarding' || dagen > 14 ? 'oranje' : 'grijs', sleutel: 'chk|' + c.id, datum: isoVan(c.gestart_op), titel: (c.type === 'onboarding' ? 'Onboarding' : 'Offboarding') + ': ' + open.length + ' van ' + items.length + ' punten open', sub: c.naam + ' · ' + (c.winkel || '-') + ' · gestart ' + dagen + ' dagen geleden · volgende: ' + open[0].label, naam: c.naam, email: c.email || '', winkel: c.winkel || '', actie: { soort: 'checklist', id: c.id, label: 'Checklist' } });
     }
   } catch (e) { /* tabel ontbreekt nog (migratie 0007) */ }
   return t;
@@ -268,8 +299,11 @@ exports.handler = beveiligd('taken', async (event, g) => {
   const keukenRol = g.rol === 'keuken', isKeuken = t => /keuken/i.test(String(t.winkel || ''));
   taken = taken.filter(t => keukenRol ? isKeuken(t) : !isKeuken(t));
   const rang = { rood: 0, oranje: 1, grijs: 2 };
-  taken.sort((a, b) => rang[a.urgentie] - rang[b.urgentie] || String(a.naam || '').localeCompare(String(b.naam || ''), 'nl'));
+  // v0.34.9: op datum (vroegste eerst); zonder datum: rood telt als vandaag, de rest achteraan
+  const vandaagIso = overDagen(0), sorteer = t => t.datum || (t.urgentie === 'rood' ? vandaagIso : '9999');
+  taken.sort((a, b) => sorteer(a).localeCompare(sorteer(b)) || rang[a.urgentie] - rang[b.urgentie] || String(a.naam || '').localeCompare(String(b.naam || ''), 'nl'));
   const stand = Object.keys(runs).filter(k => ALLE_CHECKS.includes(k)).map(k => ({ check: k, tijd: stempelNL(runs[k].tijd), aantal: (runs[k].gevonden || []).length }));
   return { taken, aantallen: { rood: taken.filter(t => t.urgentie === 'rood').length, oranje: taken.filter(t => t.urgentie === 'oranje').length, grijs: taken.filter(t => t.urgentie === 'grijs').length }, verborgen, stand, live, fouten, buiten };
 });
 exports._uitCheck = uitCheck; // tests
+exports._isoVan = isoVan;

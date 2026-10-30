@@ -2688,6 +2688,9 @@
   function tkTellen() { var a = { rood: 0, oranje: 0, grijs: 0 }; tkZichtbaar().forEach(function (t) { a[t.urgentie] = (a[t.urgentie] || 0) + 1; }); return a; }
   function tkNaam(t) { return t.naam || String(t.sub || '').split(' · ')[0]; }
   var RANG = { rood: 0, oranje: 1, grijs: 2 };
+  // v0.34.9: takenlijst op datum (vroegste eerst); zonder datum: rood telt als vandaag, de rest achteraan
+  function tkSortDatum(t) { return t.datum || (t.urgentie === 'rood' ? new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }) : '9999'); }
+  function tkOpDatum(a, b) { return tkSortDatum(a).localeCompare(tkSortDatum(b)) || RANG[a.urgentie] - RANG[b.urgentie]; }
   function renderTegels(alle) {
     var el = g('ov-tegels'); if (!el) return;
     el.innerHTML = TK_THEMA.map(function (th) {
@@ -2721,7 +2724,7 @@
     g('tk-count').textContent = lijst.length;
     var h = '';
     TK_THEMA.forEach(function (tt) {
-      var groep = lijst.filter(function (t) { return tkThemaVan(t) === tt.k; }).sort(function (a, b) { return RANG[a.urgentie] - RANG[b.urgentie]; });
+      var groep = lijst.filter(function (t) { return tkThemaVan(t) === tt.k; }).sort(tkOpDatum);
       if (!groep.length) return;
       var max = th ? groep.length : 4, open = tkOpenGroep[tt.k];
       if (!th) h += '<div class="tk-groep">' + tt.i + ' ' + esc(tt.l) + ' <span class="pill">' + groep.length + '</span></div>';
