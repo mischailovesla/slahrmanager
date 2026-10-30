@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.36.0', datum: '30-10-2026', titel: 'Instroom-KPI: tijd tot eerste dienst', punten: [
+    'Op het Overzicht staat onder Lopende dossiers het blok <b>Instroom: tijd tot eerste dienst</b>. Kies een datum en klik <b>Bereken</b>: je ziet hoeveel dagen er gemiddeld (en als mediaan) zitten tussen de indienstdatum in Shiftbase en de eerste geroosterde dienst, per winkel en per medewerker.',
+    'Ook zichtbaar: wie nog <b>geen dienst</b> heeft, en wie al een dienst had <b>vóór de indienstdatum</b> (gewerkt of gepland voordat het contract liep). Alleen medewerkers die nu in dienst zijn tellen mee.'
+  ] },
   { nummer: '0.35.6', datum: '30-10-2026', titel: 'Te doen klopt met de pijplijn + winkel bij de naam', punten: [
     '<b>Loonheffingsverklaring niet ontvangen</b> verdwijnt nu meteen uit Te doen zodra de verklaring binnen is. Voorheen bleef de taak staan tot de volgende automatische check (bijv. bij Danique, die al bij Klaar voor salaris stond).',
     'In de pijplijn (Instroom, Uitstroom, Overplaatsing) staat de <b>winkel</b> nu naast de naam van de medewerker.'

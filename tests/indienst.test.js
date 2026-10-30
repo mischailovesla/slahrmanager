@@ -132,3 +132,17 @@ I.maakPdf(I.valideer(goed, nu).schoon, { tijd: nu.toISOString() }).then(b => { a
   assert.ok(r[0].indienstControle.some(c => c.soort === 'bevestigd' && /jonger dan 16/.test(c.label) && c.ernst === 'blauw'));
   console.log('indienst waarschuwing tests OK');
 }
+// v0.36.0: instroom-KPI tijd tot eerste dienst
+{
+  const SD = require('../netlify/functions/_lib/startdienst.js');
+  const med = [{ id: '1', naam: 'A', winkelNaam: 'Zuidas', indienst: '01-09-2026' }, { id: '2', naam: 'B', winkelNaam: 'Zuidas', indienst: '10-09-2026' }, { id: '3', naam: 'C', winkelNaam: 'Kerkplein', indienst: '15-10-2026' }, { id: '4', naam: 'D', winkelNaam: 'Kerkplein', indienst: '01-08-2026' }, { id: '5', naam: 'E', winkelNaam: 'Kerkplein', indienst: '20-10-2026' }];
+  const ros = [{ Roster: { user_id: '1', date: '2026-09-05' } }, { Roster: { user_id: '1', date: '2026-09-03' } }, { Roster: { user_id: '2', date: '2026-09-08' } }, { Roster: { user_id: '3', date: '2026-11-02' } }, { Roster: { user_id: '4', date: '2026-08-02' } }];
+  const r = SD.bereken(med, ros, '2026-09-01', '2026-10-30');
+  const per = Object.fromEntries(r.medewerkers.map(m => [m.naam, m.dagen]));
+  assert.deepStrictEqual(per, { A: 2, B: -2, C: 18, E: null });              // D valt buiten 'vanaf'; B: dienst vóór start
+  assert.strictEqual(r.totaal.aantal, 4); assert.strictEqual(r.totaal.zonderDienst, 1); assert.strictEqual(r.totaal.voorStart, 1);
+  assert.strictEqual(r.totaal.gemiddeld, 6); assert.strictEqual(r.totaal.mediaan, 2); assert.strictEqual(r.totaal.gemiddeldVanafStart, 10);
+  assert.ok(r.medewerkers.find(m => m.naam === 'C').gepland);
+  assert.deepStrictEqual(r.perWinkel.map(w => w.winkel), ['Kerkplein', 'Zuidas']);
+  console.log('startdienst tests OK');
+}

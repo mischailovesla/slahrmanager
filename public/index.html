@@ -70,6 +70,10 @@
       <div class="sh"><div class="st">Lopende dossiers <span class="pill" id="ov-open-count">-</span></div><div class="hr2"><button class="btn bd bsm" onclick="laadOverzicht()">↻ Vernieuwen</button></div></div>
       <div id="ov-pijp" class="ov-pijp"><div class="leeg grijs" style="padding:18px 24px">Laden…</div></div>
     </div>
+    <div class="sec" id="sd-sec">
+      <div class="sh"><div class="st">Instroom: tijd tot eerste dienst</div><div class="hr2" style="display:flex;gap:8px;align-items:center"><label style="font-size:.8rem;color:#888078">In dienst vanaf</label><input type="date" id="sd-vanaf" style="padding:5px 8px;border:1px solid #e8e2de;border-radius:6px;font:inherit;font-size:.85rem"><button class="btn bp bsm" id="sd-btn" onclick="laadStartdienst()">Bereken</button></div></div>
+      <div id="sd-inhoud"><div class="leeg grijs" style="padding:18px 24px">Hoeveel dagen zitten er tussen de indienstdatum en de eerste geroosterde dienst in Shiftbase? Klik op <b>Bereken</b> (haalt het rooster op, duurt ongeveer 10 seconden).</div></div>
+    </div>
   </div>
 
   <!-- DOSSIER -->

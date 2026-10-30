@@ -414,6 +414,25 @@
     return '<div class="ov-kaart' + (kl === 'br' ? ' laat' : kl === 'bo' ? ' traag' : '') + '"><div class="ov-kaart-t"><button class="ov-kaart-naam" data-dos-naam="' + esc(r.naam) + '" data-dos-email="' + esc(r.email || '') + '">' + esc(r.naam) + '</button>' + (wk ? '<span class="ov-wk-w" style="margin-left:6px;flex:1">' + esc(wk) + '</span>' : '')
       + (dagen != null ? '<span class="badge ' + kl + '" title="Dagen sinds versturen">' + dagen + ' d</span>' : '') + '</div><div class="ov-kaart-s">' + sub + '</div><div class="ov-kaart-a">' + (hoofd || '') + meerMenu(meer) + '</div></div>';
   }
+  // v0.36.0: instroom-KPI — dagen tussen indienstdatum en eerste geroosterde dienst
+  (function () { var el = g('sd-vanaf'); if (el && !el.value) { var d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); el.value = d.toLocaleDateString('sv-SE'); } })();
+  window.laadStartdienst = async function () {
+    var vanaf = g('sd-vanaf').value, btn = g('sd-btn'), el = g('sd-inhoud'); btn.disabled = true; btn.textContent = 'Bezig…';
+    el.innerHTML = '<div class="leeg grijs" style="padding:18px 24px"><span class="sp" style="border-color:rgba(0,0,0,.15);border-top-color:#009f4b"></span> Rooster ophalen uit Shiftbase…</div>';
+    var d = await api('/api/startdienst?vanaf=' + encodeURIComponent(vanaf)); btn.disabled = false; btn.textContent = 'Bereken';
+    if (!d.success) { el.innerHTML = '<div class="alert rood" style="margin:12px 24px">' + esc(d.bericht) + '</div>'; return; }
+    var t = d.totaal, nl = function (x) { return x == null ? '–' : String(x).replace('.', ','); }, dt = function (iso) { return iso ? iso.split('-').reverse().join('-') : '–'; };
+    var tegel = function (l, v, s) { return '<div style="background:#f8f3f0;border-radius:10px;padding:12px 16px;min-width:130px"><div style="font-size:.7rem;text-transform:uppercase;letter-spacing:.4px;color:#888078;font-weight:700">' + l + '</div><div style="font-size:1.5rem;font-weight:700;color:#333d3a">' + v + '</div><div style="font-size:.75rem;color:#888078">' + s + '</div></div>'; };
+    var h = '<div style="padding:14px 24px 4px;display:flex;gap:10px;flex-wrap:wrap">'
+      + tegel('Gemiddeld', nl(t.gemiddeld) + ' d', 'over ' + t.metDienst + ' medewerkers') + tegel('Mediaan', nl(t.mediaan) + ' d', 'de helft zit hieronder')
+      + tegel('Nieuwe medewerkers', t.aantal, 'in dienst vanaf ' + dt(d.vanaf)) + tegel('Nog geen dienst', t.zonderDienst, 'niet geroosterd') + tegel('Dienst vóór start', t.voorStart, 'gewerkt/gepland vóór contract')
+      + '</div><div style="padding:6px 24px 0;font-size:.8rem;color:#888078">Verdeling: ' + Object.keys(t.verdeling).map(function (k) { return '<b>' + k + ' d</b> ' + t.verdeling[k]; }).join(' · ') + (t.voorStart ? ' · gemiddeld zonder de diensten vóór start: <b>' + nl(t.gemiddeldVanafStart) + ' d</b>' : '') + '</div>';
+    h += '<div class="tw" style="margin-top:10px"><table><thead><tr><th>Winkel</th><th>Nieuw</th><th>Gem. dagen</th><th>Mediaan</th><th>Nog geen dienst</th><th>Vóór start</th></tr></thead><tbody id="sd-w">'
+      + d.perWinkel.map(function (w) { return '<tr><td><strong>' + esc(w.winkel) + '</strong></td><td>' + w.aantal + '</td><td>' + nl(w.gemiddeld) + '</td><td>' + nl(w.mediaan) + '</td><td>' + (w.zonderDienst ? '<span class="badge bo">' + w.zonderDienst + '</span>' : '0') + '</td><td>' + (w.voorStart ? '<span class="badge br">' + w.voorStart + '</span>' : '0') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+    h += '<details style="padding:8px 24px 16px"><summary style="cursor:pointer;font-size:.85rem;color:#009f4b;font-weight:600">Per medewerker (' + d.medewerkers.length + ')</summary><div class="tw" style="margin-top:8px"><table><thead><tr><th>Medewerker</th><th>Winkel</th><th>In dienst</th><th>Eerste dienst</th><th>Dagen</th></tr></thead><tbody id="sd-m">'
+      + d.medewerkers.map(function (m) { return '<tr><td>' + esc(m.naam) + '</td><td>' + esc(m.winkel) + '</td><td>' + dt(m.indienst) + '</td><td>' + (m.eersteDienst ? dt(m.eersteDienst) + (m.gepland ? ' <span class="badge boat">gepland</span>' : '') : '<span class="badge bo">nog geen dienst</span> <span class="lay-sub">(' + m.dagenInDienst + ' d in dienst)</span>') + '</td><td>' + (m.dagen == null ? '–' : m.dagen < 0 ? '<span class="badge br" title="Dienst vóór de indienstdatum">' + m.dagen + '</span>' : m.dagen > 14 ? '<span class="badge bo">' + m.dagen + '</span>' : m.dagen) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
+    el.innerHTML = h;
+  };
   function renderPijp() {
     var el = g('ov-pijp'); if (!el || !ovData) return;
     var o = ovData.open, f = function (lijst) { return (lijst || []).filter(function (r) { return inWinkel(r.naam, r.email); }); };
@@ -2950,6 +2969,7 @@
     tbodies.forEach(function (tb) {
       if (!tb.closest('.tc .tw')) return; // alleen tabellen in tabs (niet in modals)
       if (tb.id.indexOf('mto-') === 0 || tb.id === 'vk-tbody' || tb.id === 'vrl-ctrl-w' || tb.classList.contains('ond-body')) return; // MTO: winkels/stellingen, geen personen
+      if (tb.id === 'sd-w' || tb.id === 'sd-m') return; // v0.36.0: instroom-KPI heeft geen winkelfilter nodig (per winkel uitgesplitst)
       if (tb.id === 'dos-lijst' || tb.id === 'tg-body' || tb.id === 'tg-mut-body' || tb.id === 'gv-body' || tb.id === 'gv-runs') return; // eigen filters / geen personen
       Array.prototype.forEach.call(tb.rows, function (tr) {
         if (!w) { tr.classList.remove('wf-verborgen'); return; }
