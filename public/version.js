@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.35.4', datum: '30-10-2026', titel: 'Geen TWV bij SLA', punten: [
+    'SLA vraagt geen tewerkstellingsvergunning (TWV) aan. Staat op het verblijfsdocument dat een TWV nodig is, of dat werken niet is toegestaan, dan krijg je het rode label <b>niet in dienst nemen</b>. Daar kun je geen akkoord op geven; klopt de aantekening niet, stuur het formulier dan retour.',
+    'Ook een <b>studievergunning</b> wordt rood, want studenten van buiten de EU mogen meestal alleen met een TWV werken. Staat er toch "arbeid vrij toegestaan" op, dan wordt het oranje: controleer het originele document.',
+    'De medewerker ziet in het formulier meteen een vriendelijke melding dat starten met zo\'n document niet mogelijk is, en kan het formulier gewoon versturen zodat HR contact opneemt.'
+  ] },
   { nummer: '0.35.3', datum: '30-10-2026', titel: 'Verblijfsdocument bij nationaliteit buiten de EU', punten: [
     'Kiest een nieuwe medewerker een nationaliteit van buiten de EU/EER/Zwitserland, dan vraagt het formulier om het <b>verblijfsdocument</b>: soort document, wat er bij "Arbeid" op staat, geldig tot, of het een studievergunning is, en een foto van de voor- en achterkant. Een buitenlands paspoort (de kopie-ID bij het contract) zegt niet of iemand mag werken.',
     'In de controle bij Klaar voor salaris zie je wat het betekent: <b>origineel controleren</b> (arbeid vrij toegestaan), <b>TWV nodig</b>, <b>mag niet werken</b>, <b>document ontbreekt of verloopt vóór de start</b>, <b>Oekraïne: melding bij UWV</b>, of een <b>student met meer dan 16 uur</b>. Rood houdt salaris tegen tot je akkoord geeft.',

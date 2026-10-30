@@ -104,6 +104,11 @@ I.maakPdf(I.valideer(goed, nu).schoon, { tijd: nu.toISOString() }).then(b => { a
   assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'vrij', geldigTot: '15-12-2026', document: true }), ['wav-bijna:oranje', 'wav-echt:oranje']);
   assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'vrij', geldigTot: '31-10-2026', document: true }, { datumIndienst: '01-11-2026' }), ['wav-verlopen:rood', 'wav-echt:oranje']);
   assert.deepStrictEqual(sig({ type: 'oekraine', arbeid: 'onbekend', geldigTot: '04-03-2028', document: true }), ['wav-uwv:oranje']);
-  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'twv', geldigTot: '01-06-2028', document: true, student: true }, { uren: '24' }), ['wav-twv:rood', 'wav-student:rood']);
+  // SLA vraagt geen TWV aan: TWV/niet toegestaan = geen akkoord mogelijk; student zonder 'arbeid vrij' = rood
+  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'twv', geldigTot: '01-06-2028', document: true, student: true }, { uren: '24' }), ['wav-twv:rood']);
+  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'onbekend', geldigTot: '01-06-2028', document: true, student: true }), ['wav-onbekend:rood', 'wav-student:rood']);
+  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'vrij', geldigTot: '01-06-2028', document: true, student: true }), ['wav-echt:oranje', 'wav-student:oranje']);
+  { const r = [{ rij: 1, naam: 'X Y', docUrl2: 'sb:z:indienst' }]; K.controleerMet(r, { 'sb:z:indienst': { naam: 'X Y', gegevens: { nationaliteit: 'IN', euer: false, datumIndienst: '01-11-2026', uren: '12', verblijf: { type: 'vergunning', arbeid: 'twv', geldigTot: '01-06-2028', document: true } } } }, [], {}, nu3);
+    assert.strictEqual(r[0].indienstControle.find(c => c.soort === 'wav-twv').geenAkkoord, true); }
   console.log('indienst verblijf tests OK');
 }

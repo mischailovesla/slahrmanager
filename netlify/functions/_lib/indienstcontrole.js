@@ -14,7 +14,9 @@ const dagenVerschil = (a, b) => Math.round(Math.abs(new Date(a + 'T12:00:00') - 
 function leeftijdOp(gebIso, nu) { const g = new Date(gebIso + 'T12:00:00'); let l = nu.getFullYear() - g.getFullYear(); if (nu.getMonth() < g.getMonth() || (nu.getMonth() === g.getMonth() && nu.getDate() < g.getDate())) l--; return l; }
 
 // v0.35.3: Wet arbeid vreemdelingen — wat het verblijfsdocument zegt over mogen werken
-const STUDENT_MAX_UREN = 16; // buiten juni–augustus; voor studenten van buiten de EU is daarnaast een TWV nodig
+// SLA vraagt geen tewerkstellingsvergunningen (TWV) aan (Mischa, 30-10-2026). Wie een TWV nodig heeft — ook studenten van buiten
+// de EU/EER — kan dus niet bij SLA in dienst. Die signalen krijgen geen ✓ Akkoord, alleen ↩ Retour (als het document verkeerd is ingevuld).
+const SLA_VRAAGT_TWV = false;
 function verblijfSignalen(g, p, nu) {
   const v = g.verblijf, nat = g.nationaliteitNaam || g.nationaliteit, RV = 'verblijf';
   if (!v || !v.document) { p('wav-document', 'rood', 'Verblijfsdocument ontbreekt', nat + ': zonder verblijfsdocument mag de medewerker niet beginnen (Wet arbeid vreemdelingen, boete tot ca. €8.000).', RV, 'Je nationaliteit valt buiten de EU. Upload een foto van de voor- en achterkant van je verblijfsdocument, zodat we kunnen controleren dat je in Nederland mag werken.'); return; }
@@ -23,11 +25,12 @@ function verblijfSignalen(g, p, nu) {
   else if (tot && start && tot < start) p('wav-verlopen', 'rood', 'Document verloopt vóór de startdatum', 'Geldig tot ' + v.geldigTot + ', start ' + g.datumIndienst + '.', RV, 'Je verblijfsdocument verloopt vóór je eerste werkdag. Upload een geldig document.');
   else if (tot && (new Date(tot + 'T12:00:00') - nu) / 864e5 <= 60) p('wav-bijna', 'oranje', 'Verblijfsdocument verloopt binnenkort', 'Geldig tot ' + v.geldigTot + '. Vraag tijdig een nieuw document.');
   if (v.type === 'oekraine') p('wav-uwv', 'oranje', 'Oekraïne: melding bij UWV', 'Geen TWV nodig, maar meld de medewerker vóór de start bij UWV (tijdelijke bescherming). Akkoord = melding gedaan en origineel document gezien.');
-  else if (v.arbeid === 'niet') p('wav-niet', 'rood', 'Volgens het document: arbeid niet toegestaan', 'De medewerker mag niet werken. Niet inroosteren; neem contact op met de medewerker.', RV, 'Op je verblijfsdocument staat dat werken niet is toegestaan. Klopt dat? Neem contact op met HR.');
-  else if (v.arbeid === 'twv') p('wav-twv', 'rood', 'Tewerkstellingsvergunning (TWV) nodig', 'Vraag de TWV aan bij UWV en wacht op toekenning vóór de eerste werkdag. Akkoord = TWV ontvangen (kopie in het dossier).');
+  else if (v.arbeid === 'niet') p('wav-niet', 'rood', 'Volgens het document: arbeid niet toegestaan', 'De medewerker mag niet werken. Niet inroosteren; neem contact op met de medewerker.', RV, 'Op je verblijfsdocument staat dat werken niet is toegestaan. Klopt dat? Controleer de achterkant en upload een duidelijke foto.', true);
+  else if (v.arbeid === 'twv') p('wav-twv', 'rood', 'TWV nodig: niet in dienst nemen', SLA_VRAAGT_TWV ? 'Vraag de TWV aan bij UWV vóór de eerste werkdag.' : 'Volgens het document mag deze medewerker alleen werken met een tewerkstellingsvergunning (TWV). SLA vraagt geen TWV aan: niet inroosteren en de medewerker laten weten dat starten niet mogelijk is. Klopt de aantekening niet? Stuur het formulier retour.', RV, 'Je hebt aangegeven dat op je verblijfsdocument staat dat je een tewerkstellingsvergunning (TWV) nodig hebt. Klopt dat? Controleer wat er op de achterkant bij "Arbeid" staat en upload een duidelijke foto van de achterkant.', !SLA_VRAAGT_TWV);
   else if (v.arbeid === 'onbekend' || !v.arbeid) p('wav-onbekend', 'rood', 'Aantekening arbeid onbekend', 'Kijk zelf op de achterkant van het document wat er bij "arbeid" staat. Akkoord = gecontroleerd: werken is toegestaan.');
   else p('wav-echt', 'oranje', 'Origineel verblijfsdocument controleren', '"Arbeid vrij toegestaan". Controleer vóór de eerste werkdag het originele document (foto, echtheidskenmerken, geldigheid). Akkoord = origineel gezien.');
-  if (v.student && Number(g.uren) > STUDENT_MAX_UREN) p('wav-student', 'rood', 'Student: max. ' + STUDENT_MAX_UREN + ' uur per week', 'Studenten van buiten de EU mogen buiten juni–augustus maximaal ' + STUDENT_MAX_UREN + ' uur per week werken, en alleen met een TWV. Formulier: ' + g.uren + ' u/week.');
+  // Studievergunning: werken mag dan alleen met een TWV (die SLA niet aanvraagt). Staat er toch 'arbeid vrij toegestaan' op, dan zelf de achterkant controleren.
+  if (v.student && v.arbeid !== 'twv' && v.arbeid !== 'niet') p('wav-student', v.arbeid === 'vrij' ? 'oranje' : 'rood', 'Studievergunning', v.arbeid === 'vrij' ? 'Medewerker heeft een studievergunning maar vulde "arbeid vrij toegestaan" in. Controleer de achterkant van het originele document: meestal is voor studenten een TWV nodig, en die vraagt SLA niet aan. Akkoord = gecontroleerd, arbeid is vrij toegestaan.' : 'Met een studievergunning mag de medewerker alleen werken met een TWV. SLA vraagt geen TWV aan: niet in dienst nemen.', RV, 'Je hebt aangegeven dat je een verblijfsvergunning voor studie hebt. Upload een duidelijke foto van de achterkant van je verblijfspas, zodat we kunnen zien wat er bij "Arbeid" staat.', v.arbeid !== 'vrij');
 }
 function controleerMet(rijen, formulieren, med, akkoord, nu) {
   nu = nu || new Date(); akkoord = akkoord || {};
@@ -37,7 +40,7 @@ function controleerMet(rijen, formulieren, med, akkoord, nu) {
   for (const ref of Object.keys(formulieren || {})) { const f = formulieren[ref]; if (f.gegevens && f.gegevens.bsnHash) (bsnBij[f.gegevens.bsnHash] = bsnBij[f.gegevens.bsnHash] || new Set()).add(normNaam(f.naam)); }
   for (const r of rijen || []) {
     if (!r.docUrl2 || r.salaris) continue;
-    const s = [], p = (soort, ernst, label, tekst, veld, reden) => s.push({ soort, ernst, label, tekst, veld: veld || '', reden: reden || '' });
+    const s = [], p = (soort, ernst, label, tekst, veld, reden, geenAkkoord) => s.push({ soort, ernst, label, tekst, veld: veld || '', reden: reden || '', geenAkkoord: !!geenAkkoord });
     const f = formulieren[r.docUrl2], g = f && f.gegevens;
     if (!g) {
       p('handmatig', 'blauw', 'Bestand, geen online formulier', 'Ingeleverd als bestand (bijv. Excel of foto). De automatische controle kan dit niet lezen: controleer zelf vestiging, startdatum en uren.', 'vestiging', 'We hebben je formulier als bestand ontvangen. Wil je het online formulier invullen? Dan weten we zeker dat vestiging, startdatum en uren goed in ons systeem komen.');
@@ -90,6 +93,7 @@ async function controleer(rijen) {
 }
 const blokkeert = r => (r.indienstControle || []).filter(c => c.ernst !== 'blauw');
 async function geefAkkoord(r, soort, door) {
+  if (!SLA_VRAAGT_TWV && ['wav-twv', 'wav-niet'].includes(soort)) throw new Error('Hier kun je geen akkoord op geven: met dit document mag de medewerker bij SLA niet werken (SLA vraagt geen TWV aan). Klopt de aantekening niet? Stuur het formulier retour.');
   const I = require('./instellingen'); I.vergeet(AKKOORD_SLEUTEL);
   const lijst = Object.assign({}, (await I.lees(AKKOORD_SLEUTEL, {})) || {});
   lijst[r.docUrl2] = [...new Set((lijst[r.docUrl2] || []).concat(soort))];

@@ -646,7 +646,7 @@
     var k = [];
     (r.indienstControle || []).forEach(function (c) {
       if (c.veld && c.reden) k.push('<button class="btn bd bsm" data-ir="retour" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" data-ir-reden="' + esc(c.reden) + '" data-ir-veld="' + esc(c.veld) + '">↩ Retour: ' + esc(c.label.toLowerCase()) + '</button>');
-      if (c.ernst !== 'blauw') k.push('<button class="btn bd bsm" data-ic-akkoord="' + esc(c.soort) + '" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="' + esc(c.tekst) + '">✓ Akkoord: ' + esc(c.label.toLowerCase()) + '</button>');
+      if (c.ernst !== 'blauw' && !c.geenAkkoord) k.push('<button class="btn bd bsm" data-ic-akkoord="' + esc(c.soort) + '" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="' + esc(c.tekst) + '">✓ Akkoord: ' + esc(c.label.toLowerCase()) + '</button>');
     });
     return k;
   }
