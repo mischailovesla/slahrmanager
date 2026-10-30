@@ -13,6 +13,22 @@ const iso = nlDatum => { const m = String(nlDatum || '').match(/^(\d{2})-(\d{2})
 const dagenVerschil = (a, b) => Math.round(Math.abs(new Date(a + 'T12:00:00') - new Date(b + 'T12:00:00')) / 864e5);
 function leeftijdOp(gebIso, nu) { const g = new Date(gebIso + 'T12:00:00'); let l = nu.getFullYear() - g.getFullYear(); if (nu.getMonth() < g.getMonth() || (nu.getMonth() === g.getMonth() && nu.getDate() < g.getDate())) l--; return l; }
 
+// v0.35.3: Wet arbeid vreemdelingen — wat het verblijfsdocument zegt over mogen werken
+const STUDENT_MAX_UREN = 16; // buiten juni–augustus; voor studenten van buiten de EU is daarnaast een TWV nodig
+function verblijfSignalen(g, p, nu) {
+  const v = g.verblijf, nat = g.nationaliteitNaam || g.nationaliteit, RV = 'verblijf';
+  if (!v || !v.document) { p('wav-document', 'rood', 'Verblijfsdocument ontbreekt', nat + ': zonder verblijfsdocument mag de medewerker niet beginnen (Wet arbeid vreemdelingen, boete tot ca. €8.000).', RV, 'Je nationaliteit valt buiten de EU. Upload een foto van de voor- en achterkant van je verblijfsdocument, zodat we kunnen controleren dat je in Nederland mag werken.'); return; }
+  const tot = iso(v.geldigTot), start = iso(g.datumIndienst), vandaag = nu.toLocaleDateString('sv-SE');
+  if (tot && tot < vandaag) p('wav-verlopen', 'rood', 'Verblijfsdocument verlopen', 'Geldig tot ' + v.geldigTot + '. Vraag een geldig document (of het bewijs van verlenging bij de IND).', RV, 'Je verblijfsdocument is verlopen. Upload een geldig document of het bewijs dat je verlenging hebt aangevraagd.');
+  else if (tot && start && tot < start) p('wav-verlopen', 'rood', 'Document verloopt vóór de startdatum', 'Geldig tot ' + v.geldigTot + ', start ' + g.datumIndienst + '.', RV, 'Je verblijfsdocument verloopt vóór je eerste werkdag. Upload een geldig document.');
+  else if (tot && (new Date(tot + 'T12:00:00') - nu) / 864e5 <= 60) p('wav-bijna', 'oranje', 'Verblijfsdocument verloopt binnenkort', 'Geldig tot ' + v.geldigTot + '. Vraag tijdig een nieuw document.');
+  if (v.type === 'oekraine') p('wav-uwv', 'oranje', 'Oekraïne: melding bij UWV', 'Geen TWV nodig, maar meld de medewerker vóór de start bij UWV (tijdelijke bescherming). Akkoord = melding gedaan en origineel document gezien.');
+  else if (v.arbeid === 'niet') p('wav-niet', 'rood', 'Volgens het document: arbeid niet toegestaan', 'De medewerker mag niet werken. Niet inroosteren; neem contact op met de medewerker.', RV, 'Op je verblijfsdocument staat dat werken niet is toegestaan. Klopt dat? Neem contact op met HR.');
+  else if (v.arbeid === 'twv') p('wav-twv', 'rood', 'Tewerkstellingsvergunning (TWV) nodig', 'Vraag de TWV aan bij UWV en wacht op toekenning vóór de eerste werkdag. Akkoord = TWV ontvangen (kopie in het dossier).');
+  else if (v.arbeid === 'onbekend' || !v.arbeid) p('wav-onbekend', 'rood', 'Aantekening arbeid onbekend', 'Kijk zelf op de achterkant van het document wat er bij "arbeid" staat. Akkoord = gecontroleerd: werken is toegestaan.');
+  else p('wav-echt', 'oranje', 'Origineel verblijfsdocument controleren', '"Arbeid vrij toegestaan". Controleer vóór de eerste werkdag het originele document (foto, echtheidskenmerken, geldigheid). Akkoord = origineel gezien.');
+  if (v.student && Number(g.uren) > STUDENT_MAX_UREN) p('wav-student', 'rood', 'Student: max. ' + STUDENT_MAX_UREN + ' uur per week', 'Studenten van buiten de EU mogen buiten juni–augustus maximaal ' + STUDENT_MAX_UREN + ' uur per week werken, en alleen met een TWV. Formulier: ' + g.uren + ' u/week.');
+}
 function controleerMet(rijen, formulieren, med, akkoord, nu) {
   nu = nu || new Date(); akkoord = akkoord || {};
   const perEmail = {}, perNaam = {};
@@ -45,8 +61,7 @@ function controleerMet(rijen, formulieren, med, akkoord, nu) {
       } else p('niet-in-shiftbase', 'blauw', 'Nog niet in Shiftbase', 'Geen medewerker met deze naam of e-mail in Shiftbase: vestiging, startdatum en uren konden niet worden vergeleken.');
       const fGeb = iso(g.geboortedatum);
       if (fGeb) { const l = leeftijdOp(fGeb, nu); if (l < 18) p('jeugd', 'blauw', 'Jonger dan 18 (' + l + ' jaar)', 'Minimumjeugdloon en de Arbeidstijdenwet voor jongeren gelden (werktijden, geen nachtwerk). Controleer het rooster.'); }
-      if (g.nationaliteit && g.euer === false)
-        p('wav', 'rood', 'Nationaliteit buiten EU/EER', (g.nationaliteitNaam || g.nationaliteit) + ': controleer vóór de eerste werkdag het verblijfsdocument en of werken is toegestaan (Wet arbeid vreemdelingen). Bewaar een kopie in het dossier.');
+      if (g.nationaliteit && g.euer === false) verblijfSignalen(g, p, nu);
       if (g.bsnHash && bsnBij[g.bsnHash] && [...bsnBij[g.bsnHash]].some(n => n !== normNaam(r.naam)))
         p('bsn-dubbel', 'rood', 'BSN ook bekend bij een andere medewerker', 'Hetzelfde BSN staat op het formulier van: ' + [...bsnBij[g.bsnHash]].filter(n => n !== normNaam(r.naam)).join(', ') + '. Controleer het ID-bewijs.', 'bsn', 'Het BSN dat je hebt ingevuld lijkt niet te kloppen. Controleer het met je paspoort of ID-kaart.');
       if (g.ibanLand && g.ibanLand !== 'NL') p('iban-buitenland', 'blauw', 'Buitenlands IBAN (' + g.ibanLand + ')', 'Kan, maar geef het door aan de salarisadministratie (mogelijk BIC nodig).');

@@ -21,19 +21,28 @@ exports.handler = async (event) => {
       try { vorig = await I.gegevensVan(tok.n, ''); } catch (e) { vorig = null; }
       const pre = await I.voorinvullen(tok.n);
       if (vorig) for (const [k] of I.VELDEN.concat([['straat'], ['huisnummer'], ['toevoeging'], ['nationaliteitAnders']])) if (vorig[k] && !['bsn', 'iban'].includes(k)) pre[k] = /^\d{2}-\d{2}-\d{4}$/.test(vorig[k]) && ['geboortedatum', 'datumIndienst'].includes(k) ? vorig[k].split('-').reverse().join('-') : vorig[k];
-      return json(200, { success: true, naam: tok.n, winkels: I.WINKELS.map(w => ({ code: w.code, naam: w.naam })), nationaliteiten: I.NAT.NATIONALITEITEN.map(n => ({ code: n.code, nl: n.nl, en: n.en })), voorinvullen: pre, retour });
+      return json(200, { success: true, naam: tok.n, winkels: I.WINKELS.map(w => ({ code: w.code, naam: w.naam })), nationaliteiten: I.NAT.NATIONALITEITEN.map(n => ({ code: n.code, nl: n.nl, en: n.en, euer: n.euer })), voorinvullen: pre, retour, vorigVerblijf: !!(await I.vorigVerblijf(tok.n).catch(() => null)) });
     }
     // v0.35.2: adres opzoeken bij postcode + huisnummer (PDOK) voor het automatisch invullen van straat en woonplaats
     if (p.stap === 'adres') { const a = await I.zoekAdres(p.postcode, p.huisnummer); return json(200, { success: true, adres: a || null, bereikbaar: a !== undefined }); }
     // v0.35.2: welke velden fout gingen (alleen de veldnamen, nooit de waarden) — om de uitleg te verbeteren
     if (p.stap === 'fouten') { await I.logFouten(tok.n, p.velden, 'browser'); return json(200, { success: true }); }
+    // v0.35.3: foto van het verblijfsdocument (alleen voor nationaliteiten buiten EU/EER)
+    if (p.stap === 'upload-start') return json(200, Object.assign({ success: true }, await I.startUploadVerblijf(tok, p.key, { naam: p.naam, mime: p.mime, bytes: p.bytes })));
     if (p.stap === 'verstuur') {
       const v = I.valideer(p.gegevens);
       if (v.ok) Object.assign(v.fouten, await I.controleerAdres(v.schoon));
       const sugg = v.fouten._suggestie; delete v.fouten._suggestie;
       if (Object.keys(v.fouten).length) { await I.logFouten(tok.n, Object.keys(v.fouten), 'server'); return json(200, { success: false, fouten: v.fouten, suggestie: sugg ? { woonplaats: sugg } : null, bericht: 'Controleer de gemarkeerde velden.' }); }
+      let verblijfBestanden = [];
+      if (I.heeftVerblijfNodig(v.schoon)) {
+        verblijfBestanden = await I.controleerVerblijfBestanden(tok, p.verblijfBestanden);
+        const ret = await I.retourVoor(tok.n).catch(() => null), nieuwNodig = !!(ret && (ret.velden || []).includes('verblijf')); // HR vroeg om een nieuwe foto
+        if (!nieuwNodig && !verblijfBestanden.some(b => b.key === 'verblijf')) { const oud = await I.vorigVerblijf(tok.n).catch(() => null); if (oud) verblijfBestanden = oud; }
+        if (!verblijfBestanden.some(b => b.key === 'verblijf')) { await I.logFouten(tok.n, ['verblijfVoor'], 'server'); return json(200, { success: false, fouten: { verblijfVoor: 'leeg' }, bericht: 'Upload een foto van je verblijfsdocument.' }); }
+      }
       const ip = (event.headers || {})['x-nf-client-connection-ip'] || (event.headers || {})['client-ip'] || null;
-      const r = await I.opslaan(tok, v.schoon, { ip });
+      const r = await I.opslaan(tok, v.schoon, { ip, verblijfBestanden });
       // logboek zonder BSN/IBAN
       await logActie({ door: 'indienstformulier:' + (v.schoon.email || tok.n), actie: 'upload', bron: 'loon', veld: 'indienst', naam: tok.n, nieuw: r.id, details: 'Webformulier ingevuld · ' + (r.winkel ? r.winkel.naam : v.schoon.vestiging) + ' · in dienst ' + v.schoon.datumIndienst + ' · ' + v.schoon.uren + ' u/week' });
       return json(200, { success: true });

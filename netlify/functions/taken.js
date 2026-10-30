@@ -161,6 +161,28 @@ async function uitMtoActies() {
   return t;
 }
 
+// v0.35.3: verblijfsdocumenten (niet-EU/EER) die binnen 60 dagen verlopen, van medewerkers die nog in dienst zijn
+async function uitVerblijf() {
+  const t = [];
+  try {
+    const [form, med] = await Promise.all([require('./_lib/indienstcontrole').laadFormulieren(), require('./_lib/shiftbase').getMedewerkers(false)]);
+    const { normNaam } = require('./_lib/util'), actief = {}; (med || []).forEach(m => { actief[normNaam(m.naam)] = m; });
+    const gezien = new Set(), I = require('./_lib/indienst');
+    for (const ref of Object.keys(form)) { // nieuwste eerst
+      const f = form[ref], n = normNaam(f.naam); if (gezien.has(n)) continue; gezien.add(n);
+      const v = f.gegevens && f.gegevens.verblijf, m = actief[n]; if (!v || !v.geldigTot || !m) continue;
+      const tot = isoVan(v.geldigTot), over = Math.round((new Date(tot + 'T12:00:00') - new Date(overDagen(0) + 'T12:00:00')) / 864e5);
+      if (over > 60) continue;
+      t.push({ bron: 'verblijf', urgentie: over <= 14 ? 'rood' : 'oranje', datum: tot, sleutel: 'verblijf|' + n + '|' + tot, afhandelbaar: true,
+        afhandelOpties: [{ label: 'Nieuw document ontvangen en gecontroleerd', dagen: 365, opmerking: 'nieuw verblijfsdocument' }, { label: 'Verlenging aangevraagd (bewijs IND gezien)', dagen: 30, opmerking: 'verlenging aangevraagd' }],
+        titel: 'Verblijfsdocument ' + (over < 0 ? 'VERLOPEN sinds ' + v.geldigTot + ' — medewerker mag niet werken zonder geldig document' : 'verloopt ' + (over === 0 ? 'vandaag' : 'over ' + over + ' dagen') + ' — nieuw document opvragen'),
+        sub: f.naam + ' · ' + (m.winkelNaam || '-') + ' · ' + (f.gegevens.nationaliteitNaam || '') + ' · ' + (I.VERBLIJF_TYPE[v.type] || v.type) + ' · geldig tot ' + v.geldigTot,
+        naam: f.naam, email: m.email || '', winkel: m.winkelNaam || '', actie: { soort: 'dossier', label: 'Dossier' } });
+    }
+  } catch (e) { /* geen formulieren of Shiftbase niet bereikbaar */ }
+  return t;
+}
+
 // Fase 3b: vervolggesprekken die (bijna) aan de beurt zijn
 async function uitGesprekken() {
   const t = [];
@@ -287,6 +309,7 @@ exports.handler = beveiligd('taken', async (event, g) => {
   taken.push(...await uitCheckins());
   taken.push(...await uitGesprekken());
   taken.push(...await uitMtoActies());
+  taken.push(...await uitVerblijf());
   taken.push(...await uitAcademy());
   // afgehandelde items verbergen
   let verborgen = 0;

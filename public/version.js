@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.35.3', datum: '30-10-2026', titel: 'Verblijfsdocument bij nationaliteit buiten de EU', punten: [
+    'Kiest een nieuwe medewerker een nationaliteit van buiten de EU/EER/Zwitserland, dan vraagt het formulier om het <b>verblijfsdocument</b>: soort document, wat er bij "Arbeid" op staat, geldig tot, of het een studievergunning is, en een foto van de voor- en achterkant. Een buitenlands paspoort (de kopie-ID bij het contract) zegt niet of iemand mag werken.',
+    'In de controle bij Klaar voor salaris zie je wat het betekent: <b>origineel controleren</b> (arbeid vrij toegestaan), <b>TWV nodig</b>, <b>mag niet werken</b>, <b>document ontbreekt of verloopt vóór de start</b>, <b>Oekraïne: melding bij UWV</b>, of een <b>student met meer dan 16 uur</b>. Rood houdt salaris tegen tot je akkoord geeft.',
+    'In het dossier staan de gegevens en de foto\'s. Verloopt een document binnen 60 dagen en is de medewerker nog in dienst, dan komt er een taak in <b>Te doen</b> (Mensen &amp; verzuim). De foto\'s vallen onder de bestaande bewaartermijn van geüploade documenten.'
+  ] },
   { nummer: '0.35.2', datum: '30-10-2026', titel: 'Indiensttredingsformulier: logische controles', punten: [
     '<b>Voor de medewerker:</b> het formulier controleert nu of antwoorden logisch zijn: geboortedatum niet in de toekomst, startdatum niet vóór de 13e verjaardag, geen cijfers in naam of woonplaats, en voorletters die bij de voornaam passen (met een roepnaam kan de medewerker aanvinken dat het klopt).',
     'Bij <b>postcode + huisnummer</b> vult het formulier straat en woonplaats automatisch in via het Kadaster. Een postcode die niet bestaat of niet bij de woonplaats hoort, komt er niet meer door. Nationaliteit is een keuzelijst.',

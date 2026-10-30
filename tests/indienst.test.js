@@ -79,9 +79,31 @@ I.maakPdf(I.valideer(goed, nu).schoon, { tijd: nu.toISOString() }).then(b => { a
   const soorten = r => (r.indienstControle || []).map(c => c.soort).sort();
   assert.deepStrictEqual(soorten(rijen[0]), ['bsn-dubbel', 'startdatum', 'vestiging']);          // uren: HR gaf akkoord; geboortedatum klopt
   assert.ok(rijen[0].indienstControle.find(c => c.soort === 'vestiging').reden.includes('Ceintuurbaan'));
-  assert.deepStrictEqual(soorten(rijen[1]), ['jeugd', 'niet-in-shiftbase', 'wav']);
+  assert.deepStrictEqual(soorten(rijen[1]), ['jeugd', 'niet-in-shiftbase', 'wav-document']);
   assert.deepStrictEqual(soorten(rijen[2]), ['handmatig']);
   assert.strictEqual(rijen[3].indienstControle, undefined);                                        // al naar salaris: niets
-  assert.deepStrictEqual(K.blokkeert(rijen[1]).map(c => c.soort), ['wav']); assert.strictEqual(K.blokkeert(rijen[2]).length, 0);
+  assert.deepStrictEqual(K.blokkeert(rijen[1]).map(c => c.soort), ['wav-document']); assert.strictEqual(K.blokkeert(rijen[2]).length, 0);
   console.log('indienst controle tests OK');
+}
+
+// v0.35.3: verblijfsdocument
+{
+  const nu3 = new Date(2026, 9, 30, 12), K = require('../netlify/functions/_lib/indienstcontrole.js');
+  const nlr = I.valideer(goed, nu3); assert.strictEqual(nlr.schoon.verblijf, null);                         // NL: geen verblijfsdocument
+  let v = I.valideer(Object.assign({}, goed, { nationaliteit: 'IN' }), nu3);
+  assert.deepStrictEqual(Object.keys(v.fouten).sort(), ['verblijfArbeid', 'verblijfGeldig', 'verblijfType']);
+  v = I.valideer(Object.assign({}, goed, { nationaliteit: 'IN', verblijfType: 'vergunning', verblijfArbeid: 'vrij', verblijfGeldig: '2026-01-01' }), nu3);
+  assert.strictEqual(v.fouten.verblijfGeldig, 'verlopen');
+  v = I.valideer(Object.assign({}, goed, { nationaliteit: 'UA', verblijfGeldig: '2028-03-04' }), nu3);
+  assert.ok(v.ok, JSON.stringify(v.fouten)); assert.strictEqual(v.schoon.verblijf.type, 'oekraine');       // UA: type vanzelf, geen arbeid-vraag
+  const sig = (verblijf, extra) => { const r = [{ rij: 1, naam: 'X Y', docUrl2: 'sb:z:indienst' }]; K.controleerMet(r, { 'sb:z:indienst': { naam: 'X Y', gegevens: Object.assign({ nationaliteit: 'IN', euer: false, datumIndienst: '01-11-2026', uren: '12', verblijf }, extra || {}) } }, [], {}, nu3); return r[0].indienstControle.filter(c => /^wav/.test(c.soort)).map(c => c.soort + ':' + c.ernst); };
+  assert.deepStrictEqual(sig(null), ['wav-document:rood']);
+  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'vrij', geldigTot: '01-06-2028', document: true }), ['wav-echt:oranje']);
+  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'twv', geldigTot: '01-06-2028', document: true }), ['wav-twv:rood']);
+  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'niet', geldigTot: '01-06-2028', document: true }), ['wav-niet:rood']);
+  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'vrij', geldigTot: '15-12-2026', document: true }), ['wav-bijna:oranje', 'wav-echt:oranje']);
+  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'vrij', geldigTot: '31-10-2026', document: true }, { datumIndienst: '01-11-2026' }), ['wav-verlopen:rood', 'wav-echt:oranje']);
+  assert.deepStrictEqual(sig({ type: 'oekraine', arbeid: 'onbekend', geldigTot: '04-03-2028', document: true }), ['wav-uwv:oranje']);
+  assert.deepStrictEqual(sig({ type: 'vergunning', arbeid: 'twv', geldigTot: '01-06-2028', document: true, student: true }, { uren: '24' }), ['wav-twv:rood', 'wav-student:rood']);
+  console.log('indienst verblijf tests OK');
 }

@@ -92,6 +92,7 @@ function valideer(inv, nu) {
     else s.datumIndienst = nl(d);
   }
   if (s.uren !== '') { const u = Number(String(s.uren).replace(',', '.')); if (!isFinite(u) || u < 0 || u > 48) f.uren = 'ongeldig'; else s.uren = String(u); }
+  if (!f.nationaliteit) valideerVerblijf(inv, s, f, nu); // v0.35.3
   return { ok: !Object.keys(f).length, fouten: f, schoon: s, winkel: w || null };
 }
 // v0.35.2: postcode ↔ huisnummer ↔ woonplaats via PDOK Locatieserver (Kadaster, gratis, geen sleutel).
@@ -129,6 +130,54 @@ async function controleerAdres(s, zoek) {
   if (a.woonplaats && ascii(a.woonplaats).toLowerCase().replace(/[^a-z]/g, '') === ascii(s.woonplaats).toLowerCase().replace(/[^a-z]/g, '')) s.woonplaats = a.woonplaats; // alleen spelling rechtzetten, 'Den Haag' blijft 'Den Haag'
   return {};
 }
+// ---- v0.35.3: verblijfsdocument voor nationaliteiten buiten EU/EER/Zwitserland (Wet arbeid vreemdelingen) ----
+// Kopie-ID wordt al bij het contract gemaakt; een buitenlands paspoort zegt niets over of iemand mag werken.
+// Daarom vragen we bij niet-EU/EER: soort document, wat er bij 'arbeid' op staat, geldig tot, studie, en een foto (voor + achter).
+const VERBLIJF_TYPE = { vergunning: 'Verblijfsvergunning / verblijfsdocument', oekraine: 'Oekraïne: bewijs tijdelijke bescherming', anders: 'Ander document (bijv. visum, sticker)' };
+const VERBLIJF_ARBEID = { vrij: 'Arbeid vrij toegestaan, TWV niet vereist', twv: 'Arbeid toegestaan mits TWV / TWV vereist', niet: 'Arbeid niet toegestaan', onbekend: 'Staat er niet op / weet ik niet' };
+const VERBLIJF_MIME = { 'application/pdf': '.pdf', 'image/jpeg': '.jpg', 'image/png': '.png', 'image/heic': '.heic', 'image/heif': '.heif', 'image/webp': '.webp' };
+const VERBLIJF_KEYS = { verblijf: 'Verblijfsdocument (voorkant)', verblijf2: 'Verblijfsdocument (achterkant)' };
+const heeftVerblijfNodig = s => { const n = NAT.PER_CODE[s.nationaliteit]; return !!s.nationaliteit && !(n && n.euer); };
+function valideerVerblijf(inv, s, f, nu) {
+  inv = inv || {}; nu = nu || new Date();
+  if (!heeftVerblijfNodig(s)) { s.verblijf = null; return; }
+  const v = { type: tekst(inv.verblijfType, 20) || (s.nationaliteit === 'UA' ? 'oekraine' : ''), arbeid: tekst(inv.verblijfArbeid, 20), geldigTot: '', student: inv.verblijfStudent === true || inv.verblijfStudent === 'ja' };
+  if (!VERBLIJF_TYPE[v.type]) f.verblijfType = v.type ? 'ongeldig' : 'leeg';
+  if (v.type === 'oekraine') v.arbeid = v.arbeid || 'onbekend';
+  else if (!VERBLIJF_ARBEID[v.arbeid]) f.verblijfArbeid = v.arbeid ? 'ongeldig' : 'leeg';
+  const d = datumOk(inv.verblijfGeldig);
+  if (!inv.verblijfGeldig) f.verblijfGeldig = 'leeg'; else if (!d) f.verblijfGeldig = 'ongeldig'; else if (d < nu) f.verblijfGeldig = 'verlopen'; else v.geldigTot = nl(d);
+  s.verblijf = v;
+}
+// Getekende upload-URL voor de foto's (zelfde afgeschermde bucket als de andere HR-documenten)
+async function startUploadVerblijf(tok, key, b) {
+  if (!VERBLIJF_KEYS[key]) throw new Error('Onbekend bestand.');
+  if (!VERBLIJF_MIME[b.mime]) throw new Error('Alleen een foto (JPG/PNG/HEIC) of PDF.');
+  if (!(b.bytes > 0) || b.bytes > 15 * 1024 * 1024) throw new Error('Bestand is te groot (max. 15 MB).');
+  const U = require('./uploads'), pad = 'loon/' + slug(tok.n) + '/' + Date.now() + '_' + key + '_' + String(b.naam || 'document').replace(/[^\w.\-]+/g, '_').slice(0, 60);
+  const { data, error } = await require('./auth').admin().storage.from(U.BUCKET).createSignedUploadUrl(pad);
+  if (error) throw new Error('Opslag: ' + error.message);
+  return { pad, token: data.token, bucket: U.BUCKET };
+}
+// Na de upload: bestaat het object echt en hoort het bij deze medewerker?
+async function controleerVerblijfBestanden(tok, lijst) {
+  const U = require('./uploads'), db = require('./auth').admin(), uit = [];
+  for (const b of lijst || []) {
+    if (!VERBLIJF_KEYS[b.key]) continue;
+    const pad = String(b.pad || ''); if (pad.indexOf('loon/' + slug(tok.n) + '/') !== 0 || pad.indexOf('_' + b.key + '_') < 0) throw new Error('Ongeldig bestandspad.');
+    const map = pad.substring(0, pad.lastIndexOf('/')), naam = pad.substring(pad.lastIndexOf('/') + 1);
+    const { data, error } = await db.storage.from(U.BUCKET).list(map, { search: naam });
+    if (error || !data || !data.some(o => o.name === naam)) throw new Error('Upload van het verblijfsdocument niet gevonden. Probeer het opnieuw.');
+    uit.push({ key: b.key, label: VERBLIJF_KEYS[b.key], pad, naam_orig: String(b.naam_orig || '').slice(0, 120), bytes: Number(b.bytes) || 0, mime: VERBLIJF_MIME[b.mime] ? b.mime : 'image/jpeg' });
+  }
+  return uit;
+}
+// Vorig verblijfsdocument van deze medewerker (bij een retour hoeft het niet opnieuw)
+async function vorigVerblijf(naam) {
+  const { data } = await require('./auth').admin().from('hr_uploads').select('id,naam,bestanden,created_at').eq('soort', 'loon').order('created_at', { ascending: false }).limit(500);
+  for (const u of data || []) { if (normNaam(u.naam) !== normNaam(naam)) continue; const v = (u.bestanden || []).filter(b => VERBLIJF_KEYS[b.key]); if (v.some(b => b.key === 'verblijf')) return v; }
+  return null;
+}
 // BSN als onomkeerbare vingerafdruk (HMAC met een geheime sleutel op de server) — alleen om dubbele BSN's te vinden
 function bsnHash(bsn) {
   const basis = process.env.UPLOAD_SECRET || process.env.SUPABASE_SERVICE_KEY; if (!basis || !bsn) return '';
@@ -164,6 +213,13 @@ async function maakPdf(s, meta) {
     regels.forEach((r, i) => p.drawText(r, { x: kol, y: y - 15 - i * 13, size: 10, font, color: donker }));
     y -= h;
   }
+  if (s.verblijf) { // v0.35.3
+    const vr = [['Verblijfsdocument', VERBLIJF_TYPE[s.verblijf.type] || s.verblijf.type], ['Aantekening arbeid', s.verblijf.type === 'oekraine' ? 'Tijdelijke bescherming (melding UWV)' : (VERBLIJF_ARBEID[s.verblijf.arbeid] || s.verblijf.arbeid)], ['Geldig tot', s.verblijf.geldigTot], ['Studeert in Nederland', s.verblijf.student ? 'Ja' : 'Nee']];
+    for (const [label, waarde] of vr) {
+      p.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.6, color: lijn });
+      p.drawText(veilig(label), { x: 54, y: y - 15, size: 10, font: vet, color: donker }); p.drawText(veilig(waarde || '-'), { x: kol, y: y - 15, size: 10, font, color: donker }); y -= 21;
+    }
+  }
   p.drawLine({ start: { x: 50, y }, end: { x: 545, y }, thickness: 0.6, color: lijn });
   const stempel = (meta && meta.tijd ? new Date(meta.tijd) : new Date()).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   p.drawText(veilig('Digitaal ingevuld en verstuurd door de medewerker via de HR-omgeving van SLA op ' + stempel + '.'), { x: 50, y: y - 24, size: 8.5, font, color: grijs });
@@ -180,6 +236,7 @@ function zonderGevoelig(s, winkel) {
   // v0.35.2: voor de controles, zonder het BSN/IBAN zelf
   const n = NAT.PER_CODE[s.nationaliteit]; o.nationaliteitNaam = weergave('nationaliteit', s); o.euer = n ? n.euer : false;
   o.ibanLand = String(s.iban || '').slice(0, 2); o.bsnHash = bsnHash(s.bsn);
+  o.verblijf = s.verblijf || null; // soort, arbeid, geldig tot, studie (geen documentnummer)
   return o;
 }
 async function opslaan(tok, s, meta) {
@@ -191,7 +248,9 @@ async function opslaan(tok, s, meta) {
   const { error: e1 } = await db.storage.from(U.BUCKET).upload(pad, Buffer.from(bytes), { contentType: 'application/pdf', upsert: false });
   if (e1) throw new Error('Opslaan mislukt: ' + e1.message);
   const bestand = { key: 'indienst', label: 'Indiensttredingsformulier', pad, naam_orig: bestandsnaam, bytes: bytes.length, mime: 'application/pdf', bron: 'webformulier', gegevens: zonderGevoelig(s, winkel) };
-  const { data, error } = await db.from('hr_uploads').insert({ soort: 'loon', naam: tok.n, email: s.email || null, bestanden: [bestand], ip: (meta && meta.ip) || null }).select('id').single();
+  const extra = (meta && meta.verblijfBestanden) || [];
+  if (s.verblijf) s.verblijf.document = extra.some(b => b.key === 'verblijf'), bestand.gegevens.verblijf = s.verblijf;
+  const { data, error } = await db.from('hr_uploads').insert({ soort: 'loon', naam: tok.n, email: s.email || null, bestanden: [bestand].concat(extra), ip: (meta && meta.ip) || null }).select('id').single();
   if (error) throw new Error('hr_uploads: ' + error.message);
   try { if (await retourVoor(tok.n)) await zetRetour(tok.n, null, 'medewerker (nieuw formulier)'); } catch (e) { /* vervalt ook vanzelf via ref */ }
   return { id: data.id, ref: 'sb:' + data.id + ':indienst', bestandsnaam, winkel };
@@ -201,7 +260,7 @@ async function gegevensVan(naam, email) {
   const { data } = await db.from('hr_uploads').select('id,naam,email,bestanden,created_at').eq('soort', 'loon').order('created_at', { ascending: false }).limit(500);
   for (const u of data || []) {
     if (!((em && String(u.email || '').toLowerCase() === em) || (nn && normNaam(u.naam) === nn))) continue;
-    const b = (u.bestanden || []).find(x => x.key === 'indienst' && x.gegevens); if (b) return Object.assign({ ref: 'sb:' + u.id + ':indienst', ingevuld: u.created_at }, b.gegevens);
+    const b = (u.bestanden || []).find(x => x.key === 'indienst' && x.gegevens); if (b) return Object.assign({ ref: 'sb:' + u.id + ':indienst', ingevuld: u.created_at, verblijfRefs: (u.bestanden || []).filter(x => VERBLIJF_KEYS[x.key]).map(x => ({ ref: 'sb:' + u.id + ':' + x.key, label: x.key === 'verblijf' ? 'Voorkant' : 'Achterkant' })) }, b.gegevens);
   }
   return null;
 }
@@ -234,6 +293,7 @@ const RETOUR_VELDEN = {
   functie: { nl: 'Functie', en: 'Job title', velden: ['functie'] },
   naam: { nl: 'Naam / voorletters', en: 'Name / initials', velden: ['voornaam', 'voorletters', 'tussenvoegsel', 'achternaam'] },
   geboortedatum: { nl: 'Geboortedatum', en: 'Date of birth', velden: ['geboortedatum'] },
+  verblijf: { nl: 'Verblijfsdocument', en: 'Residence document', velden: ['verblijfType', 'verblijfArbeid', 'verblijfGeldig', 'verblijfVoor'] },
   adres: { nl: 'Adres', en: 'Address', velden: ['postcode', 'huisnummer', 'toevoeging', 'straat', 'woonplaats'] },
   contact: { nl: 'Telefoon / e-mail', en: 'Phone / e-mail', velden: ['mobiel', 'email'] },
   bsn: { nl: 'BSN', en: 'BSN', velden: ['bsn'] },
@@ -308,5 +368,5 @@ async function foutStatistiek(dagen) {
   for (const k of Object.keys(mensen)) per[k] = mensen[k].size; // aantal medewerkers dat op dit veld vastliep
   return { dagen: dagen || 30, ingevuld: new Set((ok.data || []).map(x => x.naam)).size, retour: (ret.data || []).length, perVeld: Object.entries(per).sort((a, b) => b[1] - a[1]).slice(0, 6) };
 }
-module.exports = { logFouten, foutStatistiek, zoekAdres, controleerAdres, bsnHash, NAT, WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link,
+module.exports = { VERBLIJF_TYPE, VERBLIJF_ARBEID, heeftVerblijfNodig, startUploadVerblijf, controleerVerblijfBestanden, vorigVerblijf, logFouten, foutStatistiek, zoekAdres, controleerAdres, bsnHash, NAT, WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link,
   RETOUR_VELDEN, annoteer, annoteerMet, retourVoor, zetRetour, retourMail, stuurRetour, trekRetourIn };

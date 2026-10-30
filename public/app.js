@@ -558,6 +558,9 @@
         + '<div><b>' + esc(fi.vestigingNaam || fi.vestiging || '-') + '</b>' + (fi.bv ? ' · ' + esc(fi.bv) : '') + ' · in dienst ' + esc(fi.datumIndienst || '?') + ' · ' + esc(fi.uren === '0' ? 'oproep (0 u)' : (fi.uren || '?') + ' u/week') + ' · ' + esc(fi.functie || '-') + '</div>'
         + '<div class="lay-sub">' + esc(fiNaam) + (fi.voorletters ? ' (' + esc(fi.voorletters) + ')' : '') + ' · geb. ' + esc(fi.geboortedatum || '?') + ' · ' + esc(fi.nationaliteitNaam || fi.nationaliteit || '') + '</div>'
         + '<div class="lay-sub">' + esc([fi.adres, [fi.postcode, fi.woonplaats].filter(Boolean).join(' ')].filter(Boolean).join(', ')) + ' · ' + esc(fi.mobiel || '') + ' · ' + esc(fi.email || '') + '</div>'
+        + (fi.verblijf ? '<div style="margin-top:4px"><span class="badge bo">Verblijfsdocument</span> ' + esc({ vergunning: 'Verblijfsvergunning', oekraine: 'Oekraïne (tijdelijke bescherming)', anders: 'Ander document' }[fi.verblijf.type] || fi.verblijf.type || '')
+          + (fi.verblijf.type !== 'oekraine' ? ' · arbeid: <b>' + esc({ vrij: 'vrij toegestaan', twv: 'TWV vereist', niet: 'niet toegestaan', onbekend: 'onbekend' }[fi.verblijf.arbeid] || '?') + '</b>' : '') + ' · geldig tot <b>' + esc(fi.verblijf.geldigTot || '?') + '</b>' + (fi.verblijf.student ? ' · student' : '')
+          + ((fi.verblijfRefs || []).length ? ' · ' + fi.verblijfRefs.map(function (x) { return bDoc(x.ref, x.label); }).join(' ') : ' · <b style="color:#c0392b">geen foto</b>') + '</div>' : '')
         + (fi.opmerkingen ? '<div class="lay-sub"><i>"' + esc(fi.opmerkingen) + '"</i></div>' : '')
         + '<div class="lay-sub">BSN en IBAN staan in de PDF (bij Loonheffingsverklaring → Indiensttreding).</div></div>';
     }
@@ -626,7 +629,7 @@
   var lhData = null, lhTemplates = [];
   function lmBtn(r) { return '<button class="btn bp bsm" data-lm-rij="' + r.rij + '">Mail</button>'; }
   // v0.35.1: indiensttredingsformulier retour sturen (met reden), herinneren of intrekken
-  var IR_VELDEN = [['vestiging', 'Vestiging'], ['datumIndienst', 'Datum in dienst'], ['uren', 'Uren per week'], ['functie', 'Functie'], ['naam', 'Naam / voorletters'], ['geboortedatum', 'Geboortedatum'], ['adres', 'Adres'], ['contact', 'Telefoon / e-mail'], ['bsn', 'BSN'], ['iban', 'IBAN']];
+  var IR_VELDEN = [['vestiging', 'Vestiging'], ['datumIndienst', 'Datum in dienst'], ['uren', 'Uren per week'], ['functie', 'Functie'], ['naam', 'Naam / voorletters'], ['geboortedatum', 'Geboortedatum'], ['adres', 'Adres'], ['contact', 'Telefoon / e-mail'], ['bsn', 'BSN'], ['iban', 'IBAN'], ['verblijf', 'Verblijfsdocument']];
   var IR_SNEL = [['Vestiging', 'vestiging', 'Je hebt geen (of een verkeerde) vestiging ingevuld. Kies de SLA-winkel waar je gaat werken.'], ['Startdatum', 'datumIndienst', 'De datum van indiensttreding klopt niet. Vul de datum in van je eerste werkdag.'], ['Uren', 'uren', 'Het aantal uren per week klopt niet met wat je met je Store Manager hebt afgesproken.'], ['Onleesbaar', '', 'Het formulier is niet goed leesbaar of niet volledig ingevuld. Vul het online formulier in.']];
   var irRij = null;
   function irKnop(r, actie) {
@@ -642,7 +645,7 @@
     if (r.indienstRetour) return [];
     var k = [];
     (r.indienstControle || []).forEach(function (c) {
-      if (c.veld && c.reden) k.push('<button class="btn bd bsm" data-ir="retour" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" data-ir-reden="' + esc(c.reden) + '" data-ir-veld="' + esc(c.veld === 'datumIndienst' || c.veld === 'geboortedatum' || c.veld === 'vestiging' || c.veld === 'uren' || c.veld === 'bsn' ? c.veld : '') + '">↩ Retour: ' + esc(c.label.toLowerCase()) + '</button>');
+      if (c.veld && c.reden) k.push('<button class="btn bd bsm" data-ir="retour" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" data-ir-reden="' + esc(c.reden) + '" data-ir-veld="' + esc(c.veld) + '">↩ Retour: ' + esc(c.label.toLowerCase()) + '</button>');
       if (c.ernst !== 'blauw') k.push('<button class="btn bd bsm" data-ic-akkoord="' + esc(c.soort) + '" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="' + esc(c.tekst) + '">✓ Akkoord: ' + esc(c.label.toLowerCase()) + '</button>');
     });
     return k;
@@ -2764,6 +2767,7 @@
     var b = t.bron || '', s = t.sleutel || '';
     if (b === 'contractketen') return /^contractketen\|pr/.test(s) ? 'proeftijd' : 'contract';
     if (b === 'verlengingen' || b === 'aanzegtermijnen' || b === 'oproepaanbod') return 'contract';
+    if (b === 'verblijf') return 'mensen'; // v0.35.3
     if (b === 'nieuwe-medewerkers' || b === 'loonheffing-herinneringen' || b === 'korting-herinneringen' || (b === 'checklist' && /^Onboarding/.test(t.titel || ''))) return 'instroom';
     if (b === 'checkin' || b === 'verzuim' || b === 'gesprek' || b === 'mto-actie' || b === 'stille-afwezigen' || b === 'weekend-beschikbaarheid' || b === 'jeugd') return 'mensen';
     if (b === 'ontslag-herinneringen' || b === 'dossier' || b === 'checklist') return 'uitstroom';
