@@ -67,6 +67,10 @@ function controleerMet(rijen, formulieren, med, akkoord, nu) {
       if (g.nationaliteit && g.euer === false) verblijfSignalen(g, p, nu);
       if (g.bsnHash && bsnBij[g.bsnHash] && [...bsnBij[g.bsnHash]].some(n => n !== normNaam(r.naam)))
         p('bsn-dubbel', 'rood', 'BSN ook bekend bij een andere medewerker', 'Hetzelfde BSN staat op het formulier van: ' + [...bsnBij[g.bsnHash]].filter(n => n !== normNaam(r.naam)).join(', ') + '. Controleer het ID-bewijs.', 'bsn', 'Het BSN dat je hebt ingevuld lijkt niet te kloppen. Controleer het met je paspoort of ID-kaart.');
+      // v0.35.5: wat de medewerker na een waarschuwing bevestigde
+      const BV = { 'w-jong': 'jonger dan 16', 'w-oud': '67 of ouder', 'w-verleden': 'startdatum meer dan 2 weken geleden', 'w-ver': 'startdatum meer dan 3 maanden vooruit', 'w-uren': 'meer dan 38 uur per week', 'w-email': 'e-mailadres met mogelijk een tikfout', voorletters: 'voorletters passen niet bij de voornaam (roepnaam?)' };
+      const bev = (g.bevestigd || []).filter(c => BV[c]);
+      if (bev.length) p('bevestigd', 'blauw', 'Medewerker bevestigde: ' + bev.map(c => BV[c]).join(', '), 'De medewerker kreeg hierover een waarschuwing in het formulier en gaf aan dat het klopt. Kijk er even naar.');
       if (g.ibanLand && g.ibanLand !== 'NL') p('iban-buitenland', 'blauw', 'Buitenlands IBAN (' + g.ibanLand + ')', 'Kan, maar geef het door aan de salarisadministratie (mogelijk BIC nodig).');
       if (g.postcode && !/^\d{4} [A-Z]{2}$/.test(g.postcode)) p('adres-buitenland', 'blauw', 'Buitenlands adres', 'Woont niet in Nederland: geef dit door aan de salarisadministratie.');
     }

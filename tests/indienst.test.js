@@ -112,3 +112,23 @@ I.maakPdf(I.valideer(goed, nu).schoon, { tijd: nu.toISOString() }).then(b => { a
     assert.strictEqual(r[0].indienstControle.find(c => c.soort === 'wav-twv').geenAkkoord, true); }
   console.log('indienst verblijf tests OK');
 }
+
+// v0.35.5: laag 2 — waarschuwingen die de medewerker moet bevestigen
+{
+  const nu5 = new Date(2026, 9, 30, 12), f = o => I.valideer(Object.assign({}, goed, o), nu5);
+  assert.strictEqual(f({ geboortedatum: '2011-03-01' }).fouten.geboortedatum, 'w-jong');
+  assert.strictEqual(f({ geboortedatum: '1955-03-01' }).fouten.geboortedatum, 'w-oud');
+  assert.strictEqual(f({ datumIndienst: '2026-10-01' }).fouten.datumIndienst, 'w-verleden');
+  assert.strictEqual(f({ datumIndienst: '2027-03-01' }).fouten.datumIndienst, 'w-ver');
+  assert.strictEqual(f({ uren: '40' }).fouten.uren, 'w-uren');
+  assert.strictEqual(f({ email: 'a@gmial.com' }).fouten.email, 'w-email'); assert.strictEqual(I.emailSuggestie('a@gmial.com'), 'a@gmail.com');
+  assert.strictEqual(f({ iban: 'BE71096123456769' }).fouten.iban, 'w-iban');
+  assert.strictEqual(f({ postcode: 'SW1A 1AA' }).fouten.postcode, 'w-buitenland');
+  const ok = f({ geboortedatum: '2011-03-01', uren: '40', _bevestigd: ['geboortedatum', 'uren'] });
+  assert.ok(ok.ok, JSON.stringify(ok.fouten)); assert.deepStrictEqual(ok.schoon.bevestigd.sort(), ['w-jong', 'w-uren']);
+  const gg = I.zonderGevoelig(ok.schoon, null); assert.deepStrictEqual(gg.bevestigd.sort(), ['w-jong', 'w-uren']);
+  const K = require('../netlify/functions/_lib/indienstcontrole.js'), r = [{ rij: 1, naam: 'Q', docUrl2: 'sb:q:indienst' }];
+  K.controleerMet(r, { 'sb:q:indienst': { naam: 'Q', gegevens: gg } }, [], {}, nu5);
+  assert.ok(r[0].indienstControle.some(c => c.soort === 'bevestigd' && /jonger dan 16/.test(c.label) && c.ernst === 'blauw'));
+  console.log('indienst waarschuwing tests OK');
+}

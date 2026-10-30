@@ -49,6 +49,11 @@ const nl = d => String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth()
 //   leeg · ongeldig · leeftijd · bereik · toekomst · cijfers · voor-geboorte (start vóór 13e verjaardag)
 //   voorletters (begint niet met de letter van de voornaam: alleen een fout als de medewerker het niet bevestigt, bijv. bij een roepnaam)
 //   pc-onbekend / pc-woonplaats (alleen via controleerAdres, PDOK)
+// v0.35.5: tikfouten in veelgebruikte maildomeinen → suggestie
+const MAIL_TYPO = { 'gmial.com': 'gmail.com', 'gmal.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gmail.co': 'gmail.com', 'gmail.cm': 'gmail.com', 'gmail.nl': 'gmail.com', 'gamil.com': 'gmail.com', 'gnail.com': 'gmail.com',
+  'hotmial.com': 'hotmail.com', 'hotmal.com': 'hotmail.com', 'hotmail.co': 'hotmail.com', 'hotmai.com': 'hotmail.com', 'hotmial.nl': 'hotmail.nl', 'hotmal.nl': 'hotmail.nl',
+  'outlok.com': 'outlook.com', 'outloo.com': 'outlook.com', 'outlook.co': 'outlook.com', 'yaho.com': 'yahoo.com', 'yahoo.co': 'yahoo.com', 'icloud.co': 'icloud.com', 'iclod.com': 'icloud.com', 'icoud.com': 'icloud.com', 'live.co': 'live.com' };
+function emailSuggestie(e) { const m = String(e || '').toLowerCase().match(/^([^@]+)@(.+)$/); return m && MAIL_TYPO[m[2]] ? m[1] + '@' + MAIL_TYPO[m[2]] : ''; }
 const ascii = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 function valideer(inv, nu) {
   inv = inv || {}; nu = nu || new Date();
@@ -93,6 +98,18 @@ function valideer(inv, nu) {
   }
   if (s.uren !== '') { const u = Number(String(s.uren).replace(',', '.')); if (!isFinite(u) || u < 0 || u > 48) f.uren = 'ongeldig'; else s.uren = String(u); }
   if (!f.nationaliteit) valideerVerblijf(inv, s, f, nu); // v0.35.3
+  // v0.35.5: laag 2 — waarschuwingen. Geen fout, maar de medewerker moet bevestigen dat het klopt ('w-'-codes).
+  // Wat bevestigd is gaat mee in de gegevens (s.bevestigd), zodat HR ziet waar extra naar gekeken moet worden.
+  const wn = {}, bevestigbaar = [];
+  if (geb && !f.geboortedatum) { const lft = (nu - geb) / (365.25 * 864e5); if (lft < 16) wn.geboortedatum = 'w-jong'; else if (lft >= 67) wn.geboortedatum = 'w-oud'; }
+  if (s.datumIndienst && !f.datumIndienst) { const dg = (datumOk(s.datumIndienst) - nu) / 864e5; if (dg < -14) wn.datumIndienst = 'w-verleden'; else if (dg > 92) wn.datumIndienst = 'w-ver'; }
+  if (s.uren !== '' && !f.uren && Number(s.uren) > 38) wn.uren = 'w-uren';
+  if (s.email && !f.email) { const sug = emailSuggestie(s.email); if (sug) wn.email = 'w-email'; }
+  if (s.iban && !f.iban && !/^NL/.test(s.iban)) wn.iban = 'w-iban';
+  if (s.postcode && !f.postcode && !/^\d{4} [A-Z]{2}$/.test(s.postcode)) wn.postcode = 'w-buitenland';
+  for (const k of Object.keys(wn)) { if (bevestigd.includes(k)) bevestigbaar.push(wn[k]); else f[k] = wn[k]; }
+  if (f.voorletters !== 'voorletters' && bevestigd.includes('voorletters') && s.voornaam && s.voorletters && ascii(s.voornaam).toUpperCase()[0] !== s.voorletters[0]) bevestigbaar.push('voorletters');
+  s.bevestigd = bevestigbaar;
   return { ok: !Object.keys(f).length, fouten: f, schoon: s, winkel: w || null };
 }
 // v0.35.2: postcode ↔ huisnummer ↔ woonplaats via PDOK Locatieserver (Kadaster, gratis, geen sleutel).
@@ -236,6 +253,7 @@ function zonderGevoelig(s, winkel) {
   // v0.35.2: voor de controles, zonder het BSN/IBAN zelf
   const n = NAT.PER_CODE[s.nationaliteit]; o.nationaliteitNaam = weergave('nationaliteit', s); o.euer = n ? n.euer : false;
   o.ibanLand = String(s.iban || '').slice(0, 2); o.bsnHash = bsnHash(s.bsn);
+  o.bevestigd = s.bevestigd || []; // v0.35.5: welke waarschuwingen de medewerker bevestigde
   o.verblijf = s.verblijf || null; // soort, arbeid, geldig tot, studie (geen documentnummer)
   return o;
 }
@@ -368,5 +386,5 @@ async function foutStatistiek(dagen) {
   for (const k of Object.keys(mensen)) per[k] = mensen[k].size; // aantal medewerkers dat op dit veld vastliep
   return { dagen: dagen || 30, ingevuld: new Set((ok.data || []).map(x => x.naam)).size, retour: (ret.data || []).length, perVeld: Object.entries(per).sort((a, b) => b[1] - a[1]).slice(0, 6) };
 }
-module.exports = { VERBLIJF_TYPE, VERBLIJF_ARBEID, heeftVerblijfNodig, startUploadVerblijf, controleerVerblijfBestanden, vorigVerblijf, logFouten, foutStatistiek, zoekAdres, controleerAdres, bsnHash, NAT, WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link,
+module.exports = { emailSuggestie, VERBLIJF_TYPE, VERBLIJF_ARBEID, heeftVerblijfNodig, startUploadVerblijf, controleerVerblijfBestanden, vorigVerblijf, logFouten, foutStatistiek, zoekAdres, controleerAdres, bsnHash, NAT, WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link,
   RETOUR_VELDEN, annoteer, annoteerMet, retourVoor, zetRetour, retourMail, stuurRetour, trekRetourIn };

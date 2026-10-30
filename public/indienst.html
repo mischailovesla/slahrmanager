@@ -32,6 +32,7 @@
   .melding.oranje{background:#fff8e6;color:#5c4500;border-color:#f5a623}
   .drop{border:2px dashed var(--lijn);border-radius:10px;padding:14px;background:#fff;cursor:pointer;display:flex;gap:12px;align-items:center;font-weight:400;text-transform:none;letter-spacing:0;color:var(--donker)}
   .drop.ok{border-color:var(--groen);background:#e6f7ee}.drop input{display:none}.drop .ic{font-size:24px}.drop .t{font-size:.9rem}.drop .t small{display:block;color:var(--grijs)}
+  .fg.waarsch input,.fg.waarsch select{border-color:#f5a623;background:#fffaf0}.fg.waarsch .fm{color:#7a5c00}
   .fg.fout .drop{border-color:var(--rood);background:#fdf3f2}.fg.aanpas .drop{border-color:#f5a623}
   .vak{background:#f8f3f0;border-radius:10px;padding:14px 14px 2px;margin:0 0 14px}
   .akkoord{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;margin:18px 0}.akkoord input{width:auto;margin-top:4px}
@@ -63,8 +64,10 @@
       verblijfType: 'Welk document heb je?', vT_vergunning: 'Verblijfsvergunning / verblijfspas (IND)', vT_oekraine: 'Oekraïne: bewijs tijdelijke bescherming (sticker of verklaring)', vT_anders: 'Ander document (bijv. visum)',
       verblijfArbeid: 'Wat staat er op de achterkant bij "Arbeid"?', vA_vrij: 'Arbeid vrij toegestaan, TWV niet vereist', vA_twv: 'Arbeid toegestaan mits TWV / TWV vereist', vA_niet: 'Arbeid niet toegestaan', vA_onbekend: 'Staat er niet op / weet ik niet',
       verblijfGeldig: 'Geldig tot', verblijfStudent: 'Ik heb een verblijfsvergunning voor studie', verblijfVoor: 'Foto van de voorkant', verblijfAchter: 'Foto van de achterkant',
+      geenStart: 'Let op: met een document waarop een tewerkstellingsvergunning (TWV) nodig is, of waarop werken niet is toegestaan, kun je bij SLA helaas niet starten. SLA vraagt geen TWV aan. Klopt wat je hebt ingevuld? Je kunt het formulier gewoon versturen; HR neemt dan contact met je op.',
+      geenStartStudent: 'Let op: met een verblijfsvergunning voor studie mag je in Nederland meestal alleen werken met een tewerkstellingsvergunning (TWV). SLA vraagt geen TWV aan. Staat er op de achterkant toch "Arbeid vrij toegestaan, TWV niet vereist"? Kies dat dan hierboven. Je kunt het formulier gewoon versturen; HR controleert het.',
       kiesFoto: 'Kies een foto of maak er een', fotoHint: 'Zorg dat alles goed leesbaar is (geen schittering).', vorigDoc: 'We hebben je document al. Upload alleen een nieuwe foto als HR daarom vraagt.', uploaden: 'Foto uploaden…',
-      bevestig: 'Dit klopt toch (bijv. omdat ik een roepnaam gebruik)', suggestie: 'Bij deze postcode hoort de woonplaats {w}.', zetSugg: 'Gebruik {w}',
+      bevestig: 'Dit klopt toch (bijv. omdat ik een roepnaam gebruik)', bevestigW: 'Ja, dit klopt', bedoel: 'Bedoel je {e}?', suggestie: 'Bij deze postcode hoort de woonplaats {w}.', zetSugg: 'Gebruik {w}',
       mobiel: 'Mobiel nummer', email: 'E-mailadres', nationaliteit: 'Nationaliteit', bsn: 'BSN (burgerservicenummer)', bsnHint: 'Staat op je paspoort, ID-kaart of rijbewijs.',
       geboortedatum: 'Geboortedatum', datumIndienst: 'Datum in dienst', uren: 'Aantal uren per week', urenHint: 'Zoals afgesproken met je Store Manager. 0 = oproepcontract.',
       functie: 'Functie', iban: 'IBAN-nummer', ibanHint: 'Je eigen bankrekening, bijv. NL00 BANK 0123 4567 89.', opmerkingen: 'Eventuele opmerkingen', opt: 'optioneel',
@@ -73,6 +76,8 @@
       ongeldigLink: 'Deze link is niet geldig of verlopen. Gebruik de link uit de e-mail van HR of mail hr@ilovesla.com.',
       F: { leeg: 'Vul dit veld in.', ongeldig: 'Dit klopt niet, controleer het even.', leeftijd: 'Controleer je geboortedatum.', bereik: 'Controleer de datum van indiensttreding.',
         toekomst: 'Deze datum ligt in de toekomst.', cijfers: 'Hier horen geen cijfers in.', 'voor-geboorte': 'Deze startdatum kan niet: dan was je nog geen 13. Klopt het jaar?',
+        'w-jong': 'Je bent jonger dan 16. Klopt je geboortedatum?', 'w-oud': 'Je bent 67 of ouder. Klopt je geboortedatum?', 'w-verleden': 'Deze startdatum is meer dan 2 weken geleden. Klopt dat?', 'w-ver': 'Deze startdatum is meer dan 3 maanden vooruit. Klopt dat?',
+        'w-uren': 'Meer dan 38 uur per week is ongebruikelijk. Klopt dat?', 'w-email': 'Zit er een tikfout in je e-mailadres?', 'w-iban': 'Dit is een buitenlands IBAN. Klopt dat?', 'w-buitenland': 'Dit is geen Nederlandse postcode. Woon je in het buitenland?',
         verlopen: 'Dit document is verlopen. Upload een geldig document of het bewijs van verlenging.', foto: 'Upload een foto van je document.',
         voorletters: 'Je voorletters beginnen niet met de eerste letter van je voornaam.', 'pc-onbekend': 'Deze postcode bestaat niet.', 'pc-huisnummer': 'Dit huisnummer bestaat niet bij deze postcode.', 'pc-woonplaats': 'Deze woonplaats hoort niet bij je postcode.' },
       Fx: { bsn: 'Dit is geen geldig BSN (9 cijfers).', iban: 'Dit is geen geldig IBAN.', email: 'Dit is geen geldig e-mailadres.', mobiel: 'Vul een geldig mobiel nummer in (bijv. 0612345678).' },
@@ -88,8 +93,10 @@
       verblijfType: 'Which document do you have?', vT_vergunning: 'Residence permit / residence card (IND)', vT_oekraine: 'Ukraine: proof of temporary protection (sticker or statement)', vT_anders: 'Other document (e.g. visa)',
       verblijfArbeid: 'What does the back say under "Arbeid" (work)?', vA_vrij: 'Arbeid vrij toegestaan, TWV niet vereist (free to work)', vA_twv: 'Arbeid toegestaan mits TWV / TWV vereist (work permit needed)', vA_niet: 'Arbeid niet toegestaan (not allowed to work)', vA_onbekend: 'Not stated / I don\'t know',
       verblijfGeldig: 'Valid until', verblijfStudent: 'I have a residence permit for study', verblijfVoor: 'Photo of the front', verblijfAchter: 'Photo of the back',
+      geenStart: 'Please note: with a document that requires a work permit (TWV), or that says work is not allowed, you unfortunately cannot start at SLA. SLA does not apply for work permits. Is what you entered correct? You can still send the form; HR will contact you.',
+      geenStartStudent: 'Please note: with a residence permit for study you can usually only work in the Netherlands with a work permit (TWV). SLA does not apply for work permits. Does the back say "Arbeid vrij toegestaan, TWV niet vereist"? Then choose that option above. You can still send the form; HR will check it.',
       kiesFoto: 'Choose a photo or take one', fotoHint: 'Make sure everything is readable (no glare).', vorigDoc: 'We already have your document. Only upload a new photo if HR asks you to.', uploaden: 'Uploading photo…',
-      bevestig: 'This is correct (e.g. because I use a nickname)', suggestie: 'This postal code belongs to {w}.', zetSugg: 'Use {w}',
+      bevestig: 'This is correct (e.g. because I use a nickname)', bevestigW: 'Yes, this is correct', bedoel: 'Did you mean {e}?', suggestie: 'This postal code belongs to {w}.', zetSugg: 'Use {w}',
       mobiel: 'Mobile number', email: 'E-mail address', nationaliteit: 'Nationality', bsn: 'BSN (Dutch citizen service number)', bsnHint: 'Shown on your passport, ID card or driving licence.',
       geboortedatum: 'Date of birth', datumIndienst: 'Start date', uren: 'Hours per week', urenHint: 'As agreed with your Store Manager. 0 = on-call contract.',
       functie: 'Job title', iban: 'IBAN', ibanHint: 'Your own bank account, e.g. NL00 BANK 0123 4567 89.', opmerkingen: 'Comments', opt: 'optional',
@@ -98,6 +105,8 @@
       ongeldigLink: 'This link is not valid or has expired. Use the link from the HR e-mail or contact hr@ilovesla.com.',
       F: { leeg: 'Please fill in this field.', ongeldig: 'This does not look right, please check.', leeftijd: 'Please check your date of birth.', bereik: 'Please check your start date.',
         toekomst: 'This date is in the future.', cijfers: 'This field should not contain numbers.', 'voor-geboorte': 'This start date is not possible: you would not have been 13 yet. Is the year correct?',
+        'w-jong': 'You are younger than 16. Is your date of birth correct?', 'w-oud': 'You are 67 or older. Is your date of birth correct?', 'w-verleden': 'This start date is more than 2 weeks ago. Is that correct?', 'w-ver': 'This start date is more than 3 months ahead. Is that correct?',
+        'w-uren': 'More than 38 hours a week is unusual. Is that correct?', 'w-email': 'Is there a typo in your e-mail address?', 'w-iban': 'This is a foreign IBAN. Is that correct?', 'w-buitenland': 'This is not a Dutch postal code. Do you live abroad?',
         verlopen: 'This document has expired. Upload a valid document or proof of renewal.', foto: 'Please upload a photo of your document.',
         voorletters: 'Your initials do not start with the first letter of your first name.', 'pc-onbekend': 'This postal code does not exist.', 'pc-huisnummer': 'This house number does not exist for this postal code.', 'pc-woonplaats': 'This city does not match your postal code.' },
       Fx: { bsn: 'This is not a valid BSN (9 digits).', iban: 'This is not a valid IBAN.', email: 'This is not a valid e-mail address.', mobiel: 'Please enter a valid mobile number (e.g. 0612345678).' },
@@ -133,9 +142,23 @@
     if (k === 'geboortedatum') { var gb = datum(v); if (gb && gb > new Date()) return 'toekomst'; }
     if (k === 'datumIndienst') { var st = datum(v), gb2 = datum(waarden.geboortedatum); if (st && gb2 && st < new Date(gb2.getFullYear() + 13, gb2.getMonth(), gb2.getDate(), 12)) return 'voor-geboorte'; }
     if (k === 'bsn' && !bsnOk(v)) return 'ongeldig';
+    var hard = harde(k, v); if (hard) return hard;
+    // v0.35.5: waarschuwingen (bevestigen met "Ja, dit klopt")
+    if (bevestigd[k]) return '';
+    if (k === 'geboortedatum') { var g3 = datum(v); if (g3) { var lft = (Date.now() - g3) / (365.25 * 864e5); if (lft < 16) return 'w-jong'; if (lft >= 67) return 'w-oud'; } }
+    if (k === 'datumIndienst') { var d3 = datum(v); if (d3) { var dg = (d3 - Date.now()) / 864e5; if (dg < -14) return 'w-verleden'; if (dg > 92) return 'w-ver'; } }
+    if (k === 'uren' && Number(String(v).replace(',', '.')) > 38) return 'w-uren';
+    if (k === 'email' && mailSugg(v)) return 'w-email';
+    if (k === 'iban' && !/^NL/i.test(v.replace(/\s/g, ''))) return 'w-iban';
+    if (k === 'postcode' && !/^\d{4}\s*[a-z]{2}$/i.test(v)) return 'w-buitenland';
+    return '';
+  }
+  var MAIL_TYPO = { 'gmial.com': 'gmail.com', 'gmal.com': 'gmail.com', 'gmai.com': 'gmail.com', 'gmail.co': 'gmail.com', 'gmail.cm': 'gmail.com', 'gmail.nl': 'gmail.com', 'gamil.com': 'gmail.com', 'gnail.com': 'gmail.com', 'hotmial.com': 'hotmail.com', 'hotmal.com': 'hotmail.com', 'hotmail.co': 'hotmail.com', 'hotmai.com': 'hotmail.com', 'hotmial.nl': 'hotmail.nl', 'hotmal.nl': 'hotmail.nl', 'outlok.com': 'outlook.com', 'outloo.com': 'outlook.com', 'outlook.co': 'outlook.com', 'yaho.com': 'yahoo.com', 'yahoo.co': 'yahoo.com', 'icloud.co': 'icloud.com', 'iclod.com': 'icloud.com', 'icoud.com': 'icloud.com', 'live.co': 'live.com' };
+  function mailSugg(e) { var m = String(e || '').trim().toLowerCase().match(/^([^@]+)@(.+)$/); return m && MAIL_TYPO[m[2]] ? m[1] + '@' + MAIL_TYPO[m[2]] : ''; }
+  function harde(k, v) {
     if (k === 'iban' && !ibanOk(v)) return 'ongeldig';
     if (k === 'email' && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v)) return 'ongeldig';
-    if (k === 'mobiel' && !/^\+?\d{9,15}$/.test(v.replace(/[\s()-]/g, ''))) return 'ongeldig';
+    if (k === 'mobiel') { var mm = v.replace(/[\s()-]/g, ''); if (!/^\+?\d{9,15}$/.test(mm) || (/^0[1-9]/.test(mm) && mm.length !== 10)) return 'ongeldig'; }
     return '';
   }
   function foutTekst(k, code) { return code === 'ongeldig' && TX[taal].Fx[k] ? TX[taal].Fx[k] : TX[taal].F[code] || TX[taal].F.ongeldig; }
@@ -145,9 +168,10 @@
     else if (type === 'textarea') inp = '<textarea data-k="' + k + '" rows="3">' + esc(v) + '</textarea>';
     else inp = '<input data-k="' + k + '" type="' + type + '" value="' + esc(v) + '"' + (extra.attr || '') + '>';
     var aanpas = info && info.retour && (info.retour.velden || []).indexOf(k) > -1;
-    return '<div class="fg' + (fouten[k] ? ' fout' : '') + (aanpas ? ' aanpas' : '') + '" id="fg-' + k + '"><label class="kop">' + esc(tx(k)) + (opt ? ' <i>(' + tx('opt') + ')</i>' : '') + '</label>' + inp
+    return '<div class="fg' + (fouten[k] ? ' fout' : '') + (/^w-/.test(fouten[k] || '') ? ' waarsch' : '') + (aanpas ? ' aanpas' : '') + '" id="fg-' + k + '"><label class="kop">' + esc(tx(k)) + (opt ? ' <i>(' + tx('opt') + ')</i>' : '') + '</label>' + inp
       + '<div class="fm">' + esc(fouten[k] ? foutTekst(k, fouten[k]) : '') + '</div>'
-      + (fouten[k] === 'voorletters' ? '<label class="akkoord" style="margin:6px 0 0"><input type="checkbox" data-bevestig="' + k + '"> <span>' + esc(tx('bevestig')) + '</span></label>' : '')
+      + (fouten[k] === 'w-email' && mailSugg(v) ? '<div class="hint"><a href="#" data-mailsugg="' + esc(mailSugg(v)) + '" style="color:var(--groen);font-weight:600">' + esc(tx('bedoel').replace('{e}', mailSugg(v))) + '</a></div>' : '')
+      + (fouten[k] === 'voorletters' || /^w-/.test(fouten[k] || '') ? '<label class="akkoord" style="margin:6px 0 0"><input type="checkbox" data-bevestig="' + k + '"> <span>' + esc(tx(fouten[k] === 'voorletters' ? 'bevestig' : 'bevestigW')) + '</span></label>' : '')
       + (k === 'woonplaats' && fouten[k] === 'pc-woonplaats' && suggestie ? '<div class="hint">' + esc(tx('suggestie').replace('{w}', suggestie)) + ' <a href="#" data-sugg="1" style="color:var(--groen)">' + esc(tx('zetSugg').replace('{w}', suggestie)) + '</a></div>' : '')
       + (aanpas ? '<div class="an">' + esc(tx('aanpas')) + '</div>' : '') + (extra.hint ? '<div class="hint">' + esc(tx(extra.hint)) + '</div>' : '') + '</div>';
   }
@@ -172,6 +196,8 @@
         + (waarden.verblijfType !== 'oekraine' ? veld('verblijfArbeid', 'select', { leeg: tx('kiesG'), opties: ['vrij', 'twv', 'niet', 'onbekend'].map(function (x) { return [x, tx('vA_' + x)]; }) }) : '')
         + veld('verblijfGeldig', 'date')
         + '<label class="akkoord" style="margin:-4px 0 14px"><input type="checkbox" id="verblijfStudent"' + (waarden.verblijfStudent ? ' checked' : '') + '> <span>' + esc(tx('verblijfStudent')) + '</span></label>'
+        + (waarden.verblijfType !== 'oekraine' && (waarden.verblijfArbeid === 'twv' || waarden.verblijfArbeid === 'niet') ? '<div class="melding oranje">' + esc(tx('geenStart')) + '</div>'
+          : waarden.verblijfType !== 'oekraine' && waarden.verblijfStudent && waarden.verblijfArbeid !== 'vrij' ? '<div class="melding oranje">' + esc(tx('geenStartStudent')) + '</div>' : '')
         + (info.vorigVerblijf && verblijfVelden().indexOf('verblijfVoor') < 0 ? '<div class="hint" style="margin:-6px 0 12px">' + esc(tx('vorigDoc')) + '</div>' : '')
         + fotoVeld('verblijfVoor') + fotoVeld('verblijfAchter');
     }
@@ -193,10 +219,12 @@
     g('btn').onclick = verstuur;
     var nat = document.querySelector('[data-k=nationaliteit]'); if (nat) nat.addEventListener('change', function () { waarden.nationaliteit = nat.value; render(); });
     var vt = document.querySelector('[data-k=verblijfType]'); if (vt) vt.addEventListener('change', function () { waarden.verblijfType = vt.value; render(); });
-    var st = g('verblijfStudent'); if (st) st.onchange = function () { waarden.verblijfStudent = st.checked; };
+    var st = g('verblijfStudent'); if (st) st.onchange = function () { waarden.verblijfStudent = st.checked; render(); };
+    var va = document.querySelector('[data-k=verblijfArbeid]'); if (va) va.addEventListener('change', function () { waarden.verblijfArbeid = va.value; render(); });
     document.querySelectorAll('input[data-foto]').forEach(function (inp) { inp.onchange = function () { var k = inp.getAttribute('data-foto'); if (inp.files[0]) { fotos[k] = inp.files[0]; fouten[k] = ''; render(); } }; });
     ['postcode', 'huisnummer'].forEach(function (k) { var el = document.querySelector('[data-k=' + k + ']'); if (el) el.addEventListener('blur', adresZoek); });
     document.querySelectorAll('[data-bevestig]').forEach(function (cb) { cb.onchange = function () { var k = cb.getAttribute('data-bevestig'); bevestigd[k] = cb.checked; if (cb.checked) { fouten[k] = ''; toonFout(k); cb.closest('.akkoord').remove(); } }; });
+    var ms = document.querySelector('[data-mailsugg]'); if (ms) ms.onclick = function (e) { e.preventDefault(); waarden.email = ms.getAttribute('data-mailsugg'); fouten.email = ''; render(); };
     var sg = document.querySelector('[data-sugg]'); if (sg) sg.onclick = function (e) { e.preventDefault(); waarden.woonplaats = suggestie; fouten.woonplaats = ''; suggestie = null; render(); };
   }
   // v0.35.2: straat + woonplaats opzoeken bij het Kadaster (PDOK) via de server
