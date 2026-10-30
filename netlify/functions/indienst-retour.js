@@ -16,5 +16,6 @@ exports.handler = beveiligd('loonheffing-mail', async (event, g) => {
   if (p.actie === 'intrekken') return await I.trekRetourIn(r, g.email);
   if (p.actie === 'herinner') { if (!r.indienstRetour) throw new Error('Er staat geen retour open voor ' + r.naam + '.'); return await I.stuurRetour(r, { reden: r.indienstRetour.reden, velden: r.indienstRetour.velden, herinner: true }, g.email); }
   if (p.actie === 'retour') return await I.stuurRetour(r, p, g.email);
+  if (p.actie === 'akkoord') { if (!r.docUrl2) throw new Error('Geen formulier.'); return await require('./_lib/indienstcontrole').geefAkkoord(r, String(p.soort || ''), g.email); } // v0.35.2
   throw new Error('Onbekende actie');
 });

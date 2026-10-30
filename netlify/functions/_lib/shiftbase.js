@@ -60,6 +60,7 @@ function verwerk(usersLijst, contractsLijst, typeNamen) {
         if (c['function']) p.functie = String(c['function']).trim();
         p.einde = (ed && ed !== '0000-00-00') ? ed : '';
         p.contractType = String((c.ContractType && c.ContractType.name) || typeNamen[String(c.contract_type_id || '')] || c.contract_type || '').trim();
+        p.uren = c.contract_hours != null && c.contract_hours !== '' ? Number(c.contract_hours) : null; // v0.35.2: contracturen per week
       }
     }
   }
@@ -100,7 +101,7 @@ function verwerk(usersLijst, contractsLijst, typeNamen) {
     out.push({ leeftijd, verjaardag,
       id: String(u.id || ''), naam, voornaam: String(u.first_name || '').trim(), email: String(u.email || '').trim(), adres,
       indienst: ddmm(ci.vroegste || u.startdate || ''), contractEinde: ddmm(ci.einde || ''), contractType: ci.contractType || '',
-      functie: ci.functie || '', winkelCode: code, winkelNaam, winkelBv: code ? WINKEL_BV_MAP[code].bv : ''
+      functie: ci.functie || '', contractUren: ci.uren == null || isNaN(ci.uren) ? null : ci.uren, winkelCode: code, winkelNaam, winkelBv: code ? WINKEL_BV_MAP[code].bv : ''
     });
   }
   out.sort((a, b) => a.naam.localeCompare(b.naam, 'nl'));

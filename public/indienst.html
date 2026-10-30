@@ -18,7 +18,7 @@
   .card{background:#fff;border-radius:14px;padding:26px 24px;margin-top:20px;box-shadow:0 6px 24px rgba(51,61,58,.08)}
   h1{font-size:1.15rem;margin:0 0 6px}.sub{color:var(--grijs);font-size:.9rem;margin:0 0 18px}
   h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--groen);margin:22px 0 10px;padding-top:14px;border-top:1px solid var(--lijn)}
-  .rij{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  .rij{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.rij3{display:grid;grid-template-columns:1.3fr 1fr .9fr;gap:0 10px}
   @media (max-width:520px){.rij{grid-template-columns:1fr}}
   .fg{margin:0 0 14px}label.kop{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--grijs);margin-bottom:5px}
   label.kop i{font-style:normal;font-weight:400;text-transform:none}
@@ -27,6 +27,9 @@
   .fg.fout input,.fg.fout select,.fg.fout textarea{border-color:var(--rood);background:#fdf3f2}
   .fm{display:none;color:var(--rood);font-size:.78rem;margin-top:4px}.fg.fout .fm{display:block}
   .hint{color:var(--grijs);font-size:.76rem;margin-top:4px}
+  .fg.aanpas input,.fg.aanpas select,.fg.aanpas textarea{border-color:#f5a623;background:#fffaf0}
+  .an{display:none;color:#7a5c00;font-size:.78rem;margin-top:4px;font-weight:600}.fg.aanpas .an{display:block}.fg.fout .an{display:none}
+  .melding.oranje{background:#fff8e6;color:#5c4500;border-color:#f5a623}
   .akkoord{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;margin:18px 0}.akkoord input{width:auto;margin-top:4px}
   .btn{width:100%;padding:14px;border:0;border-radius:10px;background:var(--groen);color:#fff;font:inherit;font-size:1rem;font-weight:700;cursor:pointer}.btn:disabled{opacity:.5;cursor:default}
   .melding{border-radius:8px;padding:12px 14px;font-size:.88rem;margin:0 0 16px;border-left:4px solid}.melding.rood{background:#fdecea;color:#8a1c12;border-color:var(--rood)}.melding.groen{background:#e6f7ee;color:#006b30;border-color:var(--groen)}
@@ -48,38 +51,57 @@
     nl: { titel: 'Indiensttredingsformulier', hallo: 'Hoi {n}, welkom bij SLA! Vul hieronder je gegevens in. Dat duurt een paar minuten. We gebruiken ze voor je contract en je salaris.',
       s1: 'Jouw werk', s2: 'Persoonlijke gegevens', s3: 'Adres en contact', s4: 'Salaris',
       vestiging: 'Bij welke vestiging kom je in dienst', kies: '— Kies je vestiging —', voornaam: 'Voornaam', voorletters: 'Voorletters', tussenvoegsel: 'Tussenvoegsel', achternaam: 'Achternaam',
-      geslacht: 'Geslacht', gV: 'Vrouw', gM: 'Man', gX: 'Anders / zeg ik liever niet', kiesG: '— Kies —', adres: 'Straat + huisnummer', postcode: 'Postcode', woonplaats: 'Woonplaats',
+      geslacht: 'Geslacht', gV: 'Vrouw', gM: 'Man', gX: 'Anders / zeg ik liever niet', kiesG: '— Kies —', adres: 'Adres', postcode: 'Postcode', woonplaats: 'Woonplaats',
+      huisnummer: 'Huisnummer', toevoeging: 'Toevoeging', straat: 'Straat', pcHint: 'Vul je postcode en huisnummer in, dan vullen we straat en woonplaats aan.', gevonden: '✓ Adres gevonden', kiesN: '— Kies je nationaliteit —', nationaliteitAnders: 'Welke nationaliteit?',
+      bevestig: 'Dit klopt toch (bijv. omdat ik een roepnaam gebruik)', suggestie: 'Bij deze postcode hoort de woonplaats {w}.', zetSugg: 'Gebruik {w}',
       mobiel: 'Mobiel nummer', email: 'E-mailadres', nationaliteit: 'Nationaliteit', bsn: 'BSN (burgerservicenummer)', bsnHint: 'Staat op je paspoort, ID-kaart of rijbewijs.',
       geboortedatum: 'Geboortedatum', datumIndienst: 'Datum in dienst', uren: 'Aantal uren per week', urenHint: 'Zoals afgesproken met je Store Manager. 0 = oproepcontract.',
       functie: 'Functie', iban: 'IBAN-nummer', ibanHint: 'Je eigen bankrekening, bijv. NL00 BANK 0123 4567 89.', opmerkingen: 'Eventuele opmerkingen', opt: 'optioneel',
       akkoord: 'Ik verklaar dat deze gegevens kloppen.', akkoordNodig: 'Vink aan dat de gegevens kloppen.', verstuur: 'Verstuur formulier', bezig: 'Bezig met versturen…',
       klaar: 'Bedankt! Je indiensttredingsformulier is ontvangen. Vergeet niet ook je loonheffingsverklaring te uploaden via de link in de e-mail.', fout: 'Er ging iets mis: ', controleer: 'Controleer de rood gemarkeerde velden.',
       ongeldigLink: 'Deze link is niet geldig of verlopen. Gebruik de link uit de e-mail van HR of mail hr@ilovesla.com.',
-      F: { leeg: 'Vul dit veld in.', ongeldig: 'Dit klopt niet, controleer het even.', leeftijd: 'Controleer je geboortedatum.', bereik: 'Controleer de datum van indiensttreding.' },
-      Fx: { bsn: 'Dit is geen geldig BSN (9 cijfers).', iban: 'Dit is geen geldig IBAN.', email: 'Dit is geen geldig e-mailadres.', mobiel: 'Vul een geldig telefoonnummer in.' },
+      F: { leeg: 'Vul dit veld in.', ongeldig: 'Dit klopt niet, controleer het even.', leeftijd: 'Controleer je geboortedatum.', bereik: 'Controleer de datum van indiensttreding.',
+        toekomst: 'Deze datum ligt in de toekomst.', cijfers: 'Hier horen geen cijfers in.', 'voor-geboorte': 'Deze startdatum kan niet: dan was je nog geen 13. Klopt het jaar?',
+        voorletters: 'Je voorletters beginnen niet met de eerste letter van je voornaam.', 'pc-onbekend': 'Deze postcode bestaat niet.', 'pc-huisnummer': 'Dit huisnummer bestaat niet bij deze postcode.', 'pc-woonplaats': 'Deze woonplaats hoort niet bij je postcode.' },
+      Fx: { bsn: 'Dit is geen geldig BSN (9 cijfers).', iban: 'Dit is geen geldig IBAN.', email: 'Dit is geen geldig e-mailadres.', mobiel: 'Vul een geldig mobiel nummer in (bijv. 0612345678).' },
+      retour: 'HR heeft je formulier teruggestuurd met deze opmerking:', retourNa: 'Pas de oranje gemarkeerde velden aan en verstuur het formulier opnieuw. Je BSN en IBAN vul je voor de veiligheid opnieuw in.', aanpas: 'Graag aanpassen (zie opmerking van HR)',
       voet: 'Je gegevens worden versleuteld opgeslagen in de beveiligde HR-omgeving van SLA en zijn alleen zichtbaar voor HR en de salarisadministratie. Vragen? <a href="mailto:hr@ilovesla.com" style="color:var(--groen)">hr@ilovesla.com</a>' },
     en: { titel: 'Employment registration form', hallo: 'Hi {n}, welcome to SLA! Please fill in your details below. It only takes a few minutes. We use them for your contract and your salary.',
       s1: 'Your job', s2: 'Personal details', s3: 'Address and contact', s4: 'Salary',
       vestiging: 'Which location will you work at', kies: '— Choose your location —', voornaam: 'First name', voorletters: 'Initials', tussenvoegsel: 'Name prefix (e.g. van, de)', achternaam: 'Last name',
-      geslacht: 'Gender', gV: 'Female', gM: 'Male', gX: 'Other / prefer not to say', kiesG: '— Choose —', adres: 'Street + house number', postcode: 'Postal code', woonplaats: 'City',
+      geslacht: 'Gender', gV: 'Female', gM: 'Male', gX: 'Other / prefer not to say', kiesG: '— Choose —', adres: 'Address', postcode: 'Postal code', woonplaats: 'City',
+      huisnummer: 'House number', toevoeging: 'Addition', straat: 'Street', pcHint: 'Enter your postal code and house number and we will fill in street and city.', gevonden: '✓ Address found', kiesN: '— Choose your nationality —', nationaliteitAnders: 'Which nationality?',
+      bevestig: 'This is correct (e.g. because I use a nickname)', suggestie: 'This postal code belongs to {w}.', zetSugg: 'Use {w}',
       mobiel: 'Mobile number', email: 'E-mail address', nationaliteit: 'Nationality', bsn: 'BSN (Dutch citizen service number)', bsnHint: 'Shown on your passport, ID card or driving licence.',
       geboortedatum: 'Date of birth', datumIndienst: 'Start date', uren: 'Hours per week', urenHint: 'As agreed with your Store Manager. 0 = on-call contract.',
       functie: 'Job title', iban: 'IBAN', ibanHint: 'Your own bank account, e.g. NL00 BANK 0123 4567 89.', opmerkingen: 'Comments', opt: 'optional',
       akkoord: 'I confirm that these details are correct.', akkoordNodig: 'Please confirm that the details are correct.', verstuur: 'Send form', bezig: 'Sending…',
       klaar: 'Thank you! We have received your employment registration form. Do not forget to upload your payroll tax statement via the link in the e-mail.', fout: 'Something went wrong: ', controleer: 'Please check the fields marked in red.',
       ongeldigLink: 'This link is not valid or has expired. Use the link from the HR e-mail or contact hr@ilovesla.com.',
-      F: { leeg: 'Please fill in this field.', ongeldig: 'This does not look right, please check.', leeftijd: 'Please check your date of birth.', bereik: 'Please check your start date.' },
-      Fx: { bsn: 'This is not a valid BSN (9 digits).', iban: 'This is not a valid IBAN.', email: 'This is not a valid e-mail address.', mobiel: 'Please enter a valid phone number.' },
+      F: { leeg: 'Please fill in this field.', ongeldig: 'This does not look right, please check.', leeftijd: 'Please check your date of birth.', bereik: 'Please check your start date.',
+        toekomst: 'This date is in the future.', cijfers: 'This field should not contain numbers.', 'voor-geboorte': 'This start date is not possible: you would not have been 13 yet. Is the year correct?',
+        voorletters: 'Your initials do not start with the first letter of your first name.', 'pc-onbekend': 'This postal code does not exist.', 'pc-huisnummer': 'This house number does not exist for this postal code.', 'pc-woonplaats': 'This city does not match your postal code.' },
+      Fx: { bsn: 'This is not a valid BSN (9 digits).', iban: 'This is not a valid IBAN.', email: 'This is not a valid e-mail address.', mobiel: 'Please enter a valid mobile number (e.g. 0612345678).' },
+      retour: 'HR has sent your form back with this note:', retourNa: 'Please update the fields marked in orange and send the form again. For your security you need to enter your BSN and IBAN again.', aanpas: 'Please update (see note from HR)',
       voet: 'Your details are stored encrypted in SLA\'s secure HR environment and are only visible to HR and payroll. Questions? <a href="mailto:hr@ilovesla.com" style="color:var(--groen)">hr@ilovesla.com</a>' }
   };
-  var VERPLICHT = ['vestiging', 'voornaam', 'voorletters', 'achternaam', 'geslacht', 'adres', 'postcode', 'woonplaats', 'mobiel', 'email', 'nationaliteit', 'bsn', 'geboortedatum', 'datumIndienst', 'uren', 'functie', 'iban'];
+  var VERPLICHT = ['vestiging', 'voornaam', 'voorletters', 'achternaam', 'geslacht', 'postcode', 'huisnummer', 'straat', 'woonplaats', 'mobiel', 'email', 'nationaliteit', 'bsn', 'geboortedatum', 'datumIndienst', 'uren', 'functie', 'iban'];
+  var bevestigd = {}, suggestie = null, adresGevonden = false;
+  var asc = function (x) { return String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, ''); };
+  function datum(v) { var m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : null; }
   var g = function (id) { return document.getElementById(id); }, tx = function (k) { return TX[taal][k]; };
   var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   function bsnOk(s) { var d = String(s || '').replace(/\D/g, ''); if (d.length === 8) d = '0' + d; if (d.length !== 9 || /^0+$/.test(d)) return false; var som = 0; for (var i = 0; i < 8; i++) som += (+d[i]) * (9 - i); return (som - +d[8]) % 11 === 0; }
   function ibanOk(s) { var i = String(s || '').replace(/[\s.-]/g, '').toUpperCase(); if (!/^[A-Z]{2}\d{2}[A-Z0-9]{11,30}$/.test(i)) return false; var r = (i.slice(4) + i.slice(0, 4)).replace(/[A-Z]/g, function (c) { return String(c.charCodeAt(0) - 55); }), rest = 0; for (var k = 0; k < r.length; k++) rest = (rest * 10 + +r[k]) % 97; return rest === 1; }
   function controleLokaal(k) {
     var v = String(waarden[k] == null ? '' : waarden[k]).trim();
+    if (k === 'nationaliteitAnders') return waarden.nationaliteit === 'XX' && !v ? 'leeg' : (v && /\d/.test(v) ? 'cijfers' : '');
     if (!v) return VERPLICHT.indexOf(k) > -1 ? 'leeg' : '';
+    if (['voornaam', 'tussenvoegsel', 'achternaam', 'woonplaats'].indexOf(k) > -1 && /\d/.test(v)) return 'cijfers';
+    if (k === 'huisnummer' && !/^\d{1,5}$/.test(v)) return 'ongeldig';
+    if (k === 'voorletters' && waarden.voornaam && !bevestigd.voorletters) { var vl = asc(v).toUpperCase().replace(/[^A-Z]/g, ''); if (vl && vl[0] !== asc(waarden.voornaam).toUpperCase()[0]) return 'voorletters'; }
+    if (k === 'geboortedatum') { var gb = datum(v); if (gb && gb > new Date()) return 'toekomst'; }
+    if (k === 'datumIndienst') { var st = datum(v), gb2 = datum(waarden.geboortedatum); if (st && gb2 && st < new Date(gb2.getFullYear() + 13, gb2.getMonth(), gb2.getDate(), 12)) return 'voor-geboorte'; }
     if (k === 'bsn' && !bsnOk(v)) return 'ongeldig';
     if (k === 'iban' && !ibanOk(v)) return 'ongeldig';
     if (k === 'email' && !/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(v)) return 'ongeldig';
@@ -92,21 +114,30 @@
     if (type === 'select') inp = '<select data-k="' + k + '"><option value="">' + esc(extra.leeg) + '</option>' + extra.opties.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (String(v) === String(o[0]) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
     else if (type === 'textarea') inp = '<textarea data-k="' + k + '" rows="3">' + esc(v) + '</textarea>';
     else inp = '<input data-k="' + k + '" type="' + type + '" value="' + esc(v) + '"' + (extra.attr || '') + '>';
-    return '<div class="fg' + (fouten[k] ? ' fout' : '') + '" id="fg-' + k + '"><label class="kop">' + esc(tx(k)) + (opt ? ' <i>(' + tx('opt') + ')</i>' : '') + '</label>' + inp
-      + '<div class="fm">' + esc(fouten[k] ? foutTekst(k, fouten[k]) : '') + '</div>' + (extra.hint ? '<div class="hint">' + esc(tx(extra.hint)) + '</div>' : '') + '</div>';
+    var aanpas = info && info.retour && (info.retour.velden || []).indexOf(k) > -1;
+    return '<div class="fg' + (fouten[k] ? ' fout' : '') + (aanpas ? ' aanpas' : '') + '" id="fg-' + k + '"><label class="kop">' + esc(tx(k)) + (opt ? ' <i>(' + tx('opt') + ')</i>' : '') + '</label>' + inp
+      + '<div class="fm">' + esc(fouten[k] ? foutTekst(k, fouten[k]) : '') + '</div>'
+      + (fouten[k] === 'voorletters' ? '<label class="akkoord" style="margin:6px 0 0"><input type="checkbox" data-bevestig="' + k + '"> <span>' + esc(tx('bevestig')) + '</span></label>' : '')
+      + (k === 'woonplaats' && fouten[k] === 'pc-woonplaats' && suggestie ? '<div class="hint">' + esc(tx('suggestie').replace('{w}', suggestie)) + ' <a href="#" data-sugg="1" style="color:var(--groen)">' + esc(tx('zetSugg').replace('{w}', suggestie)) + '</a></div>' : '')
+      + (aanpas ? '<div class="an">' + esc(tx('aanpas')) + '</div>' : '') + (extra.hint ? '<div class="hint">' + esc(tx(extra.hint)) + '</div>' : '') + '</div>';
   }
   function render() {
     g('voet').innerHTML = tx('voet');
     if (!info) return;
     if (klaar) { g('card').innerHTML = '<h1>✓ ' + esc(tx('titel')) + '</h1><div class="melding groen">' + esc(tx('klaar')) + '</div>'; return; }
-    var h = '<h1>' + esc(tx('titel')) + '</h1><p class="sub">' + esc(tx('hallo').replace('{n}', (waarden.voornaam || info.naam.split(' ')[0]))) + '</p><div id="melding"></div>';
+    var h = '<h1>' + esc(tx('titel')) + '</h1><p class="sub">' + esc(tx('hallo').replace('{n}', (waarden.voornaam || info.naam.split(' ')[0]))) + '</p>'
+      + (info.retour ? '<div class="melding oranje"><strong>' + esc(tx('retour')) + '</strong><br>' + esc(info.retour.reden).replace(/\n/g, '<br>') + '<br><span style="font-size:.82rem">' + esc(tx('retourNa')) + '</span></div>' : '')
+      + '<div id="melding"></div>';
     h += '<h2>' + esc(tx('s1')) + '</h2>' + veld('vestiging', 'select', { leeg: tx('kies'), opties: info.winkels.map(function (w) { return [w.code, w.naam]; }) })
       + '<div class="rij">' + veld('datumIndienst', 'date') + veld('uren', 'number', { attr: ' min="0" max="48" step="0.5" inputmode="decimal"', hint: 'urenHint' }) + '</div>' + veld('functie', 'text');
     h += '<h2>' + esc(tx('s2')) + '</h2><div class="rij">' + veld('voornaam', 'text', { attr: ' autocomplete="given-name"' }) + veld('voorletters', 'text', { attr: ' maxlength="12"' }) + '</div>'
       + '<div class="rij">' + veld('tussenvoegsel', 'text', { attr: ' maxlength="20"' }) + veld('achternaam', 'text', { attr: ' autocomplete="family-name"' }) + '</div>'
       + '<div class="rij">' + veld('geslacht', 'select', { leeg: tx('kiesG'), opties: [['V', tx('gV')], ['M', tx('gM')], ['X', tx('gX')]] }) + veld('geboortedatum', 'date', { attr: ' autocomplete="bday"' }) + '</div>'
-      + veld('nationaliteit', 'text');
-    h += '<h2>' + esc(tx('s3')) + '</h2>' + veld('adres', 'text', { attr: ' autocomplete="street-address"' }) + '<div class="rij">' + veld('postcode', 'text', { attr: ' autocomplete="postal-code" maxlength="10"' }) + veld('woonplaats', 'text', { attr: ' autocomplete="address-level2"' }) + '</div>'
+      + veld('nationaliteit', 'select', { leeg: tx('kiesN'), opties: (info.nationaliteiten || []).map(function (n) { return [n.code, taal === 'en' ? n.en : n.nl]; }) })
+      + (waarden.nationaliteit === 'XX' ? veld('nationaliteitAnders', 'text', { attr: ' maxlength="60"' }) : '');
+    h += '<h2>' + esc(tx('s3')) + '</h2><div class="rij3">' + veld('postcode', 'text', { attr: ' autocomplete="postal-code" maxlength="10"' }) + veld('huisnummer', 'text', { attr: ' inputmode="numeric" maxlength="5"' }) + veld('toevoeging', 'text', { attr: ' maxlength="10"' }) + '</div>'
+      + '<div class="hint" id="pc-hint" style="margin:-8px 0 12px">' + esc(adresGevonden ? tx('gevonden') : tx('pcHint')) + '</div>'
+      + '<div class="rij">' + veld('straat', 'text', { attr: ' autocomplete="address-line1"' }) + veld('woonplaats', 'text', { attr: ' autocomplete="address-level2"' }) + '</div>'
       + '<div class="rij">' + veld('mobiel', 'tel', { attr: ' autocomplete="tel" inputmode="tel"' }) + veld('email', 'email', { attr: ' autocomplete="email"' }) + '</div>';
     h += '<h2>' + esc(tx('s4')) + '</h2>' + veld('bsn', 'text', { attr: ' inputmode="numeric" maxlength="11" autocomplete="off"', hint: 'bsnHint' }) + veld('iban', 'text', { attr: ' autocomplete="off" maxlength="42" style="text-transform:uppercase"', hint: 'ibanHint' })
       + veld('opmerkingen', 'textarea');
@@ -120,19 +151,40 @@
     });
     g('akkoord').onchange = function () { waarden._akkoord = g('akkoord').checked; };
     g('btn').onclick = verstuur;
+    var nat = document.querySelector('[data-k=nationaliteit]'); if (nat) nat.addEventListener('change', function () { waarden.nationaliteit = nat.value; render(); });
+    ['postcode', 'huisnummer'].forEach(function (k) { var el = document.querySelector('[data-k=' + k + ']'); if (el) el.addEventListener('blur', adresZoek); });
+    document.querySelectorAll('[data-bevestig]').forEach(function (cb) { cb.onchange = function () { var k = cb.getAttribute('data-bevestig'); bevestigd[k] = cb.checked; if (cb.checked) { fouten[k] = ''; toonFout(k); cb.closest('.akkoord').remove(); } }; });
+    var sg = document.querySelector('[data-sugg]'); if (sg) sg.onclick = function (e) { e.preventDefault(); waarden.woonplaats = suggestie; fouten.woonplaats = ''; suggestie = null; render(); };
+  }
+  // v0.35.2: straat + woonplaats opzoeken bij het Kadaster (PDOK) via de server
+  var laatsteZoek = '';
+  async function adresZoek() {
+    var pc = String(waarden.postcode || '').replace(/\s+/g, '').toUpperCase(), nr = String(waarden.huisnummer || '').trim();
+    if (!/^\d{4}[A-Z]{2}$/.test(pc) || !/^\d{1,5}$/.test(nr) || laatsteZoek === pc + nr) return;
+    laatsteZoek = pc + nr;
+    try {
+      var r = await post({ stap: 'adres', postcode: pc, huisnummer: nr }); if (!r.success || !r.bereikbaar) return;
+      if (!r.adres) { fouten.postcode = 'pc-onbekend'; adresGevonden = false; }
+      else if (r.adres.geenNummer) { fouten.huisnummer = 'pc-huisnummer'; fouten.postcode = ''; adresGevonden = false; if (r.adres.woonplaats && !waarden.woonplaats) waarden.woonplaats = r.adres.woonplaats; }
+      else { waarden.straat = r.adres.straat; waarden.woonplaats = r.adres.woonplaats; fouten.postcode = fouten.huisnummer = fouten.straat = fouten.woonplaats = ''; adresGevonden = true; }
+      var actief = document.activeElement && document.activeElement.getAttribute('data-k');
+      render(); if (actief) { var el = document.querySelector('[data-k=' + actief + ']'); if (el) el.focus(); }
+    } catch (e) { /* zonder opzoeken gewoon zelf invullen */ }
   }
   function toonFout(k) { var fg = g('fg-' + k); if (!fg) return; fg.classList.toggle('fout', !!fouten[k]); fg.querySelector('.fm').textContent = fouten[k] ? foutTekst(k, fouten[k]) : ''; }
   function melding(cls, tekst) { g('melding').innerHTML = '<div class="melding ' + cls + '">' + esc(tekst) + '</div>'; g('melding').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   async function post(b) { var r = await fetch('/api/indienst', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ t: t }, b)) }); return r.json(); }
   async function verstuur() {
-    fouten = {}; VERPLICHT.forEach(function (k) { var c = controleLokaal(k); if (c) fouten[k] = c; });
-    if (Object.keys(fouten).length) { render(); melding('rood', tx('controleer')); return; }
+    var oud = fouten; fouten = {}; VERPLICHT.concat(['tussenvoegsel', 'nationaliteitAnders']).forEach(function (k) { var c = controleLokaal(k); if (c) fouten[k] = c; });
+    ['postcode', 'huisnummer'].forEach(function (k) { if (/^pc-/.test(oud[k] || '') && !fouten[k]) fouten[k] = oud[k]; }); // uitkomst van het opzoeken blijft staan
+    if (Object.keys(fouten).length) { post({ stap: 'fouten', velden: Object.keys(fouten) }).catch(function () {}); render(); melding('rood', tx('controleer')); return; }
     if (!waarden._akkoord) { melding('rood', tx('akkoordNodig')); return; }
     var btn = g('btn'); btn.disabled = true; btn.textContent = tx('bezig');
     try {
       var geg = {}; Object.keys(waarden).forEach(function (k) { if (k[0] !== '_') geg[k] = waarden[k]; });
+      geg._bevestigd = Object.keys(bevestigd).filter(function (k) { return bevestigd[k]; });
       var r = await post({ stap: 'verstuur', gegevens: geg });
-      if (r.fouten) { fouten = r.fouten; render(); melding('rood', tx('controleer')); return; }
+      if (r.fouten) { fouten = r.fouten; suggestie = r.suggestie ? r.suggestie.woonplaats : null; render(); melding('rood', tx('controleer')); return; }
       if (!r.success) throw new Error(r.bericht);
       klaar = true; render(); window.scrollTo(0, 0);
     } catch (e) { melding('rood', tx('fout') + e.message); btn.disabled = false; btn.textContent = tx('verstuur'); }
@@ -142,7 +194,9 @@
     document.querySelectorAll('[data-taal]').forEach(function (x) { x.classList.toggle('sel', x.getAttribute('data-taal') === taal); });
     try {
       var r = await post({}); if (!r.success) throw new Error(r.bericht);
-      info = r; waarden = Object.assign({ functie: 'SLA worker' }, r.voorinvullen || {}); render();
+      info = r; waarden = Object.assign({ functie: 'SLA worker' }, r.voorinvullen || {});
+      if (r.retour && (r.retour.velden || []).indexOf('vestiging') > -1) waarden.vestiging = ''; // bewust opnieuw laten kiezen
+      render();
     } catch (e) { render(); g('card').innerHTML = '<div class="melding rood">' + esc(tx('ongeldigLink')) + '</div>'; }
   })();
 })();

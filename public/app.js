@@ -421,7 +421,7 @@
     proc.push({ naam: 'Instroom · loonheffing', stappen: [
       { naam: 'Wacht op formulier', items: loon.filter(function (r) { return r.ontvangen !== 'Ja'; }).map(function (r) { return kaart(r, 'deadline ' + esc(r.deadline || '-') + ' · ' + (r.aantalHer || 0) + 'x herinnerd', dagenSinds(r.status), lmBtn(r).replace('>Mail<', '>Herinner<'), [bUp('loonheffing', r, false), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)], true); }) },
       { naam: 'Indienst retour', items: loon.filter(function (r) { return r.indienstRetour && !r.salaris; }).map(function (r) { return kaart(r, '↩ ' + esc(r.indienstRetour.reden) + ' · ' + bDoc(r.docUrl2, 'Indienst (oud)'), irDagen(r), irKnop(r, 'herinner'), [irKnop(r, 'intrekken'), bDoc(r.docUrl, 'Loonheffing'), dosBtn(r.naam, r.email)], true); }) },
-      { naam: 'Klaar voor salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && !r.salaris && !r.indienstRetour; }).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst'), dagenSinds(r.status), bSal('loonheffing', r), [irKnop(r, 'retour'), lmBtn(r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)]); }) },
+      { naam: 'Klaar voor salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && !r.salaris && !r.indienstRetour; }).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + bIc(r), dagenSinds(r.status), bSal('loonheffing', r), icKnoppen(r).concat([irKnop(r, 'retour'), lmBtn(r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)])); }) },
     ] });
     var ont = f(o.ontslag), tp = function (r) { return (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + ' · ' + esc(r.bedrijf || '-') + ' · einde ' + esc(r.einddatum || '-') + bCtl(r); };
     proc.push({ naam: 'Uitstroom', stappen: [
@@ -556,7 +556,7 @@
       var fiNaam = [fi.voornaam, fi.tussenvoegsel, fi.achternaam].filter(Boolean).join(' ');
       h += '<label style="display:block;font-size:.68rem;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.4px;margin:14px 0 6px">Indiensttredingsformulier' + (ing ? ' (ingevuld ' + esc(ing) + ')' : '') + '</label><div class="kv">'
         + '<div><b>' + esc(fi.vestigingNaam || fi.vestiging || '-') + '</b>' + (fi.bv ? ' · ' + esc(fi.bv) : '') + ' · in dienst ' + esc(fi.datumIndienst || '?') + ' · ' + esc(fi.uren === '0' ? 'oproep (0 u)' : (fi.uren || '?') + ' u/week') + ' · ' + esc(fi.functie || '-') + '</div>'
-        + '<div class="lay-sub">' + esc(fiNaam) + (fi.voorletters ? ' (' + esc(fi.voorletters) + ')' : '') + ' · geb. ' + esc(fi.geboortedatum || '?') + ' · ' + esc(fi.nationaliteit || '') + '</div>'
+        + '<div class="lay-sub">' + esc(fiNaam) + (fi.voorletters ? ' (' + esc(fi.voorletters) + ')' : '') + ' · geb. ' + esc(fi.geboortedatum || '?') + ' · ' + esc(fi.nationaliteitNaam || fi.nationaliteit || '') + '</div>'
         + '<div class="lay-sub">' + esc([fi.adres, [fi.postcode, fi.woonplaats].filter(Boolean).join(' ')].filter(Boolean).join(', ')) + ' · ' + esc(fi.mobiel || '') + ' · ' + esc(fi.email || '') + '</div>'
         + (fi.opmerkingen ? '<div class="lay-sub"><i>"' + esc(fi.opmerkingen) + '"</i></div>' : '')
         + '<div class="lay-sub">BSN en IBAN staan in de PDF (bij Loonheffingsverklaring → Indiensttreding).</div></div>';
@@ -633,6 +633,27 @@
     var lbl = { retour: '↩ Indienst retour', herinner: 'Herinner', intrekken: '✕ Retour intrekken' }[actie];
     return '<button class="btn ' + (actie === 'herinner' ? 'bp' : 'bd') + ' bsm" data-ir="' + actie + '" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="' + (actie === 'retour' ? 'Formulier terugsturen met een reden (bijv. verkeerde vestiging)' : actie === 'herinner' ? 'Retourvraag nog eens mailen' : 'Formulier toch goedkeuren: weer klaar voor salaris') + '">' + lbl + '</button>';
   }
+  // v0.35.2: controle van het indiensttredingsformulier (vergelijking met Shiftbase, leeftijd, nationaliteit, dubbel BSN)
+  function bIc(r) {
+    if (r.indienstRetour || !(r.indienstControle && r.indienstControle.length)) return '';
+    return r.indienstControle.map(function (c) { return ' <span class="badge ' + (c.ernst === 'rood' ? 'br' : c.ernst === 'oranje' ? 'bo' : 'boat') + '" title="' + esc(c.tekst) + '">' + (c.ernst === 'blauw' ? 'ℹ ' : '⚠ ') + esc(c.label) + '</span>'; }).join('');
+  }
+  function icKnoppen(r) {
+    if (r.indienstRetour) return [];
+    var k = [];
+    (r.indienstControle || []).forEach(function (c) {
+      if (c.veld && c.reden) k.push('<button class="btn bd bsm" data-ir="retour" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" data-ir-reden="' + esc(c.reden) + '" data-ir-veld="' + esc(c.veld === 'datumIndienst' || c.veld === 'geboortedatum' || c.veld === 'vestiging' || c.veld === 'uren' || c.veld === 'bsn' ? c.veld : '') + '">↩ Retour: ' + esc(c.label.toLowerCase()) + '</button>');
+      if (c.ernst !== 'blauw') k.push('<button class="btn bd bsm" data-ic-akkoord="' + esc(c.soort) + '" data-rij="' + r.rij + '" data-naam="' + esc(r.naam) + '" title="' + esc(c.tekst) + '">✓ Akkoord: ' + esc(c.label.toLowerCase()) + '</button>');
+    });
+    return k;
+  }
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-ic-akkoord]'); if (!b) return;
+    var soort = b.getAttribute('data-ic-akkoord'), naam = b.getAttribute('data-naam');
+    if (!confirm('Akkoord geven voor ' + naam + '?\n\n' + (b.getAttribute('title') || '') + '\n\nDe melding verdwijnt en het dossier kan weer (automatisch) naar salaris.')) return;
+    b.disabled = true; var r = await api('/api/indienst-retour', { actie: 'akkoord', rij: Number(b.getAttribute('data-rij')), soort: soort });
+    b.disabled = false; toast(r.bericht, r.success ? 'ok' : 'err'); if (r.success) irHerlaad();
+  });
   function irDagen(r) { var d = r.indienstRetour && r.indienstRetour.op ? Math.floor((Date.now() - new Date(r.indienstRetour.op).getTime()) / 864e5) : null; return d; }
   window.irSluit = function () { g('ir-modal').classList.remove('open'); };
   window.irVerstuur = async function () {
@@ -653,7 +674,9 @@
       g('ir-titel').textContent = 'Indiensttredingsformulier retour · ' + naam;
       g('ir-velden').innerHTML = IR_VELDEN.map(function (v) { return '<label style="display:flex;gap:6px;align-items:center;font-weight:400;text-transform:none;letter-spacing:0;margin:0"><input type="checkbox" value="' + v[0] + '" style="width:auto"> ' + esc(v[1]) + '</label>'; }).join('');
       g('ir-snel').innerHTML = IR_SNEL.map(function (x, i) { return '<button type="button" class="btn bd bsm" data-ir-snel="' + i + '">' + esc(x[0]) + '</button>'; }).join('');
-      g('ir-reden').value = ''; g('ir-melding').innerHTML = ''; g('ir-modal').classList.add('open');
+      g('ir-reden').value = b.getAttribute('data-ir-reden') || ''; g('ir-melding').innerHTML = '';
+      var pv = b.getAttribute('data-ir-veld'); if (pv) { var cb0 = document.querySelector('#ir-velden input[value="' + pv + '"]'); if (cb0) cb0.checked = true; }
+      g('ir-modal').classList.add('open');
       return;
     }
     if (actie === 'intrekken' && !confirm('Retour intrekken voor ' + naam + '?\n\nHet huidige indiensttredingsformulier wordt dan toch goedgekeurd en staat weer klaar voor salaris.')) return;
@@ -687,6 +710,14 @@
     var d = await api('/api/loonheffing');
     if (!d.success) { toast('Loonheffing: ' + d.bericht, 'err'); return; }
     lhData = d.rijen; lhTemplates = d.templates; lhAuto = !!d.auto;
+    // v0.35.2: waar lopen medewerkers vast in het online indiensttredingsformulier? (laatste 30 dagen, alleen veldnamen)
+    (function (st) {
+      var el = g('lh-if'); if (!el) { el = document.createElement('div'); el.id = 'lh-if'; el.className = 'alert grijs'; el.style.cssText = 'margin:8px 24px 0;font-size:.84rem'; var sal = g('lh-sal'); if (sal && sal.parentNode) sal.parentNode.insertBefore(el, sal.nextSibling); }
+      if (!st || (!st.ingevuld && !st.perVeld.length)) { el.style.display = 'none'; return; } el.style.display = '';
+      var NM = { vestiging: 'vestiging', voorletters: 'voorletters', voornaam: 'voornaam', achternaam: 'achternaam', geslacht: 'geslacht', postcode: 'postcode', huisnummer: 'huisnummer', straat: 'straat', woonplaats: 'woonplaats', mobiel: 'mobiel nummer', email: 'e-mail', nationaliteit: 'nationaliteit', nationaliteitAnders: 'nationaliteit', bsn: 'BSN', iban: 'IBAN', geboortedatum: 'geboortedatum', datumIndienst: 'startdatum', uren: 'uren', functie: 'functie' };
+      el.innerHTML = '<strong>Online indiensttredingsformulier (' + st.dagen + ' dagen):</strong> ' + st.ingevuld + ' ingevuld · ' + st.retour + ' retour gestuurd'
+        + (st.perVeld.length ? ' · <span title="Aantal medewerkers dat bij dit veld een foutmelding kreeg (de ingevulde waarden worden niet bewaard)">vaakst fout: ' + st.perVeld.map(function (x) { return esc(NM[x[0]] || x[0]) + ' (' + x[1] + ')'; }).join(', ') + '</span>' : '');
+    })(d.indienstFouten);
     g('lh-auto').className = 'alert ' + (lhAuto ? 'groen' : 'geel');
     g('lh-auto-tekst').innerHTML = lhAuto ? '<strong>Automatisch uitnodigen staat aan.</strong> Nieuwe medewerkers uit Shiftbase krijgen elke 4 uur automatisch de indiensttredings- en loonheffingsmail (NL + EN), met de startdatum als deadline. HR krijgt een overzicht.' : '<strong>Automatisch uitnodigen staat uit.</strong> HR krijgt één keer per dag een lijstje met nieuwe medewerkers zonder uitnodiging en verstuurt zelf.';
     lhSal = !!d.salarisAuto; g('lh-sal').className = 'alert ' + (lhSal ? 'groen' : 'geel');
@@ -695,7 +726,7 @@
     g('lh-auto-knop').textContent = lhAuto ? 'Uitzetten' : 'Aanzetten'; g('lh-auto-knop').className = 'btn bsm ' + (lhAuto ? 'bd' : 'bp');
     g('lh-count').textContent = lhData.filter(function (r) { return !isAfgLh(r); }).length + ' lopend · ' + lhData.filter(isAfgLh).length + ' afgerond';
     g('lh-body').innerHTML = lhData.map(function (r) {
-      return '<tr' + (isAfgLh(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + (r.indienstRetour ? ' <span class="badge bo" title="' + esc(r.indienstRetour.reden) + '">↩ retour</span>' : '') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + (r.docUrl2 && !r.salaris ? irKnop(r, r.indienstRetour ? 'intrekken' : 'retour') : '') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
+      return '<tr' + (isAfgLh(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + (r.indienstRetour ? ' <span class="badge bo" title="' + esc(r.indienstRetour.reden) + '">↩ retour</span>' : '') + bIc(r) + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + (r.docUrl2 && !r.salaris ? (r.indienstRetour ? irKnop(r, 'intrekken') : meerMenu(icKnoppen(r).concat([irKnop(r, 'retour')]))) : '') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('lh-body');
   };

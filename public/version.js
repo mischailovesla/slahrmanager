@@ -2,6 +2,13 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.35.2', datum: '30-10-2026', titel: 'Indiensttredingsformulier: logische controles', punten: [
+    '<b>Voor de medewerker:</b> het formulier controleert nu of antwoorden logisch zijn: geboortedatum niet in de toekomst, startdatum niet vóór de 13e verjaardag, geen cijfers in naam of woonplaats, en voorletters die bij de voornaam passen (met een roepnaam kan de medewerker aanvinken dat het klopt).',
+    'Bij <b>postcode + huisnummer</b> vult het formulier straat en woonplaats automatisch in via het Kadaster. Een postcode die niet bestaat of niet bij de woonplaats hoort, komt er niet meer door. Nationaliteit is een keuzelijst.',
+    '<b>Voor HR:</b> bij Klaar voor salaris en op de tab Loonheffing staan labels als het formulier afwijkt van Shiftbase (vestiging, startdatum, uren, geboortedatum), bij een medewerker jonger dan 18, een nationaliteit buiten de EU/EER (verblijfsdocument controleren, Wet arbeid vreemdelingen) of een BSN dat al bij iemand anders bekend is.',
+    'Onder <b>⋯</b> staat per label <b>↩ Retour</b> met de reden al ingevuld, of <b>✓ Akkoord</b> als Shiftbase het fout heeft. Oranje en rode labels houden het automatisch versturen naar salaris tegen tot je een keuze maakt.',
+    'Op de tab Loonheffing zie je hoeveel formulieren er de afgelopen 30 dagen zijn ingevuld en retour gestuurd, en bij welke velden medewerkers het vaakst een foutmelding kregen. Alleen veldnamen worden bewaard, nooit de ingevulde waarden. Van het BSN wordt alleen een onomkeerbare vingerafdruk bewaard.'
+  ] },
   { nummer: '0.35.1', datum: '30-10-2026', titel: 'Indiensttredingsformulier retour sturen', punten: [
     'Klopt er iets niet in een ingeleverd indiensttredingsformulier (bijv. <b>vestiging "Amsterdam"</b>)? Klik bij Overzicht → Klaar voor salaris (onder ⋯) of op de tab Loonheffing op <b>↩ Indienst retour</b>. Vink aan wat er moet worden aangepast en schrijf een korte reden; er zijn snelknoppen voor vestiging, startdatum en uren.',
     'De medewerker krijgt een mail met jouw reden en een link naar het online formulier. De velden die je aanwees zijn oranje gemarkeerd; de rest staat al ingevuld (BSN en IBAN vullen ze opnieuw in). Bij de vestiging moeten ze bewust opnieuw kiezen.',

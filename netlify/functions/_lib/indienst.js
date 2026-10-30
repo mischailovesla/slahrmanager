@@ -10,6 +10,7 @@
 // ============================================================
 const C = require('./config');
 const { normNaam } = require('./util');
+const NAT = require('./nationaliteiten');
 
 const WINKELS = Object.keys(C.WINKEL_BV_MAP).map(code => ({ code, naam: C.WINKEL_BV_MAP[code].naam === 'HQ' ? 'HQ (kantoor)' : C.WINKEL_BV_MAP[code].naam, bv: C.WINKEL_BV_MAP[code].bv }))
   .sort((a, b) => (a.code === 'HO') - (b.code === 'HO') || a.naam.localeCompare(b.naam, 'nl'));
@@ -20,7 +21,8 @@ const VELDEN = [ // volgorde = volgorde in de PDF
   ['nationaliteit', 'Nationaliteit'], ['bsn', 'BSN'], ['geboortedatum', 'Geboortedatum'], ['datumIndienst', 'Datum in dienst'], ['uren', 'Aantal uren te werken per week'],
   ['functie', 'Functie'], ['iban', 'IBAN-nummer'], ['opmerkingen', 'Eventuele opmerkingen']
 ];
-const OPTIONEEL = ['tussenvoegsel', 'opmerkingen'];
+const OPTIONEEL = ['tussenvoegsel', 'opmerkingen', 'adres']; // v0.35.2: adres wordt samengesteld uit straat + huisnummer + toevoeging
+const EXTRA = [['straat', 80], ['huisnummer', 10], ['toevoeging', 10], ['nationaliteitAnders', 60]];
 const GEVOELIG = ['bsn', 'iban'];
 
 const tekst = (s, max) => String(s == null ? '' : s).replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max || 100);
@@ -43,28 +45,101 @@ function datumOk(s) { // jjjj-mm-dd of dd-mm-jjjj → Date (lokaal, 12:00)
 const nl = d => String(d.getDate()).padStart(2, '0') + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + d.getFullYear();
 
 // fouten-codes worden in indienst.html vertaald (NL/EN)
+// v0.35.2: logische controles. Codes:
+//   leeg · ongeldig · leeftijd · bereik · toekomst · cijfers · voor-geboorte (start vóór 13e verjaardag)
+//   voorletters (begint niet met de letter van de voornaam: alleen een fout als de medewerker het niet bevestigt, bijv. bij een roepnaam)
+//   pc-onbekend / pc-woonplaats (alleen via controleerAdres, PDOK)
+const ascii = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 function valideer(inv, nu) {
   inv = inv || {}; nu = nu || new Date();
-  const f = {}, s = {};
+  const f = {}, s = {}, bevestigd = [].concat(inv._bevestigd || []);
   for (const [k] of VELDEN) s[k] = tekst(inv[k], k === 'opmerkingen' ? 1000 : k === 'adres' ? 120 : 80);
+  for (const [k, max] of EXTRA) s[k] = tekst(inv[k], max);
+  // adres: straat + huisnummer (+ toevoeging); oud formaat (alleen 'adres') blijft werken
+  if (s.straat || s.huisnummer) {
+    if (!s.straat) f.straat = 'leeg';
+    if (!s.huisnummer) f.huisnummer = 'leeg'; else if (!/^\d{1,5}$/.test(s.huisnummer)) f.huisnummer = 'ongeldig';
+    s.toevoeging = s.toevoeging.replace(/^[-\s]+/, '');
+    s.adres = [s.straat, s.huisnummer + (s.toevoeging ? (/^[a-z]$/i.test(s.toevoeging) ? s.toevoeging.toUpperCase() : '-' + s.toevoeging) : '')].filter(Boolean).join(' ');
+  } else if (!s.adres) { f.straat = 'leeg'; f.huisnummer = 'leeg'; }
   for (const [k] of VELDEN) if (!OPTIONEEL.includes(k) && !s[k]) f[k] = 'leeg';
   const w = WINKELS.find(x => x.code === s.vestiging); if (s.vestiging && !w) f.vestiging = 'ongeldig';
   if (s.geslacht && !GESLACHT[s.geslacht]) f.geslacht = 'ongeldig';
-  if (s.voorletters) s.voorletters = s.voorletters.toUpperCase().replace(/[^A-Z]/g, '').split('').join('.') + '.';
+  // namen en woonplaats: geen cijfers
+  for (const k of ['voornaam', 'tussenvoegsel', 'achternaam', 'woonplaats', 'straat']) if (s[k] && (k === 'straat' ? /^\d+$/.test(s[k]) : /\d/.test(s[k]))) f[k] = 'cijfers';
+  if (s.voorletters) {
+    s.voorletters = ascii(s.voorletters).toUpperCase().replace(/[^A-Z]/g, '').split('').join('.') + '.';
+    if (s.voorletters === '.') f.voorletters = 'ongeldig';
+    else if (s.voornaam && !f.voornaam && ascii(s.voornaam).toUpperCase()[0] !== s.voorletters[0] && !bevestigd.includes('voorletters')) f.voorletters = 'voorletters';
+  }
+  // nationaliteit uit de keuzelijst (of 'anders' met tekst)
+  if (s.nationaliteit) {
+    const n = NAT.PER_CODE[s.nationaliteit];
+    if (!n) { const t = NAT.NATIONALITEITEN.find(x => x.nl.toLowerCase() === s.nationaliteit.toLowerCase() || x.en.toLowerCase() === s.nationaliteit.toLowerCase() || (x.code === 'NL' && /^nederland/i.test(s.nationaliteit))); if (t) s.nationaliteit = t.code; else f.nationaliteit = 'ongeldig'; }
+    if (s.nationaliteit === 'XX') { if (!s.nationaliteitAnders) f.nationaliteitAnders = 'leeg'; else if (/\d/.test(s.nationaliteitAnders)) f.nationaliteitAnders = 'cijfers'; }
+  }
   if (s.postcode && /^\d{4}\s*[a-z]{2}$/i.test(s.postcode)) s.postcode = s.postcode.replace(/^(\d{4})\s*([a-z]{2})$/i, (x, a, b) => a + ' ' + b.toUpperCase());
-  if (s.mobiel) { const m = s.mobiel.replace(/[\s()-]/g, ''); if (!/^\+?\d{9,15}$/.test(m)) f.mobiel = 'ongeldig'; else s.mobiel = m; }
+  if (s.mobiel) { const m = s.mobiel.replace(/[\s()-]/g, ''); if (!/^\+?\d{9,15}$/.test(m) || (/^0[1-9]/.test(m) && m.length !== 10) || (/^06/.test(m) && !/^06\d{8}$/.test(m))) f.mobiel = 'ongeldig'; else s.mobiel = m; }
   if (s.email) { s.email = s.email.toLowerCase(); if (!/^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i.test(s.email)) f.email = 'ongeldig'; }
   if (s.bsn) { const b = bsnOk(s.bsn); if (!b) f.bsn = 'ongeldig'; else s.bsn = b; }
   if (s.iban) { const b = ibanOk(s.iban); if (!b) f.iban = 'ongeldig'; else s.iban = b; }
-  if (s.geboortedatum) { const d = datumOk(s.geboortedatum), lft = d ? (nu - d) / (365.25 * 864e5) : 0; if (!d) f.geboortedatum = 'ongeldig'; else if (lft < 13 || lft > 80) f.geboortedatum = 'leeftijd'; else s.geboortedatum = nl(d); }
-  if (s.datumIndienst) { const d = datumOk(s.datumIndienst), dg = d ? (d - nu) / 864e5 : 0; if (!d) f.datumIndienst = 'ongeldig'; else if (dg < -120 || dg > 365) f.datumIndienst = 'bereik'; else s.datumIndienst = nl(d); }
+  let geb = null;
+  if (s.geboortedatum) { const d = datumOk(s.geboortedatum), lft = d ? (nu - d) / (365.25 * 864e5) : 0; if (!d) f.geboortedatum = 'ongeldig'; else if (d > nu) f.geboortedatum = 'toekomst'; else if (lft < 13 || lft > 80) f.geboortedatum = 'leeftijd'; else { s.geboortedatum = nl(d); geb = d; } }
+  if (s.datumIndienst) {
+    const d = datumOk(s.datumIndienst), dg = d ? (d - nu) / 864e5 : 0;
+    if (!d) f.datumIndienst = 'ongeldig'; else if (dg < -120 || dg > 365) f.datumIndienst = 'bereik';
+    else if (geb && d < new Date(geb.getFullYear() + 13, geb.getMonth(), geb.getDate(), 12)) f.datumIndienst = 'voor-geboorte';
+    else s.datumIndienst = nl(d);
+  }
   if (s.uren !== '') { const u = Number(String(s.uren).replace(',', '.')); if (!isFinite(u) || u < 0 || u > 48) f.uren = 'ongeldig'; else s.uren = String(u); }
   return { ok: !Object.keys(f).length, fouten: f, schoon: s, winkel: w || null };
+}
+// v0.35.2: postcode ↔ huisnummer ↔ woonplaats via PDOK Locatieserver (Kadaster, gratis, geen sleutel).
+// Geeft { straat, woonplaats } of null (niet gevonden) of undefined (PDOK niet bereikbaar: dan niet blokkeren).
+async function zoekAdres(postcode, huisnummer) {
+  const pc = String(postcode || '').replace(/\s+/g, '').toUpperCase(); if (!/^\d{4}[A-Z]{2}$/.test(pc)) return null;
+  const q = 'postcode:' + pc + (huisnummer ? ' and huisnummer:' + String(huisnummer).replace(/\D/g, '') : '');
+  const url = 'https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?rows=1&fl=straatnaam,woonplaatsnaam,postcode&fq=type:' + (huisnummer ? 'adres' : 'postcode') + '&q=' + encodeURIComponent(q);
+  try {
+    const ac = new AbortController(), tm = setTimeout(() => ac.abort(), 4000);
+    const r = await fetch(url, { signal: ac.signal }); clearTimeout(tm);
+    if (!r.ok) return undefined;
+    const d = (((await r.json()) || {}).response || {}).docs || [];
+    if (!d.length) {
+      if (!huisnummer) return null;
+      const alleenPc = await zoekAdres(pc, ''); // postcode bestaat wel, huisnummer niet?
+      return alleenPc === undefined ? undefined : alleenPc ? { geenNummer: true, woonplaats: alleenPc.woonplaats } : null;
+    }
+    return { straat: d[0].straatnaam || '', woonplaats: d[0].woonplaatsnaam || '' };
+  } catch (e) { return undefined; }
+}
+// Op de server, vóór opslaan: Nederlandse postcode moet bestaan en bij de woonplaats horen. Corrigeert spelling naar de officiële naam.
+async function controleerAdres(s, zoek) {
+  zoek = zoek || zoekAdres;
+  if (!/^\d{4} [A-Z]{2}$/.test(s.postcode || '')) return {}; // buitenlands adres: geen controle (HR ziet het in de controle)
+  const a = await zoek(s.postcode, s.huisnummer || '');
+  if (a === undefined) return {};
+  if (a === null) return { postcode: 'pc-onbekend' };
+  if (a.geenNummer) return { huisnummer: 'pc-huisnummer' };
+  // spelling, accenten en de gangbare namen ('Den Haag' = 's-Gravenhage, 'Den Bosch' = 's-Hertogenbosch) tellen als gelijk
+  const ALIAS = { denhaag: 'sgravenhage', thehague: 'sgravenhage', denbosch: 'shertogenbosch' };
+  const n = x => { const k = ascii(x).toLowerCase().replace(/[^a-z]/g, ''); return ALIAS[k] || k; };
+  if (a.woonplaats && n(a.woonplaats) !== n(s.woonplaats)) return { woonplaats: 'pc-woonplaats', _suggestie: a.woonplaats };
+  if (a.straat && s.straat && n(a.straat) === n(s.straat) && a.straat !== s.straat) { s.adres = String(s.adres || '').replace(s.straat, a.straat); s.straat = a.straat; }
+  if (a.woonplaats && ascii(a.woonplaats).toLowerCase().replace(/[^a-z]/g, '') === ascii(s.woonplaats).toLowerCase().replace(/[^a-z]/g, '')) s.woonplaats = a.woonplaats; // alleen spelling rechtzetten, 'Den Haag' blijft 'Den Haag'
+  return {};
+}
+// BSN als onomkeerbare vingerafdruk (HMAC met een geheime sleutel op de server) — alleen om dubbele BSN's te vinden
+function bsnHash(bsn) {
+  const basis = process.env.UPLOAD_SECRET || process.env.SUPABASE_SERVICE_KEY; if (!basis || !bsn) return '';
+  const crypto = require('crypto'), k = crypto.createHash('sha256').update('hr-bsn|' + basis).digest();
+  return crypto.createHmac('sha256', k).update(String(bsn)).digest('hex').slice(0, 32);
 }
 function weergave(k, s, winkel) {
   if (k === 'vestiging') return winkel ? winkel.naam + ' (' + winkel.bv + ')' : s.vestiging;
   if (k === 'geslacht') return GESLACHT[s.geslacht] || s.geslacht;
   if (k === 'uren') return s.uren === '0' ? '0 (oproepcontract)' : s.uren;
+  if (k === 'nationaliteit') { const n = NAT.PER_CODE[s.nationaliteit]; return n ? (n.code === 'XX' ? s.nationaliteitAnders : n.nl) : s.nationaliteit; }
   return s[k] || '';
 }
 const volledigeNaam = s => [s.voornaam, s.tussenvoegsel, s.achternaam].filter(Boolean).join(' ');
@@ -100,7 +175,11 @@ const slug = s => normNaam(s).replace(/\s+/g, '_').slice(0, 40) || 'medewerker';
 // Gegevens die in de database mogen (geen BSN/IBAN)
 function zonderGevoelig(s, winkel) {
   const o = {}; for (const [k] of VELDEN) if (!GEVOELIG.includes(k)) o[k] = s[k] || '';
+  for (const [k] of EXTRA) o[k] = s[k] || '';
   if (winkel) { o.vestigingNaam = winkel.naam; o.bv = winkel.bv; }
+  // v0.35.2: voor de controles, zonder het BSN/IBAN zelf
+  const n = NAT.PER_CODE[s.nationaliteit]; o.nationaliteitNaam = weergave('nationaliteit', s); o.euer = n ? n.euer : false;
+  o.ibanLand = String(s.iban || '').slice(0, 2); o.bsnHash = bsnHash(s.bsn);
   return o;
 }
 async function opslaan(tok, s, meta) {
@@ -155,7 +234,7 @@ const RETOUR_VELDEN = {
   functie: { nl: 'Functie', en: 'Job title', velden: ['functie'] },
   naam: { nl: 'Naam / voorletters', en: 'Name / initials', velden: ['voornaam', 'voorletters', 'tussenvoegsel', 'achternaam'] },
   geboortedatum: { nl: 'Geboortedatum', en: 'Date of birth', velden: ['geboortedatum'] },
-  adres: { nl: 'Adres', en: 'Address', velden: ['adres', 'postcode', 'woonplaats'] },
+  adres: { nl: 'Adres', en: 'Address', velden: ['postcode', 'huisnummer', 'toevoeging', 'straat', 'woonplaats'] },
   contact: { nl: 'Telefoon / e-mail', en: 'Phone / e-mail', velden: ['mobiel', 'email'] },
   bsn: { nl: 'BSN', en: 'BSN', velden: ['bsn'] },
   iban: { nl: 'IBAN', en: 'IBAN', velden: ['iban'] }
@@ -211,5 +290,23 @@ async function trekRetourIn(r, door) {
   return { bericht: 'Retour ingetrokken: het formulier van ' + r.naam + ' staat weer klaar voor salaris.' };
 }
 
-module.exports = { WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link,
+// v0.35.2: veldfouten bijhouden (alleen veldnamen, geen waarden) in hr_acties, en tellen voor HR
+async function logFouten(naam, velden, bron) {
+  const v = [...new Set([].concat(velden || []).map(x => String(x).replace(/[^\w-]/g, '').slice(0, 30)).filter(Boolean))].slice(0, 30);
+  if (!v.length) return;
+  await require('./auth').logActie({ door: 'indienstformulier', actie: 'validatie', bron: 'indienst', veld: v.join(','), naam: String(naam || '').slice(0, 80), details: bron || '' });
+}
+async function foutStatistiek(dagen) {
+  const grens = new Date(Date.now() - (dagen || 30) * 864e5).toISOString(), db = require('./auth').admin();
+  const [f, ok, ret] = await Promise.all([
+    db.from('hr_acties').select('veld,naam').eq('actie', 'validatie').eq('bron', 'indienst').gte('tijdstip', grens).limit(5000),
+    db.from('hr_acties').select('naam').eq('actie', 'upload').eq('veld', 'indienst').like('door', 'indienstformulier:%').gte('tijdstip', grens).limit(5000),
+    db.from('hr_acties').select('naam').eq('veld', 'indienst-retour').like('details', 'Indiensttredingsformulier retour:%').gte('tijdstip', grens).limit(5000)
+  ]);
+  const per = {}, mensen = {};
+  for (const r of (f.data || [])) for (const k of String(r.veld || '').split(',')) { if (!k) continue; (mensen[k] = mensen[k] || new Set()).add(r.naam); }
+  for (const k of Object.keys(mensen)) per[k] = mensen[k].size; // aantal medewerkers dat op dit veld vastliep
+  return { dagen: dagen || 30, ingevuld: new Set((ok.data || []).map(x => x.naam)).size, retour: (ret.data || []).length, perVeld: Object.entries(per).sort((a, b) => b[1] - a[1]).slice(0, 6) };
+}
+module.exports = { logFouten, foutStatistiek, zoekAdres, controleerAdres, bsnHash, NAT, WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link,
   RETOUR_VELDEN, annoteer, annoteerMet, retourVoor, zetRetour, retourMail, stuurRetour, trekRetourIn };

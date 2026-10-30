@@ -28,6 +28,6 @@ exports.handler = beveiligd('loonheffing', async (event, g) => {
     }
     throw new Error('Onbekende actie');
   }
-  const rijen = await S.getLoonheffing();
-  return { rijen, auto: (await I.lees('loon_auto', false)) === true, salarisAuto: (await I.lees('salaris_auto', false)) === true, templates: T.LOON_TEMPLATES.map(x => ({ key: x.key, label: x.label, taal: x.taal, type: x.type, subject: x.subject })) };
+  const rijen = await require('./_lib/indienstcontrole').controleer(await S.getLoonheffing()); // v0.35.2
+  return { rijen, indienstFouten: await require('./_lib/indienst').foutStatistiek().catch(() => null), auto: (await I.lees('loon_auto', false)) === true, salarisAuto: (await I.lees('salaris_auto', false)) === true, templates: T.LOON_TEMPLATES.map(x => ({ key: x.key, label: x.label, taal: x.taal, type: x.type, subject: x.subject })) };
 });
