@@ -250,11 +250,11 @@ async function instelling() { const v = await require('./instellingen').lees('wi
 const isKeukenW = w => /keuken/i.test(String(w || ''));
 function adresVan(inst, w) { return inst.adressen[w] || (isKeukenW(w) ? C.KEUKEN_EMAIL : '') || ''; }
 
-// opts: { droog, alleenWinkel, door, proef (forceer proef) }
+// opts: { droog, alleenWinkel, door, proef (forceer proef), live (v0.36.2: forceer echte verzending, ook in proefstand) }
 async function verstuurAlles(opts) {
   opts = opts || {};
   const M = require('./mail'), inst = await instelling(), data = await laad();
-  const proef = opts.proef || inst.proef, rap = { verstuurd: [], overgeslagen: [], fouten: data.fouten.slice(), proef };
+  const proef = opts.live ? false : (opts.proef || inst.proef), rap = { verstuurd: [], overgeslagen: [], fouten: data.fouten.slice(), proef };
   if (jeugdloonVerouderd()) rap.fouten.push('CAO-jeugdlonen in config.js (CAO_JEUGDLOON) zijn verouderd: nieuwe loontabel invullen, tot die tijd staat er geen bedrag in de winkelmail');
   for (const w of data.winkels) {
     if (opts.alleenWinkel && w !== opts.alleenWinkel) continue;
@@ -268,7 +268,7 @@ async function verstuurAlles(opts) {
     if (opts.droog) { rap.verstuurd.push({ winkel: w, to, droog: true }); continue; }
     try {
       const id = await M.verstuur({ to, subject, html: html(w, b), text: plain(w, b), tags: [{ name: 'bron', value: 'winkelmail' }] });
-      await M.logMail({ door: opts.door || 'signalering', bron: 'winkelmail', type: proef ? 'proef' : 'week', naar: to, naam: w, onderwerp: subject, taal: 'NL', resend_id: id });
+      await M.logMail({ door: opts.door || 'signalering', bron: 'winkelmail', type: proef ? 'proef' : opts.live ? 'handmatig' : 'week', naar: to, naam: w, onderwerp: subject, taal: 'NL', resend_id: id });
       rap.verstuurd.push({ winkel: w, to, contracten: b.contracten.length, wacht: b.wacht.length });
     } catch (e) { rap.fouten.push(w + ': ' + e.message); }
   }

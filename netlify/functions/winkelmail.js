@@ -4,6 +4,7 @@
 // POST { actie:'opslaan', aan, proef, adressen, uit }   (alleen beheerder)
 // POST { actie:'voorbeeld', winkel }          -> { html, leeg, aantallen }
 // POST { actie:'proef', winkel? }             -> proefmail(s) naar C.WINKELMAIL_PROEF (alleen beheerder)
+// POST { actie:'nu', winkel }                 -> v0.36.2: weekoverzicht van één winkel nu echt naar het ingestelde adres (alleen beheerder)
 // ============================================================
 const { beveiligd, body, logActie } = require('./_lib/auth');
 const WM = require('./_lib/winkelmail');
@@ -34,6 +35,17 @@ exports.handler = beveiligd('winkelmail', async (event, g) => {
   if (p.actie === 'proef') {
     const r = await WM.verstuurAlles({ proef: true, alleenWinkel: p.winkel || '', door: g.email });
     return { bericht: r.verstuurd.length + ' proefmail(s) naar ' + (C.WINKELMAIL_PROEF || 'mischa@ilovesla.com') + (r.overgeslagen.length ? ' · ' + r.overgeslagen.length + ' overgeslagen (niets te melden of uitgezet)' : '') + (r.fouten.length ? ' · fouten: ' + r.fouten.join('; ') : ''), rap: r };
+  }
+  // v0.36.2: weekoverzicht van één winkel nu (opnieuw) echt naar de store manager sturen, bv. na een verkeerd mailadres
+  if (p.actie === 'nu') {
+    const w = String(p.winkel || '');
+    if (!w) throw new Error('Kies een winkel.');
+    const inst = await WM.instelling(), adres = WM.adresVan(inst, w);
+    if (!adres) throw new Error('Geen mailadres ingesteld voor ' + w + '. Vul het adres in en klik eerst op Opslaan.');
+    const r = await WM.verstuurAlles({ live: true, alleenWinkel: w, door: g.email });
+    if (r.fouten.length && !r.verstuurd.length) throw new Error('Niet verstuurd: ' + r.fouten.join('; '));
+    await logActie({ door: g.email, actie: 'winkelmail-nu', bron: 'winkelmail', naam: w, nieuw: adres });
+    return { bericht: r.verstuurd.length ? 'Weekoverzicht ' + w + ' verstuurd naar ' + adres + '.' : 'Niets verstuurd voor ' + w + '.', rap: r };
   }
   throw new Error('Onbekende actie.');
 });

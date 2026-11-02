@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.36.2', datum: '02-11-2026', titel: 'Winkelmail van één winkel opnieuw versturen', punten: [
+    'Beheer → Winkelmail: nieuwe knop "Nu versturen" per winkel. Stuurt het weekoverzicht van die winkel direct naar het opgeslagen mailadres, ook buiten maandag en ook in de proefstand. Handig als een adres verkeerd stond.'
+  ] },
   { nummer: '0.36.1', datum: '30-10-2026', titel: 'Tijd tot eerste dienst in Scorekaart en onder Instroom', punten: [
     '<b>Dagen tot eerste dienst</b> staat nu als indicator in de <b>Scorekaart</b> en in het <b>HR-maandrapport</b> (PDF en mail): per maand, vorige maand, verschil, 12 maanden en per winkel, vergeleken met het SLA-gemiddelde. Hier tellen ook medewerkers mee die alweer vertrokken zijn.',
     'De details per medewerker staan op een eigen pagina: <b>Instroom → Tijd tot eerste dienst</b> (berekent vanzelf bij openen). Het blok is van het Overzicht verhuisd.'

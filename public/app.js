@@ -836,7 +836,7 @@
     g('wm-body').innerHTML = d.winkels.map(function (w) {
       return '<tr data-wm="' + esc(w.winkel) + '"><td><strong>' + esc(w.winkel) + '</strong></td><td><input type="text" class="wm-adres" value="' + esc(w.adres) + '" placeholder="' + esc(w.standaard || 'winkel@ilovesla.com') + '" style="width:100%;min-width:220px"' + (adm ? '' : ' disabled') + '></td>'
         + '<td><label class="chk"><input type="checkbox" class="wm-mee"' + (w.uit ? '' : ' checked') + (adm ? '' : ' disabled') + '> mee</label></td>'
-        + '<td><button class="btn bd bsm" onclick="wmVoorbeeld(\'' + esc(w.winkel).replace(/'/g, "\\'") + '\')">Voorbeeld</button>' + (adm ? ' <button class="btn bd bsm" onclick="wmProef(\'' + esc(w.winkel).replace(/'/g, "\\'") + '\')">Proef naar mij</button>' : '') + '</td></tr>';
+        + '<td><button class="btn bd bsm" onclick="wmVoorbeeld(\'' + esc(w.winkel).replace(/'/g, "\\'") + '\')">Voorbeeld</button>' + (adm ? ' <button class="btn bd bsm" onclick="wmProef(\'' + esc(w.winkel).replace(/'/g, "\\'") + '\')">Proef naar mij</button> <button class="btn bp bsm" title="Weekoverzicht nu echt naar het opgeslagen adres sturen" onclick="wmNu(\'' + esc(w.winkel).replace(/'/g, "\\'") + '\')">Nu versturen</button>' : '') + '</td></tr>';
     }).join('');
     g('wm-opslaan').style.display = adm ? '' : 'none'; g('wm-proef-alles').style.display = adm ? '' : 'none';
   };
@@ -858,6 +858,16 @@
   window.wmProef = async function (w) {
     if (!confirm(w ? 'Proefmail van ' + w + ' naar jezelf sturen?' : 'Proefmails van alle winkels (met iets te melden) naar jezelf sturen?')) return;
     toast('Bezig…', 'ok'); var r = await api('/api/winkelmail', { actie: 'proef', winkel: w || '' }); toast(r.bericht, r.success ? 'ok' : 'err');
+  };
+  // v0.36.2: weekoverzicht van één winkel nu echt naar de store manager (bv. na een verkeerd adres)
+  window.wmNu = async function (w) {
+    var rec = (wmData && wmData.winkels || []).filter(function (x) { return x.winkel === w; })[0] || {};
+    var tr = document.querySelector('#wm-body tr[data-wm="' + w.replace(/"/g, '\\"') + '"]'), inv = tr ? tr.querySelector('.wm-adres').value.trim() : '';
+    var opgeslagen = rec.adres || rec.standaard || '';
+    if (inv && inv !== (rec.adres || '')) { toast('Klik eerst op Opslaan: het adres van ' + w + ' is gewijzigd maar nog niet opgeslagen.', 'err'); return; }
+    if (!opgeslagen) { toast('Geen mailadres voor ' + w + '. Vul het in en klik op Opslaan.', 'err'); return; }
+    if (!confirm('Weekoverzicht van ' + w + ' nu echt versturen naar ' + opgeslagen + '?')) return;
+    toast('Bezig…', 'ok'); var r = await api('/api/winkelmail', { actie: 'nu', winkel: w }); toast(r.bericht, r.success ? 'ok' : 'err');
   };
   window.omSalZet = async function (aan) {
     if (!confirm(aan ? 'Automatisch naar salaris aanzetten?\n\nGetekende ontslagdossiers gaan dan direct na de handtekening naar salaris, en elke maandag en donderdag gaat alles wat klaar is (ook loonheffing) mee. Dit is dezelfde schakelaar als op de tab Loonheffing.' : 'Automatisch naar salaris uitzetten? (Geldt ook voor loonheffing.)')) return;
