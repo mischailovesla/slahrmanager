@@ -281,7 +281,9 @@
     b.disabled = true; var r = await api('/api/document-upload', { stap: 'info', type: type, rij: rij }); b.disabled = false;
     if (!r.success) { toast(r.bericht, 'err'); return; }
     if (isLink) {
-      var tekst = 'Hoi ' + r.naam.split(' ')[0] + ',\n\nVia deze persoonlijke link kun je het ondertekende document uploaden (PDF of foto):\n' + r.link + '\n\nYou can upload the signed document (PDF or photo) via this personal link.\n\nGroet / Kind regards,\nSLA HR';
+      var tekst = r.formulierLink
+        ? 'Hoi ' + r.naam.split(' ')[0] + ',\n\n1. Vul het indiensttredingsformulier online in via deze persoonlijke link:\n' + r.formulierLink + '\n\n2. Upload je loonheffingsverklaring (PDF of foto) via:\n' + r.link + '\n\n1. Fill in the onboarding form online via this personal link (see above).\n2. Upload your payroll tax statement (PDF or photo) via the second link.\n\nGroet / Kind regards,\nSLA HR'
+        : 'Hoi ' + r.naam.split(' ')[0] + ',\n\nVia deze persoonlijke link kun je het ondertekende document uploaden (PDF of foto):\n' + r.link + '\n\nYou can upload the signed document (PDF or photo) via this personal link.\n\nGroet / Kind regards,\nSLA HR';
       try { await navigator.clipboard.writeText(tekst); toast('Uploadlink + korte tekst gekopieerd voor ' + r.naam + ' — plak in Gmail of WhatsApp' + (r.email ? ' (' + r.email + ')' : ''), 'ok'); }
       catch (x) { prompt('Kopieer de uploadlink:', r.link); }
       return;
