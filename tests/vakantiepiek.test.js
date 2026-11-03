@@ -17,3 +17,27 @@ assert.strictEqual(r[0].winkel, 'Middenweg');
 assert.deepStrictEqual(r[0].weken.map(w => [w.pct, w.rood]), [[40, true], [20, false], [30, true]]);
 assert.strictEqual(SIG.piekWeken(d, 2026, zomer).length, 0);
 console.log('vakantiepiek tests OK');
+
+// v0.38.2: loonheffing zonder indiensttredingsformulier gaat niet naar salaris
+(async () => {
+  const SAL = require('../netlify/functions/_lib/salaris');
+  const r = await SAL.stuur('loonheffing', { rij: 5, naam: 'Cecile', docUrl: 'ref:x', docUrl2: '' }, 'test', {});
+  assert.strictEqual(r.success, false); assert.ok(r.geenIndienst && /indiensttredingsformulier/.test(r.bericht));
+  console.log('salaris indienst-verplicht OK');
+})().catch(e => { console.error('✗ salaris indienst-verplicht: ' + e.message); process.exitCode = 1; });
+
+// v0.38.3: formulier op een andere naam
+{
+  const { naamPast } = require('../netlify/functions/_lib/util');
+  assert.strictEqual(naamPast('Boldizar Kovács', 'Maud Glass'), false);
+  assert.strictEqual(naamPast('Maud Glass', 'Maud Glass'), true);
+  assert.strictEqual(naamPast('Justin van t Noordende', "Justin Sebastiaan van 't Noordende"), true);
+  assert.strictEqual(naamPast('Esmée Hendrikse', 'Esmee Hendrikse'), true);
+  const IC = require('../netlify/functions/_lib/indienstcontrole');
+  const rij = { naam: 'Maud Glass', email: 'maudglass@gmail.com', docUrl2: 'sb:1:indienst' };
+  IC.controleerMet([rij], { 'sb:1:indienst': { naam: 'Maud Glass', gegevens: { voornaam: 'Boldizar', achternaam: 'Kovacs' } } }, [], { 'sb:1:indienst': ['andere-naam'] }, new Date());
+  const c = rij.indienstControle.find(x => x.soort === 'andere-naam');
+  assert.ok(c && c.ernst === 'rood', 'rood signaal, ook na akkoord');
+  assert.ok(IC.blokkeert(rij).length, 'blokkeert salaris');
+  console.log('andere-naam OK');
+}

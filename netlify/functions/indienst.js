@@ -18,7 +18,9 @@ exports.handler = async (event) => {
       // v0.35.1: teruggestuurd door HR → reden tonen en het vorige webformulier (zonder BSN/IBAN) vooraf invullen
       let retour = null, vorig = null;
       try { const x = await I.retourVoor(tok.n); if (x) retour = { reden: x.reden, velden: [].concat(...(x.velden || []).map(k => (I.RETOUR_VELDEN[k] || { velden: [] }).velden)) }; } catch (e) { retour = null; }
-      try { vorig = await I.gegevensVan(tok.n, ''); } catch (e) { vorig = null; }
+      // v0.38.3: alleen bij een retour vooraf invullen, en nooit als het vorige formulier op een andere naam staat (AVG)
+      try { vorig = retour ? await I.gegevensVan(tok.n, '') : null; } catch (e) { vorig = null; }
+      if (vorig && !require('./_lib/util').naamPast([vorig.voornaam, vorig.tussenvoegsel, vorig.achternaam].filter(Boolean).join(' '), tok.n)) vorig = null;
       const pre = await I.voorinvullen(tok.n);
       if (vorig) for (const [k] of I.VELDEN.concat([['straat'], ['huisnummer'], ['toevoeging'], ['nationaliteitAnders']])) if (vorig[k] && !['bsn', 'iban'].includes(k)) pre[k] = /^\d{2}-\d{2}-\d{4}$/.test(vorig[k]) && ['geboortedatum', 'datumIndienst'].includes(k) ? vorig[k].split('-').reverse().join('-') : vorig[k];
       return json(200, { success: true, naam: tok.n, winkels: I.WINKELS.map(w => ({ code: w.code, naam: w.naam })), nationaliteiten: I.NAT.NATIONALITEITEN.map(n => ({ code: n.code, nl: n.nl, en: n.en, euer: n.euer })), voorinvullen: pre, retour, vorigVerblijf: !!(await I.vorigVerblijf(tok.n).catch(() => null)) });

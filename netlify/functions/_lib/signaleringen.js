@@ -1140,6 +1140,7 @@ async function salaris(droog) {
       const blok = (ctl[r.rij] || []).filter(c => c.ernst !== 'blauw');
       if (blok.length) { rap.handmatig.push(Object.assign({ reden: 'dossiercontrole: ' + blok.map(c => c.label + ' (' + c.tekst + ')').join('; ') }, item)); continue; }
       if (type === 'loonheffing' && require('./indienstcontrole').blokkeert(r).length) { rap.handmatig.push(Object.assign({ reden: 'controle indiensttredingsformulier: ' + require('./indienstcontrole').blokkeert(r).map(c => c.label).join('; ') }, item)); continue; } // v0.35.2
+      if (type === 'loonheffing' && !r.docUrl2) { rap.handmatig.push(Object.assign({ reden: 'indiensttredingsformulier ontbreekt (alleen de loonheffingsverklaring is binnen)' }, item)); continue; } // v0.38.2
       if (type === 'loonheffing' && r.indienstRetour) { rap.handmatig.push(Object.assign({ reden: 'indiensttredingsformulier retour gestuurd: ' + r.indienstRetour.reden }, item)); continue; } // v0.35.1
       const oud = [r.docUrl, r.docUrl2].filter(u => u && !U.isRef(u));
       if (oud.length) { rap.handmatig.push(Object.assign({ reden: 'document staat nog in Google Drive (oud formulier)' }, item)); continue; }

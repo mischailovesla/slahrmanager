@@ -6,7 +6,7 @@
 //   signaal = { soort, ernst: 'rood'|'oranje'|'blauw', label, tekst, veld?, reden? }   (veld+reden = voorstel voor ↩ retour)
 // rood/oranje houden het automatisch versturen naar salaris tegen, tot HR ✓ Akkoord geeft of het formulier retour stuurt.
 // ============================================================
-const { normNaam } = require('./util');
+const { normNaam, naamPast } = require('./util');
 const AKKOORD_SLEUTEL = 'indienst_controle_ok';
 
 const iso = nlDatum => { const m = String(nlDatum || '').match(/^(\d{2})-(\d{2})-(\d{4})/); return m ? m[3] + '-' + m[2] + '-' + m[1] : ''; };
@@ -45,6 +45,9 @@ function controleerMet(rijen, formulieren, med, akkoord, nu) {
     if (!g) {
       p('handmatig', 'blauw', 'Bestand, geen online formulier', 'Ingeleverd als bestand (bijv. Excel of foto). De automatische controle kan dit niet lezen: controleer zelf vestiging, startdatum en uren.', 'vestiging', 'We hebben je formulier als bestand ontvangen. Wil je het online formulier invullen? Dan weten we zeker dat vestiging, startdatum en uren goed in ons systeem komen.');
     } else {
+      // v0.38.3: formulier ingevuld met de gegevens van iemand anders (bijv. link doorgestuurd of verkeerd adres)
+      const fNaam = [g.voornaam, g.tussenvoegsel, g.achternaam].filter(Boolean).join(' ');
+      if (fNaam && !naamPast(fNaam, r.naam)) p('andere-naam', 'rood', 'Formulier op een andere naam', 'Het formulier is ingevuld door of voor ' + fNaam + ', niet ' + r.naam + '. Verwijder het uit dit dossier en stuur ' + r.naam + ' een nieuwe link.', 'naam', 'Het formulier dat via jouw link is ingevuld, bevat de gegevens van iemand anders. Vul het opnieuw in met je eigen gegevens.', true);
       const m = (g.email && perEmail[g.email]) || (r.email && perEmail[String(r.email).toLowerCase()]) || perNaam[normNaam(r.naam)] || null;
       if (m) {
         if (m.winkelCode && g.vestiging && m.winkelCode !== g.vestiging)
@@ -75,7 +78,7 @@ function controleerMet(rijen, formulieren, med, akkoord, nu) {
       if (g.postcode && !/^\d{4} [A-Z]{2}$/.test(g.postcode)) p('adres-buitenland', 'blauw', 'Buitenlands adres', 'Woont niet in Nederland: geef dit door aan de salarisadministratie.');
     }
     const ok = akkoord[r.docUrl2] || [];
-    r.indienstControle = s.filter(x => !ok.includes(x.soort));
+    r.indienstControle = s.filter(x => x.geenAkkoord || !ok.includes(x.soort));
   }
   return rijen;
 }

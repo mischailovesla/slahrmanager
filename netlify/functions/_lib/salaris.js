@@ -32,6 +32,8 @@ async function stuur(type, row, door, p) {
     if (!U.isRef(url)) { oudeDrive.push(naamLabel); driveKeys.push({ key, label: naamLabel, drive: url }); return; }
     bijlagen.push(await U.bestandMetLabel(url, label, row.naam)); labels.push(naamLabel);
   };
+  // v0.38.2: zonder indiensttredingsformulier gaat er niets naar de salarisadministratie (ook niet handmatig)
+  if (type === 'loonheffing' && !row.docUrl2) return { success: false, geenIndienst: true, bericht: 'Van ' + row.naam + ' ontbreekt het indiensttredingsformulier. Dat moet mee naar de salarisadministratie. Laat de medewerker het online formulier invullen (Uploadlink), of upload het zelf via "Zelf uploaden".' };
   if (type === 'loonheffing' && row.indienstRetour && !p.ondanksRetour) return { success: false, bericht: 'Het indiensttredingsformulier van ' + row.naam + ' is retour gestuurd (' + row.indienstRetour.reden + '). Wacht op het aangepaste formulier, of trek de retour in.' };
   if (type === 'loonheffing') { await voeg(row.docUrl, 'Loonheffingsverklaring', 'Loonheffingsverklaring', 'loon'); await voeg(row.docUrl2, 'Indiensttreding', 'Indiensttredingsformulier', 'indienst'); }
   else if (type === 'ontslag') await voeg(row.docUrl, 'Ontslagbevestiging_ondertekend', 'Ondertekende ontslagbevestiging', 'ontslag');

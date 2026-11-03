@@ -1,4 +1,11 @@
 // Gedeelde helpers - zelfde semantiek als in Code.gs
+// v0.38.3: hoort een ingevulde naam bij deze persoon? Minstens één naamdeel van 3+ letters gemeen (voornaam of achternaam).
+function naamPast(a, b) {
+  const delen = x => normNaam(x).split(' ').filter(d => d.length >= 3);
+  const A = delen(a), B = new Set(delen(b));
+  if (!A.length || !B.size) return true; // te weinig om te beoordelen
+  return A.some(d => B.has(d));
+}
 function normNaam(s) {
   s = String(s || '').toLowerCase();
   try { s = s.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (e) { /* noop */ }
@@ -49,4 +56,4 @@ function vindKolommen(headerRij, specs) {
   return res;
 }
 
-module.exports = { normNaam, parseNLDatum, dagenTot, vandaagNL, toDownloadUrl, vindKolommen };
+module.exports = { naamPast, normNaam, parseNLDatum, dagenTot, vandaagNL, toDownloadUrl, vindKolommen };

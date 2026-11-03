@@ -2,6 +2,14 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.38.3', datum: '03-11-2026', titel: 'Indiensttredingsformulier: nooit gegevens van een ander tonen', punten: [
+    'Het online indiensttredingsformulier vult alleen nog eerdere antwoorden in als HR het formulier <b>retour</b> heeft gestuurd, en nooit als dat eerdere formulier op een andere naam staat. Zo kan een medewerker niet meer de gegevens van een collega zien.',
+    'Nieuwe controle: staat het formulier op een <b>andere naam</b> dan het dossier (bijv. omdat iemand anders de link gebruikte), dan krijg je het rode label <b>Formulier op een andere naam</b>. Het gaat dan niet naar salaris, en ✓ Akkoord kan dit niet wegklikken.'
+  ] },
+  { nummer: '0.38.2', datum: '03-11-2026', titel: 'Indiensttredingsformulier verplicht naar salaris', punten: [
+    'Loonheffing gaat alleen nog naar Mahdia als <b>beide</b> documenten binnen zijn: de loonheffingsverklaring én het indiensttredingsformulier. Geldt voor de automatische run (ma + do) en voor de knop <b>→ Salaris</b>.',
+    'Is alleen de loonheffingsverklaring binnen, dan staat de medewerker in het HR-overzicht van de salarisrun onder <b>handmatig</b> met de reden "indiensttredingsformulier ontbreekt", en in de pijplijn bij Klaar voor salaris met het rode label <b>Indienst ontbreekt</b>.'
+  ] },
   { nummer: '0.38.1', datum: '03-11-2026', titel: 'Vakantiepiek-alert nu ook voor de kerstvakantie', punten: [
     'De zomerpiek-check heet nu <b>Vakantiepiek: zomer &amp; kerst</b>. Van <b>oktober t/m 24 december</b> krijgt HR elke maandag een mail met de winkels waar in de kerstvakantie (weken van half december t/m begin januari) ≥20% van de bezetting tegelijk vrij heeft (goedgekeurd + aangevraagd). Rood = ≥30%.',
     'Kijkt over de jaargrens heen: de eerste week van januari telt mee. Maart t/m juli blijft de zomercheck zoals hij was.'

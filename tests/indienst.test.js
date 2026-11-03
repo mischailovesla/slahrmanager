@@ -72,7 +72,7 @@ I.maakPdf(I.valideer(goed, nu).schoon, { tijd: nu.toISOString() }).then(b => { a
   const K = require('../netlify/functions/_lib/indienstcontrole.js');
   const gg = I.zonderGevoelig(v2.schoon, I.WINKELS.find(w => w.code === 'KP'));
   assert.ok(gg.bsnHash && gg.bsnHash.length === 32 && !JSON.stringify(gg).includes('111222333') && gg.euer === true && gg.ibanLand === 'NL');
-  const form = { 'sb:a:indienst': { naam: 'Test Persoon', gegevens: gg }, 'sb:b:indienst': { naam: 'Ander Iemand', gegevens: Object.assign({}, gg) }, 'sb:c:indienst': { naam: 'Jong Ding', gegevens: Object.assign({}, gg, { geboortedatum: '01-01-2010', nationaliteit: 'IN', euer: false, bsnHash: 'x', email: 'jong@voorbeeld.nl' }) } };
+  const form = { 'sb:a:indienst': { naam: 'Test Persoon', gegevens: gg }, 'sb:b:indienst': { naam: 'Ander Iemand', gegevens: Object.assign({}, gg) }, 'sb:c:indienst': { naam: 'Jong Ding', gegevens: Object.assign({}, gg, { voornaam: 'Jong', achternaam: 'Ding', geboortedatum: '01-01-2010', nationaliteit: 'IN', euer: false, bsnHash: 'x', email: 'jong@voorbeeld.nl' }) } };
   const med = [{ naam: 'Test Persoon', email: 'test@voorbeeld.nl', winkelCode: 'CB', winkelNaam: 'Ceintuurbaan', indienst: '15-11-2026', contractUren: 20, leeftijd: 25, verjaardag: '2027-06-11' }];
   const rijen = [{ rij: 2, naam: 'Test Persoon', docUrl2: 'sb:a:indienst' }, { rij: 3, naam: 'Jong Ding', docUrl2: 'sb:c:indienst' }, { rij: 4, naam: 'Excel Mens', docUrl2: 'sb:d:loon' }, { rij: 5, naam: 'Al Weg', docUrl2: 'sb:a:indienst', salaris: 'x' }];
   K.controleerMet(rijen, form, med, { 'sb:a:indienst': ['uren'] }, nu2);
