@@ -508,7 +508,7 @@
   async function laadMedewerkers(forceer) {
     g('dos-lijst').innerHTML = '<tr><td colspan="8" class="leeg grijs">Shiftbase-lijst laden…</td></tr>';
     var d = await api('/api/medewerkers' + (forceer ? '?ververs=1' : ''));
-    if (d.success) { medewerkers = d.medewerkers || []; medewerkersFout = ''; if (forceer) toast(medewerkers.length + ' medewerkers opgehaald uit Shiftbase', 'ok'); vulWinkelFilter(); }
+    if (d.success) { medewerkers = d.medewerkers || []; medewerkersFout = ''; if (forceer) toast(medewerkers.length + ' medewerkers opgehaald uit Shiftbase', 'ok'); vulWinkelFilter(); persoonIndex = null; lhWkVul(); }
     else { medewerkersFout = d.bericht || 'onbekende fout'; toast(/tijdelijk niet bereikbaar/.test(medewerkersFout) ? medewerkersFout : 'Shiftbase: ' + medewerkersFout, 'err'); }
     renderMedewerkersLijst();
   }
@@ -741,6 +741,9 @@
     var r = await api('/api/loonheffing', { actie: 'voorbeeld' }); if (!r.success) { toast(r.bericht, 'err'); return; }
     var w = window.open('', '_blank'); if (w) { w.document.write(r.html); w.document.title = r.subject; w.document.close(); }
   };
+  // v0.42.1: locatie (Shiftbase-team) onder de naam in de loonheffingstabel; wordt aangevuld zodra de Shiftbase-lijst binnen is
+  function lhWk(r) { var w = winkelVanPersoon(r.naam, r.email); return '<div class="lay-sub" data-lh-wk data-n="' + esc(r.naam) + '" data-e="' + esc(r.email || '') + '">' + (w ? '📍 ' + esc(w) : medewerkers.length ? 'nog niet in Shiftbase' : '') + '</div>'; }
+  function lhWkVul() { document.querySelectorAll('[data-lh-wk]').forEach(function (el) { if (el.textContent) return; var w = winkelVanPersoon(el.getAttribute('data-n'), el.getAttribute('data-e')); el.textContent = w ? '📍 ' + w : 'nog niet in Shiftbase'; }); }
   window.laadLoonheffing = async function () {
     var d = await api('/api/loonheffing');
     if (!d.success) { toast('Loonheffing: ' + d.bericht, 'err'); return; }
@@ -761,7 +764,7 @@
     g('lh-auto-knop').textContent = lhAuto ? 'Uitzetten' : 'Aanzetten'; g('lh-auto-knop').className = 'btn bsm ' + (lhAuto ? 'bd' : 'bp');
     g('lh-count').textContent = lhData.filter(function (r) { return !isAfgLh(r); }).length + ' lopend · ' + lhData.filter(isAfgLh).length + ' afgerond';
     g('lh-body').innerHTML = lhData.map(function (r) {
-      return '<tr' + (isAfgLh(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bLoon(r) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + (r.indienstRetour ? ' <span class="badge bo" title="' + esc(r.indienstRetour.reden) + '">↩ retour</span>' : '') + bIc(r) + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + (r.docUrl2 && !r.salaris ? (r.indienstRetour ? irKnop(r, 'intrekken') : meerMenu(icKnoppen(r).concat([irKnop(r, 'retour')]))) : '') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
+      return '<tr' + (isAfgLh(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong>' + lhWk(r) + '</td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bLoon(r) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + (r.indienstRetour ? ' <span class="badge bo" title="' + esc(r.indienstRetour.reden) + '">↩ retour</span>' : '') + bIc(r) + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + (r.docUrl2 && !r.salaris ? (r.indienstRetour ? irKnop(r, 'intrekken') : meerMenu(icKnoppen(r).concat([irKnop(r, 'retour')]))) : '') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('lh-body');
   };

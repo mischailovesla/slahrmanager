@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.42.1', datum: '03-11-2026', titel: 'Locatie in de loonheffingstabel', punten: [
+    'In <b>Instroom → Loonheffing</b> staat onder de naam nu de <b>locatie</b> (📍 winkel uit Shiftbase). Staat iemand nog niet in Shiftbase, dan zie je dat er ook.'
+  ] },
   { nummer: '0.42.0', datum: '03-11-2026', titel: 'Salarissen in contracten op maat afgeschermd', punten: [
     'De salarissen in <b>contracten op maat</b> zijn alleen nog zichtbaar voor <b>Jop, Ymke en Mischa</b>. Voor anderen staat er <b>€ •••</b> in het overzicht, is de contracttekst (ook in Vrije brieven, het dossier en de dossier-PDF) niet te zien, werkt "Opnieuw gebruiken" niet en kan het ondertekende contract niet worden geopend.',
     'De afscherming gebeurt op de server, dus ook niet via de browser te omzeilen. Een nieuw contract op maat opstellen en versturen kan iedereen met HR-toegang nog wel.'
