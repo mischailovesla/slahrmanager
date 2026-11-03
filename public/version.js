@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.38.5', datum: '03-11-2026', titel: 'Weekendbeschikbaarheid: Zuidas telt niet mee', punten: [
+    'Zuidas is in het weekend gesloten. Medewerkers van Zuidas komen daarom niet meer in de check <b>Weekendbeschikbaarheid</b> (net als HQ). Bestaande taken voor Zuidas verdwijnen bij de volgende run (maandag 09:45) of direct via <b>Droogloop/Nu echt draaien</b>.'
+  ] },
   { nummer: '0.38.4', datum: '03-11-2026', titel: 'Uploadlink loonheffing met link naar het online indiensttredingsformulier', punten: [
     'Loonheffing: <b>🔗 Uploadlink</b> kopieert nu ook de persoonlijke link naar het <b>online indiensttredingsformulier</b>, handig voor wie nog een oude mail met de Excel-link heeft.'
   ] },

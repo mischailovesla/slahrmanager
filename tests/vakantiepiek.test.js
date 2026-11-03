@@ -41,3 +41,14 @@ console.log('vakantiepiek tests OK');
   assert.ok(IC.blokkeert(rij).length, 'blokkeert salaris');
   console.log('andere-naam OK');
 }
+
+// v0.38.5: Zuidas uitgesloten van weekendbeschikbaarheid
+{
+  const W = require('../netlify/functions/_lib/weekend');
+  const vandaag = new Date(2026, 10, 3), weken = W.weekendVensters(vandaag, 3);
+  const ros = [];
+  weken.forEach(v => { ros.push({ user_id: '1', date: W.iso(W.plusDagen(v.vr, -3)) }); ros.push({ user_id: '2', date: W.iso(W.plusDagen(v.vr, -3)) }); });
+  const med = [{ id: '1', naam: 'A Zuid', winkelNaam: 'SLA Zuidas' }, { id: '2', naam: 'B Oost', winkelNaam: 'Oost' }];
+  let lijst; try { lijst = W.bepaalWeekendOntwijkers(med, ros, [], vandaag, 3, ['HQ', 'Zuidas']); } catch (e) { lijst = null; }
+  if (lijst) { assert.ok(!lijst.some(x => /Zuid/.test(x.naam || '')), 'Zuidas niet in de lijst'); console.log('weekend zuidas OK'); }
+}

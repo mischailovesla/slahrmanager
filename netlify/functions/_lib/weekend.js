@@ -34,7 +34,8 @@ function bepaalWeekendOntwijkers(med, rosterLijst, absLijst, vandaag, aantalWeek
   const dagNaarVenster = {};
   vensters.forEach((v, i) => { for (let d = 0; d < 3; d++) dagNaarVenster[iso(plusDagen(v.vr, d))] = i; });
   const startIso = iso(vensters[vensters.length - 1].vr), eindIso = iso(vensters[0].zo), vandaagIso = iso(vandaag);
-  const uit = {}; (uitgesloten || []).forEach(w => { uit[w] = true; });
+  const nw = s => String(s || '').trim().toLowerCase().replace(/^sla\s+/, ''); // v0.38.5: 'Zuidas' = 'SLA Zuidas' = 'zuidas'
+  const uit = {}; (uitgesloten || []).forEach(w => { uit[nw(w)] = true; });
   const wkHit = {}, dwCount = {}, laatsteWk = {};
   (rosterLijst || []).forEach(r0 => {
     const rr = roster(r0); if (verwijderd(rr)) return;
@@ -55,7 +56,7 @@ function bepaalWeekendOntwijkers(med, rosterLijst, absLijst, vandaag, aantalWeek
   const periode = ddmm(startIso) + ' t/m ' + ddmm(eindIso), startD = vensters[vensters.length - 1].vr;
   const out = [];
   (med || []).forEach(m => {
-    const w = m.winkelNaam || '(geen winkel)'; if (uit[w]) return;
+    const w = m.winkelNaam || '(geen winkel)'; if (uit[nw(w)]) return;
     const uid = String(m.id || '');
     const ind = parseNLDatum(m.indienst); if (ind && ind > startD) return;
     const hits = wkHit[uid] || {}, verl = verlofVenster[uid] || {};

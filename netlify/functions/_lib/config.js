@@ -192,7 +192,7 @@ module.exports = {
   STIL_TOEKOMST_DAGEN: 14,         // wie binnenkort is ingeroosterd, is niet stil
   STIL_UITGESLOTEN_WINKELS: ['HQ'],
   WEEKEND_SIGNAAL_WEKEN: 3,        // weekendontwijker = 3 opeenvolgende weekenden zonder dienst (wel doordeweeks)
-  WEEKEND_UITGESLOTEN_WINKELS: ['HQ'],
+  WEEKEND_UITGESLOTEN_WINKELS: ['HQ', 'Zuidas'],   // v0.38.5: Zuidas is in het weekend gesloten (hoofdletters en 'SLA ' ervoor maken niet uit)
   BSK_ONDERBOUWING_WEKEN: 8,       // data-onderbouwing in de beschikbaarheidsbrief: laatste 8 weken
 
   // Log-tabs batch A (HR-acties-sheet)
