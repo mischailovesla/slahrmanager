@@ -130,6 +130,24 @@ function loonHtmlTweetalig(type, naam, dl) {
     + '<p style="' + F + 'font-size:11px;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px">English</p>' + binnenInhoud(loonHtml(type, naam, dl, true))
     + '</td></tr>' + slaFoot());
 }
+// v0.39.0: loonheffing is binnen, alleen het indiensttredingsformulier ontbreekt nog (tweetalig, met de persoonlijke formulierlink)
+const INDIENST_ONTBREEKT_ONDERWERP = 'Nog één formulier / One more form: je indiensttredingsformulier';
+function indienstOntbreektHtml(naam) {
+  const v = esc(String(naam || '').trim().split(/\s+/)[0] || ''), url = indienstLink(naam);
+  const knop = l => '<p style="margin:18px 0 6px"><a href="' + esc(url) + '" style="display:inline-block;padding:12px 22px;background:#009f4b;color:#fff;border-radius:8px;text-decoration:none;font-weight:700;' + F + 'font-size:14px">' + l + '</a></p>';
+  const p = t => '<p style="' + F + 'font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 12px">' + t + '</p>';
+  const kop = t => '<p style="' + F + 'font-size:11px;font-weight:700;color:#888078;text-transform:uppercase;letter-spacing:.5px;margin:0 0 10px">' + t + '</p>';
+  return slaWrap(slaHead('#f5a623', 'Nog één formulier &middot; One more form') + '<tr><td style="padding:32px 36px 28px">'
+    + kop('Nederlands') + p('Hoi ' + v + ',') + p('Bedankt voor je <strong>loonheffingsverklaring</strong>, die hebben we ontvangen! We missen alleen nog je <strong>indiensttredingsformulier</strong>. Zonder dat formulier kunnen we je gegevens niet doorgeven aan de salarisadministratie, en dan kan je salaris vertraging oplopen.') + p('Het formulier vul je online in, in ongeveer 5 minuten:') + knop('Indiensttredingsformulier invullen')
+    + '<hr style="border:none;border-top:1px solid #e8e2de;margin:26px 0">'
+    + kop('English') + p('Hi ' + v + ',') + p('Thank you for your <strong>payroll tax statement</strong>, we have received it! We are only missing your <strong>onboarding form</strong>. Without it we cannot pass your details on to payroll, which may delay your salary.') + p('You can fill in the form online in about 5 minutes:') + knop('Fill in the onboarding form')
+    + '<p style="' + F + 'font-size:12px;color:#888078;margin:18px 0 0">Vragen? Beantwoord deze mail. · Questions? Just reply to this e-mail.</p></td></tr>' + slaFoot());
+}
+function indienstOntbreektPlain(naam) {
+  const v = String(naam || '').trim().split(/\s+/)[0] || '', url = indienstLink(naam);
+  return 'Hoi ' + v + ',\n\nBedankt voor je loonheffingsverklaring, die hebben we ontvangen! We missen alleen nog je indiensttredingsformulier. Zonder dat formulier kunnen we je gegevens niet doorgeven aan de salarisadministratie.\n\nVul het online in (ongeveer 5 minuten):\n' + url
+    + '\n\n---\n\nHi ' + v + ',\n\nThank you for your payroll tax statement, we have received it! We are only missing your onboarding form. Without it we cannot pass your details on to payroll.\n\nFill it in online (about 5 minutes):\n' + url + '\n\nSLA HR';
+}
 function loonPlainTweetalig(type, naam, dl) { return loonPlain(type, naam, dl, false) + '\n\n------------------------------\n\n' + loonPlain(type, naam, dl, true); }
 function loonPlain(type, naam, dl, isEN) { return type === 'herinnering' ? loonHerinneringPlain(naam, dl, isEN) : loonUitnodigingPlain(naam, dl, isEN); }
 function loonHtml(type, naam, dl, isEN) { return type === 'herinnering' ? loonHerinneringHtml(naam, dl, isEN) : loonUitnodigingHtml(naam, dl, isEN); }
@@ -655,7 +673,7 @@ function oproepHtml(naam, bv, uren, reactiedatum, isEN) {
     + '<p style="' + s + '">' + L.sign + '<br><strong>' + (isEN ? 'The SLA HR team' : 'Het HR-team van SLA') + '</strong><br><span style="color:#888078">' + esc(bv) + '</span></p></td></tr>' + slaFoot());
 }
 
-module.exports = { metGezienKnop, gezienPlain, loonHtmlTweetalig, loonPlainTweetalig, LOON_TWEETALIG_ONDERWERP, oproepPlain, oproepHtml, KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
+module.exports = { INDIENST_ONTBREEKT_ONDERWERP, indienstOntbreektHtml, indienstOntbreektPlain, metGezienKnop, gezienPlain, loonHtmlTweetalig, loonPlainTweetalig, LOON_TWEETALIG_ONDERWERP, oproepPlain, oproepHtml, KORT_KEUZES, kortSubject, kortingHtml, kortingPlain, salarisHtml, salarisPlain,
   slaWrap, slaHead, slaFoot, slaStep, prefillLoonUrl, prefillOntslagUrl, prefillKortingUrl, overplaatsingUploadUrl, salarisOverplaatsingHtml, salarisOverplaatsingPlain, indienstLink, personaliseerUploadLinks, LOON_TEMPLATES, loonPlain, loonHtml, esc, tekstNaarHtml, briefHtml, briefPlain, BRIEF_TEMPLATES, ontslagHtml, ontslagHerHtml, aanzeggingHtml, exitBlok, zonderExit, exitUitnodigingPlain, exitUitnodigingHtml, checkinOnderwerp, checkinPlain, checkinHtml, ONTSLAG_TEMPLATES, ontslagMailHtml, proeftijdHtml,
   HUISREGELS, regelsById, wrsPlain, wrsHtml, beschikbPlain, beschikbHtml, oosvPlain, oosvHtml,
   SOM_TYPES, SOM_KLEUR, SOM_SHEETKLEUR, SOM_HINTS, sommatieSubject, sommatieHtml, sommatiePlain, overplaatsingSubject, overplaatsingPlain, overplaatsingHtml };

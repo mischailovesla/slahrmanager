@@ -130,7 +130,35 @@ async function loonHerinneringen(droog) {
       kort: { naam: r.naam, email: r.email, rij: r.rij, taal: r.taal }
     }, async () => { await S.zetCel(id, null, r.rij, 8, stempel()); await S.zetCel(id, null, r.rij, 9, String((r.aantalHer || 0) + 1)); });
   }
+  // v0.39.0: loonheffingsverklaring binnen, indiensttredingsformulier nog niet → eigen herinnering met alleen de formulierlink
+  try { await indienstOntbreektHerinneringen(rap, vandaag); } catch (e) { rap.fouten.push('indienst ontbreekt: ' + e.message); }
   return rap;
+}
+const INDIENST_HER_SLEUTEL = 'indienst_herinnering';   // hr_instellingen: { [normNaam]: { op: ISO, n } }
+function indienstOntbreektKandidaten(rijen, her, vandaag) {
+  const uit = [];
+  for (const r of rijen || []) {
+    if (r.ontvangen !== 'Ja' || r.docUrl2 || r.salaris || r.mahdia === 'Ja' || !r.email || r.email.indexOf('@') === -1) continue;
+    const sindsUitn = dagenSinds(r.verzenddatum || String(r.status || '').replace(/^Verzonden op\s*/i, ''), vandaag);
+    if (sindsUitn === null || sindsUitn > C.INDIENST_HER_VENSTER_DAGEN) continue;   // oude dossiers (Drive/Forms-tijd) niet meer mailen
+    const h = her[normNaam(r.naam)] || { n: 0 };
+    const sindsLaatste = h.op ? Math.floor((vandaag - new Date(h.op)) / 864e5) : null;
+    const stop = (h.n || 0) >= C.INDIENST_HER_MAX;
+    const nu = !stop && (sindsLaatste === null || sindsLaatste >= C.COOLDOWN_DAGEN);
+    uit.push({ r, eerder: h.n || 0, stop, nu });
+  }
+  return uit;
+}
+async function indienstOntbreektHerinneringen(rap, vandaag) {
+  const I = require('./instellingen'), her = Object.assign({}, (await I.lees(INDIENST_HER_SLEUTEL, {})) || {});
+  const lijst = indienstOntbreektKandidaten(await S.getLoonheffing(), her, vandaag);
+  rap.indienstOntbreekt = lijst.length;
+  for (const { r, eerder, stop, nu } of lijst) {
+    rap.gevonden.push({ soort: 'indienst', naam: r.naam, email: r.email, rij: r.rij, deadline: r.deadline, eerder, gestopt: stop });
+    if (!nu) continue;
+    await mailOfDroog(rap, { to: r.email, subject: T.INDIENST_ONTBREEKT_ONDERWERP, text: T.indienstOntbreektPlain(r.naam), html: T.indienstOntbreektHtml(r.naam), kort: { naam: r.naam, email: r.email, rij: r.rij, soort: 'indienst' } },
+      async () => { her[normNaam(r.naam)] = { op: new Date().toISOString(), n: eerder + 1 }; await I.schrijf(INDIENST_HER_SLEUTEL, her, 'signalering'); });
+  }
 }
 
 // ---- 3. Ontslag-herinneringen (checkOntslagHerinneringen) ----
@@ -1230,4 +1258,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };
+module.exports = { indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };

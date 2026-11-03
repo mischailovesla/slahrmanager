@@ -229,6 +229,13 @@
     if (st.indexOf('FOUT') === 0) return '<span class="badge br">Fout</span>';
     return '<span class="badge boat">' + esc(st) + '</span>';
   }
+  // v0.39.0: loonheffing-status met beide documenten: Ontvangen (beide), Half (één van de twee), Wacht (niets)
+  function bLoon(r) {
+    var l = r.ontvangen === 'Ja' || !!r.docUrl, i = !!r.docUrl2;
+    if (l && i) return '<span class="badge bg">Ontvangen</span>';
+    if (l || i) return '<span class="badge bo" title="' + (l ? 'Loonheffingsverklaring is binnen, het indiensttredingsformulier nog niet' : 'Indiensttredingsformulier is binnen, de loonheffingsverklaring nog niet') + '">Half · ' + (l ? 'indienst mist' : 'loonheffing mist') + '</span>';
+    return '<span class="badge br">Wacht</span>';
+  }
   function bOk(v, ja, nee) { return v === 'Ja' ? '<span class="badge bg">' + (ja || 'Ontvangen') + '</span>' : '<span class="badge br">' + (nee || 'Wacht') + '</span>'; }
   function bH(h, n) {
     var cnt = n || 0; if (cnt === 0 && h) cnt = 1;
@@ -635,7 +642,7 @@
   function kv(l, v) { return '<td><div class="lay-sub">' + esc(l) + '</div>' + v + '</td>'; }
   function rijNaarCellen(key, r) {
     switch (key) {
-      case 'loonheffing': return kv('Deadline', esc(r.deadline || '-')) + kv('Mail', bSent(r.status)) + kv('Formulier', bOk(r.ontvangen)) + kv('Documenten', bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst')) + kv('Herinneringen', bH(r.herinnering, r.aantalHer)) + kv('Naar salaris', bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r)) + kv('', bArch('loonheffing', r.rij, r.naam));
+      case 'loonheffing': return kv('Deadline', esc(r.deadline || '-')) + kv('Mail', bSent(r.status)) + kv('Formulier', bLoon(r)) + kv('Documenten', bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst')) + kv('Herinneringen', bH(r.herinnering, r.aantalHer)) + kv('Naar salaris', bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r)) + kv('', bArch('loonheffing', r.rij, r.naam));
       case 'onboarding': return kv('Locatie', esc(r.locatie || '-')) + kv('Taal', esc(r.taal)) + kv('Welkomstmail', bSent(r.status)) + kv('Datum', esc(r.verzenddatum || '-')) + kv('', bArch('onboarding', r.rij, r.naam));
       case 'overplaatsing': return kv('Type', '<span class="badge bo">' + esc(r.type || '-') + '</span>') + kv('Van → naar', esc(r.huidigeBV) + ' → ' + esc(r.nieuweBV)) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bTog('opl-ondertekend', r.ondertekend, r.rij, r.naam, 'Ja', 'Aanvinken')) + kv('Brief', bDoc(r.briefUrl, '⬇ PDF') + ' ' + bDoc(r.docUrl, 'Getekend')) + kv('Naar salaris', bSal('overplaatsing', r)) + kv('', opBtn(r));
       case 'sommatie': return kv('Type', '<span class="badge bdk">' + esc(r.type) + '</span>') + kv('BV', esc(r.bv || '-')) + kv('Afwezig', esc(r.datumAfwezig || '-')) + kv('Afspraak', esc(r.datumAfspraak || '-')) + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('Status', esc(r.status || '-')) + kv('Verwerkt', bTog('som-verwerkt', r.verwerkt, r.rij, r.naam)) + (r.aanvullend ? kv('Aanvullend', esc(r.aanvullend)) : '') + kv('', smBriefBtn(r) + ' ' + bArch('sommatie', r.rij, r.naam));
@@ -753,7 +760,7 @@
     g('lh-auto-knop').textContent = lhAuto ? 'Uitzetten' : 'Aanzetten'; g('lh-auto-knop').className = 'btn bsm ' + (lhAuto ? 'bd' : 'bp');
     g('lh-count').textContent = lhData.filter(function (r) { return !isAfgLh(r); }).length + ' lopend · ' + lhData.filter(isAfgLh).length + ' afgerond';
     g('lh-body').innerHTML = lhData.map(function (r) {
-      return '<tr' + (isAfgLh(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bOk(r.ontvangen) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + (r.indienstRetour ? ' <span class="badge bo" title="' + esc(r.indienstRetour.reden) + '">↩ retour</span>' : '') + bIc(r) + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + (r.docUrl2 && !r.salaris ? (r.indienstRetour ? irKnop(r, 'intrekken') : meerMenu(icKnoppen(r).concat([irKnop(r, 'retour')]))) : '') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
+      return '<tr' + (isAfgLh(r) ? ' class="afg"' : '') + '><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.deadline || '-') + '</td><td>' + bSent(r.status) + '</td><td>' + bLoon(r) + '</td><td>' + bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + (r.indienstRetour ? ' <span class="badge bo" title="' + esc(r.indienstRetour.reden) + '">↩ retour</span>' : '') + bIc(r) + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bH(r.herinnering, r.aantalHer) + '</td><td>' + bTog('mahdia-loonheffing', r.mahdia, r.rij, r.naam) + ' ' + bSal('loonheffing', r) + '</td><td>' + lmBtn(r) + ' ' + dosBtn(r.naam, r.email) + ' ' + bUp('loonheffing', r, r.ontvangen === 'Ja') + (r.docUrl2 && !r.salaris ? (r.indienstRetour ? irKnop(r, 'intrekken') : meerMenu(icKnoppen(r).concat([irKnop(r, 'retour')]))) : '') + bArch('loonheffing', r.rij, r.naam) + '</td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen dossiers</td></tr>';
     srtHerpas('lh-body');
   };

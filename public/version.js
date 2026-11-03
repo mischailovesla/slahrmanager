@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.39.0', datum: '03-11-2026', titel: 'Indiensttredingsformulier: herinnering, status Half en knop op de uploadpagina', punten: [
+    '<b>Nieuwe herinnering:</b> is de loonheffingsverklaring binnen maar het indiensttredingsformulier nog niet, dan krijgt de medewerker (NL + EN) een korte mail met alleen de persoonlijke link naar het <b>online formulier</b>. Max. 1 per 3 dagen en max. 3 keer; daarna een rode taak "zelf contact opnemen". Alleen voor uitnodigingen van de laatste 60 dagen. Loopt mee met de dagelijkse loonheffingscheck (09:00).',
+    '<b>Status Half:</b> in de kolom Formulier staat nu <b>Ontvangen</b> (beide documenten), oranje <b>Half · indienst mist</b> of <b>Half · loonheffing mist</b>, of <b>Wacht</b>.',
+    '<b>Uploadpagina loonheffing:</b> bovenaan staat nu een knop <b>Online invullen</b> voor het indiensttredingsformulier (stap 1), daaronder het uploaden van de loonheffingsverklaring (stap 2). Is het formulier al online ontvangen, dan staat er een groen vinkje.'
+  ] },
   { nummer: '0.38.5', datum: '03-11-2026', titel: 'Weekendbeschikbaarheid: Zuidas telt niet mee', punten: [
     'Zuidas is in het weekend gesloten. Medewerkers van Zuidas komen daarom niet meer in de check <b>Weekendbeschikbaarheid</b> (net als HQ). Bestaande taken voor Zuidas verdwijnen bij de volgende run (maandag 09:45) of direct via <b>Droogloop/Nu echt draaien</b>.'
   ] },
