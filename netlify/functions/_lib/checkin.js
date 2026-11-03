@@ -150,6 +150,7 @@ async function meldLaag(r) {
     + '<p style="' + F + 'font-size:14px;color:#333d3a;margin:0">Neem contact op en zet daarna in het dashboard op <strong>Opgevolgd</strong> (Overzicht &rarr; takenlijst, of Instroom &rarr; Check-in 30/60).</p></td></tr>' + T.slaFoot());
   const text = r.naam + ' (' + (r.winkel || '-') + ') vulde de check-in van dag ' + r.moment + ' in met een lage score.\n' + regels.join('\n') + (r.opmerking ? '\n"' + r.opmerking + '"' : '') + '\n\nNeem contact op en zet daarna op Opgevolgd in het dashboard.';
   const subject = 'Check-in dag ' + r.moment + ': lage score — ' + r.naam + ' (' + (r.winkel || '-') + ')';
+  try { await require('./ontvangers').laad(); } catch (e) { /* standaard */ } // v0.37.0
   const naar = /keuken/i.test(String(r.winkel || '')) && C.KEUKEN_EMAIL ? String(C.KEUKEN_EMAIL).split(',').map(x => x.trim()) : ontvangers(); // v0.25.7: keuken -> Jop
   const resendId = await M.verstuur({ to: naar, subject, text, html, tags: [{ name: 'bron', value: 'checkin' }, { name: 'type', value: 'laag' }] });
   await M.logMail({ door: 'checkin', bron: 'checkin', type: 'laag', naar: naar.join(','), naam: r.naam, onderwerp: subject, taal: 'NL', rij: 0, resend_id: resendId });

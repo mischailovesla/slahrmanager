@@ -11,6 +11,7 @@ const WM = require('./_lib/winkelmail');
 const C = require('./_lib/config');
 
 exports.handler = beveiligd('winkelmail', async (event, g) => {
+  try { await require('./_lib/ontvangers').laad(); } catch (e) { /* standaard */ } // v0.37.0: keuken-adres
   if (event.httpMethod !== 'POST') {
     const inst = await WM.instelling(), med = await require('./_lib/shiftbase').getMedewerkers(false);
     const winkels = Array.from(new Set(med.map(m => m.winkelNaam).filter(Boolean))).filter(w => !C.FRANCHISE_NAAM.test(w)).sort((a, b) => a.localeCompare(b, 'nl'));

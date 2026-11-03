@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.37.0', datum: '03-11-2026', titel: 'Ontvangers van de automatische checks zelf beheren', punten: [
+    'Beheer → Signaleringen: elke check die een mail aan HR stuurt, toont nu de <b>ontvangers</b>. Een beheerder kan daar een mailadres <b>toevoegen</b> (typ het adres en druk op Enter) of met het kruisje <b>verwijderen</b>. Minimaal één ontvanger blijft altijd staan.',
+    'Bovenaan staat een aparte kaart <b>Keuken-meldingen</b>: meldingen over keukenmedewerkers gaan naar die adressen (nu Jop).',
+    'Is een lijst aangepast, dan zie je het label <b>aangepast</b> en kun je met <b>Standaard herstellen</b> terug naar de oorspronkelijke adressen. Elke wijziging staat in het logboek.'
+  ] },
   { nummer: '0.36.2', datum: '02-11-2026', titel: 'Winkelmail van één winkel opnieuw versturen', punten: [
     'Beheer → Winkelmail: nieuwe knop "Nu versturen" per winkel. Stuurt het weekoverzicht van die winkel direct naar het opgeslagen mailadres, ook buiten maandag en ook in de proefstand. Handig als een adres verkeerd stond.'
   ] },

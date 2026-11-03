@@ -17,6 +17,7 @@ function kiesbaar() {
 }
 
 exports.handler = beveiligd('maandrapport', async (event, g) => {
+  try { await require('./_lib/ontvangers').laad(); } catch (e) { /* standaard */ } // v0.37.0
   const q = event.queryStringParameters || {};
   if (event.httpMethod === 'POST') {
     const p = body(event);

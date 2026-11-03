@@ -2,10 +2,12 @@
 // Signaleringen handmatig draaien / bekijken (stap 4)
 // GET  /api/signalering              -> status (actief?), checks, laatste runs uit hr_signaleringen
 // POST /api/signalering {check, droog} -> check nu draaien; droog:true = alleen rapporteren
+// POST /api/signalering {actie:'ontvangers', sleutel, adressen:[...]} -> v0.37.0 ontvangers wijzigen (alleen beheerder; [] = standaard)
 //      (zonder droog én met SIGNALERINGEN_ACTIEF=1 wordt er echt gemaild en geschreven)
 // ============================================================
 const { beveiligd, body, admin, logActie } = require('./_lib/auth');
 const SIG = require('./_lib/signaleringen');
+const O = require('./_lib/ontvangers');
 
 const OMSCHRIJVING = {
   'dagoverzicht': { label: 'HR-weekoverzicht', wanneer: 'maandag 09:00', wat: 'Bundelt alle interne HR-meldingen van de afgelopen week (contracten, verzuim, afwezigheidspieken, salaris enz.) in één mail aan HR; keuken apart aan Jop. Komt na de salarisronde van 08:30, dus je ziet wat er naar Mahdia is gegaan. Mails aan medewerkers en "mail niet aangekomen" gaan direct.' },
@@ -40,6 +42,13 @@ const OMSCHRIJVING = {
 exports.handler = beveiligd('signalering', async (event, g) => {
   if (event.httpMethod === 'POST') {
     const p = body(event);
+    if (p.actie === 'ontvangers') {
+      if (g.rol !== 'admin') throw new Error('Alleen een beheerder kan ontvangers wijzigen.');
+      const oud = ((await O.laad())[p.sleutel] || {}).adressen || [];
+      const nu = await O.schrijf(String(p.sleutel || ''), Array.isArray(p.adressen) ? p.adressen : [], g.email);
+      await logActie({ door: g.email, actie: 'instelling', bron: 'signalering_ontvangers', veld: p.sleutel, naam: '', oud: oud.join(','), nieuw: nu[p.sleutel].adressen.join(','), details: nu[p.sleutel].aangepast ? 'aangepast' : 'standaard' });
+      return { bericht: 'Ontvangers opgeslagen.', ontvangers: nu };
+    }
     if (p.check === 'dagoverzicht' && p.test) return SIG.dagoverzichtTest(g.email);   // v0.32.1: test-dagmail alleen naar jezelf
     if (!SIG.CHECKS[p.check]) throw new Error('Onbekende check: ' + p.check);
     const droog = p.droog !== false;
@@ -52,5 +61,6 @@ exports.handler = beveiligd('signalering', async (event, g) => {
     const r = await admin().from('hr_signaleringen').select('check,bron,droog,gevonden,verstuurd,fouten,tijdstip').order('tijdstip', { ascending: false }).limit(60);
     laatste = r.data || [];
   } catch (e) { /* tabel ontbreekt nog */ }
-  return { actief: SIG.actief(), checks: Object.keys(SIG.CHECKS).map(k => Object.assign({ key: k }, OMSCHRIJVING[k])), laatste };
+  let ontvangers = null; try { ontvangers = await O.laad(); } catch (e) { /* tabel ontbreekt */ }
+  return { actief: SIG.actief(), checks: Object.keys(SIG.CHECKS).map(k => Object.assign({ key: k, ontv: O.PER_CHECK[k] || null }, OMSCHRIJVING[k])), laatste, ontvangers, magBewerken: g.rol === 'admin' };
 });

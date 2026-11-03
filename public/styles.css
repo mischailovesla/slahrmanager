@@ -372,3 +372,13 @@ td .lay-sub.cel-kort{max-width:200px}
 
 /* v0.33.0: contract op maat */
 .cm-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px}@media(max-width:900px){.cm-grid{grid-template-columns:1fr}}.cm-kop{font-weight:700;font-size:.9rem;color:var(--donker);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid #eee}.cm-grid>div>.cm-kop:first-child{margin-top:0}.cm-sub{font-weight:600;font-size:.82rem;color:#009f4b;margin:6px 0 8px}#tab-contractmaatwerk .fg input[type=number],#tab-contractmaatwerk textarea{width:100%;padding:10px 14px;border:1.5px solid #e8e2de;border-radius:8px;font-size:.88rem;font-family:inherit;outline:none;color:var(--donker);background:#fff}#tab-contractmaatwerk textarea{resize:vertical;line-height:1.6}#tab-contractmaatwerk .chk{display:block}
+
+/* v0.37.0: ontvangers per signalering */
+.sg-ontv-kop{font-size:.75rem;font-weight:700;color:#333d3a;text-transform:uppercase;letter-spacing:.03em;margin:0 0 6px}
+.sg-ontv{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:8px}
+.sg-chip{display:inline-flex;align-items:center;gap:4px;background:#e6f7ee;color:#006b30;border-radius:20px;padding:3px 6px 3px 10px;font-size:.78rem;font-weight:600}
+.sg-chip button{border:0;background:transparent;color:#006b30;cursor:pointer;font-size:1rem;line-height:1;padding:0 4px;border-radius:50%}
+.sg-chip button:hover{background:#c0392b;color:#fff}
+.sg-ontv-add{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.sg-ontv-add .sb{width:auto;flex:1;min-width:180px;padding:5px 10px;font-size:.8rem}
+.sg-reset{background:transparent;color:#888078;text-decoration:underline}

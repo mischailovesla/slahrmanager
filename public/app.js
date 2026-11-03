@@ -3368,13 +3368,58 @@
     g('sg-uitleg').innerHTML = d.actief
       ? '<strong>Actief.</strong> De checks draaien volgens schema in Netlify en versturen echte mails. Zorg dat de Apps Script-triggers uit staan, anders krijgen medewerkers dubbele herinneringen.'
       : '<strong>Droogloop.</strong> De checks draaien volgens schema in Netlify, maar versturen niets en schrijven niets — ze rapporteren alleen wat ze zouden doen (zie Laatste runs). Zet in Netlify <code>SIGNALERINGEN_ACTIEF=1</code> op het moment dat je de Apps Script-triggers uitzet. Met <em>Droogloop nu</em> zie je direct wat een check vandaag zou doen.';
-    g('sg-cards').innerHTML = d.checks.map(function (c) {
-      return '<div class="dos-kaart"><div style="font-weight:700;color:#333d3a;margin-bottom:4px">' + esc(c.label) + ' <span class="badge boat">' + esc(c.wanneer) + '</span></div><div class="lay-sub" style="margin-bottom:10px">' + esc(c.wat) + '</div><div class="vb-knoppen"><button class="btn bd bsm" data-sg-run="' + esc(c.key) + '" data-droog="1">Droogloop nu</button>' + (d.actief ? '<button class="btn bp bsm" data-sg-run="' + esc(c.key) + '" data-droog="0">Nu echt draaien</button>' : '') + '</div></div>';
+    var ov = d.ontvangers, mag = !!d.magBewerken;
+    var keukenKaart = ov && ov.keuken ? '<div class="dos-kaart" style="grid-column:1/-1"><div style="font-weight:700;color:#333d3a;margin-bottom:4px">Keuken-meldingen</div><div class="lay-sub" style="margin-bottom:8px">Meldingen over keukenmedewerkers gaan bij alle checks met een keukenregel naar deze adressen in plaats van naar HR.</div>' + sgOntvHtml('keuken', ov.keuken, mag) + '</div>' : '';
+    g('sg-cards').innerHTML = keukenKaart + d.checks.map(function (c) {
+      var ontv = '';
+      if (c.ontv && ov && ov[c.ontv.sleutel]) ontv = '<div class="sg-ontv-kop">Ontvangers' + (c.ontv.keuken ? ' <span class="lay-sub">(keuken: ' + esc(((ov.keuken || {}).adressen || []).join(', ')) + ')</span>' : '') + '</div>' + sgOntvHtml(c.ontv.sleutel, ov[c.ontv.sleutel], mag);
+      else if (c.key === 'dagoverzicht') ontv = '<div class="sg-ontv-kop">Ontvangers</div><div class="lay-sub" style="margin-bottom:10px">Elke melding gaat naar de ontvangers die bij de check zelf staan; meldingen met dezelfde ontvangers worden gebundeld.</div>';
+      return '<div class="dos-kaart"><div style="font-weight:700;color:#333d3a;margin-bottom:4px">' + esc(c.label) + ' <span class="badge boat">' + esc(c.wanneer) + '</span></div><div class="lay-sub" style="margin-bottom:10px">' + esc(c.wat) + '</div>' + ontv + '<div class="vb-knoppen"><button class="btn bd bsm" data-sg-run="' + esc(c.key) + '" data-droog="1">Droogloop nu</button>' + (d.actief ? '<button class="btn bp bsm" data-sg-run="' + esc(c.key) + '" data-droog="0">Nu echt draaien</button>' : '') + '</div></div>';
     }).join('');
     g('sg-body').innerHTML = (d.laatste || []).map(function (r) {
       return '<tr><td>' + esc(new Date(r.tijdstip).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam' })) + '</td><td>' + esc(r.check) + '</td><td>' + esc(r.bron) + '</td><td>' + (r.droog ? '<span class="badge boat">droog</span>' : '<span class="badge bg">echt</span>') + '</td><td>' + r.gevonden + '</td><td>' + r.verstuurd + '</td><td>' + (r.fouten ? '<span class="badge br">' + r.fouten + '</span>' : '0') + '</td></tr>';
     }).join('') || '<tr><td colspan="7" class="leeg grijs">Nog geen runs gelogd (tabel hr_signaleringen — migratie 0004)</td></tr>';
   };
+  // v0.37.0: ontvangers per check toevoegen/verwijderen
+  function sgOntvHtml(sleutel, o, mag) {
+    var chips = (o.adressen || []).map(function (a) {
+      return '<span class="sg-chip">' + esc(a) + (mag && o.adressen.length > 1 ? '<button type="button" title="Verwijderen" data-sg-del="' + esc(sleutel) + '" data-adres="' + esc(a) + '">×</button>' : '') + '</span>';
+    }).join('');
+    var bew = mag ? '<div class="sg-ontv-add"><input class="sb" type="email" data-sg-nieuw="' + esc(sleutel) + '" placeholder="naam@ilovesla.com" autocomplete="off"><button type="button" class="btn bd bsm" data-sg-add="' + esc(sleutel) + '">+ Toevoegen</button>' + (o.aangepast ? '<button type="button" class="btn bsm sg-reset" data-sg-reset="' + esc(sleutel) + '" title="Standaard: ' + esc((o.standaard || []).join(', ')) + '">Standaard herstellen</button>' : '') + '</div>' : '';
+    return '<div class="sg-ontv">' + chips + (o.aangepast ? ' <span class="badge boat">aangepast</span>' : '') + '</div>' + bew;
+  }
+  async function sgOntvOpslaan(sleutel, adressen, knop) {
+    if (knop) knop.disabled = true;
+    var r = await api('/api/signalering', { actie: 'ontvangers', sleutel: sleutel, adressen: adressen });
+    if (knop) knop.disabled = false;
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    toast(r.bericht, 'ok'); sgData.ontvangers = r.ontvangers;
+    var y = window.scrollY; await laadSignaleringen(); window.scrollTo(0, y);
+  }
+  function sgOntvToevoegen(sleutel, knop) {
+    var inp = document.querySelector('input[data-sg-nieuw="' + sleutel + '"]'), lijst = (((sgData || {}).ontvangers || {})[sleutel] || {}).adressen || [];
+    var nieuw = String(inp && inp.value || '').split(/[,;\s]+/).map(function (x) { return x.trim().toLowerCase(); }).filter(Boolean);
+    if (!nieuw.length) { toast('Vul een mailadres in', 'err'); return; }
+    var fout = nieuw.filter(function (a) { return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(a); });
+    if (fout.length) { toast('Ongeldig mailadres: ' + fout.join(', '), 'err'); return; }
+    var dubbel = nieuw.filter(function (a) { return lijst.indexOf(a) > -1; });
+    if (dubbel.length === nieuw.length) { toast('Staat er al tussen', 'err'); return; }
+    sgOntvOpslaan(sleutel, lijst.concat(nieuw.filter(function (a) { return lijst.indexOf(a) < 0; })), knop);
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-sg-del],button[data-sg-add],button[data-sg-reset]');
+    if (!b || !sgData) return;
+    if (b.hasAttribute('data-sg-add')) return sgOntvToevoegen(b.getAttribute('data-sg-add'), b);
+    if (b.hasAttribute('data-sg-reset')) { var k = b.getAttribute('data-sg-reset'); if (confirm('Ontvangers terugzetten naar de standaard (' + ((sgData.ontvangers[k] || {}).standaard || []).join(', ') + ')?')) sgOntvOpslaan(k, [], b); return; }
+    var sl = b.getAttribute('data-sg-del'), adres = b.getAttribute('data-adres'), lijst = ((sgData.ontvangers || {})[sl] || {}).adressen || [];
+    if (lijst.length < 2) { toast('Er moet minimaal één ontvanger overblijven', 'err'); return; }
+    if (!confirm(adres + ' verwijderen als ontvanger?')) return;
+    sgOntvOpslaan(sl, lijst.filter(function (a) { return a !== adres; }), b);
+  });
+  document.addEventListener('keydown', function (e) {
+    var inp = e.target && e.target.getAttribute && e.target.getAttribute('data-sg-nieuw');
+    if (inp && e.key === 'Enter') { e.preventDefault(); sgOntvToevoegen(inp, null); }
+  });
   document.addEventListener('click', async function (e) {
     var b = e.target.closest && e.target.closest('button[data-sg-run]');
     if (!b) return;

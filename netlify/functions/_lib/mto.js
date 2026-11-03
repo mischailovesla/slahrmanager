@@ -200,6 +200,7 @@ async function hrHerinneringNodig() {
   return sleutel;
 }
 async function hrHerinnering(sleutel) {
+  try { await require('./ontvangers').laad(); } catch (e) { /* standaard */ } // v0.37.0
   const vorige = (await rondes()).filter(r => r.reacties)[0];
   const html = T.slaWrap(T.slaHead('#009f4b', 'HR &middot; Tijd voor het MTO') + '<tr><td style="padding:32px 36px 28px"><p style="' + F + 'font-size:15px;color:#333d3a;margin:0 0 16px">Hallo,</p><p style="' + P14 + 'line-height:1.7;margin:0 0 16px">Het is ' + (sleutel.slice(5) === '02' ? 'februari' : 'september') + ': tijd voor de nieuwe ronde van het medewerkertevredenheidsonderzoek. Start hem in het dashboard via <strong>In dienst &rarr; Tevredenheid (MTO) &rarr; Ronde starten</strong>. Iedereen in dienst krijgt dan een uitnodiging, met herinneringen na ' + HERINNER.join(' en ') + ' dagen; na ' + LOOPTIJD + ' dagen sluit de ronde.</p>'
     + (vorige ? '<p style="' + P14 + 'margin:0 0 16px">Vorige ronde: <strong>' + esc(vorige.naam) + '</strong> (' + vorige.reacties + ' reacties' + (vorige.respons != null ? ', respons ' + vorige.respons + '%' : '') + ').</p>' : '')

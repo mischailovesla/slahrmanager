@@ -1058,6 +1058,7 @@ function maakDagMail(items, k, to, test) {
 }
 // v0.32.1: testversie — bundelt de voorbeelden uit droogloop-runs van het afgelopen uur (Signaleringen → Droogloop) en stuurt alleen naar `naar`
 async function dagoverzichtTest(naar) {
+  try { await require('./ontvangers').laad(); } catch (e) { /* standaard */ }
   const { data, error } = await admin().from('hr_signaleringen').select('check,tijdstip,voorbeeld:details->voorbeeld').eq('droog', true).gt('tijdstip', new Date(Date.now() - 2 * 36e5).toISOString()).order('tijdstip', { ascending: false }).limit(300);
   if (error) throw new Error('hr_signaleringen: ' + error.message);
   const gezien = new Set(), items = [];
@@ -1194,6 +1195,7 @@ async function exitSurvey(droog) {
 
 async function draai(naam, droog, bron) {
   const fn = CHECKS[naam]; if (!fn) throw new Error('Onbekende check: ' + naam);
+  try { await require('./ontvangers').laad(); } catch (e) { console.warn('ontvangers laden:', e.message); } // v0.37.0
   const start = Date.now();
   let rap;
   try { rap = await fn(droog); }
