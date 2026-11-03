@@ -3,6 +3,7 @@
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
   { nummer: '0.38.3', datum: '03-11-2026', titel: 'Indiensttredingsformulier: nooit gegevens van een ander tonen', punten: [
+    'Het oude <b>Excel-indiensttredingsformulier</b> (link in uitnodigingen van 16 t/m 29 oktober) bevatte per ongeluk de gegevens van een medewerker. Het bestand is nu echt leeg.',
     'Het online indiensttredingsformulier vult alleen nog eerdere antwoorden in als HR het formulier <b>retour</b> heeft gestuurd, en nooit als dat eerdere formulier op een andere naam staat. Zo kan een medewerker niet meer de gegevens van een collega zien.',
     'Nieuwe controle: staat het formulier op een <b>andere naam</b> dan het dossier (bijv. omdat iemand anders de link gebruikte), dan krijg je het rode label <b>Formulier op een andere naam</b>. Het gaat dan niet naar salaris, en ✓ Akkoord kan dit niet wegklikken.'
   ] },
