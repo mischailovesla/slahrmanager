@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.41.0', datum: '03-11-2026', titel: 'Contract op maat: Sla maker en Junior SM, werkgever tekent digitaal', punten: [
+    '<b>Basis-template kiezen:</b> Store Manager, Junior Store Manager of Sla maker. De tekst volgt de Shiftbase-template van die functie. Kiezen vult functie, referentiefunctie (A.5.I / A.4.I / A.3.I), contractvorm, loon en opzegtermijn alvast in.',
+    'Sla maker (nulurencontract): "indien opgeroepen", de oproepregels (beschikbaar 09.00–22.00, oproep 4 dagen vooraf), artikel 7:628 lid 5 BW (eerste 6 maanden alleen loon voor gewerkte uren) en all-in vakantie (9,6 procent maandelijks uitbetaald).',
+    '<b>Werkgever tekent digitaal</b> (standaard aan): de handtekening van Jop staat met de datum van versturen op het contract, in plaats van een lege lijn. De medewerker tekent daarna zoals altijd digitaal.',
+    'Loon wordt in alle contracten op maat nu "rond de 14e van de volgende maand" uitbetaald, gelijk aan de Shiftbase-templates.'
+  ] },
   { nummer: '0.40.0', datum: '03-11-2026', titel: 'Toegang zelf beheren', punten: [
     '<b>Beheer → Toegang &amp; log (AVG)</b> heeft bovenaan nu <b>Wie heeft toegang</b>: alle accounts met rol, status en wanneer ze voor het laatst inlogden.',
     'Een beheerder kan iemand <b>toegang geven</b> (naam, @ilovesla.com-adres, rol HR / Beheerder / Keuken), de <b>rol wijzigen</b> of toegang <b>uitzetten</b>. Dit werkt direct; geen SQL meer nodig.',

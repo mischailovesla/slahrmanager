@@ -3697,6 +3697,15 @@
     if (fas && g('cm-f1-tot').value) { var p = g('cm-f1-tot').value.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2] + 1); g('cm-fase2-kop').textContent = 'Fase 2 — met ingang van ' + d.toLocaleDateString('nl-NL'); }
     else g('cm-fase2-kop').textContent = 'Fase 2';
   }
+  // v0.41.0: basis-template kiezen → functie, referentiefunctie, contractvorm, loon en opzegtermijn voorinvullen (zoals de Shiftbase-masters)
+  var CM_BASIS = { sm: { functie: 'Store Manager', ref: 'A.5.I', vorm: 'vast', uren: '38', loon: 'maand', opzeg: '2' }, junior: { functie: 'Junior Store Manager', ref: 'A.4.I', vorm: 'vast', uren: '38', loon: 'maand', opzeg: '2' }, slamaker: { functie: 'Sla maker', ref: 'A.3.I', vorm: 'oproep', uren: '', loon: 'uur', opzeg: '1' } };
+  document.addEventListener('change', function (e) {
+    if (!e.target || e.target.id !== 'cm-basis') return;
+    var b = CM_BASIS[e.target.value]; if (!b) return;
+    g('cm-functie').value = b.functie; g('cm-ref').value = b.ref; g('cm-f1-vorm').value = b.vorm; if (b.uren) g('cm-f1-uren').value = b.uren; g('cm-f1-loon').value = b.loon; g('cm-opzeg').value = b.opzeg;
+    if (typeof cmZicht === 'function') cmZicht(); if (typeof cmControle === 'function') cmControle();
+    toast('Basis ' + b.functie + ': functie, referentiefunctie, contractvorm, loon en opzegtermijn ingevuld. Vul het bedrag nog in.', 'ok');
+  });
   function cmLees() {
     var w = cmWinkels.find(function (x) { return x.code === g('cm-winkel').value; }) || {};
     var fase = function (f) { return { vorm: g('cm-' + f + '-vorm').value, uren: g('cm-' + f + '-uren').value, loon: g('cm-' + f + '-loon').value, bedrag: g('cm-' + f + '-bedrag').value }; };
@@ -3705,7 +3714,7 @@
       naam: g('cm-naam').value.trim(), email: g('cm-email').value.trim(), adres: g('cm-adres').value.trim(), postcodePlaats: g('cm-pcp').value.trim(),
       geboortedatum: g('cm-gebdat').value.trim(), geboorteplaats: g('cm-gebpl').value.trim(), bsn: g('cm-bsn').value.trim(), iban: g('cm-iban').value.trim(),
       bv: w.bv || '', bvAdres: w.adres || '', standplaats: '', vertegenwoordiger: g('cm-vert').value.trim(),
-      functie: g('cm-functie').value.trim(), referentie: g('cm-ref').value.trim(),
+      functie: g('cm-functie').value.trim(), referentie: g('cm-ref').value.trim(), basis: g('cm-basis').value, werkgeverTekent: g('cm-wgteken').checked,
       soort: g('cm-soort').value, startdatum: g('cm-start').value, maanden: g('cm-maanden').value, einddatum: g('cm-eind').value,
       proeftijd: g('cm-proef').value, opzegWn: g('cm-opzeg').value,
       vorm: f1.vorm, uren: f1.uren, loonsoort: f1.loon, bedrag: f1.bedrag,
@@ -3746,7 +3755,7 @@
     z('cm-bsn', ''); z('cm-iban', '');
     if (d.winkel) { z('cm-winkel', d.winkel); cmFulltime(); }
     else toast('Werkgever ' + f.bv + ' niet gevonden in de lijst: kies de winkel zelf', 'err');
-    z('cm-vert', f.vertegenwoordiger); z('cm-functie', f.functie); z('cm-ref', f.referentie);
+    z('cm-vert', f.vertegenwoordiger); z('cm-basis', f.basis || 'sm'); g('cm-wgteken').checked = !!f.werkgeverTekent; z('cm-functie', f.functie); z('cm-ref', f.referentie);
     z('cm-soort', f.soort); z('cm-start', f.startdatum); z('cm-maanden', f.maanden); z('cm-eind', f.einddatum); z('cm-proef', f.proeftijd); z('cm-opzeg', f.opzegWn);
     var fa = f.fasering || {};
     ['f1', 'f2'].forEach(function (k, i) { var x = (i ? fa.fase2 : fa.fase1) || {}; z('cm-' + k + '-vorm', x.vorm || 'vast'); if (x.uren) z('cm-' + k + '-uren', x.uren); z('cm-' + k + '-loon', x.loon || 'maand'); z('cm-' + k + '-bedrag', x.bedrag); });

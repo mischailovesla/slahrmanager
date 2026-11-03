@@ -82,3 +82,21 @@ console.log('vakantiepiek tests OK');
   assert.throws(() => controleer({ email: 'x@ilovesla.com', rol: 'baas' }, acc, 'mischa@ilovesla.com'), /rol/);
   console.log('toegang OK');
 }
+
+// v0.41.0: contract op maat — basis-templates + werkgever tekent digitaal
+{
+  const CM = require('../netlify/functions/_lib/contractmaatwerk');
+  const basis = { naam: 'Test Persoon', bv: 'SLA Ceintuur BV', bvAdres: 'Ceintuurbaan 1, 1072 AA Amsterdam', vertegenwoordiger: 'Jop van de Graaf', soort: 'bepaald', startdatum: '2026-11-10', maanden: '7', proeftijd: '1', opzegWn: '1' };
+  const sm = CM.bouw(Object.assign({}, basis, { basis: 'slamaker', functie: 'Sla maker', referentie: 'A.3.I', vorm: 'oproep', loonsoort: 'uur', bedrag: '14,99', werkgeverTekent: true, _tekenDatum: '03-11-2026' }));
+  assert.deepStrictEqual(sm.fouten, []);
+  assert.ok(/indien opgeroepen/.test(sm.tekst) && /7:628 lid 5/.test(sm.tekst) && /9,6 procent/.test(sm.tekst) && /houdt zich beschikbaar om van 09.00 tot 22.00/.test(sm.tekst), 'Sla maker-tekst');
+  assert.ok(/\{\{HANDTEKENING\}\}\nDatum: 03-11-2026/.test(sm.tekst) && !/_{10,}/.test(sm.tekst), 'werkgever tekent');
+  assert.ok(/rond de 14e van de volgende maand/.test(sm.tekst));
+  const terug = CM.terugLezen(sm.tekst); assert.strictEqual(terug.basis, 'slamaker'); assert.strictEqual(terug.werkgeverTekent, true); assert.strictEqual(terug.vorm, 'oproep');
+  const st = CM.bouw(Object.assign({}, basis, { basis: 'sm', functie: 'Store Manager', referentie: 'A.5.I', vorm: 'vast', uren: '38', loonsoort: 'maand', bedrag: '3250' }));
+  assert.ok(!/indien opgeroepen|7:628 lid 5|9,6 procent/.test(st.tekst) && /_{10,}/.test(st.tekst), 'SM ongewijzigd, zonder werkgeverhandtekening');
+  assert.strictEqual(CM.terugLezen(st.tekst).basis, 'sm');
+  const jr = CM.bouw(Object.assign({}, basis, { basis: 'junior', functie: 'Junior Store Manager', referentie: 'A.4.I', vorm: 'vast', uren: '38', loonsoort: 'maand', bedrag: '3000' }));
+  assert.strictEqual(CM.terugLezen(jr.tekst).basis, 'junior');
+  console.log('contract basis + werkgever OK');
+}

@@ -50,7 +50,14 @@ exports.handler = beveiligd('contract-maatwerk', async (event, g) => {
   const b = CM.bouw(p);
   if (actie === 'controle') return { fouten: b.fouten, let_op: b.let_op, samenvatting: b.samenvatting };
   if (b.fouten.length) throw new Error(b.fouten.join(' '));
-  const pdf = await P.maakOpgemaakteBrief(b.tekst, { titel: b.titel });
+  // v0.41.0: digitale handtekening werkgever — van Jop (vaste vertegenwoordiger), anders die van de verzender (Mijn handtekening)
+  let png = null;
+  if (b.c.werkgeverTekent) {
+    if (/jop/i.test(b.c.vertegenwoordiger)) png = require('./_lib/brieftemplates').handtekening();
+    else { try { png = (await require('./_lib/handtekening').van(g.email)).png; } catch (e) { png = null; } }
+    if (!png) throw new Error('Er is geen handtekening van ' + b.c.vertegenwoordiger + ' beschikbaar. Zet "Werkgever tekent digitaal" uit, of stel je handtekening in via Mijn handtekening.');
+  }
+  const pdf = await P.maakOpgemaakteBrief(b.tekst, { titel: b.titel, handtekening: png });
   const bestandsnaam = 'Arbeidsovereenkomst_' + D.veiligeNaam(b.c.naam) + '.pdf';
   if (actie === 'pdf') {
     await logActie({ door: g.email, actie: 'document', bron: 'contract-maatwerk', veld: 'pdf', naam: b.c.naam, details: 'Contract op maat (concept-PDF): ' + b.samenvatting });
