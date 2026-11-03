@@ -72,7 +72,7 @@ const HUISREGELS = [
   'Je komt niet ongewenst te dichtbij en raakt de ander niet tegen zijn of haar wil aan.',
   'Als iemand je hindert of lastigvalt dan vraag je hem/haar hiermee te stoppen. Als dat niet helpt, vraag je een ander om hulp.',
   'Je helpt anderen om zich ook aan deze afspraken te houden en spreekt degene die zich daar niet aan houdt erop aan en meldt dit zo nodig bij een van de vertrouwenspersonen.',
-  'Vanuit SLA zijn er 2 vertrouwenspersonen die benaderd kunnen worden indien er sprake is van eventueel seksueel grensoverschrijdend gedrag. Dit zijn Jodi Ko (jodi@ilovesla.com) en Ymke Peverelli (ymke@ilovesla.com).'
+  'Vanuit SLA zijn er 2 vertrouwenspersonen die benaderd kunnen worden indien er sprake is van eventueel seksueel grensoverschrijdend gedrag. Dit zijn Lisa (lisa@ilovesla.com) en Siska (siska@ilovesla.com).'
 ];
 
 // ---- Invoer normaliseren ----

@@ -74,3 +74,8 @@ const basis = { naam: 'Test Persoon', adres: 'Straat 1', postcodePlaats: '1000 A
 assert.ok(CM.bouw(Object.assign({}, basis, { _huisregels: ['Alleen deze regel.'] })).tekst.includes('- Alleen deze regel.'));
 assert.ok(CM.bouw(basis).tekst.includes('SLAcademy-account'));
 console.log('✓ shiftbasetemplates');
+
+// v0.37.0: vertrouwenspersonen Lisa en Siska
+{ const r = CM.HUISREGELS.join(' ');
+  assert.ok(r.includes('lisa@ilovesla.com') && r.includes('siska@ilovesla.com'), 'vertrouwenspersonen Lisa + Siska');
+  assert.ok(!/jodi@|ymke@/i.test(r), 'geen oude vertrouwenspersonen'); }

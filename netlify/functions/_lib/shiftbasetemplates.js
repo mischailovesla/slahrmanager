@@ -53,8 +53,11 @@ function winkel(code) { const w = winkels().find(x => x.code === code); if (!w) 
 function soort(key) { const s = SOORTEN.find(x => x.key === key); if (!s) throw new Error('Onbekend template: ' + key); return s; }
 
 async function huisregels() {
-  const v = await require('./instellingen').lees('huisregels', null);
-  return Array.isArray(v) && v.length ? v.map(String) : require('./contractmaatwerk').HUISREGELS.slice();
+  const v = await require('./instellingen').lees('huisregels', null), std = require('./contractmaatwerk').HUISREGELS;
+  if (!(Array.isArray(v) && v.length)) return std.slice();
+  // v0.37.0: vertrouwenspersonen zijn Lisa en Siska. Een eerder opgeslagen lijst met de oude namen krijgt automatisch de actuele regel.
+  const nieuw = std.find(r => /vertrouwenspersonen die benaderd/i.test(r));
+  return v.map(String).map(r => nieuw && /vertrouwenspersonen die benaderd/i.test(r) && /jodi|ymke/i.test(r) ? nieuw : r);
 }
 async function instelling() { const v = await require('./instellingen').lees('shiftbase_templates', null); return Object.assign({}, v || {}, STANDAARD); }   // vertegenwoordiger staat vast
 
