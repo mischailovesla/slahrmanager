@@ -30,6 +30,13 @@ const fmtLang = (d, en) => new Date(d).toLocaleDateString(en ? 'en-GB' : 'nl-NL'
 const voornaam = n => String(n || '').trim().split(/\s+/)[0] || '';
 const ontvangers = () => ((C.SIGNALERING_ONTVANGERS || {}).mto || C.HR_EMAIL).split(',').map(s => s.trim()).filter(Boolean);
 const isManager = functie => /manager/i.test(String(functie || ''));
+// v0.37.0: kantoor (Shiftbase-team HQ) is een eigen groep 'kantoor'. Telt niet mee in de winkelscores (filter 'alle'),
+// en heeft een eigen score. Ook bestaande uitnodigingen/reacties met winkel HQ worden bij het lezen als 'kantoor' gezien.
+const KANTOOR = (C.MTO_KANTOOR_TEAMS || ['HQ']).map(s => String(s).trim().toLowerCase());
+const isKantoor = winkel => KANTOOR.includes(String(winkel || '').trim().toLowerCase());
+const groepVan = (winkel, functie) => isKantoor(winkel) ? 'kantoor' : isManager(functie) ? 'manager' : 'medewerker';
+const metGroep = lijst => (lijst || []).map(r => isKantoor(r.winkel) && r.groep !== 'kantoor' ? Object.assign({}, r, { groep: 'kantoor' }) : r);
+const GROEPEN = ['medewerker', 'manager', 'kantoor'];
 const r1 = x => x == null ? null : Math.round(x * 10) / 10;
 const fout = (e, wat) => { if (e) throw new Error(wat + ': ' + e.message + (/relation|does not exist/i.test(e.message) ? ' (migratie 0015 gedraaid?)' : '')); };
 
@@ -106,7 +113,7 @@ async function kandidaten() {
   const uit = [], zonder = [], weg = [];
   for (const m of med) {
     const email = String(m.email || '').trim().toLowerCase();
-    const k = { medewerker_id: String(m.id), naam: m.naam, email, winkel: m.winkelNaam || '', groep: isManager(m.functie) ? 'manager' : 'medewerker', functie: m.functie || '' };
+    const k = { medewerker_id: String(m.id), naam: m.naam, email, winkel: m.winkelNaam || '', groep: groepVan(m.winkelNaam, m.functie), functie: m.functie || '' };
     if (SIG.vertrekt(vertrek, k)) { weg.push(k); continue; }
     if (email.indexOf('@') === -1) { zonder.push(k); continue; }
     uit.push(k);
@@ -190,6 +197,23 @@ async function sluiten(rondeId, door) {
   fout(error, 'Ronde sluiten');
   return (data || [])[0] || null;
 }
+// v0.37.0: lopende ronde langer laten lopen (of eerder laten sluiten). datum = 'jjjj-mm-dd', sluit om 23:59 NL-tijd.
+const MAX_LOOPTIJD = 60;
+async function verlengen(rondeId, datum, door) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(datum || ''))) throw new Error('Kies een geldige sluitdatum.');
+  const { data: rr, error: e1 } = await admin().from('hr_mto_ronde').select('id,naam,status,gestart_op,sluit_op').eq('id', rondeId).limit(1);
+  fout(e1, 'Ronde lezen');
+  const r = (rr || [])[0]; if (!r || r.status !== 'open') throw new Error('Ronde niet gevonden of al gesloten.');
+  const [j, m, d] = datum.split('-').map(Number);
+  const nl = new Date(Date.UTC(j, m - 1, d, 12)), uurVerschil = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Amsterdam', hour: '2-digit', hourCycle: 'h23' }).format(nl)) - 12;
+  const sluit = new Date(Date.UTC(j, m - 1, d, 23 - uurVerschil, 59));
+  if (sluit <= new Date()) throw new Error('De sluitdatum moet in de toekomst liggen.');
+  const dagen = Math.ceil((sluit - new Date(r.gestart_op)) / 864e5);
+  if (dagen > MAX_LOOPTIJD) throw new Error('Een ronde kan maximaal ' + MAX_LOOPTIJD + ' dagen lopen (vanaf de start). Kies een eerdere datum.');
+  const { error: e2 } = await admin().from('hr_mto_ronde').update({ sluit_op: sluit.toISOString() }).eq('id', rondeId).eq('status', 'open');
+  fout(e2, 'Sluitdatum opslaan');
+  return { naam: r.naam, oud: r.sluit_op, nieuw: sluit.toISOString(), dagen };
+}
 // HR-herinnering in februari/september (één keer per maand), als er die maand nog geen ronde is gestart
 async function hrHerinneringNodig() {
   const nu = isoNL(new Date()), maand = Number(nu.slice(5, 7)), sleutel = nu.slice(0, 7);
@@ -217,7 +241,8 @@ async function uitnodigingVoor(tok) {
   const db = admin();
   const { data, error } = await db.from('hr_mto_uitnodiging').select('id,ronde_id,naam,winkel,groep,ingevuld').eq('id', tok.i).limit(1);
   fout(error, 'Link controleren');
-  const u = (data || [])[0]; if (!u) throw new Error('Ongeldige link. / Invalid link.');
+  const u0 = (data || [])[0]; if (!u0) throw new Error('Ongeldige link. / Invalid link.');
+  const u = metGroep([u0])[0];
   const { data: rr } = await db.from('hr_mto_ronde').select('id,naam,status,sluit_op').eq('id', u.ronde_id).limit(1);
   return { u, ronde: (rr || [])[0] || null };
 }
@@ -272,7 +297,7 @@ function aggregeer(lijst, metVragen) {
   return uit;
 }
 const normW = s => String(s || '').trim().toLowerCase();
-function filter(lijst, groep, winkel) { return lijst.filter(r => (!groep || groep === 'alle' || r.groep === groep) && (!winkel || normW(r.winkel) === normW(winkel))); }
+function filter(lijst, groep, winkel) { return lijst.filter(r => ((!groep || groep === 'alle') ? r.groep !== 'kantoor' : r.groep === groep) && (!winkel || normW(r.winkel) === normW(winkel))); }
 
 async function rapport(rondeId, groep, winkel) {
   const db = admin(), alle = await rondes();
@@ -281,8 +306,8 @@ async function rapport(rondeId, groep, winkel) {
   const ids = alle.map(r => r.id);
   const [re, ui] = await Promise.all([db.from('hr_mto_reactie').select('ronde_id,winkel,groep,taal,antwoorden,enps,prioriteit,opmerking').in('ronde_id', ids), db.from('hr_mto_uitnodiging').select('ronde_id,winkel,groep,ingevuld').eq('ronde_id', ronde.id)]);
   fout(re.error, 'Reacties lezen'); fout(ui.error, 'Uitnodigingen lezen');
-  const perRonde = {}; (re.data || []).forEach(r => { (perRonde[r.ronde_id] = perRonde[r.ronde_id] || []).push(r); });
-  const hier = perRonde[ronde.id] || [], uitn = ui.data || [];
+  const perRonde = {}; metGroep(re.data).forEach(r => { (perRonde[r.ronde_id] = perRonde[r.ronde_id] || []).push(r); });
+  const hier = perRonde[ronde.id] || [], uitn = metGroep(ui.data);
   const sel = filter(hier, groep, winkel), selU = filter(uitn, groep, winkel);
   const totaal = aggregeer(sel, true);
   const respons = l => l.length ? { uitgenodigd: l.length, ingevuld: l.filter(x => x.ingevuld).length, pct: Math.round(l.filter(x => x.ingevuld).length / l.length * 100) } : null;
@@ -303,7 +328,7 @@ async function rapport(rondeId, groep, winkel) {
   const zonderWinkel = zw ? { n: zw.n, managers: filter(hier, 'manager', null).filter(r => !String(r.winkel || '').trim()).length } : null;
   const perWinkelEcht = perWinkel.filter(w => w.winkel !== '(geen winkel)');
   // makers vs managers (met het gekozen winkelfilter)
-  const groepen = ['medewerker', 'manager'].map(gp => Object.assign({ groep: gp, respons: respons(filter(uitn, gp, winkel)) }, aggregeer(filter(hier, gp, winkel), false)));
+  const groepen = GROEPEN.map(gp => Object.assign({ groep: gp, respons: respons(filter(uitn, gp, winkel)) }, aggregeer(filter(hier, gp, winkel), false)));
   // trend over alle rondes (oud → nieuw)
   const trend = alle.slice().reverse().map(r => { const a = aggregeer(filter(perRonde[r.id] || [], groep, winkel), false); return { id: r.id, naam: r.naam, n: a.n, verborgen: !!a.verborgen, totaal: a.totaal == null ? null : a.totaal, enps: a.enps == null ? null : a.enps }; }).filter(t => t.n);
   // open antwoorden: alleen als de selectie groot genoeg is; gesorteerd (niet in invulvolgorde)
@@ -416,8 +441,8 @@ async function pdfSecties(rondeId, groep, winkel) {
   const ids = alle.map(r => r.id);
   const [re, ui] = await Promise.all([db.from('hr_mto_reactie').select('ronde_id,winkel,groep,taal,antwoorden,enps,prioriteit,opmerking').in('ronde_id', ids), db.from('hr_mto_uitnodiging').select('ronde_id,winkel,groep,ingevuld').eq('ronde_id', ronde.id)]);
   fout(re.error, 'Reacties lezen'); fout(ui.error, 'Uitnodigingen lezen');
-  const perRonde = {}; (re.data || []).forEach(r => { (perRonde[r.ronde_id] = perRonde[r.ronde_id] || []).push(r); });
-  const hier = perRonde[ronde.id] || [], uitn = ui.data || [];
+  const perRonde = {}; metGroep(re.data).forEach(r => { (perRonde[r.ronde_id] = perRonde[r.ronde_id] || []).push(r); });
+  const hier = perRonde[ronde.id] || [], uitn = metGroep(ui.data);
   const idx = alle.findIndex(r => r.id === ronde.id), vorigeR = alle.slice(idx + 1).find(r => (perRonde[r.id] || []).length);
   const respons = l => l.length ? { uitgenodigd: l.length, ingevuld: l.filter(x => x.ingevuld).length, pct: Math.round(l.filter(x => x.ingevuld).length / l.length * 100) } : null;
   let alleActies = []; try { const vandaag = isoNL(new Date()); alleActies = (await acties()).map(a => actieUit(a, alle, perRonde, vandaag)); } catch (e) { /* migratie 0016 nog niet gedraaid */ }
@@ -437,7 +462,7 @@ async function pdfSecties(rondeId, groep, winkel) {
   }
   const perWinkel = namen.map(sectie);
   res.perWinkel = perWinkel;
-  res.groepen = ['medewerker', 'manager'].map(gp => ({ groep: gp, a: aggregeer(filter(hier, gp, null), false), respons: respons(filter(uitn, gp, null)) }));
+  res.groepen = GROEPEN.map(gp => ({ groep: gp, a: aggregeer(filter(hier, gp, null), false), respons: respons(filter(uitn, gp, null)) }));
   res.trend = alle.slice(idx).reverse().map(r => { const a = aggregeer(filter(perRonde[r.id] || [], groep, null), false); return { naam: r.naam, n: a.n, verborgen: !!a.verborgen, totaal: a.totaal, enps: a.enps }; }).filter(x => x.n);
   if (winkel === '*') { res.bundel = true; res.winkels = perWinkel.filter(w => !w.a.verborgen && w.a.n); res.overgeslagen = perWinkel.filter(w => w.a.verborgen || !w.a.n).map(w => ({ winkel: w.winkel, n: w.a.n })); }
   return res;
@@ -445,8 +470,9 @@ async function pdfSecties(rondeId, groep, winkel) {
 
 // CSV-export (anoniem: per reactie alleen winkel, groep, taal, scores) — alleen groepen met ≥ MIN_N reacties
 async function exportCsv(rondeId) {
-  const { data, error } = await admin().from('hr_mto_reactie').select('winkel,groep,taal,antwoorden,enps,prioriteit').eq('ronde_id', rondeId);
+  let { data, error } = await admin().from('hr_mto_reactie').select('winkel,groep,taal,antwoorden,enps,prioriteit').eq('ronde_id', rondeId);
   fout(error, 'Export');
+  data = metGroep(data);
   const tel = {}; (data || []).forEach(r => { const k = r.winkel + '|' + r.groep; tel[k] = (tel[k] || 0) + 1; });
   const q = s => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
   const kop = ['winkel', 'groep', 'taal'].concat(Q.SLEUTELS, ['enps', 'prioriteit']);
@@ -455,4 +481,4 @@ async function exportCsv(rondeId) {
   return [kop].concat(rijen).map(r => r.map(q).join(';')).join('\n');
 }
 
-module.exports = { MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager, acties, actieOpslaan, actieVerwijderen, koppeling, spearman, samenvatting, voorWinkel };
+module.exports = { isKantoor, groepVan, GROEPEN, filter, metGroep, MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, verlengen, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager, acties, actieOpslaan, actieVerwijderen, koppeling, spearman, samenvatting, voorWinkel };

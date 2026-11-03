@@ -7,6 +7,8 @@ window.HR_VERSIES = [
     'Bovenaan staat een aparte kaart <b>Keuken-meldingen</b>: meldingen over keukenmedewerkers gaan naar die adressen (nu Jop).',
     'Is een lijst aangepast, dan zie je het label <b>aangepast</b> en kun je met <b>Standaard herstellen</b> terug naar de oorspronkelijke adressen. Elke wijziging staat in het logboek.',
     'Contract op maat: de duur staat standaard op <b>7 maanden</b> (eerste contract). Voor een verlenging pas je hem aan naar 12 of 16.',
+    'MTO: bij een lopende ronde staat de knop <b>Langer laten lopen</b>. Kies een nieuwe sluitdatum (maximaal 60 dagen na de start); de ronde sluit dan pas op die dag.',
+    'MTO: <b>kantoor (HQ)</b> is een eigen groep. De knop <b>Winkels</b> (voorheen Iedereen) en het SLA-totaal gaan nu alleen over de winkels; kantoor heeft een eigen knop <b>Kantoor (HQ)</b> en een eigen regel in de groepentabel en de PDF. Geldt ook voor de lopende ronde en eerdere rondes. Kantoor wordt pas getoond vanaf 4 reacties (anonimiteit).',
     'De <b>vertrouwenspersonen</b> in de huisregels zijn nu <b>Lisa</b> (lisa@ilovesla.com) en <b>Siska</b> (siska@ilovesla.com). Dit geldt voor alle Shiftbase-templates en voor Contract op maat. Download de Shiftbase-templates opnieuw en upload ze in Shiftbase.'
   ] },
   { nummer: '0.36.2', datum: '02-11-2026', titel: 'Winkelmail van één winkel opnieuw versturen', punten: [

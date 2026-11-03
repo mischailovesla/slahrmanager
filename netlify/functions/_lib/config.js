@@ -136,6 +136,7 @@ module.exports = {
     { key: 'hulpvraag', type: 'tekst', nl: 'Is er iets waar we je mee kunnen helpen?', en: 'Is there anything we can help you with?' }
   ],
   // Medewerkertevredenheidsonderzoek (fase 5); vragen in _lib/mto-vragen.js
+  MTO_KANTOOR_TEAMS: ['HQ'],         // v0.37.0: Shiftbase-teams die in de MTO als groep 'kantoor' tellen (niet in de winkelscores)
   MTO_MIN_N: 4,                      // een winkel/groep pas tonen vanaf zoveel reacties (anonimiteit)
   MTO_LOOPTIJD_DAGEN: 21,            // ronde sluit na zoveel dagen
   MTO_HERINNERING_DAGEN: [7, 14],    // herinneringen aan wie nog niet invulde

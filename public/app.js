@@ -2998,7 +2998,7 @@
 
   // ---------- Tevredenheidsonderzoek (MTO, fase 5) ----------
   var mtoData = null, mtoGroep = 'alle', mtoSort = 'thema', mtoKand = null;
-  var MTO_GROEP = { alle: 'Iedereen', medewerker: 'SLA makers', manager: 'Store managers' };
+  var MTO_GROEP = { alle: 'Winkels', medewerker: 'SLA makers', manager: 'Store managers', kantoor: 'Kantoor (HQ)' };
   function mtoKl(x) { return x == null ? '' : x >= 3.75 ? 'mto-g' : x >= 2.75 ? 'mto-o' : 'mto-r'; } // zelfde grenzen als de PDF: Goed / Matig / Aandacht nodig
   function mtoGetal(x) { return x == null ? '-' : String(x).replace('.', ','); }
   function mtoEnps(x) { return x == null ? '-' : (x > 0 ? '+' : '') + x; }
@@ -3022,9 +3022,9 @@
     if (o) {
       var pct = o.uitgenodigd ? Math.round(o.ingevuld / o.uitgenodigd * 100) : 0;
       h = '<div class="sec mto-ronde-kaart"><div class="mto-rk"><div><div class="mto-rk-t">' + esc(o.naam) + ' <span class="badge bg">LOOPT</span></div>'
-        + '<div class="lay-sub">Gestart ' + esc(o.gestart) + (o.gestartDoor ? ' door ' + esc(o.gestartDoor) : '') + ' · sluit ' + esc(o.sluit) + ' · dag ' + (o.dagOpen + 1) + ' van ' + d.instellingen.looptijd
+        + '<div class="lay-sub">Gestart ' + esc(o.gestart) + (o.gestartDoor ? ' door ' + esc(o.gestartDoor) : '') + ' · sluit ' + esc(o.sluit) + ' · dag ' + (o.dagOpen + 1) + ' van ' + (o.sluitIso && o.gestartIso ? Math.round((new Date(o.sluitIso) - new Date(o.gestartIso)) / 864e5) : d.instellingen.looptijd)
         + ' · herinneringen: ' + (o.herinnerd1 ? o.herinnerd1 + 'x na ' + d.instellingen.herinner[0] + ' d' : 'na ' + d.instellingen.herinner[0] + ' d') + ', ' + (o.herinnerd2 ? o.herinnerd2 + 'x na ' + d.instellingen.herinner[1] + ' d' : 'na ' + d.instellingen.herinner[1] + ' d') + '</div></div>'
-        + '<div class="mto-rk-r">' + (o.teVersturen ? '<button class="btn bp bsm" onclick="mtoVerder(\'' + o.id + '\')">Nog ' + o.teVersturen + ' versturen</button>' : '') + '<button class="btn bd bsm" onclick="mtoSluit(\'' + o.id + '\')">Ronde nu sluiten</button></div></div>'
+        + '<div class="mto-rk-r">' + (o.teVersturen ? '<button class="btn bp bsm" onclick="mtoVerder(\'' + o.id + '\')">Nog ' + o.teVersturen + ' versturen</button>' : '') + '<button class="btn bd bsm" onclick="mtoVerleng(\'' + o.id + '\',\'' + esc(o.sluitIso || '') + '\')">Langer laten lopen</button><button class="btn bd bsm" onclick="mtoSluit(\'' + o.id + '\')">Ronde nu sluiten</button></div></div>'
         + '<div class="mto-balk"><div style="width:' + pct + '%"></div></div><div class="mto-rk-c"><span><strong>' + o.ingevuld + '</strong> van ' + o.uitgenodigd + ' ingevuld (' + pct + '%)</span><span>' + o.verstuurd + ' verstuurd' + (o.mislukt ? ' · <span style="color:var(--rood)">' + o.mislukt + ' mislukt</span>' : '') + '</span></div></div>';
     } else {
       var laatste = d.rondes.filter(function (r) { return r.bron === 'dashboard'; })[0];
@@ -3104,7 +3104,7 @@
     var el = g('mto-kand'); el.textContent = 'Shiftbase ophalen…';
     var d = await api('/api/mto-admin?kandidaten=1'); if (!d.success) { el.textContent = d.bericht; return; }
     mtoKand = d;
-    el.innerHTML = '<strong>' + d.aantal + '</strong> uitnodigingen: ' + (d.perGroep.medewerker || 0) + ' SLA makers en ' + (d.perGroep.manager || 0) + ' store managers'
+    el.innerHTML = '<strong>' + d.aantal + '</strong> uitnodigingen: ' + (d.perGroep.medewerker || 0) + ' SLA makers en ' + (d.perGroep.manager || 0) + ' store managers' + (d.perGroep.kantoor ? ' en ' + d.perGroep.kantoor + ' kantoor (HQ)' : '')
       + (d.managers.length ? ' <a href="#" onclick="event.preventDefault();this.nextElementSibling.style.display=\'block\'">(wie?)</a><span style="display:none">' + d.managers.map(function (m) { return esc(m.naam) + ' — ' + esc(m.functie) + (m.winkel ? ', ' + esc(m.winkel) : ''); }).join('<br>') + '</span>' : '')
       + (d.vertrekkers ? ' · ' + d.vertrekkers + ' vertrekker(s) overgeslagen' : '') + (d.zonderEmail.length ? ' · <span style="color:var(--rood)">' + d.zonderEmail.length + ' zonder e-mailadres: ' + d.zonderEmail.map(function (x) { return esc(x.naam); }).join(', ') + '</span>' : '');
   };
@@ -3135,6 +3135,18 @@
     if (r.rest) await mtoVerstuurRest(r.ronde, r.verstuurd); else laadMto();
   };
   window.mtoVerder = function (ronde) { toast('Versturen…', 'ok'); mtoVerstuurRest(ronde, 0); };
+  // v0.37.0: sluitdatum van de lopende ronde verschuiven
+  window.mtoVerleng = async function (ronde, sluitIso) {
+    var basis = sluitIso ? new Date(sluitIso) : new Date(); basis.setDate(basis.getDate() + 7);
+    var p2 = function (n) { return String(n).padStart(2, '0'); };
+    var voorstel = p2(basis.getDate()) + '-' + p2(basis.getMonth() + 1) + '-' + basis.getFullYear();
+    var inv = prompt('Tot en met welke dag mag de ronde open blijven? (dd-mm-jjjj, maximaal 60 dagen na de start)', voorstel);
+    if (!inv) return;
+    var m = String(inv).trim().match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);
+    if (!m) { toast('Gebruik de vorm dd-mm-jjjj', 'err'); return; }
+    var r = await api('/api/mto-admin', { actie: 'verlengen', ronde: ronde, datum: m[3] + '-' + p2(m[2]) + '-' + p2(m[1]) });
+    if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadMto();
+  };
   window.mtoSluit = async function (ronde) {
     if (!confirm('Ronde nu sluiten? De links werken daarna niet meer en er gaan geen herinneringen meer uit.')) return;
     var r = await api('/api/mto-admin', { actie: 'sluiten', ronde: ronde }); if (!r.success) { toast(r.bericht, 'err'); return; } toast(r.bericht, 'ok'); laadMto();

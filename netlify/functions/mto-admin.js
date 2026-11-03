@@ -46,6 +46,12 @@ exports.handler = beveiligd('mto-admin', async (event, g) => {
       return { ronde: r.ronde.id, naam: r.ronde.naam, aantal: r.aantal, zonderEmail: r.zonderEmail.map(x => x.naam), vertrekkers: r.vertrekkers, verstuurd: d.verstuurd, rest: d.rest };
     }
     if (p.actie === 'versturen') { if (!p.ronde) throw new Error('Geen ronde opgegeven.'); return await MTO.versturenDeel(p.ronde, g.email, 7000); }
+    if (p.actie === 'verlengen') {   // v0.37.0
+      if (!p.ronde) throw new Error('Geen ronde opgegeven.');
+      const r = await MTO.verlengen(p.ronde, p.datum, g.email);
+      await logActie({ door: g.email, actie: 'mto-verlengen', bron: 'mto', veld: r.naam, oud: r.oud, nieuw: r.nieuw });
+      return { bericht: r.naam + ' sluit nu op ' + new Date(r.nieuw).toLocaleDateString('nl-NL', { timeZone: 'Europe/Amsterdam', day: 'numeric', month: 'long' }) + ' (' + r.dagen + ' dagen in totaal).' };
+    }
     if (p.actie === 'sluiten') {
       if (!p.ronde) throw new Error('Geen ronde opgegeven.');
       const r = await MTO.sluiten(p.ronde, g.email); if (!r) throw new Error('Ronde niet gevonden of al gesloten.');

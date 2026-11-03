@@ -62,7 +62,7 @@ const OPEN = { nl: 'Wat zou jouw werk bij SLA nog beter maken?', en: 'What would
 
 // Vragenlijst voor de invulpagina, in één taal, met de juiste leidinggevende per groep
 function voorPagina(taal, groep) {
-  const en = String(taal).toUpperCase() === 'EN', lg = groep === 'manager' ? 'operation manager' : 'store manager';
+  const en = String(taal).toUpperCase() === 'EN', lg = groep === 'manager' ? 'operation manager' : groep === 'kantoor' ? 'manager' : 'store manager';
   return {
     themas: THEMAS.map(t => ({ key: t.key, titel: en ? t.en : t.nl, vragen: t.vragen.map(v => ({ key: v[0], tekst: en ? v[2].replace('{lg}', lg) : v[1] })) })),
     enps: en ? ENPS.en : ENPS.nl, prioriteit: en ? PRIORITEIT.en : PRIORITEIT.nl, open: en ? OPEN.en : OPEN.nl,
