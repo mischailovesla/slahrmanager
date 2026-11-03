@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.38.1', datum: '03-11-2026', titel: 'Vakantiepiek-alert nu ook voor de kerstvakantie', punten: [
+    'De zomerpiek-check heet nu <b>Vakantiepiek: zomer &amp; kerst</b>. Van <b>oktober t/m 24 december</b> krijgt HR elke maandag een mail met de winkels waar in de kerstvakantie (weken van half december t/m begin januari) ≥20% van de bezetting tegelijk vrij heeft (goedgekeurd + aangevraagd). Rood = ≥30%.',
+    'Kijkt over de jaargrens heen: de eerste week van januari telt mee. Maart t/m juli blijft de zomercheck zoals hij was.'
+  ] },
   { nummer: '0.38.0', datum: '03-11-2026', titel: 'MTO: kantoor apart en ronde verlengen · nieuwe vertrouwenspersonen', punten: [
     'Contract op maat: de duur staat standaard op <b>7 maanden</b> (eerste contract). Voor een verlenging pas je hem aan naar 12 of 16.',
     'MTO: bij een lopende ronde staat de knop <b>Langer laten lopen</b>. Kies een nieuwe sluitdatum (maximaal 60 dagen na de start); de ronde sluit dan pas op die dag.',

@@ -58,6 +58,14 @@ module.exports = {
   JUBILEUM_JAREN: [1, 2, 5, 10, 15, 20],
   ZOMERPIEK_VAN: '03-01',
   ZOMERPIEK_TOT: '07-31',
+  // v0.38.0: vakantiepiek-alert per seizoen (maandag). alertVan/Tot = wanneer de mail loopt; periodeVan/Tot = welke weken (mm-dd, de week begint op of na periodeVan).
+  // Kerst: tot < van = loopt door in januari van het volgende jaar.
+  PIEK_SEIZOENEN: [
+    { key: 'zomer', naam: 'Zomerpiek', label: 'juli/augustus', alertVan: '03-01', alertTot: '07-31', periodeVan: '06-29', periodeTot: '08-31',
+      advies: 'Bespreek de krappe weken nu met de store managers: aanvragen spreiden, flexpool of zomerkrachten inzetten.' },
+    { key: 'kerst', naam: 'Kerstpiek', label: 'de kerstvakantie (half december t/m begin januari)', alertVan: '10-01', alertTot: '12-24', periodeVan: '12-14', periodeTot: '01-10',
+      advies: 'Veel internationals gaan met kerst naar huis. Bespreek de krappe weken nu met de store manager: aanvragen spreiden (bijv. kerst óf oud en nieuw), flexpool of extra krachten inplannen, en nieuwe aanvragen voor deze weken alleen nog goedkeuren als de bezetting het toelaat.' }
+  ],
 
   // ---- Fase 2: juridische checks (wettelijke defaults; CAO Horeca-afwijkingen hier aanpassen) ----
   // Ketenregeling (art. 7:668a BW): na 3 tijdelijke contracten of 36 maanden wordt het volgende contract onbepaalde tijd;

@@ -916,14 +916,25 @@ async function datacontrole(droog) {
 }
 
 // ---- 22. Zomerpiek-alert (maandag, maart t/m juli): waar wordt het in juli/augustus krap? ----
-function bepaalZomerpiek(d, jaar) {
-  const zomer = d.weken.map((w, i) => ({ w, i })).filter(x => x.w.van >= jaar + '-06-29' && x.w.van <= jaar + '-08-31');
+// v0.38.0: zelfde check voor zomer én kerst. Per seizoen: wanneer de alert loopt (alertVan–alertTot, mm-dd) en welke
+// weken bekeken worden (periodeVan–periodeTot; tot in het volgende jaar als tot < van, bv. kerst 14-12 t/m 10-01).
+function piekSeizoen(vandaag) {
+  const md = String(vandaag.getMonth() + 1).padStart(2, '0') + '-' + String(vandaag.getDate()).padStart(2, '0');
+  return (C.PIEK_SEIZOENEN || []).find(s => md >= s.alertVan && md <= s.alertTot) || null;
+}
+function piekWeken(d, jaar, s) {
+  const van = jaar + '-' + s.periodeVan, tot = (s.periodeTot < s.periodeVan ? jaar + 1 : jaar) + '-' + s.periodeTot;
+  return d.weken.map((w, i) => ({ w, i })).filter(x => x.w.van >= van && x.w.van <= tot);
+}
+function bepaalZomerpiek(d, jaar, s) {
+  s = s || (C.PIEK_SEIZOENEN || [])[0];
+  const zomer = piekWeken(d, jaar, s);
   const uit = [];
   for (const rij of d.rijen) {
     if (rij.bezetting < C.VAKANTIE_PIEK_MIN_BEZETTING) continue;
     const weken = [], metVakantie = new Set();
     for (const { w, i } of zomer) {
-      const c = rij.cellen[i]; (c.namen || []).forEach(n => metVakantie.add(n.replace(/ \(aangevraagd\)$/, '')));
+      const c = rij.cellen[i]; if (!c) continue; (c.namen || []).forEach(n => metVakantie.add(n.replace(/ \(aangevraagd\)$/, '')));
       const vast = c.app / rij.bezetting, tot = (c.app + c.pend) / rij.bezetting;
       if (tot >= C.VAKANTIE_DREMPEL_ORANJE) weken.push({ week: 'wk ' + w.weeknr + ' (' + w.label + ')', app: c.app, pend: c.pend, pct: Math.round(tot * 100), rood: tot >= C.VAKANTIE_DREMPEL_ROOD, alRood: vast >= C.VAKANTIE_DREMPEL_ROOD, namen: c.namen || [] });
     }
@@ -931,20 +942,32 @@ function bepaalZomerpiek(d, jaar) {
   }
   return uit.sort((a, b) => b.rood - a.rood || b.weken.length - a.weken.length);
 }
+// Matrix van dit jaar + (als de periode over de jaargrens loopt) de weken van volgend jaar erachter, per winkel samengevoegd
+async function piekMatrix(jaar, s) {
+  const V = require('./vakantie'), d = await V.getVakantiePlannerData(jaar);
+  if (!(s.periodeTot < s.periodeVan)) return d;
+  const d2 = await V.getVakantiePlannerData(jaar + 1), laatste = d.weken.length ? d.weken[d.weken.length - 1].van : '';
+  const extra = d2.weken.map((w, i) => ({ w, i })).filter(x => x.w.van > laatste && x.w.van <= (jaar + 1) + '-' + s.periodeTot);
+  if (!extra.length) return d;
+  const r2 = {}; d2.rijen.forEach(r => { r2[r.naam] = r; });
+  return Object.assign({}, d, { weken: d.weken.concat(extra.map(x => x.w)), rijen: d.rijen.map(r => Object.assign({}, r, { cellen: r.cellen.concat(extra.map(x => (r2[r.naam] && r2[r.naam].cellen[x.i]) || { app: 0, pend: 0, namen: [] })) })) });
+}
 async function zomerpiek(droog) {
   const rap = { naam: 'zomerpiek', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
-  const vandaag = vandaag0(), md = String(vandaag.getMonth() + 1).padStart(2, '0') + '-' + String(vandaag.getDate()).padStart(2, '0');
-  if (md < C.ZOMERPIEK_VAN || md > C.ZOMERPIEK_TOT) { rap.buitenSeizoen = true; return rap; }
-  const jaar = vandaag.getFullYear();
-  const lijst = bepaalZomerpiek(await require('./vakantie').getVakantiePlannerData(jaar), jaar);
+  const vandaag = vandaag0(), s = piekSeizoen(vandaag);
+  if (!s) { rap.buitenSeizoen = true; return rap; }
+  const jaar = vandaag.getFullYear(), kop = s.naam + ' ' + jaar + (s.periodeTot < s.periodeVan ? '/' + String(jaar + 1).slice(2) : '');
+  rap.seizoen = s.key;
+  const lijst = bepaalZomerpiek(await piekMatrix(jaar, s), jaar, s);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
+  const pO = Math.round(C.VAKANTIE_DREMPEL_ORANJE * 100), pR = Math.round(C.VAKANTIE_DREMPEL_ROOD * 100), isZomer = s.key === 'zomer';
   for (const [deel, team] of teams(lijst)) {
-    const items = deel.map(x => ({ kleur: x.rood ? '#c0392b' : '#e8824a', titel: x.winkel, sub: 'bezetting ' + x.bezetting + ' · ' + x.weken.length + ' krappe week/weken' + (x.zonderVakantie ? ' · ' + x.zonderVakantie + ' mensen nog zonder zomervakantie' : ''),
+    const items = deel.map(x => ({ kleur: x.rood ? '#c0392b' : '#e8824a', titel: x.winkel, sub: 'bezetting ' + x.bezetting + ' · ' + x.weken.length + ' krappe week/weken' + (isZomer && x.zonderVakantie ? ' · ' + x.zonderVakantie + ' mensen nog zonder zomervakantie' : ''),
       html: x.weken.map(w => (w.rood ? '<strong style="color:#c0392b">' : '<strong>') + esc(w.week) + '</strong>: ' + w.pct + '% weg (' + w.app + ' goedgekeurd' + (w.pend ? ' + ' + w.pend + ' aangevraagd' : '') + ')' + (w.namen.length ? ' — ' + esc(w.namen.join(', ')) : '')).join('<br>') }));
-    const plain = 'Hallo,\n\nZomerpiek ' + jaar + ' (juli/augustus): weken waarin ≥' + Math.round(C.VAKANTIE_DREMPEL_ORANJE * 100) + '% van de bezetting vakantie heeft (goedgekeurd + aangevraagd):\n' + deel.map(x => '\n' + x.winkel + ' (bezetting ' + x.bezetting + '):\n' + x.weken.map(w => '  - ' + w.week + ': ' + w.pct + '% (' + w.app + ' + ' + w.pend + ' aangevraagd)').join('\n')).join('\n') + '\n\nBespreek het nu met de store managers: aanvragen spreiden, flexpool of zomerkrachten inzetten.\n\n(Automatisch bericht van het SLA HR Dashboard)';
-    await mailOfDroog(rap, { team, to: ontvangers('zomerpiek'), subject: 'Zomerpiek ' + jaar + ': ' + deel.filter(x => x.rood).length + ' winkel(s) te krap, ' + deel.length + ' met krappe weken', text: plain,
-      html: blokMail('#e8824a', 'HR &middot; Zomerpiek ' + jaar, 'Vakantie in juli en augustus tot nu toe (goedgekeurd + aangevraagd, Shiftbase). Oranje = ≥' + Math.round(C.VAKANTIE_DREMPEL_ORANJE * 100) + '% van de bezetting weg, rood = ≥' + Math.round(C.VAKANTIE_DREMPEL_ROOD * 100) + '%:', items, 'Nu is er nog tijd: bespreek de krappe weken met de store manager, spreid aanvragen, of plan flexpool en zomerkrachten in. "Nog zonder zomervakantie" = mensen die nog kunnen aanvragen; de druk kan dus nog oplopen.', 'Wekelijkse zomerpiek-check (maart t/m juli)'), kort: { naam: 'HR-team', aantal: deel.length } });
+    const plain = 'Hallo,\n\n' + kop + ' (' + s.label + '): weken waarin ≥' + pO + '% van de bezetting vakantie heeft (goedgekeurd + aangevraagd):\n' + deel.map(x => '\n' + x.winkel + ' (bezetting ' + x.bezetting + '):\n' + x.weken.map(w => '  - ' + w.week + ': ' + w.pct + '% (' + w.app + ' + ' + w.pend + ' aangevraagd)').join('\n')).join('\n') + '\n\n' + s.advies + '\n\n(Automatisch bericht van het SLA HR Dashboard)';
+    await mailOfDroog(rap, { team, to: ontvangers('zomerpiek'), subject: kop + ': ' + deel.filter(x => x.rood).length + ' winkel(s) te krap, ' + deel.length + ' met krappe weken', text: plain,
+      html: blokMail('#e8824a', 'HR &middot; ' + esc(kop), 'Vakantie in ' + esc(s.label) + ' tot nu toe (goedgekeurd + aangevraagd, Shiftbase). Oranje = ≥' + pO + '% van de bezetting weg, rood = ≥' + pR + '%:', items, esc(s.advies) + (isZomer ? ' "Nog zonder zomervakantie" = mensen die nog kunnen aanvragen; de druk kan dus nog oplopen.' : ''), 'Wekelijkse ' + s.naam.toLowerCase() + '-check'), kort: { naam: 'HR-team', aantal: deel.length } });
   }
   return rap;
 }
@@ -1006,7 +1029,7 @@ async function winkelmail(droog) {
 }
 
 // ---- 25. v0.32.0: HR-overzicht — alle interne meldingen sinds het vorige overzicht in één mail (v0.32.3: maandag 09:00) ----
-const DAG_LABEL = { 'contractketen': 'Contracten', 'verlengingen': 'Verlengingen', 'aanzegtermijnen': 'Aanzegtermijnen', 'verzuim': 'Verzuim', 'jeugd': 'Jeugd (ATW / jeugdloon)', 'oproepaanbod': 'Oproepaanbod', 'stille-afwezigen': 'Stille afwezigen', 'weekend-beschikbaarheid': 'Weekendbeschikbaarheid', 'vakantiepieken': 'Vakantiepieken', 'datacontrole': 'Shiftbase-datacontrole', 'jubilea': 'Jubilea', 'zomerpiek': 'Zomerpiek', 'salaris': 'Naar salaris', 'nieuwe-medewerkers': 'Nieuwe medewerkers', 'bewaartermijnen': 'Bewaartermijnen (AVG)', 'data-hygiene': 'Shiftbase aanvullen', 'mto': 'MTO', 'checkin': 'Check-in' };
+const DAG_LABEL = { 'contractketen': 'Contracten', 'verlengingen': 'Verlengingen', 'aanzegtermijnen': 'Aanzegtermijnen', 'verzuim': 'Verzuim', 'jeugd': 'Jeugd (ATW / jeugdloon)', 'oproepaanbod': 'Oproepaanbod', 'stille-afwezigen': 'Stille afwezigen', 'weekend-beschikbaarheid': 'Weekendbeschikbaarheid', 'vakantiepieken': 'Vakantiepieken', 'datacontrole': 'Shiftbase-datacontrole', 'jubilea': 'Jubilea', 'zomerpiek': 'Vakantiepiek (zomer/kerst)', 'salaris': 'Naar salaris', 'nieuwe-medewerkers': 'Nieuwe medewerkers', 'bewaartermijnen': 'Bewaartermijnen (AVG)', 'data-hygiene': 'Shiftbase aanvullen', 'mto': 'MTO', 'checkin': 'Check-in' };
 function tekstNaarHtml(t) {
   const regels = String(t || '').split('\n').map(r => r.trimEnd()).filter(r => r && !/^Hallo,?$/i.test(r) && !/^\(Automatisch bericht/i.test(r));
   let h = '', inLijst = false;
@@ -1206,4 +1229,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };
+module.exports = { dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };
