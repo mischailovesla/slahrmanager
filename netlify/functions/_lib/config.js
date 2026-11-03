@@ -24,6 +24,7 @@ module.exports = {
 
   AANZEG_VENSTER_DAGEN: 42,
   COOLDOWN_DAGEN: 3,
+  SALARIS_INZAGE: ['mischa@ilovesla.com', 'jop@ilovesla.com', 'ymke@ilovesla.com'],   // v0.42.0: wie salarissen in contracten op maat mag zien (overschrijfbaar via hr_instellingen 'salaris_inzage')
   INDIENST_HER_MAX: 3,              // v0.39.0: max. herinneringen 'indiensttredingsformulier ontbreekt' (daarna taak: zelf contact opnemen)
   INDIENST_HER_VENSTER_DAGEN: 60,   // alleen dossiers met een uitnodiging van de laatste 60 dagen (= geldigheid van de links)
   // Ontslag/aanzegging: na zoveel automatische herinneringen stopt de mail; de taak blijft rood staan (bellen, of zelf uploaden).

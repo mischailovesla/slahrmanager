@@ -20,7 +20,7 @@ const LABELS = {
 const veld = v => v === undefined || v === null || v === '' ? '-' : String(v);
 
 exports.handler = beveiligd('dossier-pdf', async (event, g) => {
-  const d = await dossier.laad(event.queryStringParameters || {});
+  const d = await dossier.laad(event.queryStringParameters || {}, g.email);
   const nu = D.stempel();
   let t = '**SLA**\n*Personeelsdossier - vertrouwelijk*\n\n**' + d.naam + '**\n' + (d.email || '') + '\n';
   if (d.persoon) t += (d.persoon.winkelNaam ? 'Winkel: ' + d.persoon.winkelNaam + (d.persoon.winkelBv ? ' (' + d.persoon.winkelBv + ')' : '') + '\n' : '') + 'Functie: ' + veld(d.persoon.functie) + '\nIn dienst sinds: ' + veld(d.persoon.indienst) + '\nContract: ' + veld(d.contract && d.contract.type) + (d.contract && d.contract.einde ? ', eindigt ' + d.contract.einde : ', onbepaalde tijd / onbekend') + '\n';

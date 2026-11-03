@@ -95,8 +95,22 @@ console.log('vakantiepiek tests OK');
   const terug = CM.terugLezen(sm.tekst); assert.strictEqual(terug.basis, 'slamaker'); assert.strictEqual(terug.werkgeverTekent, true); assert.strictEqual(terug.vorm, 'oproep');
   const st = CM.bouw(Object.assign({}, basis, { basis: 'sm', functie: 'Store Manager', referentie: 'A.5.I', vorm: 'vast', uren: '38', loonsoort: 'maand', bedrag: '3250' }));
   assert.ok(!/indien opgeroepen|7:628 lid 5|9,6 procent/.test(st.tekst) && /_{10,}/.test(st.tekst), 'SM ongewijzigd, zonder werkgeverhandtekening');
+  assert.ok(/plaats aan het einde van de maand/.test(st.tekst) && !/14e/.test(st.tekst), 'SM vastloner: einde van de maand');
+  const fa = CM.bouw(Object.assign({}, basis, { basis: 'sm', functie: 'Store Manager', referentie: 'A.5.I', fasering: { aan: true, fase1: { vorm: 'oproep', loon: 'uur', bedrag: '14,99', tot: '2026-12-31' }, fase2: { vorm: 'vast', uren: '38', loon: 'maand', bedrag: '2750' } } }));
+  assert.ok(/in fase 1 rond de 14e van de volgende maand en in fase 2 aan het einde van de maand/.test(fa.tekst), 'fasering: per fase');
   assert.strictEqual(CM.terugLezen(st.tekst).basis, 'sm');
   const jr = CM.bouw(Object.assign({}, basis, { basis: 'junior', functie: 'Junior Store Manager', referentie: 'A.4.I', vorm: 'vast', uren: '38', loonsoort: 'maand', bedrag: '3000' }));
   assert.strictEqual(CM.terugLezen(jr.tekst).basis, 'junior');
   console.log('contract basis + werkgever OK');
 }
+
+// v0.42.0: salarisinzage
+(async () => {
+  const SI = require('../netlify/functions/_lib/salarisinzage');
+  const rij = { categorie: 'Contract op maat', onderwerp: 'Arbeidsovereenkomst SM (Fase 1: 0 uren, € 14,99/uur · Fase 2: 32 u/wk, € 2.357,89/mnd (fulltime € 2.800,00))', tekst: 'Salaris € 2.800,00' };
+  const s = SI.scherm([rij, { categorie: 'Vrije brief', onderwerp: 'x € 5' }]);
+  assert.ok(!/\d,\d\d/.test(s[0].onderwerp) && /€ •••/.test(s[0].onderwerp) && !/2\.800/.test(s[0].tekst), 'bedragen weg');
+  assert.strictEqual(s[1].onderwerp, 'x € 5', 'andere brieven ongemoeid');
+  assert.ok(await SI.mag('Ymke@ilovesla.com') && await SI.mag('jop@ilovesla.com') && !(await SI.mag('jodi@ilovesla.com')));
+  console.log('salarisinzage OK');
+})().catch(e => { console.error('✗ salarisinzage: ' + e.message); process.exitCode = 1; });

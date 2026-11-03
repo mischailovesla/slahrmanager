@@ -2,11 +2,19 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.42.0', datum: '03-11-2026', titel: 'Salarissen in contracten op maat afgeschermd', punten: [
+    'De salarissen in <b>contracten op maat</b> zijn alleen nog zichtbaar voor <b>Jop, Ymke en Mischa</b>. Voor anderen staat er <b>€ •••</b> in het overzicht, is de contracttekst (ook in Vrije brieven, het dossier en de dossier-PDF) niet te zien, werkt "Opnieuw gebruiken" niet en kan het ondertekende contract niet worden geopend.',
+    'De afscherming gebeurt op de server, dus ook niet via de browser te omzeilen. Een nieuw contract op maat opstellen en versturen kan iedereen met HR-toegang nog wel.'
+  ] },
+  { nummer: '0.41.1', datum: '03-11-2026', titel: 'Uitbetaling loon: Store Managers aan het einde van de maand', punten: [
+    'Store Managers en Junior Store Managers (vastloners, maandsalaris) krijgen hun loon <b>aan het einde van de maand</b>; Sla makers (uurloon) <b>rond de 14e van de volgende maand</b>. Aangepast in de Shiftbase-templates (nieuw + verlenging SM en Junior SM) en in Contract op maat.',
+    'Contract op maat kijkt naar het loon: maandsalaris = einde van de maand, uurloon = rond de 14e. Bij fasering met beide staat het per fase in het contract.',
+    'Download de Shiftbase-templates voor (Junior) Store Managers opnieuw en upload ze in Shiftbase.'
+  ] },
   { nummer: '0.41.0', datum: '03-11-2026', titel: 'Contract op maat: Sla maker en Junior SM, werkgever tekent digitaal', punten: [
     '<b>Basis-template kiezen:</b> Store Manager, Junior Store Manager of Sla maker. De tekst volgt de Shiftbase-template van die functie. Kiezen vult functie, referentiefunctie (A.5.I / A.4.I / A.3.I), contractvorm, loon en opzegtermijn alvast in.',
     'Sla maker (nulurencontract): "indien opgeroepen", de oproepregels (beschikbaar 09.00–22.00, oproep 4 dagen vooraf), artikel 7:628 lid 5 BW (eerste 6 maanden alleen loon voor gewerkte uren) en all-in vakantie (9,6 procent maandelijks uitbetaald).',
-    '<b>Werkgever tekent digitaal</b> (standaard aan): de handtekening van Jop staat met de datum van versturen op het contract, in plaats van een lege lijn. De medewerker tekent daarna zoals altijd digitaal.',
-    'Loon wordt in alle contracten op maat nu "rond de 14e van de volgende maand" uitbetaald, gelijk aan de Shiftbase-templates.'
+    '<b>Werkgever tekent digitaal</b> (standaard aan): de handtekening van Jop staat met de datum van versturen op het contract, in plaats van een lege lijn. De medewerker tekent daarna zoals altijd digitaal.'
   ] },
   { nummer: '0.40.0', datum: '03-11-2026', titel: 'Toegang zelf beheren', punten: [
     '<b>Beheer → Toegang &amp; log (AVG)</b> heeft bovenaan nu <b>Wie heeft toegang</b>: alle accounts met rol, status en wanneer ze voor het laatst inlogden.',

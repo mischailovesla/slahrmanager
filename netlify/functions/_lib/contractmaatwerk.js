@@ -192,7 +192,12 @@ function bouw(p) {
   const loonZin = f => f.loon === 'uur'
     ? 'het bruto uurloon van werknemer bedraagt ' + euro(f.bedrag) + ' (exclusief vakantietoeslag).'
     : 'het brutosalaris van werknemer bedraagt ' + euro(f.bedrag) + ' per maand (exclusief vakantietoeslag) op basis van een ' + ft + ' urige werkweek' + (f.uren > 0 && f.uren < ft ? '. Bij de overeengekomen arbeidsduur van gemiddeld ' + String(f.uren).replace('.', ',') + ' uur per week ontvangt werknemer dit salaris naar rato, zijnde ' + euro(naarRato(f.bedrag, f.uren, ft)) + ' bruto per maand (exclusief vakantietoeslag)' : '') + '.';
-  const uit = 'De uitbetaling van het loon vindt plaats rond de 14e van de volgende maand onder verstrekking van een loonstrook. Werknemer geeft hierbij aan werkgever toestemming de opgaven zoals bedoeld in artikel 7.626 BW (loonstrook) en 7.655 BW elektronisch te verstrekken op het opgegeven privé e-mailadres.';
+  // v0.41.1: maandsalaris (vastloner, Store Managers) aan het einde van de maand; uurloon rond de 14e van de volgende maand
+  const betaalMoment = f => f.loon === 'maand' ? 'aan het einde van de maand' : 'rond de 14e van de volgende maand';
+  const moment = c.fasering && betaalMoment(f1) !== betaalMoment(f2)
+    ? 'in fase 1 ' + betaalMoment(f1) + ' en in fase 2 ' + betaalMoment(f2)
+    : betaalMoment(f1);
+  const uit = 'De uitbetaling van het loon vindt plaats ' + moment + ' onder verstrekking van een loonstrook. Werknemer geeft hierbij aan werkgever toestemming de opgaven zoals bedoeld in artikel 7.626 BW (loonstrook) en 7.655 BW elektronisch te verstrekken op het opgegeven privé e-mailadres.';
   const lid5 = sm && f1.loon === 'uur' ? ' Gedurende de eerste zes maanden heeft werknemer ingevolge artikel 7:628 lid 5 BW alleen recht op loon wanneer hij daadwerkelijk heeft gewerkt.' : '';
   A('salaris', 'Salaris.', c.fasering ? faseKop(0) + loonZin(f1) + '\n\n' + faseKop(1) + loonZin(f2) + '\n\n' + uit : cap(loonZin(f1)) + lid5 + '\n\n' + uit);
 

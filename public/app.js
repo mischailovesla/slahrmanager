@@ -3743,7 +3743,7 @@
     var sel = g('cm-winkel');
     if (!sel.options.length) sel.innerHTML = '<option value="">— kies de winkel —</option>' + cmWinkels.map(function (w) { return '<option value="' + esc(w.code) + '">' + esc(w.naam) + ' · ' + esc(w.bv) + '</option>'; }).join('');
     g('cm-count').textContent = cmData.length;
-    g('cm-body').innerHTML = cmData.length ? cmData.map(function (r) { return '<tr><td><strong>' + esc(r.naam) + '</strong><br><small>' + esc(r.email) + '</small></td><td>' + esc(r.bv) + '</td><td>' + esc(r.onderwerp) + '</td><td>' + esc(r.verzenddatum) + '</td><td><button class="btn bd bsm" title="Zet dit contract terug in het formulier om het aan te passen en opnieuw te versturen" onclick="cmHergebruik(' + Number(r.rij) + ')">✎ Opnieuw gebruiken</button></td></tr>'; }).join('')
+    g('cm-body').innerHTML = cmData.length ? cmData.map(function (r) { return '<tr><td><strong>' + esc(r.naam) + '</strong><br><small>' + esc(r.email) + '</small></td><td>' + esc(r.bv) + '</td><td>' + esc(r.onderwerp) + '</td><td>' + esc(r.verzenddatum) + '</td><td>' + (d.salarisInzage === false ? '<span class="lay-sub" title="Alleen voor personen met salarisinzage">🔒</span>' : '<button class="btn bd bsm" title="Zet dit contract terug in het formulier om het aan te passen en opnieuw te versturen" onclick="cmHergebruik(' + Number(r.rij) + ')">✎ Opnieuw gebruiken</button>') + '</td></tr>'; }).join('')
       : '<tr><td colspan="5" style="color:#999">Nog geen contracten op maat verstuurd.</td></tr>';
   };
   // v0.35.0: verstuurd contract terug in het formulier (BSN en IBAN staan niet in het logboek → opnieuw invullen)

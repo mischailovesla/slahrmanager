@@ -4,8 +4,8 @@ const { beveiligd } = require('./_lib/auth');
 const S = require('./_lib/sheets');
 const T = require('./_lib/sjablonen');
 const C = require('./_lib/config');
-exports.handler = beveiligd('brieven', async () => {
-  const rijen = await S.getBrieven();
+exports.handler = beveiligd('brieven', async (event, g) => {
+  const rijen = await require('./_lib/salarisinzage').schermVoor(g.email, await S.getBrieven());   // v0.42.0
   const bvs = Array.from(new Set(Object.values(C.WINKEL_BV_MAP).map(w => w.bv))).sort();
   const winkelBv = {};
   Object.values(C.WINKEL_BV_MAP).forEach(w => { winkelBv[w.naam] = w.bv; });

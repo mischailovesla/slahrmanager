@@ -10,7 +10,7 @@ const SB = require('./_lib/shiftbase');
 const { AANZEG_VENSTER_DAGEN } = require('./_lib/config');
 const { normNaam, parseNLDatum, dagenTot } = require('./_lib/util');
 
-async function laad(qs) {
+async function laad(qs, email) {
   let persoon = null;
   const med = await SB.getMedewerkers(false).catch(() => []);
   if (qs.id) persoon = med.find(m => m.id === String(qs.id)) || null;
@@ -34,7 +34,7 @@ async function laad(qs) {
     { key: 'overplaatsing', label: 'Overplaatsing / standplaats', rijen: opl.filter(match) },
     { key: 'sommatie', label: 'Sommaties', rijen: som.filter(match) },
     { key: 'ontslag', label: 'Ontslag & aanzegging', rijen: ontslag.filter(match) },
-    { key: 'brief', label: 'Vrije brieven', rijen: brieven.filter(match) },
+    { key: 'brief', label: 'Vrije brieven', rijen: (await require('./_lib/salarisinzage').schermVoor(email, brieven.filter(match))) },   // v0.42.0
     { key: 'waarschuwing', label: 'Officiële waarschuwingen', rijen: wrs.filter(match) },
     { key: 'beschikbaarheid', label: 'Weekendbeschikbaarheid', rijen: bsk.filter(match) },
     { key: 'notitie', label: 'Notities', rijen: notities.filter(match) }
@@ -102,4 +102,4 @@ async function laad(qs) {
   return { persoon, naam, email, contract, verlof, verzuim, keten, checkins, gesprekken, academy, academyFout, indienstFormulier, secties, totaal: secties.reduce((n, s) => n + s.rijen.length, 0) };
 }
 exports.laad = laad;
-exports.handler = beveiligd('dossier', async (event) => laad(event.queryStringParameters || {}));
+exports.handler = beveiligd('dossier', async (event, g) => laad(event.queryStringParameters || {}, g.email));

@@ -42,9 +42,11 @@ SM = ('nieuw-junior-sm', 'nieuw-sm', 'verlenging-junior-sm', 'verlenging-sm')
 MAKER = ('nieuw-slamaker', 'verlenging-slamaker', 'onbepaald-slamaker')
 ZES = ' Gedurende de eerste zes maanden heeft werknemer ingevolge artikel 7:628 lid 5 BW alleen recht op loon wanneer hij daadwerkelijk heeft gewerkt.'
 BETALING = 'De uitbetaling van het loon vindt plaats rond de 14e van de volgende maand onder verstrekking van een loonstrook. Werknemer geeft hierbij aan werkgever toestemming de opgaven zoals bedoeld in artikel 7.626 BW (loonstrook) en 7.655 BW elektronisch te verstrekken op het opgegeven privé email adres.'
+BETALING_SM = BETALING.replace('rond de 14e van de volgende maand', 'aan het einde van de maand')   # v0.41.1: store managers (vastloners, maandsalaris)
 REGELS = [
-  # betaling overal rond de 14e van de volgende maand
-  (None, r'^De uitbetaling van het loon vindt plaats .*$', BETALING),
+  # betaling: Sla makers rond de 14e van de volgende maand, (Junior) Store Managers als vastloner aan het einde van de maand (Mischa, 03-11-2026)
+  (MAKER, r'^De uitbetaling van het loon vindt plaats .*$', BETALING),
+  (SM, r'^De uitbetaling van het loon vindt plaats .*$', BETALING_SM),
   # werktijden overal vanaf 09.00
   (None, r'van 10\.00 tot 22\.00', 'van 09.00 tot 22.00'),
   # 7:628 lid 5 alleen in het eerste (oproep)contract van een Sla maker

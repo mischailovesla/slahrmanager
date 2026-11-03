@@ -34,12 +34,14 @@ const mailPlain = (naam, functie, bv, link) => 'Beste ' + (String(naam).trim().s
 
 exports.handler = beveiligd('contract-maatwerk', async (event, g) => {
   if (event.httpMethod !== 'POST') {
-    const rijen = (await S.getBrieven()).filter(r => r.categorie === CATEGORIE).map(r => ({ rij: r.rij, naam: r.naam, email: r.email, bv: r.bv, onderwerp: r.onderwerp, verzenddatum: r.verzenddatum, status: r.status }));
+    const SI = require('./_lib/salarisinzage'), magZien = await SI.mag(g.email);
+    const rijen = (await SI.schermVoor(g.email, await S.getBrieven())).filter(r => r.categorie === CATEGORIE).map(r => ({ rij: r.rij, naam: r.naam, email: r.email, bv: r.bv, onderwerp: r.onderwerp, verzenddatum: r.verzenddatum, status: r.status }));
     const winkels = Object.keys(C.WINKEL_BV_MAP).map(k => Object.assign({ code: k }, C.WINKEL_BV_MAP[k]));
-    return { rijen, winkels };
+    return { rijen, winkels, salarisInzage: magZien };
   }
   const p = body(event), actie = String(p.actie || 'controle');
   if (actie === 'formulier') {   // v0.35.0: verstuurd contract terugzetten in het formulier ("Opnieuw gebruiken")
+    await require('./_lib/salarisinzage').eis(g.email, 'Opnieuw gebruiken van een contract');   // v0.42.0
     const r = (await S.getBrieven()).find(x => String(x.rij) === String(p.rij) && x.categorie === CATEGORIE);
     if (!r) throw new Error('Dit contract staat niet (meer) in het logboek.');
     const f = CM.terugLezen(r.tekst);

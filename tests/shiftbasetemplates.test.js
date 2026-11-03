@@ -40,7 +40,8 @@ for (const s of SB.SOORTEN) {
   }
   assert.ok(r.bestandsnaam.startsWith('Voorstraat - '));
   // v0.34.1: gelijkgetrokken teksten
-  assert.ok(tekst.includes('rond de 14e van de volgende maand') && !/laatste dag van de periode|eind van de maand/.test(tekst), s.key + ': betaling');
+  if (/slamaker/.test(s.key)) assert.ok(tekst.includes('rond de 14e van de volgende maand') && !/einde van de maand/.test(tekst), s.key + ': betaling Sla maker');
+  else assert.ok(tekst.includes('aan het einde van de maand') && !/14e van de volgende maand/.test(tekst), s.key + ': betaling Store Manager (vastloner)');
   assert.ok(!tekst.includes('10.00') && tekst.includes('09.00'), s.key + ': werktijden');
   assert.strictEqual(tekst.includes('7:628 lid 5'), s.key === 'nieuw-slamaker', s.key + ': 7:628 lid 5');
   assert.strictEqual(/indien opgeroepen/.test(tekst), /slamaker/.test(s.key), s.key + ': indien opgeroepen');
