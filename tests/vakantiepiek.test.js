@@ -69,3 +69,16 @@ console.log('vakantiepiek tests OK');
   assert.ok(/indienst\.html\?t=/.test(html) && /Hoi Maud/.test(html) && !/xlsx/.test(html));
   console.log('indienst ontbreekt OK');
 }
+
+// v0.40.0: toegang beheren
+{
+  const { controleer } = require('../netlify/functions/toegang');
+  const acc = [{ email: 'mischa@ilovesla.com', rol: 'admin', actief: true }, { email: 'jodi@ilovesla.com', rol: 'hr', actief: true }];
+  assert.deepStrictEqual(controleer({ email: 'Lisa@ilovesla.com', naam: 'Lisa', rol: 'hr' }, acc, 'mischa@ilovesla.com'), { email: 'lisa@ilovesla.com', naam: 'Lisa', rol: 'hr', actief: true });
+  assert.throws(() => controleer({ email: 'lisa@gmail.com', rol: 'hr' }, acc, 'mischa@ilovesla.com'), /ilovesla/);
+  assert.throws(() => controleer({ email: 'mischa@ilovesla.com', rol: 'admin', actief: false }, acc, 'mischa@ilovesla.com'), /eigen toegang/);
+  assert.throws(() => controleer({ email: 'mischa@ilovesla.com', rol: 'hr' }, acc, 'mischa@ilovesla.com'), /beheerdersrol/);
+  assert.throws(() => controleer({ email: 'mischa@ilovesla.com', rol: 'hr' }, acc, 'jodi@ilovesla.com'), /minimaal één/);
+  assert.throws(() => controleer({ email: 'x@ilovesla.com', rol: 'baas' }, acc, 'mischa@ilovesla.com'), /rol/);
+  console.log('toegang OK');
+}

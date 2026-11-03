@@ -11,7 +11,7 @@
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
-    { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegangslog (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
+    { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegang & log (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
   var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
@@ -78,6 +78,7 @@
     if (tab === 'gesprekken' && !gsData) laadGesprekken(90);
     if (tab === 'training' && !trData) laadTraining(false);
     if (tab === 'toegang' && !tgData) laadToegang();
+    if (tab === 'toegang') taLaad(); // v0.40.0
     if (tab === 'archief' && !arData) laadArchief();
     if (tab === 'bewaartermijn' && !btData) laadBewaartermijnen();
     if (tab === 'gegevens' && !gvData) laadGegevens();
@@ -2603,6 +2604,43 @@
 
   // ---------- Toegangslog (port van Toegang.gs: AVG-verantwoording in het dashboard zelf) ----------
   var tgData = null;
+  // ---------- v0.40.0: Beheer → Toegang (hr_toegang) ----------
+  var taData = null, TA_ROL = { admin: 'Beheerder', hr: 'HR', keuken: 'Keuken' };
+  window.taLaad = async function () {
+    var d = await api('/api/toegang'); if (!d.success) { g('ta-body').innerHTML = '<tr><td colspan="7" class="leeg grijs">' + esc(d.bericht) + '</td></tr>'; return; }
+    taData = d; var mag = d.magBewerken;
+    g('ta-nieuw').style.display = mag ? '' : 'none';
+    g('ta-rollen').innerHTML = Object.keys(d.rollen).map(function (k) { return '<strong>' + TA_ROL[k] + '</strong>: ' + esc(d.rollen[k].replace(/^[^:]+:\s*/, '')); }).join(' · ');
+    g('ta-aantal').textContent = d.accounts.filter(function (a) { return a.actief; }).length + ' actief';
+    g('ta-body').innerHTML = d.accounts.sort(function (a, b) { return (b.actief - a.actief) || a.naam.localeCompare(b.naam, 'nl'); }).map(function (a) {
+      var ikZelf = a.email === d.ik, rol = mag && !ikZelf ? '<select class="sb" style="width:auto;padding:4px 8px" data-ta-rol="' + esc(a.email) + '">' + Object.keys(TA_ROL).map(function (k) { return '<option value="' + k + '"' + (k === a.rol ? ' selected' : '') + '>' + TA_ROL[k] + '</option>'; }).join('') + '</select>' : '<span class="badge ' + (a.rol === 'admin' ? 'bdk' : 'boat') + '">' + (TA_ROL[a.rol] || a.rol) + '</span>';
+      var st = a.actief ? '<span class="badge bg">Actief</span>' : '<span class="badge br">Uit</span>';
+      var knop = mag && !ikZelf ? '<button class="btn bd bsm" data-ta-aan="' + esc(a.email) + '" data-aan="' + (a.actief ? '0' : '1') + '">' + (a.actief ? 'Uitzetten' : 'Weer aanzetten') + '</button>' : (ikZelf ? '<span class="lay-sub">dit ben jij</span>' : '');
+      return '<tr' + (a.actief ? '' : ' style="opacity:.55"') + '><td><strong>' + esc(a.naam) + '</strong></td><td>' + esc(a.email) + '</td><td>' + rol + '</td><td>' + st + '</td><td>' + esc(a.laatsteLogin || 'nog nooit') + '</td><td class="lay-sub">' + esc(a.aangemaakt) + (a.door ? '<br>door ' + esc(a.door) : '') + '</td><td>' + knop + '</td></tr>';
+    }).join('') || '<tr><td colspan="7" class="leeg grijs">Nog niemand</td></tr>';
+  };
+  async function taOpslaan(a, bericht) {
+    if (bericht && !confirm(bericht)) { taLaad(); return; }
+    var r = await api('/api/toegang', { actie: 'opslaan', email: a.email, naam: a.naam, rol: a.rol, actief: a.actief });
+    toast(r.bericht, r.success ? 'ok' : 'err'); taLaad();
+  }
+  window.taToevoegen = function () {
+    var email = g('ta-email').value.trim().toLowerCase(), naam = g('ta-naam').value.trim(), rol = g('ta-rol').value;
+    if (!email) { toast('Vul een e-mailadres in', 'err'); return; }
+    var bestaat = (taData.accounts || []).find(function (a) { return a.email === email; });
+    taOpslaan({ email: email, naam: naam || (bestaat && bestaat.naam) || '', rol: rol, actief: true }, (bestaat ? email + ' staat er al (' + (TA_ROL[bestaat.rol] || bestaat.rol) + (bestaat.actief ? '' : ', uit') + '). Bijwerken naar ' : 'Toegang geven aan ' + (naam || email) + ' als ') + TA_ROL[rol] + '?').then(function () { g('ta-email').value = ''; g('ta-naam').value = ''; });
+  };
+  document.addEventListener('change', function (e) {
+    var s = e.target.closest && e.target.closest('select[data-ta-rol]'); if (!s || !taData) return;
+    var a = taData.accounts.find(function (x) { return x.email === s.getAttribute('data-ta-rol'); }); if (!a) return;
+    taOpslaan({ email: a.email, naam: a.naam, rol: s.value, actief: a.actief }, 'Rol van ' + a.naam + ' wijzigen naar ' + TA_ROL[s.value] + '?');
+  });
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('button[data-ta-aan]'); if (!b || !taData) return;
+    var a = taData.accounts.find(function (x) { return x.email === b.getAttribute('data-ta-aan'); }); if (!a) return;
+    var aan = b.getAttribute('data-aan') === '1';
+    taOpslaan({ email: a.email, naam: a.naam, rol: a.rol, actief: aan }, aan ? a.naam + ' weer toegang geven?' : 'Toegang van ' + a.naam + ' uitzetten? Inloggen lukt dan direct niet meer.');
+  });
   window.laadToegang = async function () {
     g('tg-body').innerHTML = '<tr><td colspan="5" class="leeg grijs">Laden…</td></tr>';
     var d = await api('/api/toegangslog');

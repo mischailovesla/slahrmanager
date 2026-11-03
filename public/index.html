@@ -820,6 +820,12 @@
 
   <!-- TOEGANGSLOG (Toegang.gs: AVG-verantwoording) -->
   <div class="tc" id="tab-toegang">
+    <div class="sec">
+      <div class="sh"><div class="st">Wie heeft toegang <span class="pill" id="ta-aantal"></span></div><div class="hr2"><button class="btn bd bsm" onclick="taLaad()">↻</button></div></div>
+      <div class="lay-sub" style="padding:12px 24px 0;line-height:1.6">Alleen <strong>@ilovesla.com</strong>-accounts kunnen inloggen, en alleen als ze hier actief staan. Een wijziging werkt direct; de medewerker logt in op dit dashboard met zijn of haar Google-account van SLA. Zet iemand die vertrekt op <em>uit</em> (dan blijft de historie in het logboek bewaard).</div>
+      <div id="ta-nieuw" style="padding:12px 24px;display:none"><div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><input class="sb" id="ta-naam" placeholder="Naam" style="width:180px"><input class="sb" id="ta-email" type="email" placeholder="naam@ilovesla.com" style="width:230px"><select class="sb" id="ta-rol" style="width:auto"><option value="hr">HR</option><option value="admin">Beheerder</option><option value="keuken">Keuken</option></select><button class="btn bp bsm" onclick="taToevoegen()">+ Toegang geven</button></div><div class="lay-sub" id="ta-rollen" style="margin-top:8px"></div></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th>E-mail</th><th>Rol</th><th>Status</th><th>Laatst ingelogd</th><th>Toegevoegd</th><th></th></tr></thead><tbody id="ta-body"></tbody></table></div>
+    </div>
     <div class="stats" id="tg-kpi"></div>
     <div class="sec">
       <div class="sh"><div class="st">Toegangslog <span class="pill">laatste 300</span></div><div class="hr2"><input class="sb" type="text" placeholder="Filter op account / details..." oninput="flt('tg-body',this.value)"><button class="btn bd bsm" onclick="laadToegang()">↻</button></div></div>

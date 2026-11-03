@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.40.0', datum: '03-11-2026', titel: 'Toegang zelf beheren', punten: [
+    '<b>Beheer → Toegang &amp; log (AVG)</b> heeft bovenaan nu <b>Wie heeft toegang</b>: alle accounts met rol, status en wanneer ze voor het laatst inlogden.',
+    'Een beheerder kan iemand <b>toegang geven</b> (naam, @ilovesla.com-adres, rol HR / Beheerder / Keuken), de <b>rol wijzigen</b> of toegang <b>uitzetten</b>. Dit werkt direct; geen SQL meer nodig.',
+    'Veilig: alleen @ilovesla.com, je kunt jezelf niet uitzetten of je beheerdersrol afnemen, en er blijft altijd minimaal één beheerder. Elke wijziging staat in het logboek.'
+  ] },
   { nummer: '0.39.0', datum: '03-11-2026', titel: 'Indiensttredingsformulier: herinnering, status Half en knop op de uploadpagina', punten: [
     '<b>Nieuwe herinnering:</b> is de loonheffingsverklaring binnen maar het indiensttredingsformulier nog niet, dan krijgt de medewerker (NL + EN) een korte mail met alleen de persoonlijke link naar het <b>online formulier</b>. Max. 1 per 3 dagen en max. 3 keer; daarna een rode taak "zelf contact opnemen". Alleen voor uitnodigingen van de laatste 60 dagen. Loopt mee met de dagelijkse loonheffingscheck (09:00).',
     '<b>Status Half:</b> in de kolom Formulier staat nu <b>Ontvangen</b> (beide documenten), oranje <b>Half · indienst mist</b> of <b>Half · loonheffing mist</b>, of <b>Wacht</b>.',
