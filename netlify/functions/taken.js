@@ -280,6 +280,8 @@ exports.handler = beveiligd('taken', async (event, g) => {
     if (vertrek && naam === 'verlengingen') items = (items || []).filter(x => x.status === 'tegenstrijdig' || !VT(vertrek, x));
     if (naam === 'nieuwe-medewerkers') items = (items || []).filter(x => !loonVerstuurd(x));
     if (naam === 'loonheffing-herinneringen') items = (items || []).filter(x => x.soort === 'indienst' || !loonOntvangen(x));
+    // v0.43.5: uitgesloten winkels (HQ, Zuidas: weekend dicht) ook uit een oudere run filteren — de check draait maar 1x per week
+    if (naam === 'weekend-beschikbaarheid') { const nw = w => String(w || '').trim().toLowerCase().replace(/^sla\s+/, ''), uit = new Set((C.WEEKEND_UITGESLOTEN_WINKELS || []).map(nw)); items = (items || []).filter(x => !uit.has(nw(x.winkel))); }
     taken.push(...uitCheck(naam, items, runs[naam].tijd));
   }
   // v0.31.4: Arbeidstijdenwet-afwijkingen per medewerker samenvoegen (één taak met de diensten erin, i.p.v. één taak per dienst)
