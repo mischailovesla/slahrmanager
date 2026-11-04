@@ -13,10 +13,15 @@ function normNaam(s) {
 }
 
 // dd-mm-yyyy (optioneel HH:mm) -> Date, anders null
+// v0.43.2: ook 30.11.2026, 2026-11-30 en '30 november 2026' (vrij ingevulde einddatums in ontslagbrieven)
+const MAANDEN_NL = { jan: 1, januari: 1, feb: 2, februari: 2, mrt: 3, maart: 3, apr: 4, april: 4, mei: 5, jun: 6, juni: 6, jul: 7, juli: 7, aug: 8, augustus: 8, sep: 9, sept: 9, september: 9, okt: 10, oktober: 10, nov: 11, november: 11, dec: 12, december: 12, january: 1, february: 2, march: 3, may: 5, june: 6, july: 7, august: 8, october: 10 };
 function parseNLDatum(s) {
-  const m = String(s || '').trim().match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})/);
-  if (!m) return null;
-  return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+  const t = String(s || '').trim();
+  let m = t.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+  if (m) return new Date(parseInt(m[3], 10), parseInt(m[2], 10) - 1, parseInt(m[1], 10));
+  if ((m = t.match(/^(\d{4})-(\d{2})-(\d{2})/))) return new Date(+m[1], +m[2] - 1, +m[3]);
+  if ((m = t.toLowerCase().match(/^(\d{1,2})\s+([a-z]+)\.?\s+(\d{4})/)) && MAANDEN_NL[m[2]]) return new Date(+m[3], MAANDEN_NL[m[2]] - 1, +m[1]);
+  return null;
 }
 
 function dagenTot(datum, vanaf) {

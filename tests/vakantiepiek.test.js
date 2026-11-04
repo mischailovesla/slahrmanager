@@ -114,3 +114,16 @@ console.log('vakantiepiek tests OK');
   assert.ok(await SI.mag('Ymke@ilovesla.com') && await SI.mag('jop@ilovesla.com') && !(await SI.mag('jodi@ilovesla.com')));
   console.log('salarisinzage OK');
 })().catch(e => { console.error('✗ salarisinzage: ' + e.message); process.exitCode = 1; });
+
+// v0.43.2: einddatum flexibel lezen
+{
+  const { parseNLDatum } = require('../netlify/functions/_lib/util');
+  const iso = d => d && d.toLocaleDateString('sv-SE');
+  assert.strictEqual(iso(parseNLDatum('30-11-2026')), '2026-11-30');
+  assert.strictEqual(iso(parseNLDatum('30.11.2026')), '2026-11-30');
+  assert.strictEqual(iso(parseNLDatum('30/11/2026')), '2026-11-30');
+  assert.strictEqual(iso(parseNLDatum('2026-11-30')), '2026-11-30');
+  assert.strictEqual(iso(parseNLDatum('30 november 2026')), '2026-11-30');
+  assert.strictEqual(parseNLDatum('binnenkort'), null);
+  console.log('datum flexibel OK');
+}

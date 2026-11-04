@@ -57,7 +57,7 @@ exports.handler = beveiligd('exit-admin', async (event, g) => {
   // of later. Shiftbase wordt alleen gebruikt om de winkel op te zoeken (de einddatum daar is vaak gewoon het contracteinde).
   let vertrokken = [];
   try {
-    const S = require('./_lib/sheets'), SB = require('./_lib/shiftbase'); const { normNaam } = require('./_lib/util');
+    const S = require('./_lib/sheets'), SB = require('./_lib/shiftbase'); const { normNaam, parseNLDatum } = require('./_lib/util');
     const vandaagIso = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
     const grensIso = van.toLocaleDateString('sv-SE');
     const winkelOp = {};
@@ -67,12 +67,14 @@ exports.handler = beveiligd('exit-admin', async (event, g) => {
     } catch (e) { console.warn('winkels (Shiftbase):', e.message); }
     const heb = new Set();
     for (const r of await S.getOntslag(true)) {
-      const m = String(r.einddatum || '').match(/(\d{1,2})-(\d{1,2})-(\d{4})/); if (!m) continue;
-      const iso = m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0'); if (iso < grensIso) continue;
+      // v0.43.2: einddatum flexibel lezen (30-11-2026, 30.11.2026, 30 november 2026); onleesbaar of leeg = toch tonen
+      const d = parseNLDatum(r.einddatum), iso = d ? d.toLocaleDateString('sv-SE') : '';
+      if (iso && iso < grensIso) continue;
+      if (!iso && r.gearchiveerd && String(r.gearchiveerd.op || '').slice(0, 10) < grensIso) continue;
       const em = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam), sleutel = em || nn;
       if (heb.has(sleutel)) continue; heb.add(sleutel);
       const winkel = winkelOp['e:' + em] || winkelOp['n:' + nn] || String(r.bedrijf || '').replace(/^SLA\s*/i, '').replace(/\s*B\.?V\.?$/i, '').trim();
-      vertrokken.push({ naam: String(r.naam || '').trim(), email: em, einddatum: iso.split('-').reverse().join('-'), einddatumIso: iso, winkelNaam: winkel, nogInDienst: iso >= vandaagIso, type: r.type || '' });
+      vertrokken.push({ naam: String(r.naam || '').trim(), email: em, einddatum: iso ? iso.split('-').reverse().join('-') : (String(r.einddatum || '').trim() ? r.einddatum + ' (?)' : 'onbekend'), einddatumIso: iso || '9999-12-31', winkelNaam: winkel, nogInDienst: !iso || iso >= vandaagIso, datumOnbekend: !iso, type: r.type || '' });
     }
     vertrokken.sort((a, b) => a.einddatumIso < b.einddatumIso ? 1 : -1);
   } catch (e) { console.warn('vertrokken (dossiers):', e.message); }
