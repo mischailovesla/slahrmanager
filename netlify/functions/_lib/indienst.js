@@ -54,12 +54,15 @@ const MAIL_TYPO = { 'gmial.com': 'gmail.com', 'gmal.com': 'gmail.com', 'gmai.com
   'hotmial.com': 'hotmail.com', 'hotmal.com': 'hotmail.com', 'hotmail.co': 'hotmail.com', 'hotmai.com': 'hotmail.com', 'hotmial.nl': 'hotmail.nl', 'hotmal.nl': 'hotmail.nl',
   'outlok.com': 'outlook.com', 'outloo.com': 'outlook.com', 'outlook.co': 'outlook.com', 'yaho.com': 'yahoo.com', 'yahoo.co': 'yahoo.com', 'icloud.co': 'icloud.com', 'iclod.com': 'icloud.com', 'icoud.com': 'icloud.com', 'live.co': 'live.com' };
 function emailSuggestie(e) { const m = String(e || '').toLowerCase().match(/^([^@]+)@(.+)$/); return m && MAIL_TYPO[m[2]] ? m[1] + '@' + MAIL_TYPO[m[2]] : ''; }
+// v0.44.2: alles behalve (junior) store managers, supervisors en kantoor = Sla maker met 0-urencontract
+const isSlaMaker = functie => !/manager|supervisor|leidinggevende|hq|kantoor|office|chef/i.test(String(functie || ''));
 const ascii = x => String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
 function valideer(inv, nu) {
   inv = inv || {}; nu = nu || new Date();
   const f = {}, s = {}, bevestigd = [].concat(inv._bevestigd || []);
   for (const [k] of VELDEN) s[k] = tekst(inv[k], k === 'opmerkingen' ? 1000 : k === 'adres' ? 120 : 80);
   for (const [k, max] of EXTRA) s[k] = tekst(inv[k], max);
+  if (isSlaMaker(s.functie)) s.uren = '0'; // v0.44.2: Sla makers hebben altijd een 0-urencontract (oproep); niet zelf in te vullen
   // adres: straat + huisnummer (+ toevoeging); oud formaat (alleen 'adres') blijft werken
   if (s.straat || s.huisnummer) {
     if (!s.straat) f.straat = 'leeg';
@@ -386,5 +389,5 @@ async function foutStatistiek(dagen) {
   for (const k of Object.keys(mensen)) per[k] = mensen[k].size; // aantal medewerkers dat op dit veld vastliep
   return { dagen: dagen || 30, ingevuld: new Set((ok.data || []).map(x => x.naam)).size, retour: (ret.data || []).length, perVeld: Object.entries(per).sort((a, b) => b[1] - a[1]).slice(0, 6) };
 }
-module.exports = { emailSuggestie, VERBLIJF_TYPE, VERBLIJF_ARBEID, heeftVerblijfNodig, startUploadVerblijf, controleerVerblijfBestanden, vorigVerblijf, logFouten, foutStatistiek, zoekAdres, controleerAdres, bsnHash, NAT, WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link,
+module.exports = { isSlaMaker, emailSuggestie, VERBLIJF_TYPE, VERBLIJF_ARBEID, heeftVerblijfNodig, startUploadVerblijf, controleerVerblijfBestanden, vorigVerblijf, logFouten, foutStatistiek, zoekAdres, controleerAdres, bsnHash, NAT, WINKELS, GESLACHT, VELDEN, OPTIONEEL, valideer, bsnOk, ibanOk, maakPdf, opslaan, gegevensVan, voorinvullen, zonderGevoelig, link,
   RETOUR_VELDEN, annoteer, annoteerMet, retourVoor, zetRetour, retourMail, stuurRetour, trekRetourIn };

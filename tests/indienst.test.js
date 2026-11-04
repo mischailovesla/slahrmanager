@@ -12,7 +12,7 @@ let v = I.valideer(goed, nu);
 assert.ok(v.ok, JSON.stringify(v.fouten)); assert.strictEqual(v.schoon.postcode, '1234 AB'); assert.strictEqual(v.schoon.voorletters, 'T.J.'); assert.strictEqual(v.schoon.email, 'test@voorbeeld.nl');
 assert.strictEqual(v.schoon.geboortedatum, '11-06-2001'); assert.strictEqual(v.schoon.datumIndienst, '01-11-2026'); assert.strictEqual(v.winkel.bv, 'SLA Den Haag BV');
 // fouten
-v = I.valideer(Object.assign({}, goed, { vestiging: 'Amsterdam', bsn: '123', iban: 'x', email: 'geen', geboortedatum: '2020-01-01', uren: '60', voornaam: '' }), nu);
+v = I.valideer(Object.assign({}, goed, { vestiging: 'Amsterdam', bsn: '123', iban: 'x', email: 'geen', geboortedatum: '2020-01-01', uren: '60', voornaam: '', functie: 'Store Manager' }), nu); // v0.44.2: uren alleen vrij bij managers
 assert.deepStrictEqual(Object.keys(v.fouten).sort(), ['bsn', 'email', 'geboortedatum', 'iban', 'uren', 'vestiging', 'voornaam'].sort(), JSON.stringify(v.fouten));
 assert.strictEqual(v.fouten.geboortedatum, 'leeftijd');
 // gegevens voor de database bevatten geen BSN/IBAN
@@ -120,11 +120,11 @@ I.maakPdf(I.valideer(goed, nu).schoon, { tijd: nu.toISOString() }).then(b => { a
   assert.strictEqual(f({ geboortedatum: '1955-03-01' }).fouten.geboortedatum, 'w-oud');
   assert.strictEqual(f({ datumIndienst: '2026-10-01' }).fouten.datumIndienst, 'w-verleden');
   assert.strictEqual(f({ datumIndienst: '2027-03-01' }).fouten.datumIndienst, 'w-ver');
-  assert.strictEqual(f({ uren: '40' }).fouten.uren, 'w-uren');
+  assert.strictEqual(f({ uren: '40', functie: 'Store Manager' }).fouten.uren, 'w-uren');
   assert.strictEqual(f({ email: 'a@gmial.com' }).fouten.email, 'w-email'); assert.strictEqual(I.emailSuggestie('a@gmial.com'), 'a@gmail.com');
   assert.strictEqual(f({ iban: 'BE71096123456769' }).fouten.iban, 'w-iban');
   assert.strictEqual(f({ postcode: 'SW1A 1AA' }).fouten.postcode, 'w-buitenland');
-  const ok = f({ geboortedatum: '2011-03-01', uren: '40', _bevestigd: ['geboortedatum', 'uren'] });
+  const ok = f({ geboortedatum: '2011-03-01', uren: '40', functie: 'Store Manager', _bevestigd: ['geboortedatum', 'uren'] });
   assert.ok(ok.ok, JSON.stringify(ok.fouten)); assert.deepStrictEqual(ok.schoon.bevestigd.sort(), ['w-jong', 'w-uren']);
   const gg = I.zonderGevoelig(ok.schoon, null); assert.deepStrictEqual(gg.bevestigd.sort(), ['w-jong', 'w-uren']);
   const K = require('../netlify/functions/_lib/indienstcontrole.js'), r = [{ rij: 1, naam: 'Q', docUrl2: 'sb:q:indienst' }];
@@ -145,4 +145,13 @@ I.maakPdf(I.valideer(goed, nu).schoon, { tijd: nu.toISOString() }).then(b => { a
   assert.ok(r.medewerkers.find(m => m.naam === 'C').gepland);
   assert.deepStrictEqual(r.perWinkel.map(w => w.winkel), ['Kerkplein', 'Zuidas']);
   console.log('startdienst tests OK');
+}
+
+// v0.44.2: Sla makers altijd 0 uur, managers vrij
+{
+  const g2 = Object.assign({}, goed, { uren: '8', functie: 'SLA-maker' });
+  assert.strictEqual(I.valideer(g2, nu).schoon.uren, '0');
+  assert.strictEqual(I.valideer(Object.assign({}, g2, { functie: 'Junior Store Manager', uren: '32' }), nu).schoon.uren, '32');
+  assert.ok(I.isSlaMaker('SLA worker') && !I.isSlaMaker('Store Manager'));
+  console.log('indienst uren sla maker OK');
 }

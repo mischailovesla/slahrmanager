@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.44.2', datum: '04-11-2026', titel: 'Indiensttredingsformulier: Sla makers altijd 0 uur', punten: [
+    'Bij <b>Sla makers</b> staat het aantal uren per week in het online indiensttredingsformulier vast op <b>0 (oproepcontract)</b>; de medewerker kan het niet meer zelf invullen. Zo komt er geen afwijkend getal (zoals 8) meer in de PDF voor de salarisadministratie.',
+    'Bij (junior) store managers, supervisors en kantoorfuncties blijft het veld gewoon in te vullen. Ook de server zet het voor Sla makers op 0, dus het werkt ook als iemand de functie aanpast.'
+  ] },
   { nummer: '0.44.1', datum: '04-11-2026', titel: 'Advies van de store manager goed leesbaar in de takenlijst', punten: [
     'Bij proeftijd- en verlengingstaken staat het advies van de store manager nu op een <b>eigen regel</b> met een gekleurd label (groen = doorgaan, oranje = twijfel, rood = stoppen), plus de toelichting voluit. Voorheen stond het achteraan de grijze regel en werd het afgekapt.'
   ] },

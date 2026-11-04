@@ -69,7 +69,7 @@
       kiesFoto: 'Kies een foto of maak er een', fotoHint: 'Zorg dat alles goed leesbaar is (geen schittering).', vorigDoc: 'We hebben je document al. Upload alleen een nieuwe foto als HR daarom vraagt.', uploaden: 'Foto uploaden…',
       bevestig: 'Dit klopt toch (bijv. omdat ik een roepnaam gebruik)', bevestigW: 'Ja, dit klopt', bedoel: 'Bedoel je {e}?', suggestie: 'Bij deze postcode hoort de woonplaats {w}.', zetSugg: 'Gebruik {w}',
       mobiel: 'Mobiel nummer', email: 'E-mailadres', nationaliteit: 'Nationaliteit', bsn: 'BSN (burgerservicenummer)', bsnHint: 'Staat op je paspoort, ID-kaart of rijbewijs.',
-      geboortedatum: 'Geboortedatum', datumIndienst: 'Datum in dienst', uren: 'Aantal uren per week', urenHint: 'Zoals afgesproken met je Store Manager. 0 = oproepcontract.',
+      geboortedatum: 'Geboortedatum', datumIndienst: 'Datum in dienst', uren: 'Aantal uren per week', urenHint: 'Zoals afgesproken met je Store Manager. 0 = oproepcontract.', urenSla: 'Als Sla maker heb je een 0-urencontract (oproepcontract). Hoeveel je werkt, spreek je af met je Store Manager via het rooster.',
       functie: 'Functie', iban: 'IBAN-nummer', ibanHint: 'Je eigen bankrekening, bijv. NL00 BANK 0123 4567 89.', opmerkingen: 'Eventuele opmerkingen', opt: 'optioneel',
       akkoord: 'Ik verklaar dat deze gegevens kloppen.', akkoordNodig: 'Vink aan dat de gegevens kloppen.', verstuur: 'Verstuur formulier', bezig: 'Bezig met versturen…',
       klaar: 'Bedankt! Je indiensttredingsformulier is ontvangen.', stap2: 'Nog één stap: vul je loonheffingsverklaring in en onderteken hem online. Dat kost je 2 minuten; je gegevens staan al klaar.', stap2b: 'Naar de loonheffingsverklaring →', fout: 'Er ging iets mis: ', controleer: 'Controleer de rood gemarkeerde velden.',
@@ -98,7 +98,7 @@
       kiesFoto: 'Choose a photo or take one', fotoHint: 'Make sure everything is readable (no glare).', vorigDoc: 'We already have your document. Only upload a new photo if HR asks you to.', uploaden: 'Uploading photo…',
       bevestig: 'This is correct (e.g. because I use a nickname)', bevestigW: 'Yes, this is correct', bedoel: 'Did you mean {e}?', suggestie: 'This postal code belongs to {w}.', zetSugg: 'Use {w}',
       mobiel: 'Mobile number', email: 'E-mail address', nationaliteit: 'Nationality', bsn: 'BSN (Dutch citizen service number)', bsnHint: 'Shown on your passport, ID card or driving licence.',
-      geboortedatum: 'Date of birth', datumIndienst: 'Start date', uren: 'Hours per week', urenHint: 'As agreed with your Store Manager. 0 = on-call contract.',
+      geboortedatum: 'Date of birth', datumIndienst: 'Start date', uren: 'Hours per week', urenHint: 'As agreed with your Store Manager. 0 = on-call contract.', urenSla: 'As a Sla maker you have a 0-hour (on-call) contract. How much you work is arranged with your Store Manager through the schedule.',
       functie: 'Job title', iban: 'IBAN', ibanHint: 'Your own bank account, e.g. NL00 BANK 0123 4567 89.', opmerkingen: 'Comments', opt: 'optional',
       akkoord: 'I confirm that these details are correct.', akkoordNodig: 'Please confirm that the details are correct.', verstuur: 'Send form', bezig: 'Sending…',
       klaar: 'Thank you! We have received your employment registration form.', stap2: 'One more step: fill in and sign your payroll tax statement online. It takes 2 minutes; your details are already filled in.', stap2b: 'Go to the payroll tax statement →', fout: 'Something went wrong: ', controleer: 'Please check the fields marked in red.',
@@ -124,6 +124,8 @@
     if (nieuwNodig) { v.push('verblijfVoor'); if (waarden.verblijfType === 'vergunning') v.push('verblijfAchter'); }
     return v;
   }
+  // v0.44.2: Sla makers (alles behalve managers/kantoor) hebben altijd een 0-urencontract
+  function slaMaker() { return !/manager|supervisor|leidinggevende|hq|kantoor|office|chef/i.test(String(waarden.functie || '')); }
   var asc = function (x) { return String(x || '').normalize('NFD').replace(/[̀-ͯ]/g, ''); };
   function datum(v) { var m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? new Date(+m[1], +m[2] - 1, +m[3], 12) : null; }
   var g = function (id) { return document.getElementById(id); }, tx = function (k) { return TX[taal][k]; };
@@ -183,7 +185,7 @@
       + (info.retour ? '<div class="melding oranje"><strong>' + esc(tx('retour')) + '</strong><br>' + esc(info.retour.reden).replace(/\n/g, '<br>') + '<br><span style="font-size:.82rem">' + esc(tx('retourNa')) + '</span></div>' : '')
       + '<div id="melding"></div>';
     h += '<h2>' + esc(tx('s1')) + '</h2>' + veld('vestiging', 'select', { leeg: tx('kies'), opties: info.winkels.map(function (w) { return [w.code, w.naam]; }) })
-      + '<div class="rij">' + veld('datumIndienst', 'date') + veld('uren', 'number', { attr: ' min="0" max="48" step="0.5" inputmode="decimal"', hint: 'urenHint' }) + '</div>' + veld('functie', 'text');
+      + '<div class="rij">' + veld('datumIndienst', 'date') + (slaMaker() ? (waarden.uren = '0', veld('uren', 'number', { attr: ' readonly style="background:#f8f3f0;color:#888078"', hint: 'urenSla' })) : veld('uren', 'number', { attr: ' min="0" max="48" step="0.5" inputmode="decimal"', hint: 'urenHint' })) + '</div>' + veld('functie', 'text');
     h += '<h2>' + esc(tx('s2')) + '</h2><div class="rij">' + veld('voornaam', 'text', { attr: ' autocomplete="given-name"' }) + veld('voorletters', 'text', { attr: ' maxlength="12"' }) + '</div>'
       + '<div class="rij">' + veld('tussenvoegsel', 'text', { attr: ' maxlength="20"' }) + veld('achternaam', 'text', { attr: ' autocomplete="family-name"' }) + '</div>'
       + '<div class="rij">' + veld('geslacht', 'select', { leeg: tx('kiesG'), opties: [['V', tx('gV')], ['M', tx('gM')], ['X', tx('gX')]] }) + veld('geboortedatum', 'date', { attr: ' autocomplete="bday"' }) + '</div>'
@@ -217,6 +219,7 @@
     });
     g('akkoord').onchange = function () { waarden._akkoord = g('akkoord').checked; };
     g('btn').onclick = verstuur;
+    var fu = document.querySelector('[data-k=functie]'); if (fu) fu.addEventListener('change', function () { var oud = slaMaker(); waarden.functie = fu.value; if (oud !== slaMaker()) { if (!slaMaker()) waarden.uren = ''; render(); } });
     var nat = document.querySelector('[data-k=nationaliteit]'); if (nat) nat.addEventListener('change', function () { waarden.nationaliteit = nat.value; render(); });
     var vt = document.querySelector('[data-k=verblijfType]'); if (vt) vt.addEventListener('change', function () { waarden.verblijfType = vt.value; render(); });
     var st = g('verblijfStudent'); if (st) st.onchange = function () { waarden.verblijfStudent = st.checked; render(); };
@@ -265,6 +268,7 @@
   function melding(cls, tekst) { g('melding').innerHTML = '<div class="melding ' + cls + '">' + esc(tekst) + '</div>'; g('melding').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
   async function post(b) { var r = await fetch('/api/indienst', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ t: t }, b)) }); return r.json(); }
   async function verstuur() {
+    if (slaMaker()) waarden.uren = '0';
     var oud = fouten; fouten = {}; VERPLICHT.concat(['tussenvoegsel', 'nationaliteitAnders', 'verblijfType', 'verblijfArbeid', 'verblijfGeldig', 'verblijfVoor', 'verblijfAchter']).forEach(function (k) { var c = controleLokaal(k); if (c) fouten[k] = c; });
     ['postcode', 'huisnummer'].forEach(function (k) { if (/^pc-/.test(oud[k] || '') && !fouten[k]) fouten[k] = oud[k]; }); // uitkomst van het opzoeken blijft staan
     if (Object.keys(fouten).length) { post({ stap: 'fouten', velden: Object.keys(fouten) }).catch(function () {}); render(); melding('rood', tx('controleer')); return; }
