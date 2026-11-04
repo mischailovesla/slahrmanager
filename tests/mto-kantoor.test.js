@@ -9,13 +9,13 @@ const rijen = MTO.metGroep([{ winkel: 'HQ', groep: 'manager' }, { winkel: 'hq', 
 assert.strictEqual(MTO.filter(rijen, 'alle', null).length, 2, 'alle = winkels, zonder kantoor');
 assert.strictEqual(MTO.filter(rijen, 'kantoor', null).length, 2);
 assert.strictEqual(MTO.filter(rijen, 'manager', null).length, 1, 'HQ-manager telt niet als store manager');
-assert.deepStrictEqual(MTO.GROEPEN, ['medewerker', 'manager', 'kantoor', 'keuken', 'logistiek']);
+assert.deepStrictEqual(MTO.GROEPEN, ['medewerker', 'manager', 'kantoor', 'keuken']);
 // v0.43.0: keuken en logistiek als aparte zones
 assert.strictEqual(MTO.groepVan('Keuken', 'Keukenchef manager'), 'keuken');
-assert.strictEqual(MTO.groepVan('logistiek', 'Chauffeur'), 'logistiek');
+assert.strictEqual(MTO.groepVan('logistiek', 'Chauffeur'), 'keuken', 'logistiek telt mee met keuken');
 { const z = MTO.metGroep([{ winkel: 'Keuken', groep: 'medewerker' }, { winkel: 'Logistiek', groep: 'medewerker' }, { winkel: 'HQ', groep: 'manager' }, { winkel: 'Zuidas', groep: 'medewerker' }]);
   assert.deepStrictEqual(MTO.filter(z, 'alle', null).map(r => r.winkel), ['Zuidas'], 'winkels zonder de 3 zones');
-  assert.strictEqual(MTO.filter(z, 'keuken', null).length, 1); assert.strictEqual(MTO.filter(z, 'logistiek', null).length, 1); }
+  assert.strictEqual(MTO.filter(z, 'keuken', null).length, 2); }
 assert.ok(!/store manager/i.test(JSON.stringify(Q.voorPagina('EN', 'keuken'))));
 const tekst = JSON.stringify(Q.voorPagina('EN', 'kantoor'));
 assert.ok(!/store manager/i.test(tekst), 'kantoor krijgt geen "store manager" in de vragen');

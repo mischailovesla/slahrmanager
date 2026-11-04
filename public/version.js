@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.43.1', datum: '04-11-2026', titel: 'MTO: logistiek samen met keuken', punten: [
+    'Logistiek (2 medewerkers) telt in de MTO samen met de keuken als zone <b>Keuken &amp; logistiek</b>. Zo komt de zone wél boven de anonimiteitsgrens van 4 reacties. Zones: Kantoor (HQ) en Keuken &amp; logistiek; daarnaast de 11 winkels.'
+  ] },
   { nummer: '0.43.0', datum: '04-11-2026', titel: 'MTO: keuken en logistiek apart, net als kantoor', punten: [
     'In de MTO zijn er nu <b>11 winkels</b> en <b>3 zones</b>: Kantoor (HQ), Keuken en Logistiek. De zones tellen niet mee in <b>Winkels</b>, het SLA-totaal en de tabel Per winkel, en hebben elk een eigen knop en een eigen regel in de groepentabel en de PDF.',
     'Geldt ook voor de lopende ronde en eerdere rondes. Een zone wordt pas getoond vanaf 4 reacties (anonimiteit).'

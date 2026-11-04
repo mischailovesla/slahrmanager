@@ -13,8 +13,8 @@ const A4 = [595.28, 841.89], L = 44, R = 44, B = A4[0] - L - R;
 const KL = { groen: rgb(0, 0.624, 0.294), donker: rgb(0.2, 0.239, 0.227), grijs: rgb(0.533, 0.502, 0.471), lijn: rgb(0.91, 0.886, 0.871), zand: rgb(0.973, 0.953, 0.941),
   rood: rgb(0.753, 0.224, 0.169), oranje: rgb(0.91, 0.51, 0.29), roodL: rgb(0.992, 0.925, 0.918), oranjeL: rgb(0.996, 0.945, 0.91), groenL: rgb(0.902, 0.969, 0.933), grijsL: rgb(0.94, 0.93, 0.92), passief: rgb(0.8, 0.77, 0.74) };
 const ST = { Goed: [KL.groen, KL.groenL], Matig: [KL.oranje, KL.oranjeL], 'Aandacht nodig': [KL.rood, KL.roodL], geen: [KL.grijs, KL.grijsL] };
-const GROEP = { alle: 'alle winkelmedewerkers', medewerker: 'SLA makers', manager: 'store managers', kantoor: 'kantoor (HQ)', keuken: 'keuken', logistiek: 'logistiek' };
-const WIE = { alle: 'winkelmedewerkers', medewerker: 'SLA makers', manager: 'store managers', kantoor: 'kantoormedewerkers', keuken: 'keukenmedewerkers', logistiek: 'medewerkers logistiek' };
+const GROEP = { alle: 'alle winkelmedewerkers', medewerker: 'SLA makers', manager: 'store managers', kantoor: 'kantoor (HQ)', keuken: 'keuken & logistiek', logistiek: 'logistiek' };
+const WIE = { alle: 'winkelmedewerkers', medewerker: 'SLA makers', manager: 'store managers', kantoor: 'kantoormedewerkers', keuken: 'medewerkers keuken & logistiek', logistiek: 'medewerkers logistiek' };
 const KORT = { werkplezier: 'Werkplezier', leidinggevende: 'Leiding', samenwerking: 'Samenw.', werkdruk: 'Werkdruk', ontwikkeling: 'Ontwikk.', beloning: 'Beloning', communicatie: 'Commun.', veiligheid: 'Veiligh.' };
 const t = s => P.veilig(String(s == null ? '' : s).replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/—/g, '-').replace(/▲/g, '+').replace(/▼/g, '-'));
 const nl = (x, d) => x == null ? '-' : (d ? Number(x).toFixed(d) : String(x)).replace('.', ',');
@@ -206,7 +206,7 @@ async function maakMtoPdf(res, door) {
       y -= 5; lijn(0.3);
     });
     y -= 18;
-    kop('Winkels (SLA makers, store managers) en zones (kantoor, keuken, logistiek)', 100);
+    kop('Winkels (SLA makers, store managers) en zones (kantoor, keuken & logistiek)', 90);
     const gk = { g: L, n: L + 100, r: L + 136, gm: L + 176, e: L + 214, l: L + 256, h: L + 380 };
     tekst('Groep', gk.g, y, 7, F.b, KL.grijs); tekst('n', gk.n, y, 7, F.b, KL.grijs); tekst('Respons', gk.r, y, 7, F.b, KL.grijs); tekst('Gem.', gk.gm, y, 7, F.b, KL.grijs); tekst('eNPS', gk.e, y, 7, F.b, KL.grijs); tekst('Laagste thema', gk.l, y, 7, F.b, KL.grijs); tekst('Hoogste thema', gk.h, y, 7, F.b, KL.grijs); y -= 5; lijn(0.6);
     res.groepen.forEach(gp => {

@@ -3048,7 +3048,7 @@
 
   // ---------- Tevredenheidsonderzoek (MTO, fase 5) ----------
   var mtoData = null, mtoGroep = 'alle', mtoSort = 'thema', mtoKand = null;
-  var MTO_GROEP = { alle: 'Winkels', medewerker: 'SLA makers', manager: 'Store managers', kantoor: 'Kantoor (HQ)', keuken: 'Keuken', logistiek: 'Logistiek' };
+  var MTO_GROEP = { alle: 'Winkels', medewerker: 'SLA makers', manager: 'Store managers', kantoor: 'Kantoor (HQ)', keuken: 'Keuken & logistiek', logistiek: 'Logistiek' };
   function mtoKl(x) { return x == null ? '' : x >= 3.75 ? 'mto-g' : x >= 2.75 ? 'mto-o' : 'mto-r'; } // zelfde grenzen als de PDF: Goed / Matig / Aandacht nodig
   function mtoGetal(x) { return x == null ? '-' : String(x).replace('.', ','); }
   function mtoEnps(x) { return x == null ? '-' : (x > 0 ? '+' : '') + x; }
