@@ -382,3 +382,7 @@ td .lay-sub.cel-kort{max-width:200px}
 .sg-ontv-add{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
 .sg-ontv-add .sb{width:auto;flex:1;min-width:180px;padding:5px 10px;font-size:.8rem}
 .sg-reset{background:transparent;color:#888078;text-decoration:underline}
+
+/* v0.44.1: advies store manager in de takenlijst */
+.tk-advies{margin-top:4px;font-size:.78rem;line-height:1.45;white-space:normal}
+.tk-advies-opm{color:var(--donker);font-style:italic}

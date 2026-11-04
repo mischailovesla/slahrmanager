@@ -2884,6 +2884,12 @@
   window.tkThema = function (k) { tkThemaSel = (!k || tkThemaSel === k) ? null : k; renderTaken(); var s = g('tk-sec'); if (tkThemaSel && s) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   function tkZichtbaar() { var d = tkData, w = winkelFilter(); return d ? d.taken.filter(function (t) { return !w || !t.winkel || normN(t.winkel) === normN(w) || hoortBijWinkel(t.naam, t.email, w); }) : []; }
   function tkTellen() { var a = { rood: 0, oranje: 0, grijs: 0 }; tkZichtbaar().forEach(function (t) { a[t.urgentie] = (a[t.urgentie] || 0) + 1; }); return a; }
+  // v0.44.1: advies van de store manager (proeftijd / verlenging) als eigen, altijd leesbare regel
+  function tkAdvies(a) {
+    if (!a || !a.label) return '';
+    var kl = a.code === 'niet' ? 'br' : a.code === 'twijfel' ? 'bo' : 'bg';
+    return '<div class="tk-advies"><span class="badge ' + kl + '">Advies store manager: ' + esc(a.label) + '</span>' + (a.opmerking ? ' <span class="tk-advies-opm">“' + esc(a.opmerking) + '”</span>' : '') + '</div>';
+  }
   function tkNaam(t) { return t.naam || String(t.sub || '').split(' · ')[0]; }
   var RANG = { rood: 0, oranje: 1, grijs: 2 };
   // v0.34.9: takenlijst op datum (vroegste eerst); zonder datum: rood telt als vandaag, de rest achteraan
@@ -2909,7 +2915,7 @@
     var meer = [tkKnop(t.extra, t)];
     if (t.naam && !(t.actie && t.actie.soort === 'dossier') && !(t.extra && t.extra.soort === 'dossier')) meer.push(dosBtn(t.naam, t.email));
     if (t.afhandelbaar) (t.afhandelOpties || [{ label: 'Afgehandeld (7 dagen verbergen)', dagen: 7 }]).forEach(function (o) { meer.push('<button class="btn bd bsm" data-tk-af="' + esc(t.sleutel) + '" data-tk-dagen="' + (o.dagen || 7) + '" data-tk-opm="' + esc(o.opmerking || '') + '">✓ ' + esc(o.label) + '</button>'); });
-    return '<div class="tk ' + t.urgentie + '" title="' + esc((t.bron || '') + (t.stand ? ' · stand ' + t.stand : '')) + '"><span class="tk-dot"></span><div class="tk-t"><strong>' + esc(t.titel) + '</strong><span title="' + esc(t.sub || '') + '">' + esc(t.sub || '') + '</span></div><div class="tk-a">' + tkKnop(t.actie, t) + meerMenu(meer) + '</div></div>';
+    return '<div class="tk ' + t.urgentie + '" title="' + esc((t.bron || '') + (t.stand ? ' · stand ' + t.stand : '')) + '"><span class="tk-dot"></span><div class="tk-t"><strong>' + esc(t.titel) + '</strong><span title="' + esc(t.sub || '') + '">' + esc(t.sub || '') + '</span>' + tkAdvies(t.advies) + '</div><div class="tk-a">' + tkKnop(t.actie, t) + meerMenu(meer) + '</div></div>';
   }
   function renderTaken() {
     var d = tkData, el = g('tk-lijst'); if (!d || !el) return;

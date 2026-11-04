@@ -67,10 +67,10 @@ function uitCheck(naam, items, tijd) {
       const doorVan = d => { const n = String(d || '').split('@')[0]; return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; };
       const opNL = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '-' + m[2] : ''; };
       const wie = g.besluit && (g.besluit.door || g.besluit.op) ? ' (' + [doorVan(g.besluit.door), opNL(g.besluit.op)].filter(Boolean).join(', ') + ')' : '';
-      const bes = g.besluit ? ' · besluit: ' + g.besluit.label + wie + (g.besluit.nieuweEind ? ' t/m ' + g.besluit.nieuweEind.split('-').reverse().join('-') : '') + (g.besluit.advies ? ' (SM: ' + g.besluit.adviesLabel.toLowerCase() + ')' : '') : (g.smAdvies ? ' · advies SM: ' + g.smAdvies.label.toLowerCase() + (g.smAdvies.opmerking ? ' ("' + g.smAdvies.opmerking.slice(0, 80) + '")' : '') : '') + (g.aanzegplichtig ? '' : ' · korter dan 6 mnd: geen aanzegplicht');
+      const bes = g.besluit ? ' · besluit: ' + g.besluit.label + wie + (g.besluit.nieuweEind ? ' t/m ' + g.besluit.nieuweEind.split('-').reverse().join('-') : '') + (g.besluit.advies ? ' (SM: ' + g.besluit.adviesLabel.toLowerCase() + ')' : '') : '' + (g.aanzegplichtig ? '' : ' · korter dan 6 mnd: geen aanzegplicht');
       const sub = g.naam + ' · ' + (g.winkel || '-') + ' · contract eindigt ' + g.einddatum + ' (over ' + g.dagenTotEinde + ' dagen) · ' + ketenTekst + bes + (g.uitleg ? ' — ' + g.uitleg : '');
       const besluitKnop = { soort: 'verlenging', persoon, label: g.besluit ? 'Besluit wijzigen' : 'Besluit vastleggen' };
-      const t0 = Object.assign({}, bron, { urgentie: g.urgentie, sleutel: naam + '|' + g.status + '|' + g.mid + '|' + g.eindIso, titel: g.titel, sub, naam: g.naam, email: g.email || '', winkel: g.winkel || '', verlenging: true });
+      const t0 = Object.assign({}, bron, { urgentie: g.urgentie, sleutel: naam + '|' + g.status + '|' + g.mid + '|' + g.eindIso, titel: g.titel, sub, naam: g.naam, email: g.email || '', winkel: g.winkel || '', verlenging: true, advies: !g.besluit && g.smAdvies ? { code: g.smAdvies.advies, label: g.smAdvies.label, opmerking: g.smAdvies.opmerking || '' } : null }); // v0.44.1: advies SM als eigen regel
       if (g.status === 'besluit-nodig') t.push(Object.assign(t0, { actie: besluitKnop, extra: { soort: 'dossier', label: 'Dossier' } }));
       else if (g.status === 'wacht-aanzegging') t.push(Object.assign(t0, { actie: { soort: 'ontslagmail', persoon: { naam: g.naam, email: g.email || '', einddatum: g.einddatum, type: 'aanzegging' }, label: 'Aanzegging' }, extra: besluitKnop }));
       else if (g.status === 'wacht-bevestiging') t.push(Object.assign(t0, { actie: { soort: 'ontslagmail', persoon: { naam: g.naam, email: g.email || '', einddatum: g.einddatum, type: 'ontslag', zelfOpgezegd: true }, label: 'Ontslagbevestiging' }, extra: besluitKnop }));
@@ -308,7 +308,7 @@ exports.handler = beveiligd('taken', async (event, g) => {
       const { data } = await require('./_lib/auth').admin().from('hr_sm_advies').select('naam,advies,opmerking,contract_eind').eq('soort', 'proeftijd').gte('contract_eind', new Date(Date.now() - 7 * 864e5).toISOString().slice(0, 10));
       const LBL = require('./_lib/winkelmail').PROEF_ADVIES;
       for (const t of pt) { const a = (data || []).find(x => normNaam(x.naam) === normNaam(t.naam)); if (!a) continue;
-        t.sub += ' · advies SM: ' + (LBL[a.advies] || a.advies).toLowerCase() + (a.opmerking ? ' ("' + String(a.opmerking).slice(0, 80) + '")' : '');
+        t.advies = { code: a.advies, label: LBL[a.advies] || a.advies, opmerking: String(a.opmerking || '') }; // v0.44.1: eigen regel in de takenlijst i.p.v. achteraan de (afgekapte) subregel
         if (a.advies === 'niet') { t.urgentie = 'rood'; const pd = (t.sub.match(/proeftijd t\/m (\d{2}-\d{2}-\d{4})/) || [])[1]; t.titel = 'Store manager adviseert: stoppen in de proeftijd — brief ' + (pd ? 'uiterlijk ' + pd + ' bij de medewerker' : 'vóór het einde van de proeftijd'); } }
     }
   } catch (e) { fouten.push('advies proeftijd: ' + e.message); }

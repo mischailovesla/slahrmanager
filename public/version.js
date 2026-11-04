@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.44.1', datum: '04-11-2026', titel: 'Advies van de store manager goed leesbaar in de takenlijst', punten: [
+    'Bij proeftijd- en verlengingstaken staat het advies van de store manager nu op een <b>eigen regel</b> met een gekleurd label (groen = doorgaan, oranje = twijfel, rood = stoppen), plus de toelichting voluit. Voorheen stond het achteraan de grijze regel en werd het afgekapt.'
+  ] },
   { nummer: '0.44.0', datum: '04-11-2026', titel: 'Loonheffingsverklaring digitaal invullen en ondertekenen', punten: [
     'Nieuwe medewerkers vullen de <b>loonheffingsverklaring online</b> in en ondertekenen met hun vinger of muis. Het formulier vraagt precies wat het model van de Belastingdienst vraagt (BSN, naam en voorletters, geboortedatum, adres, land en regio bij buitenland, loonheffingskorting ja/nee en vanaf wanneer). Na het indiensttredingsformulier gaan ze er met één knop heen, met hun gegevens al ingevuld.',
     'De PDF heeft de indeling van het model, met de handtekening en een <b>bewijsspoor</b> (tijd, IP, browser, SHA-256, modelversie). Hij komt als <b>Loonheffing</b> in het dossier, het dossier staat op Ontvangen en hij gaat samen met het indiensttredingsformulier naar Mahdia. Wijkt het BSN af van het indiensttredingsformulier, dan staat dat in het logboek.',
