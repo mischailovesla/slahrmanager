@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.43.4', datum: '04-11-2026', titel: 'Exit-survey: bij dubbele dossiers telt het nieuwste', punten: [
+    'Heeft iemand meerdere ontslagdossiers (bijv. oude testdossiers), dan toont <b>Uit dienst</b> bij de exit-survey nu het dossier met de <b>nieuwste einddatum</b>. Voorheen won het eerste dossier in de tabel; daardoor stond Jodi Ko er met een testdossier van juni in plaats van haar vertrek op 13-11-2026.'
+  ] },
   { nummer: '0.43.3', datum: '04-11-2026', titel: 'Exit-survey: geen dossiers zonder einddatum meer in de lijst', punten: [
     'Dossiers zonder einddatum (test- of voorbeeldbrieven) staan niet meer in <b>Uit dienst</b> bij de exit-survey. Daardoor stond Ymke er ten onrechte tussen.'
   ] },

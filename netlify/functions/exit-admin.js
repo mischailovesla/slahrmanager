@@ -72,11 +72,16 @@ exports.handler = beveiligd('exit-admin', async (event, g) => {
       const d = parseNLDatum(r.einddatum), iso = d ? d.toLocaleDateString('sv-SE') : '';
       if (!iso || iso < grensIso) continue;
       const em = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam), sleutel = nn || em;   // v0.43.2: op naam ontdubbelen — een gedeeld/test-mailadres (bijv. jodi@) liet anders een andere medewerker wegvallen
-      if (heb.has(sleutel)) continue; heb.add(sleutel);
+      // v0.43.4: bij meerdere dossiers van dezelfde persoon het dossier met de nieuwste einddatum houden (niet het eerste in de tabel:
+      // oude testdossiers van Jodi Ko uit mei verdrongen zo haar echte vertrek van 13-11-2026)
+      const vorigeI = heb.has(sleutel) ? vertrokken.findIndex(v => v._sleutel === sleutel) : -1;
+      if (vorigeI > -1 && vertrokken[vorigeI].einddatumIso >= iso) continue;
+      if (vorigeI > -1) vertrokken.splice(vorigeI, 1);
+      heb.add(sleutel);
       const winkel = winkelOp['e:' + em] || winkelOp['n:' + nn] || String(r.bedrijf || '').replace(/^SLA\s*/i, '').replace(/\s*B\.?V\.?$/i, '').trim();
-      vertrokken.push({ naam: String(r.naam || '').trim(), email: em, einddatum: iso ? iso.split('-').reverse().join('-') : (String(r.einddatum || '').trim() ? r.einddatum + ' (?)' : 'onbekend'), einddatumIso: iso || '9999-12-31', winkelNaam: winkel, nogInDienst: !iso || iso >= vandaagIso, datumOnbekend: !iso, type: r.type || '' });
+      vertrokken.push({ naam: String(r.naam || '').trim(), email: em, einddatum: iso ? iso.split('-').reverse().join('-') : (String(r.einddatum || '').trim() ? r.einddatum + ' (?)' : 'onbekend'), einddatumIso: iso || '9999-12-31', winkelNaam: winkel, nogInDienst: !iso || iso >= vandaagIso, datumOnbekend: !iso, type: r.type || '', _sleutel: sleutel });
     }
-    vertrokken.sort((a, b) => a.einddatumIso < b.einddatumIso ? 1 : -1);
+    vertrokken.sort((a, b) => a.einddatumIso < b.einddatumIso ? 1 : -1); vertrokken.forEach(v => { delete v._sleutel; });
   } catch (e) { console.warn('vertrokken (dossiers):', e.message); }
   const ddmm = s => String(s || '').slice(0, 10).split('-').reverse().join('-');
   const labels = {}; (await X.vragenConfig()).forEach(v => { if (v.opties) v.opties.forEach(o => { labels[v.key + ':' + o[0]] = o[1]; }); });
