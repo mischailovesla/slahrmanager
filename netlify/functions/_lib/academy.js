@@ -130,7 +130,10 @@ async function laad(ververs) {
   const vandaag = vandaagIso(), FR = require('./config').FRANCHISE_NAAM;
   const lijst = koppel(a.medewerkers, sb).filter(m => !FR.test(String(m.winkel || ''))); // v0.26.1: franchisewinkels (Amersfoort, Haarlem, Groningen) niet tonen
   const s = samenvatting(lijst, vandaag);
-  return { stand: a.stand, lijst, vandaag, winkels: s.winkels, totaal: s.totaal, signalen: signalen(lijst, vandaag), ongekoppeld: lijst.filter(m => !m.gekoppeld).map(m => m.naam) };
+  // v0.44.3: wie al een ontslag- of aanzeggingsdossier heeft (einddatum nog niet voorbij), krijgt geen Academy-taken meer
+  let taakLijst = lijst;
+  try { const SIG = require('./signaleringen'), set = await SIG.vertrekkers(); taakLijst = lijst.filter(m => !SIG.vertrekt(set, { naam: m.hrNaam || m.naam, email: m.email })); } catch (e) { console.warn('academy vertrekkers:', e.message); }
+  return { stand: a.stand, lijst, vandaag, winkels: s.winkels, totaal: s.totaal, signalen: signalen(taakLijst, vandaag), ongekoppeld: lijst.filter(m => !m.gekoppeld).map(m => m.naam) };
 }
 
 async function voorPersoon(q) {
