@@ -557,7 +557,8 @@
     swT('dossier', 'Medewerkers');
     g('dos-hint').style.display = 'none'; g('dos-lijst-wrap').style.display = 'none';
     g('dos-inhoud').innerHTML = '<div class="sec"><div class="leeg grijs"><span class="sp" style="border-color:rgba(0,0,0,.15);border-top-color:#009f4b"></span> Dossier laden...</div></div>';
-    var qs = id ? 'id=' + encodeURIComponent(id) : 'naam=' + encodeURIComponent(naam || '') + '&email=' + encodeURIComponent(email || '');
+    // v0.44.4: altijd ook naam + e-mail meesturen: staat iemand niet meer in Shiftbase (verwijderd), dan vindt het dossier hem via de sheets/checklist
+    var qs = (id ? 'id=' + encodeURIComponent(id) + '&' : '') + 'naam=' + encodeURIComponent(naam || '') + '&email=' + encodeURIComponent(email || '');
     var d = await api('/api/dossier?' + qs);
     if (!d.success) { g('dos-inhoud').innerHTML = '<div class="alert rood">' + esc(d.bericht) + '</div>'; return; }
     var p = d.persoon, c = d.contract, h = '';

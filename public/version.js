@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.44.4', datum: '04-11-2026', titel: 'Dossier en checklist werken ook als iemand uit Shiftbase is verwijderd', punten: [
+    'Is een medewerker al uit Shiftbase verwijderd (zoals Alexandre Goncalves), dan gaf <b>Checklist</b> of <b>Dossier</b> de melding "Geef id, naam of e-mail op." Nu zoekt het dossier dan verder op naam en e-mail, zodat je de offboarding-checklist gewoon kunt aftekenen. Bovenaan staat dan "niet gevonden in Shiftbase".'
+  ] },
   { nummer: '0.44.3', datum: '04-11-2026', titel: 'Academy: geen taken meer voor vertrekkers', punten: [
     'Wie al een <b>ontslag- of aanzeggingsdossier</b> heeft (einddatum nog niet voorbij), staat niet meer in de Academy-taken: nooit ingelogd, welkomstcollectie niet af, certificaat verlopen en aftekenen. Zo stond Iris Hunneche (Westerstraat, uit dienst 28-11-2026) nog bij "nooit ingelogd". De Academy-cijfers per winkel blijven ongewijzigd.'
   ] },
