@@ -2,10 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.43.3', datum: '04-11-2026', titel: 'Exit-survey: geen dossiers zonder einddatum meer in de lijst', punten: [
+    'Dossiers zonder einddatum (test- of voorbeeldbrieven) staan niet meer in <b>Uit dienst</b> bij de exit-survey. Daardoor stond Ymke er ten onrechte tussen.'
+  ] },
   { nummer: '0.43.2', datum: '04-11-2026', titel: 'Exit-survey: niemand meer onzichtbaar door de schrijfwijze van de einddatum', punten: [
     'De lijst <b>Vertrokken medewerkers</b> bij de exit-survey las de einddatum uit het ontslagdossier alleen als 30-11-2026. Stond er 30.11.2026, 30/11/2026 of 30 november 2026, dan viel iemand stilletjes weg. Nu worden al die schrijfwijzen herkend, ook door de automatische uitnodiging na de laatste werkdag.',
     'Ontdubbelen gaat nu op <b>naam</b> in plaats van op e-mailadres. Had een ander dossier hetzelfde mailadres (bijv. een HR-adres als jodi@ilovesla.com bij een test of een medewerker zonder eigen mail), dan viel iemand weg uit de lijst of kreeg geen automatische uitnodiging. Dat gebeurde bij Jodi Ko.',
-    'Is de einddatum leeg of onleesbaar, dan staat de medewerker tóch in de lijst, met einddatum "onbekend" (of de tekst met een vraagteken), zodat je hem kunt corrigeren of handmatig uitnodigen.'
   ] },
   { nummer: '0.43.1', datum: '04-11-2026', titel: 'MTO: logistiek samen met keuken', punten: [
     'Logistiek (2 medewerkers) telt in de MTO samen met de keuken als zone <b>Keuken &amp; logistiek</b>. Zo komt de zone wél boven de anonimiteitsgrens van 4 reacties. Zones: Kantoor (HQ) en Keuken &amp; logistiek; daarnaast de 11 winkels.'

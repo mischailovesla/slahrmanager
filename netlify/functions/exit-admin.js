@@ -67,10 +67,10 @@ exports.handler = beveiligd('exit-admin', async (event, g) => {
     } catch (e) { console.warn('winkels (Shiftbase):', e.message); }
     const heb = new Set();
     for (const r of await S.getOntslag(true)) {
-      // v0.43.2: einddatum flexibel lezen (30-11-2026, 30.11.2026, 30 november 2026); onleesbaar of leeg = toch tonen
+      // v0.43.2: einddatum flexibel lezen (30-11-2026, 30.11.2026, 30 november 2026). v0.43.3: zonder (leesbare) einddatum
+      // niet tonen — dat zijn test- of voorbeelddossiers (bijv. Ymke), geen echte vertrekkers.
       const d = parseNLDatum(r.einddatum), iso = d ? d.toLocaleDateString('sv-SE') : '';
-      if (iso && iso < grensIso) continue;
-      if (!iso && r.gearchiveerd && String(r.gearchiveerd.op || '').slice(0, 10) < grensIso) continue;
+      if (!iso || iso < grensIso) continue;
       const em = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam), sleutel = nn || em;   // v0.43.2: op naam ontdubbelen — een gedeeld/test-mailadres (bijv. jodi@) liet anders een andere medewerker wegvallen
       if (heb.has(sleutel)) continue; heb.add(sleutel);
       const winkel = winkelOp['e:' + em] || winkelOp['n:' + nn] || String(r.bedrijf || '').replace(/^SLA\s*/i, '').replace(/\s*B\.?V\.?$/i, '').trim();
