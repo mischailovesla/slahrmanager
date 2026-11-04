@@ -1217,8 +1217,10 @@ async function exitSurvey(droog) {
     db.from('hr_mails').select('naam,type,taal,onderwerp,tijdstip').eq('bron', 'ontslag').order('tijdstip', { ascending: false }).limit(2000)
   ]);
   const al = new Set();
-  (exitMails || []).forEach(m => { if (m.naar) al.add('e:' + String(m.naar).toLowerCase()); if (m.naam) al.add('n:' + normNaam(m.naam)); });
-  (ingevuld || []).forEach(m => { if (m.email) al.add('e:' + String(m.email).toLowerCase()); if (m.naam) al.add('n:' + normNaam(m.naam)); });
+  // v0.43.2: 'al uitgenodigd / al ingevuld' op naam (of e-mail + naam). Alleen op e-mail sloeg iemand over als er eerder
+  // een test- of handmatige uitnodiging naar hetzelfde adres ging onder een andere naam (bijv. een HR-collega die zelf testte).
+  (exitMails || []).forEach(m => { if (m.naam) al.add('n:' + normNaam(m.naam)); else if (m.naar) al.add('e:' + String(m.naar).toLowerCase()); });
+  (ingevuld || []).forEach(m => { if (m.naam) al.add('n:' + normNaam(m.naam)); else if (m.email) al.add('e:' + String(m.email).toLowerCase()); });
   const brief = {}; // laatste (niet-herinnering) ontslagmail per naam → taal + soort
   (ontslagMails || []).forEach(m => { const k = normNaam(m.naam); if (k && !brief[k] && !/herinnering/.test(String(m.type || ''))) brief[k] = m; });
   for (const r of rijen) {
@@ -1226,8 +1228,8 @@ async function exitSurvey(droog) {
     const iso = isoDag(d); if (iso < van || iso > tot) continue;
     const email = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam);
     if (!email || email.indexOf('@') === -1) { rap.fouten.push(r.naam + ': geen e-mailadres'); continue; }
-    if (al.has('e:' + email) || al.has('n:' + nn)) continue;
-    al.add('e:' + email); al.add('n:' + nn);
+    if (al.has('n:' + nn) || al.has('e:' + email)) continue;
+    al.add('n:' + nn);
     const b = brief[nn] || {}, isEN = String(b.taal || '').toUpperCase() === 'EN', t = String(b.type || r.type || '');
     const soort = /^aanzegging/.test(t) ? 'aanzegging' : /^proeftijd/.test(t) ? (/opzegging|resignation/i.test(b.onderwerp || '') ? 'proeftijd-wn' : 'proeftijd-wg') : 'ontslag';
     const link = X.exitLink(r.naam, isEN ? 'EN' : 'NL', soort);

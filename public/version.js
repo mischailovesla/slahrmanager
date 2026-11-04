@@ -4,6 +4,7 @@
 window.HR_VERSIES = [
   { nummer: '0.43.2', datum: '04-11-2026', titel: 'Exit-survey: niemand meer onzichtbaar door de schrijfwijze van de einddatum', punten: [
     'De lijst <b>Vertrokken medewerkers</b> bij de exit-survey las de einddatum uit het ontslagdossier alleen als 30-11-2026. Stond er 30.11.2026, 30/11/2026 of 30 november 2026, dan viel iemand stilletjes weg. Nu worden al die schrijfwijzen herkend, ook door de automatische uitnodiging na de laatste werkdag.',
+    'Ontdubbelen gaat nu op <b>naam</b> in plaats van op e-mailadres. Had een ander dossier hetzelfde mailadres (bijv. een HR-adres als jodi@ilovesla.com bij een test of een medewerker zonder eigen mail), dan viel iemand weg uit de lijst of kreeg geen automatische uitnodiging. Dat gebeurde bij Jodi Ko.',
     'Is de einddatum leeg of onleesbaar, dan staat de medewerker tóch in de lijst, met einddatum "onbekend" (of de tekst met een vraagteken), zodat je hem kunt corrigeren of handmatig uitnodigen.'
   ] },
   { nummer: '0.43.1', datum: '04-11-2026', titel: 'MTO: logistiek samen met keuken', punten: [

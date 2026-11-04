@@ -71,7 +71,7 @@ exports.handler = beveiligd('exit-admin', async (event, g) => {
       const d = parseNLDatum(r.einddatum), iso = d ? d.toLocaleDateString('sv-SE') : '';
       if (iso && iso < grensIso) continue;
       if (!iso && r.gearchiveerd && String(r.gearchiveerd.op || '').slice(0, 10) < grensIso) continue;
-      const em = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam), sleutel = em || nn;
+      const em = String(r.email || '').trim().toLowerCase(), nn = normNaam(r.naam), sleutel = nn || em;   // v0.43.2: op naam ontdubbelen — een gedeeld/test-mailadres (bijv. jodi@) liet anders een andere medewerker wegvallen
       if (heb.has(sleutel)) continue; heb.add(sleutel);
       const winkel = winkelOp['e:' + em] || winkelOp['n:' + nn] || String(r.bedrijf || '').replace(/^SLA\s*/i, '').replace(/\s*B\.?V\.?$/i, '').trim();
       vertrokken.push({ naam: String(r.naam || '').trim(), email: em, einddatum: iso ? iso.split('-').reverse().join('-') : (String(r.einddatum || '').trim() ? r.einddatum + ' (?)' : 'onbekend'), einddatumIso: iso || '9999-12-31', winkelNaam: winkel, nogInDienst: !iso || iso >= vandaagIso, datumOnbekend: !iso, type: r.type || '' });
