@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="theme-color" content="#009f4b">
+<title>SLA · Loonheffingsverklaring</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--groen:#009f4b;--donker:#333d3a;--grijs:#888078;--zand:#f8f3f0;--lijn:#e8e2de;--rood:#c0392b}
+  *{box-sizing:border-box}body{margin:0;font-family:'DM Sans',Arial,sans-serif;background:var(--zand);color:var(--donker);line-height:1.5}
+  .wrap{max-width:620px;margin:0 auto;padding:28px 16px 48px}
+  .logo{font-size:30px;font-weight:700;color:var(--groen);letter-spacing:1px}.logo small{display:block;font-size:11px;color:var(--grijs);font-weight:500;letter-spacing:0}
+  .card{background:#fff;border-radius:14px;padding:26px 24px;margin-top:20px;box-shadow:0 6px 24px rgba(51,61,58,.08)}
+  h1{font-size:1.15rem;margin:0 0 6px}.sub{color:var(--grijs);font-size:.9rem;margin:0 0 18px}
+  h2{font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:var(--groen);margin:22px 0 10px;padding-top:14px;border-top:1px solid var(--lijn)}
+  h2 b{display:inline-block;background:var(--groen);color:#fff;border-radius:50%;width:20px;height:20px;text-align:center;line-height:20px;font-size:.72rem;margin-right:6px}
+  .rij{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.rij3{display:grid;grid-template-columns:1.3fr 1fr .9fr;gap:0 10px}
+  @media (max-width:520px){.rij{grid-template-columns:1fr}}
+  .fg{margin:0 0 14px}label.kop{display:block;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--grijs);margin-bottom:5px}
+  label.kop i{font-style:normal;font-weight:400;text-transform:none}
+  input{width:100%;padding:11px 12px;border:1.5px solid var(--lijn);border-radius:8px;font:inherit;font-size:.95rem;background:#fff;color:var(--donker)}
+  input:focus{outline:none;border-color:var(--groen)}
+  .fg.fout input,.fg.fout canvas{border-color:var(--rood);background:#fdf3f2}.fg.fout .keus label{border-color:var(--rood)}
+  .fm{display:none;color:var(--rood);font-size:.78rem;margin-top:4px}.fg.fout .fm{display:block}
+  .hint{color:var(--grijs);font-size:.76rem;margin-top:4px}
+  .keus{display:flex;gap:10px;flex-wrap:wrap}
+  .keus label{flex:1;min-width:140px;display:flex;gap:8px;align-items:center;border:1.5px solid var(--lijn);border-radius:10px;padding:12px;cursor:pointer;font-weight:600}
+  .keus label.sel{border-color:var(--groen);background:#e6f7ee}.keus input{width:auto}
+  .uitleg{background:var(--zand);border-radius:10px;padding:12px 14px;font-size:.84rem;margin:0 0 14px}
+  .akkoord{display:flex;gap:10px;align-items:flex-start;font-size:.88rem;margin:12px 0}.akkoord input{width:auto;margin-top:4px}
+  canvas{width:100%;height:170px;border:1.5px dashed var(--lijn);border-radius:10px;background:#fff;touch-action:none;display:block}
+  .tekenbalk{display:flex;justify-content:space-between;gap:10px;font-size:.76rem;color:var(--grijs);margin-top:4px}.tekenbalk a{color:var(--groen)}
+  .btn{width:100%;padding:14px;border:0;border-radius:10px;background:var(--groen);color:#fff;font:inherit;font-size:1rem;font-weight:700;cursor:pointer}.btn:disabled{opacity:.5;cursor:default}
+  .melding{border-radius:8px;padding:12px 14px;font-size:.88rem;margin:0 0 16px;border-left:4px solid}.melding.rood{background:#fdecea;color:#8a1c12;border-color:var(--rood)}.melding.groen{background:#e6f7ee;color:#006b30;border-color:var(--groen)}.melding.oranje{background:#fff8e6;color:#5c4500;border-color:#f5a623}
+  .voet{margin-top:22px;font-size:.75rem;color:var(--grijs);text-align:center}
+  .taal{float:right;font-size:.8rem}.taal a{color:var(--grijs);text-decoration:none;margin-left:8px}.taal a.sel{color:var(--groen);font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="taal"><a href="#" data-taal="nl" class="sel">NL</a><a href="#" data-taal="en">EN</a></div>
+  <div class="logo">SLA<small>the good food bar · HR</small></div>
+  <div class="card" id="card"><p class="sub">Even geduld…</p></div>
+  <div class="voet" id="voet"></div>
+</div>
+<script>
+// v0.44.0: digitale loonheffingsverklaring (zelfde gegevens als het model opgaaf gegevens voor de loonheffingen)
+(function () {
+  var t = new URLSearchParams(location.search).get('t') || '', info = null, taal = /^en/i.test(navigator.language) ? 'en' : 'nl', w = {}, fouten = {}, klaar = false, streken = [], suggestie = null, laatsteZoek = '';
+  var TX = {
+    nl: { titel: 'Loonheffingsverklaring', hallo: 'Hoi {n}, met dit formulier geef je de gegevens door die we nodig hebben om de juiste loonbelasting in te houden. Het vraagt hetzelfde als het formulier "Opgaaf gegevens voor de loonheffingen" van de Belastingdienst, maar dan online. Je ondertekent onderaan met je vinger of muis.',
+      al: 'We hebben al een loonheffingsverklaring van je ontvangen ({d}). Wil je iets wijzigen, bijvoorbeeld de loonheffingskorting? Vul het formulier dan opnieuw in; de nieuwste versie telt.',
+      vooraf: 'Je gegevens van het indiensttredingsformulier staan al ingevuld. Controleer ze en vul je BSN in.',
+      s1: 'Jouw gegevens', s2: 'Loonheffingskorting', s3: 'Ondertekenen',
+      voorletters: 'Voorletters', tussenvoegsel: 'Tussenvoegsel', achternaam: 'Achternaam', geboortedatum: 'Geboortedatum', bsn: 'Burgerservicenummer (BSN)', bsnHint: 'Staat op je paspoort, ID-kaart of rijbewijs.',
+      buitenland: 'Ik woon in het buitenland', postcode: 'Postcode', huisnummer: 'Huisnummer', toevoeging: 'Toevoeging', straat: 'Straat', woonplaats: 'Woonplaats', landRegio: 'Land en regio', landHint: 'Bijv. Duitsland, Nordrhein-Westfalen', gevonden: '✓ Adres gevonden', pcHint: 'Vul je postcode en huisnummer in, dan vullen we straat en woonplaats aan.',
+      lhkVraag: 'Wil je dat SLA rekening houdt met de loonheffingskorting?', ja: 'Ja', nee: 'Nee', lhkVanaf: 'Vanaf', opt: 'optioneel',
+      lhkUitleg: '<strong>Wat is dit?</strong> Met de loonheffingskorting betaal je minder loonbelasting. Je mag hem maar bij <strong>één</strong> werkgever of uitkeringsinstantie tegelijk laten toepassen.<br>• Is SLA je enige werk, of krijg je de korting nergens anders? Kies dan meestal <strong>Ja</strong>.<br>• Heb je nog een baan of uitkering waar je de korting al krijgt? Kies dan meestal <strong>Nee</strong>.<br>Krijg je de korting bij twee werkgevers, dan moet je achteraf waarschijnlijk belasting terugbetalen.',
+      naamGetypt: 'Typ je volledige naam', naamHint: 'Zoals hij op je ID staat.', teken: 'Handtekening', tekenHint: 'Teken met je vinger of muis in het vak.', wis: 'Opnieuw tekenen',
+      akkoord: 'Ik verklaar dat ik dit formulier naar waarheid heb ingevuld en onderteken het digitaal.', verstuur: 'Ondertekenen en versturen', bezig: 'Bezig met versturen…',
+      klaar: 'Bedankt! Je loonheffingsverklaring is ondertekend en ontvangen. HR stuurt hem door naar de salarisadministratie.', klaarJa: 'Je hebt gekozen voor loonheffingskorting: die wordt vanaf de gekozen datum op je loon toegepast.', klaarNee: 'Je hebt gekozen voor geen loonheffingskorting bij SLA.',
+      fout: 'Er ging iets mis: ', controleer: 'Controleer de rood gemarkeerde velden.', ongeldigLink: 'Deze link is niet geldig of verlopen. Gebruik de link uit de e-mail van HR of mail hr@ilovesla.com.',
+      suggestie: 'Bij deze postcode hoort de woonplaats {w}.', zetSugg: 'Gebruik {w}',
+      F: { leeg: 'Vul dit veld in.', ongeldig: 'Dit klopt niet, controleer het even.', cijfers: 'Hier horen geen cijfers in.', leeftijd: 'Controleer je geboortedatum.', toekomst: 'Deze datum ligt in de toekomst.', bereik: 'Controleer deze datum.',
+        'w-buitenland': 'Dit is geen Nederlandse postcode. Woon je in het buitenland? Vink dat dan hierboven aan.', naam: 'Deze naam past niet bij de naam waarop de link staat. Typ je volledige naam.',
+        'pc-onbekend': 'Deze postcode bestaat niet.', 'pc-huisnummer': 'Dit huisnummer bestaat niet bij deze postcode.', 'pc-woonplaats': 'Deze woonplaats hoort niet bij je postcode.' },
+      Fx: { bsn: 'Dit is geen geldig BSN (9 cijfers).', handtekening: 'Zet je handtekening in het vak.', akkoord: 'Vink aan dat je het formulier ondertekent.', lhk: 'Kies Ja of Nee.' },
+      voet: 'Je gegevens worden versleuteld opgeslagen in de beveiligde HR-omgeving van SLA en zijn alleen zichtbaar voor HR en de salarisadministratie. Vragen? <a href="mailto:hr@ilovesla.com" style="color:var(--groen)">hr@ilovesla.com</a>' },
+    en: { titel: 'Payroll tax statement', hallo: 'Hi {n}, with this form you give us the details we need to withhold the correct payroll tax. It asks the same as the Dutch tax office form "Opgaaf gegevens voor de loonheffingen", but online. You sign at the bottom with your finger or mouse.',
+      al: 'We already received a payroll tax statement from you ({d}). Want to change something, for example the payroll tax credit? Then fill in the form again; the latest version counts.',
+      vooraf: 'Your details from the employment registration form are already filled in. Please check them and enter your BSN.',
+      s1: 'Your details', s2: 'Payroll tax credit (loonheffingskorting)', s3: 'Sign',
+      voorletters: 'Initials', tussenvoegsel: 'Name prefix (e.g. van, de)', achternaam: 'Last name', geboortedatum: 'Date of birth', bsn: 'Citizen service number (BSN)', bsnHint: 'Shown on your passport, ID card or driving licence.',
+      buitenland: 'I live abroad', postcode: 'Postal code', huisnummer: 'House number', toevoeging: 'Addition', straat: 'Street', woonplaats: 'City', landRegio: 'Country and region', landHint: 'E.g. Germany, North Rhine-Westphalia', gevonden: '✓ Address found', pcHint: 'Enter your postal code and house number and we will fill in street and city.',
+      lhkVraag: 'Do you want SLA to apply the payroll tax credit (loonheffingskorting)?', ja: 'Yes', nee: 'No', lhkVanaf: 'From', opt: 'optional',
+      lhkUitleg: '<strong>What is this?</strong> With the payroll tax credit you pay less payroll tax. You may only have it applied by <strong>one</strong> employer or benefits agency at a time.<br>• Is SLA your only job, or do you not get the credit anywhere else? Then usually choose <strong>Yes</strong>.<br>• Do you have another job or benefit where you already get the credit? Then usually choose <strong>No</strong>.<br>If two employers apply the credit, you will probably have to pay tax back later.',
+      naamGetypt: 'Type your full name', naamHint: 'As shown on your ID.', teken: 'Signature', tekenHint: 'Sign with your finger or mouse in the box.', wis: 'Clear and sign again',
+      akkoord: 'I declare that I have filled in this form truthfully and I sign it digitally.', verstuur: 'Sign and send', bezig: 'Sending…',
+      klaar: 'Thank you! Your payroll tax statement has been signed and received. HR will pass it on to payroll.', klaarJa: 'You chose to have the payroll tax credit applied from the chosen date.', klaarNee: 'You chose not to have the payroll tax credit applied at SLA.',
+      fout: 'Something went wrong: ', controleer: 'Please check the fields marked in red.', ongeldigLink: 'This link is not valid or has expired. Use the link from the HR e-mail or contact hr@ilovesla.com.',
+      suggestie: 'This postal code belongs to {w}.', zetSugg: 'Use {w}',
+      F: { leeg: 'Please fill in this field.', ongeldig: 'This does not look right, please check.', cijfers: 'This field should not contain numbers.', leeftijd: 'Please check your date of birth.', toekomst: 'This date is in the future.', bereik: 'Please check this date.',
+        'w-buitenland': 'This is not a Dutch postal code. Do you live abroad? Then tick that box above.', naam: 'This name does not match the name on the link. Please type your full name.',
+        'pc-onbekend': 'This postal code does not exist.', 'pc-huisnummer': 'This house number does not exist for this postal code.', 'pc-woonplaats': 'This city does not match your postal code.' },
+      Fx: { bsn: 'This is not a valid BSN (9 digits).', handtekening: 'Please sign in the box.', akkoord: 'Please tick the box to sign the form.', lhk: 'Choose Yes or No.' },
+      voet: 'Your details are stored encrypted in SLA\'s secure HR environment and are only visible to HR and payroll. Questions? <a href="mailto:hr@ilovesla.com" style="color:var(--groen)">hr@ilovesla.com</a>' }
+  };
+  var VERPLICHT = ['voorletters', 'achternaam', 'geboortedatum', 'bsn', 'straat', 'huisnummer', 'postcode', 'woonplaats', 'lhk', 'naamGetypt'];
+  var g = function (id) { return document.getElementById(id); }, tx = function (k) { return TX[taal][k]; };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  function bsnOk(s) { var d = String(s || '').replace(/\D/g, ''); if (d.length === 8) d = '0' + d; if (d.length !== 9 || /^0+$/.test(d)) return false; var som = 0; for (var i = 0; i < 8; i++) som += (+d[i]) * (9 - i); return (som - +d[8]) % 11 === 0; }
+  function foutTekst(k, c) { return (c === 'ongeldig' || c === 'leeg') && TX[taal].Fx[k] ? TX[taal].Fx[k] : TX[taal].F[c] || TX[taal].F.ongeldig; }
+  function punten() { return streken.reduce(function (n, s) { return n + s.length; }, 0); }
+  function lokaal(k) {
+    var v = String(w[k] == null ? '' : w[k]).trim();
+    if (k === 'landRegio') return w.buitenland && !v ? 'leeg' : '';
+    if (k === 'lhkVanaf') return w.lhk === 'ja' && !v ? 'leeg' : '';
+    if (k === 'handtekening') return punten() < 12 ? 'leeg' : '';
+    if (k === 'akkoord') return w.akkoord ? '' : 'leeg';
+    if (!v) return VERPLICHT.indexOf(k) > -1 ? 'leeg' : '';
+    if (['tussenvoegsel', 'achternaam', 'woonplaats'].indexOf(k) > -1 && /\d/.test(v)) return 'cijfers';
+    if (k === 'bsn' && !bsnOk(v)) return 'ongeldig';
+    if (k === 'huisnummer' && !w.buitenland && !/^\d{1,5}$/.test(v)) return 'ongeldig';
+    if (k === 'postcode' && !w.buitenland && !/^\d{4}\s*[a-z]{2}$/i.test(v)) return 'w-buitenland';
+    return '';
+  }
+  function veld(k, type, ex) {
+    ex = ex || {}; var v = w[k] == null ? '' : w[k], opt = VERPLICHT.indexOf(k) < 0 && k !== 'landRegio' && k !== 'lhkVanaf' && k !== 'toevoeging';
+    return '<div class="fg' + (fouten[k] ? ' fout' : '') + '" id="fg-' + k + '"><label class="kop">' + esc(tx(k)) + (opt ? ' <i>(' + tx('opt') + ')</i>' : '') + '</label><input data-k="' + k + '" type="' + type + '" value="' + esc(v) + '"' + (ex.attr || '') + '>'
+      + '<div class="fm">' + esc(fouten[k] ? foutTekst(k, fouten[k]) : '') + '</div>'
+      + (k === 'woonplaats' && fouten[k] === 'pc-woonplaats' && suggestie ? '<div class="hint">' + esc(tx('suggestie').replace('{w}', suggestie)) + ' <a href="#" data-sugg="1" style="color:var(--groen)">' + esc(tx('zetSugg').replace('{w}', suggestie)) + '</a></div>' : '')
+      + (ex.hint ? '<div class="hint">' + esc(tx(ex.hint)) + '</div>' : '') + '</div>';
+  }
+  function fg(k, inner) { return '<div class="fg' + (fouten[k] ? ' fout' : '') + '" id="fg-' + k + '">' + inner + '<div class="fm">' + esc(fouten[k] ? foutTekst(k, fouten[k]) : '') + '</div></div>'; }
+  function render() {
+    g('voet').innerHTML = tx('voet');
+    if (!info) return;
+    if (klaar) { g('card').innerHTML = '<h1>✓ ' + esc(tx('titel')) + '</h1><div class="melding groen">' + esc(tx('klaar')) + '</div><p class="sub">' + esc(tx(w.lhk === 'ja' ? 'klaarJa' : 'klaarNee')) + '</p>'; return; }
+    var h = '<h1>' + esc(tx('titel')) + '</h1><p class="sub">' + esc(tx('hallo').replace('{n}', info.naam.split(' ')[0])) + '</p>'
+      + (info.al ? '<div class="melding oranje">' + esc(tx('al').replace('{d}', new Date(info.al.op).toLocaleDateString(taal === 'en' ? 'en-GB' : 'nl-NL'))) + '</div>' : '')
+      + (info.voorinvullen && info.voorinvullen._uitIndienst ? '<div class="hint" style="margin:-8px 0 12px">' + esc(tx('vooraf')) + '</div>' : '') + '<div id="melding"></div>';
+    h += '<h2><b>1</b>' + esc(tx('s1')) + '</h2>' + veld('bsn', 'text', { attr: ' inputmode="numeric" maxlength="11" autocomplete="off"', hint: 'bsnHint' })
+      + '<div class="rij">' + veld('voorletters', 'text', { attr: ' maxlength="12"' }) + veld('tussenvoegsel', 'text', { attr: ' maxlength="20"' }) + '</div>'
+      + '<div class="rij">' + veld('achternaam', 'text', { attr: ' autocomplete="family-name"' }) + veld('geboortedatum', 'date', { attr: ' autocomplete="bday"' }) + '</div>'
+      + '<label class="akkoord" style="margin:0 0 12px"><input type="checkbox" id="buitenland"' + (w.buitenland ? ' checked' : '') + '> <span>' + esc(tx('buitenland')) + '</span></label>';
+    if (w.buitenland) h += '<div class="rij">' + veld('straat', 'text') + veld('huisnummer', 'text', { attr: ' maxlength="10"' }) + '</div><div class="rij">' + veld('postcode', 'text', { attr: ' maxlength="12"' }) + veld('woonplaats', 'text') + '</div>' + veld('landRegio', 'text', { attr: ' maxlength="80"', hint: 'landHint' });
+    else h += '<div class="rij3">' + veld('postcode', 'text', { attr: ' autocomplete="postal-code" maxlength="10"' }) + veld('huisnummer', 'text', { attr: ' inputmode="numeric" maxlength="5"' }) + veld('toevoeging', 'text', { attr: ' maxlength="10"' }) + '</div>'
+      + '<div class="hint" style="margin:-8px 0 12px">' + esc(w._gevonden ? tx('gevonden') : tx('pcHint')) + '</div>'
+      + '<div class="rij">' + veld('straat', 'text', { attr: ' autocomplete="address-line1"' }) + veld('woonplaats', 'text', { attr: ' autocomplete="address-level2"' }) + '</div>';
+    h += '<h2><b>2</b>' + esc(tx('s2')) + '</h2><div class="uitleg">' + tx('lhkUitleg') + '</div>'
+      + fg('lhk', '<label class="kop">' + esc(tx('lhkVraag')) + '</label><div class="keus">' + ['ja', 'nee'].map(function (x) { return '<label class="' + (w.lhk === x ? 'sel' : '') + '"><input type="radio" name="lhk" value="' + x + '"' + (w.lhk === x ? ' checked' : '') + '> ' + esc(tx(x)) + '</label>'; }).join('') + '</div>')
+      + (w.lhk === 'ja' ? veld('lhkVanaf', 'date') : '');
+    h += '<h2><b>3</b>' + esc(tx('s3')) + '</h2>' + veld('naamGetypt', 'text', { attr: ' autocomplete="name" maxlength="120"', hint: 'naamHint' })
+      + fg('handtekening', '<label class="kop">' + esc(tx('teken')) + '</label><canvas id="canvas"></canvas><div class="tekenbalk"><span>' + esc(tx('tekenHint')) + '</span><a href="#" id="wis">' + esc(tx('wis')) + '</a></div>')
+      + fg('akkoord', '<label class="akkoord"><input type="checkbox" id="akkoord"' + (w.akkoord ? ' checked' : '') + '> <span>' + esc(tx('akkoord')) + '</span></label>')
+      + '<button class="btn" id="btn">' + esc(tx('verstuur')) + '</button>'
+      + '<p class="hint" style="text-align:center;margin-top:10px">Model ' + esc(info.model.code) + ' · Belastingdienst</p>';
+    g('card').innerHTML = h;
+    document.querySelectorAll('[data-k]').forEach(function (el) {
+      var k = el.getAttribute('data-k');
+      el.addEventListener('input', function () { w[k] = el.value; if (fouten[k]) { fouten[k] = lokaal(k); toon(k); } });
+      el.addEventListener('blur', function () { w[k] = el.value; if (String(el.value).trim()) { fouten[k] = lokaal(k); toon(k); } });
+    });
+    g('buitenland').onchange = function () { w.buitenland = g('buitenland').checked; fouten.postcode = fouten.huisnummer = ''; render(); };
+    document.querySelectorAll('input[name=lhk]').forEach(function (r) { r.onchange = function () { w.lhk = r.value; fouten.lhk = ''; render(); }; });
+    g('akkoord').onchange = function () { w.akkoord = g('akkoord').checked; if (w.akkoord) { fouten.akkoord = ''; toon('akkoord'); } };
+    g('btn').onclick = verstuur;
+    g('wis').onclick = function (e) { e.preventDefault(); streken = []; teken(); };
+    ['postcode', 'huisnummer'].forEach(function (k) { var el = document.querySelector('[data-k=' + k + ']'); if (el && !w.buitenland) el.addEventListener('blur', adresZoek); });
+    var sg = document.querySelector('[data-sugg]'); if (sg) sg.onclick = function (e) { e.preventDefault(); w.woonplaats = suggestie; fouten.woonplaats = ''; suggestie = null; render(); };
+    canvasInit();
+  }
+  // ---- handtekening (lijnen blijven in het geheugen, ook als het formulier opnieuw wordt opgebouwd) ----
+  var cv, ctx;
+  function canvasInit() {
+    cv = g('canvas'); if (!cv) return; var r = window.devicePixelRatio || 1, b = cv.getBoundingClientRect();
+    cv.width = Math.round(b.width * r); cv.height = Math.round(b.height * r); ctx = cv.getContext('2d'); ctx.scale(r, r); teken();
+    var bezig = false, pos = function (e) { var bb = cv.getBoundingClientRect(); return [e.clientX - bb.left, e.clientY - bb.top]; };
+    cv.onpointerdown = function (e) { bezig = true; try { cv.setPointerCapture(e.pointerId); } catch (x) {} streken.push([pos(e)]); teken(); e.preventDefault(); };
+    cv.onpointermove = function (e) { if (!bezig) return; streken[streken.length - 1].push(pos(e)); teken(); e.preventDefault(); };
+    cv.onpointerup = cv.onpointercancel = function () { bezig = false; if (fouten.handtekening && punten() >= 12) { fouten.handtekening = ''; toon('handtekening'); } };
+  }
+  function lijnen(k) {
+    k.strokeStyle = '#1a2a6c'; k.lineWidth = 2.4; k.lineCap = 'round'; k.lineJoin = 'round';
+    streken.forEach(function (s) { k.beginPath(); s.forEach(function (p, i) { if (i) k.lineTo(p[0], p[1]); else k.moveTo(p[0], p[1]); }); if (s.length === 1) k.lineTo(s[0][0] + 0.5, s[0][1] + 0.5); k.stroke(); });
+  }
+  function teken() { if (!ctx) return; var b = cv.getBoundingClientRect(); ctx.clearRect(0, 0, b.width, b.height); lijnen(ctx); }
+  function handtekeningPng() { // bijsnijden tot de getekende lijnen, max 900 px breed
+    var xs = [], ys = []; streken.forEach(function (s) { s.forEach(function (p) { xs.push(p[0]); ys.push(p[1]); }); });
+    var m = 8, x0 = Math.max(0, Math.min.apply(null, xs) - m), y0 = Math.max(0, Math.min.apply(null, ys) - m), x1 = Math.max.apply(null, xs) + m, y1 = Math.max.apply(null, ys) + m;
+    var sc = Math.min(2, 900 / Math.max(1, x1 - x0)), c = document.createElement('canvas'); c.width = Math.max(40, Math.round((x1 - x0) * sc)); c.height = Math.max(20, Math.round((y1 - y0) * sc));
+    var k = c.getContext('2d'); k.fillStyle = '#fff'; k.fillRect(0, 0, c.width, c.height); k.scale(sc, sc); k.translate(-x0, -y0); lijnen(k);
+    return c.toDataURL('image/png');
+  }
+  // ---- adres opzoeken (Kadaster/PDOK via de server) ----
+  async function adresZoek() {
+    var pc = String(w.postcode || '').replace(/\s+/g, '').toUpperCase(), nr = String(w.huisnummer || '').trim();
+    if (!/^\d{4}[A-Z]{2}$/.test(pc) || !/^\d{1,5}$/.test(nr) || laatsteZoek === pc + nr) return; laatsteZoek = pc + nr;
+    try {
+      var r = await post({ stap: 'adres', postcode: pc, huisnummer: nr }); if (!r.success || !r.bereikbaar) return;
+      if (!r.adres) { fouten.postcode = 'pc-onbekend'; w._gevonden = false; }
+      else if (r.adres.geenNummer) { fouten.huisnummer = 'pc-huisnummer'; w._gevonden = false; }
+      else { w.straat = r.adres.straat; w.woonplaats = r.adres.woonplaats; fouten.postcode = fouten.huisnummer = fouten.straat = fouten.woonplaats = ''; w._gevonden = true; }
+      var actief = document.activeElement && document.activeElement.getAttribute('data-k'); render(); if (actief) { var el = document.querySelector('[data-k=' + actief + ']'); if (el) el.focus(); }
+    } catch (e) { /* dan zelf invullen */ }
+  }
+  function toon(k) { var f = g('fg-' + k); if (!f) return; f.classList.toggle('fout', !!fouten[k]); f.querySelector('.fm').textContent = fouten[k] ? foutTekst(k, fouten[k]) : ''; }
+  function melding(cls, tekst) { g('melding').innerHTML = '<div class="melding ' + cls + '">' + esc(tekst) + '</div>'; g('melding').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  async function post(b) { var r = await fetch('/api/lh-formulier', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ t: t }, b)) }); return r.json(); }
+  async function verstuur() {
+    document.querySelectorAll('[data-k]').forEach(function (el) { w[el.getAttribute('data-k')] = el.value; });
+    var oud = fouten; fouten = {};
+    VERPLICHT.concat(['tussenvoegsel', 'landRegio', 'lhkVanaf', 'handtekening', 'akkoord']).forEach(function (k) { var c = lokaal(k); if (c) fouten[k] = c; });
+    ['postcode', 'huisnummer'].forEach(function (k) { if (/^pc-/.test(oud[k] || '') && !fouten[k]) fouten[k] = oud[k]; });
+    if (Object.keys(fouten).length) { render(); melding('rood', tx('controleer')); return; }
+    var btn = g('btn'); btn.disabled = true; btn.textContent = tx('bezig');
+    try {
+      var geg = {}; Object.keys(w).forEach(function (k) { if (k[0] !== '_') geg[k] = w[k]; }); geg.handtekening = handtekeningPng();
+      var r = await post({ stap: 'verstuur', gegevens: geg });
+      if (r.fouten) { fouten = r.fouten; suggestie = r.suggestie ? r.suggestie.woonplaats : null; render(); melding('rood', tx('controleer')); return; }
+      if (!r.success) throw new Error(r.bericht);
+      klaar = true; render(); window.scrollTo(0, 0);
+    } catch (e) { melding('rood', tx('fout') + e.message); btn.disabled = false; btn.textContent = tx('verstuur'); }
+  }
+  document.querySelectorAll('[data-taal]').forEach(function (a) { a.onclick = function (e) { e.preventDefault(); taal = a.getAttribute('data-taal'); document.querySelectorAll('[data-taal]').forEach(function (x) { x.classList.toggle('sel', x === a); }); render(); }; });
+  var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(canvasInit, 150); });
+  (async function () {
+    document.querySelectorAll('[data-taal]').forEach(function (x) { x.classList.toggle('sel', x.getAttribute('data-taal') === taal); });
+    try {
+      var r = await post({}); if (!r.success) throw new Error(r.bericht);
+      info = r; w = Object.assign({}, r.voorinvullen || {});
+      // BSN uit het indiensttredingsformulier dat net in deze browsertab is ingevuld (daarna meteen gewist)
+      try { var b = sessionStorage.getItem('sla_lh_bsn'); if (b) { w.bsn = b; sessionStorage.removeItem('sla_lh_bsn'); } } catch (e) { /* geen sessionStorage */ }
+      render();
+    } catch (e) { render(); g('card').innerHTML = '<div class="melding rood">' + esc(tx('ongeldigLink')) + '</div>'; }
+  })();
+})();
+</script>
+</body>
+</html>

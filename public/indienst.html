@@ -72,7 +72,7 @@
       geboortedatum: 'Geboortedatum', datumIndienst: 'Datum in dienst', uren: 'Aantal uren per week', urenHint: 'Zoals afgesproken met je Store Manager. 0 = oproepcontract.',
       functie: 'Functie', iban: 'IBAN-nummer', ibanHint: 'Je eigen bankrekening, bijv. NL00 BANK 0123 4567 89.', opmerkingen: 'Eventuele opmerkingen', opt: 'optioneel',
       akkoord: 'Ik verklaar dat deze gegevens kloppen.', akkoordNodig: 'Vink aan dat de gegevens kloppen.', verstuur: 'Verstuur formulier', bezig: 'Bezig met versturen…',
-      klaar: 'Bedankt! Je indiensttredingsformulier is ontvangen. Vergeet niet ook je loonheffingsverklaring te uploaden via de link in de e-mail.', fout: 'Er ging iets mis: ', controleer: 'Controleer de rood gemarkeerde velden.',
+      klaar: 'Bedankt! Je indiensttredingsformulier is ontvangen.', stap2: 'Nog één stap: vul je loonheffingsverklaring in en onderteken hem online. Dat kost je 2 minuten; je gegevens staan al klaar.', stap2b: 'Naar de loonheffingsverklaring →', fout: 'Er ging iets mis: ', controleer: 'Controleer de rood gemarkeerde velden.',
       ongeldigLink: 'Deze link is niet geldig of verlopen. Gebruik de link uit de e-mail van HR of mail hr@ilovesla.com.',
       F: { leeg: 'Vul dit veld in.', ongeldig: 'Dit klopt niet, controleer het even.', leeftijd: 'Controleer je geboortedatum.', bereik: 'Controleer de datum van indiensttreding.',
         toekomst: 'Deze datum ligt in de toekomst.', cijfers: 'Hier horen geen cijfers in.', 'voor-geboorte': 'Deze startdatum kan niet: dan was je nog geen 13. Klopt het jaar?',
@@ -101,7 +101,7 @@
       geboortedatum: 'Date of birth', datumIndienst: 'Start date', uren: 'Hours per week', urenHint: 'As agreed with your Store Manager. 0 = on-call contract.',
       functie: 'Job title', iban: 'IBAN', ibanHint: 'Your own bank account, e.g. NL00 BANK 0123 4567 89.', opmerkingen: 'Comments', opt: 'optional',
       akkoord: 'I confirm that these details are correct.', akkoordNodig: 'Please confirm that the details are correct.', verstuur: 'Send form', bezig: 'Sending…',
-      klaar: 'Thank you! We have received your employment registration form. Do not forget to upload your payroll tax statement via the link in the e-mail.', fout: 'Something went wrong: ', controleer: 'Please check the fields marked in red.',
+      klaar: 'Thank you! We have received your employment registration form.', stap2: 'One more step: fill in and sign your payroll tax statement online. It takes 2 minutes; your details are already filled in.', stap2b: 'Go to the payroll tax statement →', fout: 'Something went wrong: ', controleer: 'Please check the fields marked in red.',
       ongeldigLink: 'This link is not valid or has expired. Use the link from the HR e-mail or contact hr@ilovesla.com.',
       F: { leeg: 'Please fill in this field.', ongeldig: 'This does not look right, please check.', leeftijd: 'Please check your date of birth.', bereik: 'Please check your start date.',
         toekomst: 'This date is in the future.', cijfers: 'This field should not contain numbers.', 'voor-geboorte': 'This start date is not possible: you would not have been 13 yet. Is the year correct?',
@@ -178,7 +178,7 @@
   function render() {
     g('voet').innerHTML = tx('voet');
     if (!info) return;
-    if (klaar) { g('card').innerHTML = '<h1>✓ ' + esc(tx('titel')) + '</h1><div class="melding groen">' + esc(tx('klaar')) + '</div>'; return; }
+    if (klaar) { g('card').innerHTML = '<h1>✓ ' + esc(tx('titel')) + '</h1><div class="melding groen">' + esc(tx('klaar')) + '</div><p class="sub">' + esc(tx('stap2')) + '</p><a class="btn" style="display:block;text-align:center;text-decoration:none" href="/loonheffing.html?t=' + encodeURIComponent(t) + '">' + esc(tx('stap2b')) + '</a>'; return; } // v0.44.0
     var h = '<h1>' + esc(tx('titel')) + '</h1><p class="sub">' + esc(tx('hallo').replace('{n}', (waarden.voornaam || info.naam.split(' ')[0]))) + '</p>'
       + (info.retour ? '<div class="melding oranje"><strong>' + esc(tx('retour')) + '</strong><br>' + esc(info.retour.reden).replace(/\n/g, '<br>') + '<br><span style="font-size:.82rem">' + esc(tx('retourNa')) + '</span></div>' : '')
       + '<div id="melding"></div>';
@@ -278,6 +278,7 @@
       var r = await post({ stap: 'verstuur', gegevens: geg, verblijfBestanden: vb });
       if (r.fouten) { fouten = r.fouten; suggestie = r.suggestie ? r.suggestie.woonplaats : null; render(); melding('rood', tx('controleer')); return; }
       if (!r.success) throw new Error(r.bericht);
+      try { if (geg.bsn) sessionStorage.setItem('sla_lh_bsn', String(geg.bsn).replace(/\D/g, '')); } catch (x) { /* */ } // v0.44.0: alleen deze tab, voor de loonheffingsverklaring
       klaar = true; render(); window.scrollTo(0, 0);
     } catch (e) { melding('rood', tx('fout') + e.message); btn.disabled = false; btn.textContent = tx('verstuur'); }
   }

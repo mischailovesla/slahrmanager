@@ -22,7 +22,7 @@ exports.handler = beveiligd('document-upload', async (event, g) => {
   const tok = { s: SOORT[type], n: row.naam };
   if (p.stap === 'info') {
     await logActie({ door: g.email, actie: 'uploadlink', bron: type, rij, naam: row.naam, details: 'Persoonlijke uploadlink opgevraagd' });
-    return { naam: row.naam, email: row.email || '', bestanden: U.SOORTEN[tok.s].bestanden.map(b => ({ key: b.key, label: b.label })), link: U.uploadLink(tok.s, row.naam), formulierLink: tok.s === 'loon' ? require('./_lib/indienst').link(row.naam) : '' }; // v0.38.3: + persoonlijke link naar het online indiensttredingsformulier
+    return { naam: row.naam, email: row.email || '', bestanden: U.SOORTEN[tok.s].bestanden.map(b => ({ key: b.key, label: b.label })), link: U.uploadLink(tok.s, row.naam), formulierLink: tok.s === 'loon' ? require('./_lib/indienst').link(row.naam) : '', loonLink: tok.s === 'loon' ? require('./_lib/lhformulier').link(row.naam) : '' }; // v0.38.3: + persoonlijke link naar het online indiensttredingsformulier
   }
   if (p.stap === 'start') return await U.startUpload(tok, p.key, { naam: p.naam, mime: p.mime, bytes: p.bytes });
   if (p.stap !== 'klaar') throw new Error('Onbekende stap');

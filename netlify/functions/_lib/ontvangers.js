@@ -31,7 +31,8 @@ const PER_CHECK = {
   'checkin': { sleutel: 'checkin', keuken: true },
   'maandrapport': { sleutel: 'maandrapport' },
   'salaris': { sleutel: 'salaris', keuken: true },
-  'mto': { sleutel: 'mto' }
+  'mto': { sleutel: 'mto' },
+  'lh-model': { sleutel: 'lhModel' }
 };
 
 async function afwijkingen() { const v = await I.lees(SLEUTEL, {}); return v && typeof v === 'object' ? v : {}; }

@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.44.0', datum: '04-11-2026', titel: 'Loonheffingsverklaring digitaal invullen en ondertekenen', punten: [
+    'Nieuwe medewerkers vullen de <b>loonheffingsverklaring online</b> in en ondertekenen met hun vinger of muis. Het formulier vraagt precies wat het model van de Belastingdienst vraagt (BSN, naam en voorletters, geboortedatum, adres, land en regio bij buitenland, loonheffingskorting ja/nee en vanaf wanneer). Na het indiensttredingsformulier gaan ze er met één knop heen, met hun gegevens al ingevuld.',
+    'De PDF heeft de indeling van het model, met de handtekening en een <b>bewijsspoor</b> (tijd, IP, browser, SHA-256, modelversie). Hij komt als <b>Loonheffing</b> in het dossier, het dossier staat op Ontvangen en hij gaat samen met het indiensttredingsformulier naar Mahdia. Wijkt het BSN af van het indiensttredingsformulier, dan staat dat in het logboek.',
+    'De welkomstmail en de herinnering linken nu naar het online formulier. Een papieren formulier uploaden kan nog steeds.',
+    '<b>Elke maandag</b> kijkt het dashboard of de Belastingdienst een nieuwe versie van het model heeft gepubliceerd (nu: LH 008 - 2Z*12FOL). Zo ja: een mail aan Mischa, Jodi en Ymke en een oranje balk bij Loonheffing met <b>Nieuwe versie overnemen</b> (beheerder). Lukt de controle 3 weken op rij niet, dan komt daar ook een mail over.'
+  ] },
   { nummer: '0.43.7', datum: '04-11-2026', titel: 'Contractduur leesbaar: maanden en dagen', punten: [
     'De duur van de contractketen staat nu als <b>20 mnd 12 dgn</b> in plaats van "20,4 mnd" (dat was 20 maanden en 0,4 van een maand). Geldt voor de takenlijst, het dossier, Contractverlenging en de contractmail aan HR.'
   ] },

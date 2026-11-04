@@ -292,7 +292,7 @@
     if (!r.success) { toast(r.bericht, 'err'); return; }
     if (isLink) {
       var tekst = r.formulierLink
-        ? 'Hoi ' + r.naam.split(' ')[0] + ',\n\n1. Vul het indiensttredingsformulier online in via deze persoonlijke link:\n' + r.formulierLink + '\n\n2. Upload je loonheffingsverklaring (PDF of foto) via:\n' + r.link + '\n\n1. Fill in the onboarding form online via this personal link (see above).\n2. Upload your payroll tax statement (PDF or photo) via the second link.\n\nGroet / Kind regards,\nSLA HR'
+        ? 'Hoi ' + r.naam.split(' ')[0] + ',\n\n1. Vul het indiensttredingsformulier online in via deze persoonlijke link:\n' + r.formulierLink + '\n\n2. Vul je loonheffingsverklaring online in en onderteken hem digitaal:\n' + (r.loonLink || r.link) + '\n\n1. Fill in the onboarding form online via the first link.\n2. Fill in and sign your payroll tax statement online via the second link.\n\n(Papieren formulier al ingevuld? Uploaden kan ook / Paper form already filled in? Upload it here: ' + r.link + ')\n\nGroet / Kind regards,\nSLA HR'
         : 'Hoi ' + r.naam.split(' ')[0] + ',\n\nVia deze persoonlijke link kun je het ondertekende document uploaden (PDF of foto):\n' + r.link + '\n\nYou can upload the signed document (PDF or photo) via this personal link.\n\nGroet / Kind regards,\nSLA HR';
       try { await navigator.clipboard.writeText(tekst); toast('Uploadlink + korte tekst gekopieerd voor ' + r.naam + ' — plak in Gmail of WhatsApp' + (r.email ? ' (' + r.email + ')' : ''), 'ok'); }
       catch (x) { prompt('Kopieer de uploadlink:', r.link); }
@@ -746,6 +746,29 @@
   // v0.42.1: locatie (Shiftbase-team) onder de naam in de loonheffingstabel; wordt aangevuld zodra de Shiftbase-lijst binnen is
   function lhWk(r) { var w = winkelVanPersoon(r.naam, r.email); return '<div class="lay-sub" data-lh-wk data-n="' + esc(r.naam) + '" data-e="' + esc(r.email || '') + '">' + (w ? '📍 ' + esc(w) : medewerkers.length ? 'nog niet in Shiftbase' : '') + '</div>'; }
   function lhWkVul() { document.querySelectorAll('[data-lh-wk]').forEach(function (el) { if (el.textContent) return; var w = winkelVanPersoon(el.getAttribute('data-n'), el.getAttribute('data-e')); el.textContent = w ? '📍 ' + w : 'nog niet in Shiftbase'; }); }
+  // v0.44.0: versie van het model opgaaf gegevens voor de loonheffingen (wekelijkse controle op maandag)
+  function lhModelToon(m) {
+    var el = g('lh-model'); if (!el) return; if (!m) { el.style.display = 'none'; return; } el.style.display = 'flex';
+    var c = m.check || {}, h = m.huidig || {}, op = c.op ? new Date(c.op).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    var st = c.status || 'onbekend';
+    el.className = 'alert ' + (st === 'actueel' ? 'groen' : st === 'nieuw' ? 'geel' : st === 'fout' ? 'rood' : 'grijs');
+    g('lh-model-tekst').innerHTML = st === 'actueel' ? '<strong>Digitale loonheffingsverklaring is actueel.</strong> Gebaseerd op model ' + esc(h.code) + ' van de Belastingdienst. Laatst gecontroleerd: ' + esc(op) + ' (elke maandag automatisch).'
+      : st === 'nieuw' ? '<strong>Nieuwe versie van het model: ' + esc(c.gevonden && c.gevonden.code) + '.</strong> Ons formulier is gebaseerd op ' + esc(h.code) + '. Vergelijk de vragen met het nieuwe model. Zelfde vragen? Klik op "Nieuwe versie overnemen". Andere vragen? Laat het formulier aanpassen. Al getekende verklaringen blijven geldig.'
+      : st === 'fout' ? '<strong>Controle op een nieuw model lukte niet</strong> (' + esc(c.fout || '') + ', ' + (c.foutTeller || 1) + 'x op rij). Formulier gebaseerd op ' + esc(h.code) + '. Kijk zelf even via "Model bekijken".'
+      : '<strong>Digitale loonheffingsverklaring</strong> gebaseerd op model ' + esc(h.code) + '. Nog niet gecontroleerd: klik op "Nu controleren".';
+    if (c.gevonden && c.gevonden.url && st === 'nieuw') g('lh-model-link').href = c.gevonden.url;
+    g('lh-model-over').style.display = st === 'nieuw' && window._ikRol === 'admin' ? '' : 'none';
+  }
+  window.lhModelControle = async function () {
+    var b = g('lh-model-check'); b.disabled = true; b.textContent = 'Bezig…';
+    var r = await api('/api/loonheffing', { actie: 'model-controle' }); b.disabled = false; b.textContent = 'Nu controleren';
+    if (!r.success) { toast(r.bericht, 'err'); return; } lhModelToon(r.model); toast(r.bericht, r.model && r.model.check && r.model.check.status === 'fout' ? 'err' : 'ok');
+  };
+  window.lhModelOvernemen = async function () {
+    if (!confirm('Heb je het nieuwe model bekeken en zijn de vragen gelijk aan ons digitale formulier?\n\nNieuwe verklaringen vermelden dan de nieuwe versiecode. Zijn er vragen bijgekomen of veranderd, klik dan op Annuleren en laat het formulier eerst aanpassen.')) return;
+    var r = await api('/api/loonheffing', { actie: 'model-overnemen' });
+    if (!r.success) { toast(r.bericht, 'err'); return; } lhModelToon(r.model); toast(r.bericht, 'ok');
+  };
   window.laadLoonheffing = async function () {
     var d = await api('/api/loonheffing');
     if (!d.success) { toast('Loonheffing: ' + d.bericht, 'err'); return; }
@@ -758,6 +781,7 @@
       el.innerHTML = '<strong>Online indiensttredingsformulier (' + st.dagen + ' dagen):</strong> ' + st.ingevuld + ' ingevuld · ' + st.retour + ' retour gestuurd'
         + (st.perVeld.length ? ' · <span title="Aantal medewerkers dat bij dit veld een foutmelding kreeg (de ingevulde waarden worden niet bewaard)">vaakst fout: ' + st.perVeld.map(function (x) { return esc(NM[x[0]] || x[0]) + ' (' + x[1] + ')'; }).join(', ') + '</span>' : '');
     })(d.indienstFouten);
+    lhModelToon(d.model); // v0.44.0
     g('lh-auto').className = 'alert ' + (lhAuto ? 'groen' : 'geel');
     g('lh-auto-tekst').innerHTML = lhAuto ? '<strong>Automatisch uitnodigen staat aan.</strong> Nieuwe medewerkers uit Shiftbase krijgen elke 4 uur automatisch de indiensttredings- en loonheffingsmail (NL + EN), met de startdatum als deadline. HR krijgt een overzicht.' : '<strong>Automatisch uitnodigen staat uit.</strong> HR krijgt één keer per dag een lijstje met nieuwe medewerkers zonder uitnodiging en verstuurt zelf.';
     lhSal = !!d.salarisAuto; g('lh-sal').className = 'alert ' + (lhSal ? 'groen' : 'geel');

@@ -22,6 +22,18 @@ exports.handler = beveiligd('loonheffing', async (event, g) => {
       await logActie({ door: g.email, actie: 'instelling', bron: 'salaris', veld: 'salaris_auto', nieuw: aan ? 'aan' : 'uit', details: 'Automatisch naar salaris (ma + do): ' + (aan ? 'aan' : 'uit') });
       return { salarisAuto: aan, bericht: aan ? 'Aan: elke maandag en donderdag om 09:00 gaat alles wat klaar is automatisch naar de salarisadministratie.' : 'Uit: naar salaris gaat weer alleen via de knop.' };
     }
+    // v0.44.0: versie van het model opgaaf gegevens voor de loonheffingen
+    if (p.actie === 'model-controle') {
+      const L = require('./_lib/lhformulier'), r = await L.controleerModel({ door: g.email });
+      await logActie({ door: g.email, actie: 'controle', bron: 'loonheffing', veld: 'lh-model', nieuw: r.status, details: 'Modelcontrole: ' + r.status + (r.gevonden ? ' · ' + r.gevonden.code : '') + (r.fout ? ' · ' + r.fout : '') });
+      return { model: await L.modelStatus(), bericht: r.status === 'actueel' ? 'Het formulier is actueel (' + r.huidig.code + ').' : r.status === 'nieuw' ? 'Er staat een nieuwe versie op de site van de Belastingdienst: ' + r.gevonden.code + '.' : 'Controle mislukt: ' + r.fout };
+    }
+    if (p.actie === 'model-overnemen') {
+      if (g.rol !== 'admin') throw new Error('Alleen een beheerder kan een nieuwe modelversie overnemen.');
+      const L = require('./_lib/lhformulier'), n = await L.overnemen(g.email);
+      await logActie({ door: g.email, actie: 'instelling', bron: 'loonheffing', veld: 'lh_model', nieuw: n.code, details: 'Nieuwe modelversie overgenomen (vragen gelijk gebleven): ' + n.code });
+      return { model: await L.modelStatus(), bericht: 'Overgenomen: nieuwe verklaringen vermelden vanaf nu model ' + n.code + '.' };
+    }
     if (p.actie === 'voorbeeld') {
       const dl = require('./_lib/signaleringen').loonDeadline('', new Date());
       return { subject: T.LOON_TWEETALIG_ONDERWERP.uitnodiging, html: T.loonHtmlTweetalig('uitnodiging', 'Voorbeeld Medewerker', dl) };
@@ -29,5 +41,5 @@ exports.handler = beveiligd('loonheffing', async (event, g) => {
     throw new Error('Onbekende actie');
   }
   const rijen = await require('./_lib/indienstcontrole').controleer(await S.getLoonheffing()); // v0.35.2
-  return { rijen, indienstFouten: await require('./_lib/indienst').foutStatistiek().catch(() => null), auto: (await I.lees('loon_auto', false)) === true, salarisAuto: (await I.lees('salaris_auto', false)) === true, templates: T.LOON_TEMPLATES.map(x => ({ key: x.key, label: x.label, taal: x.taal, type: x.type, subject: x.subject })) };
+  return { rijen, model: await require('./_lib/lhformulier').modelStatus().catch(() => null), indienstFouten: await require('./_lib/indienst').foutStatistiek().catch(() => null), auto: (await I.lees('loon_auto', false)) === true, salarisAuto: (await I.lees('salaris_auto', false)) === true, templates: T.LOON_TEMPLATES.map(x => ({ key: x.key, label: x.label, taal: x.taal, type: x.type, subject: x.subject })) };
 });

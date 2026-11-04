@@ -31,6 +31,8 @@ window.HR_HELP = {
     { id: 'instroom', titel: 'Instroom: loonheffing en starters', html:
       '<ul><li><b>Loonheffing</b> — nieuwe medewerkers uit Shiftbase krijgen een uitnodiging (NL/EN) met een uploadlink. Automatisch als dat aan staat op de tab Loonheffing; anders staat het als taak klaar.</li>'
       + '<li>Zonder formulier wordt <b>52% loonheffing</b> ingehouden (anoniementarief). Herinneringen gaan vanzelf; na 3 herinneringen krijg je een taak om zelf contact op te nemen.</li>'
+      + '<li><b>Digitale loonheffingsverklaring</b> (sinds 0.44.0): de medewerker vult hem online in en tekent met de vinger, direct na het indiensttredingsformulier. De PDF heeft de indeling van het model van de Belastingdienst plus een bewijsspoor, en gaat met het indiensttredingsformulier mee naar salaris. Een papieren formulier uploaden kan nog steeds.</li>'
+      + '<li><b>Nieuw model?</b> Elke maandag kijkt het dashboard of de Belastingdienst een nieuwe versie heeft. Zo ja, dan krijgen Mischa, Jodi en Ymke een mail en staat er een oranje balk bij Loonheffing. Zelfde vragen: beheerder klikt <i>Nieuwe versie overnemen</i>. Andere vragen: formulier laten aanpassen. Al getekende verklaringen blijven geldig.</li>'
       + '<li>Binnen? Dan staat het onder <i>Klaar voor salaris</i> en gaat het op maandag of donderdag naar Mahdia (of klik <b>→ Salaris</b>).</li>'
       + '<li><b>Check-in 30/60</b> — nieuwe medewerkers krijgen na 30 en 60 dagen een korte vragenlijst. Een lage score geeft een taak: even bellen en vastleggen bij Gesprekken.</li>'
       + '<li><b>Onboarding-checklist</b> — start je vanuit het dossier; de scorekaart meet of hij binnen 21 dagen af is.</li>'

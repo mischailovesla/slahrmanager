@@ -55,7 +55,8 @@ module.exports = {
     jubilea: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
     'mail-bounces': 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',  // v0.27.4
     datacontrole: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
-    zomerpiek: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'
+    zomerpiek: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com',
+    lhModel: 'mischa@ilovesla.com,jodi@ilovesla.com,ymke@ilovesla.com'   // v0.44.0: nieuwe versie van het model opgaaf gegevens loonheffingen
   },
   // v0.26.0: jubilea (jaren in dienst, seintje een week vooruit) en zomerpiek-alert (maart t/m juli, kijkt naar juli/augustus)
   JUBILEUM_JAREN: [1, 2, 5, 10, 15, 20],
@@ -300,6 +301,9 @@ module.exports = {
   PREFILL_ONTSLAG_ENTRY: 'entry.967349986',
   // INDIENSTLINK (Drive-export) is vervangen door public/Indiensttredingsformulier_SLA.xlsx (sjablonen.indienstLink) — 16-10-2026
   LB_FORMULIER_NL: 'https://www.belastingdienst.nl/wps/wcm/connect/bldcontentnl/themaoverstijgend/programmas_en_formulieren/model_opgaaf_gegevens_voor_de_loonheffingen',
+  // v0.44.0: modelversie waarop de digitale loonheffingsverklaring (public/loonheffing.html) gebaseerd is.
+  // De wekelijkse controle (sched-lh-model) vergelijkt het PDF-bestand op de modelpagina hiermee; HR neemt een nieuwe versie over in de tab Loonheffing.
+  LH_MODEL: { code: 'LH 008 - 2Z*12FOL', bestand: 'model_opgaaf_gegevens_loonheffingen_lh0082z12fol.pdf', gewijzigd: '2026-08-20', url: 'https://download.belastingdienst.nl/belastingdienst/docs/model_opgaaf_gegevens_loonheffingen_lh0082z12fol.pdf' },
   LB_FORMULIER_EN: 'https://www.belastingdienst.nl/wps/wcm/connect/bldcontenten/themaoverstijgend/applications_and_forms/model-statement-data-payroll-taxes',
 
   WINKEL_BV_MAP: {

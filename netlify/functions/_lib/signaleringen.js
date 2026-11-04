@@ -66,7 +66,7 @@ function teams(lijst) {
 // Verzendhulp: in droogloop alleen registreren
 // v0.32.0: interne mails (aan HR of Jop) bundelen in één HR-dagoverzicht per dag (check 'dagoverzicht').
 // Instelling 'hr_bundel' (standaard aan). Mails aan medewerkers gaan altijd direct; 'mail niet aangekomen' ook (zelden en urgent).
-const BUNDEL_NIET = new Set(['mail-bounces', 'dagoverzicht', 'datacontrole']); // v0.32.2: datacontrole = maandelijkse losse mail
+const BUNDEL_NIET = new Set(['mail-bounces', 'dagoverzicht', 'datacontrole', 'lh-model']); // v0.32.2: datacontrole = maandelijkse losse mail
 async function bundelAan() { try { return (await require('./instellingen').lees('hr_bundel', true)) !== false; } catch (e) { return true; } }
 async function bundel(rap, msg) {
   if (BUNDEL_NIET.has(rap.naam) || !(await bundelAan())) return false;
@@ -1057,7 +1057,7 @@ async function winkelmail(droog) {
 }
 
 // ---- 25. v0.32.0: HR-overzicht — alle interne meldingen sinds het vorige overzicht in één mail (v0.32.3: maandag 09:00) ----
-const DAG_LABEL = { 'contractketen': 'Contracten', 'verlengingen': 'Verlengingen', 'aanzegtermijnen': 'Aanzegtermijnen', 'verzuim': 'Verzuim', 'jeugd': 'Jeugd (ATW / jeugdloon)', 'oproepaanbod': 'Oproepaanbod', 'stille-afwezigen': 'Stille afwezigen', 'weekend-beschikbaarheid': 'Weekendbeschikbaarheid', 'vakantiepieken': 'Vakantiepieken', 'datacontrole': 'Shiftbase-datacontrole', 'jubilea': 'Jubilea', 'zomerpiek': 'Vakantiepiek (zomer/kerst)', 'salaris': 'Naar salaris', 'nieuwe-medewerkers': 'Nieuwe medewerkers', 'bewaartermijnen': 'Bewaartermijnen (AVG)', 'data-hygiene': 'Shiftbase aanvullen', 'mto': 'MTO', 'checkin': 'Check-in' };
+const DAG_LABEL = { 'contractketen': 'Contracten', 'verlengingen': 'Verlengingen', 'aanzegtermijnen': 'Aanzegtermijnen', 'verzuim': 'Verzuim', 'jeugd': 'Jeugd (ATW / jeugdloon)', 'oproepaanbod': 'Oproepaanbod', 'stille-afwezigen': 'Stille afwezigen', 'weekend-beschikbaarheid': 'Weekendbeschikbaarheid', 'vakantiepieken': 'Vakantiepieken', 'datacontrole': 'Shiftbase-datacontrole', 'jubilea': 'Jubilea', 'zomerpiek': 'Vakantiepiek (zomer/kerst)', 'salaris': 'Naar salaris', 'nieuwe-medewerkers': 'Nieuwe medewerkers', 'bewaartermijnen': 'Bewaartermijnen (AVG)', 'data-hygiene': 'Shiftbase aanvullen', 'mto': 'MTO', 'checkin': 'Check-in', 'lh-model': 'Model loonheffingen' };
 function tekstNaarHtml(t) {
   const regels = String(t || '').split('\n').map(r => r.trimEnd()).filter(r => r && !/^Hallo,?$/i.test(r) && !/^\(Automatisch bericht/i.test(r));
   let h = '', inLijst = false;
@@ -1124,7 +1124,7 @@ async function dagoverzichtTest(naar) {
   return { bericht: 'Test-weekoverzicht met ' + items.length + ' onderwerp(en) verstuurd naar ' + naar + '.' };
 }
 
-const CHECKS = { 'dagoverzicht': dagoverzicht, 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto };
+const CHECKS = { 'dagoverzicht': dagoverzicht, 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto, 'lh-model': lhModel };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 // ---- Automatisch naar salaris (maandag + donderdag) ----
@@ -1247,6 +1247,33 @@ async function exitSurvey(droog) {
   return rap;
 }
 
+// ---- v0.44.0: nieuwe versie van het model opgaaf gegevens voor de loonheffingen (maandag) ----
+// Kijkt op de modelpagina van de Belastingdienst welk PDF-bestand er staat (versiecode zit in de bestandsnaam).
+// Mail aan HR één keer per nieuwe versie; ook als de controle 3 weken op rij niet lukt (pagina veranderd?).
+async function lhModel(droog) {
+  const rap = { naam: 'lh-model', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const L = require('./lhformulier'), r = await L.controleerModel({ door: 'automatisch' });
+  const st = F + 'font-size:14px;color:#333d3a;line-height:1.7', site = require('./uploads').site();
+  if (r.status === 'fout') {
+    rap.fouten.push('modelcontrole: ' + r.fout);
+    if (r.foutTeller >= 3 && !r.foutGemeld) await mailOfDroog(rap, { to: ontvangers('lhModel'), subject: 'Controle model loonheffingen werkt niet meer', text: 'De wekelijkse controle op een nieuwe versie van het model opgaaf gegevens voor de loonheffingen lukt al ' + r.foutTeller + ' weken niet: ' + r.fout + '\n\nKijk zelf even op ' + C.LB_FORMULIER_NL + ' en laat de controle nakijken.',
+      html: T.slaWrap(T.slaHead('#c0392b', 'HR &middot; Modelcontrole loonheffingen') + '<tr><td style="padding:32px 36px 28px"><p style="' + st + ';margin:0 0 12px">De wekelijkse controle op een nieuwe versie van het <strong>model opgaaf gegevens voor de loonheffingen</strong> lukt al ' + r.foutTeller + ' weken niet:</p><p style="' + st + ';margin:0 0 12px;color:#8a1c12">' + esc(r.fout) + '</p><p style="' + st + ';margin:0">Kijk zelf even op <a href="' + C.LB_FORMULIER_NL + '" style="color:#009f4b">de modelpagina van de Belastingdienst</a> en laat de controle nakijken.</p></td></tr>' + T.slaFoot()),
+      kort: { naam: 'HR-team', aantal: 1 } }, () => L.markeer({ foutGemeld: true }));
+    return rap;
+  }
+  if (r.status !== 'nieuw') return rap;
+  rap.gevonden.push({ naam: 'Nieuw model', code: r.gevonden.code, bestand: r.gevonden.bestand });
+  if (r.gemeld === r.gevonden.bestand) return rap; // al gemeld
+  const regels = ['Ons formulier is gebaseerd op: ' + r.huidig.code, 'Nu op de site van de Belastingdienst: ' + r.gevonden.code + (r.gevonden.gewijzigd ? ' (pagina bijgewerkt ' + r.gevonden.gewijzigd.split('-').reverse().join('-') + ')' : '')];
+  await mailOfDroog(rap, { to: ontvangers('lhModel'), subject: 'Nieuwe versie model loonheffingen: ' + r.gevonden.code,
+    text: 'Hoi,\n\nDe Belastingdienst heeft een nieuwe versie van het model opgaaf gegevens voor de loonheffingen gepubliceerd.\n\n' + regels.join('\n') + '\n\nWat te doen:\n1. Open het nieuwe model: ' + r.gevonden.url + '\n2. Vergelijk de vragen met ons digitale formulier (' + site + '/loonheffing.html).\n3. Zelfde vragen? Klik in het dashboard bij Loonheffing op "Nieuwe versie overnemen". Andere vragen? Laat het formulier aanpassen.\n\nAl getekende verklaringen blijven geldig; niemand hoeft opnieuw te tekenen.',
+    html: T.slaWrap(T.slaHead('#f5a623', 'HR &middot; Nieuw model loonheffingen') + '<tr><td style="padding:32px 36px 28px"><p style="' + st + ';font-size:15px;margin:0 0 14px">Hoi,</p><p style="' + st + ';margin:0 0 12px">De Belastingdienst heeft een nieuwe versie van het <strong>model opgaaf gegevens voor de loonheffingen</strong> gepubliceerd.</p><ul style="' + st + ';margin:0 0 16px;padding-left:18px">' + regels.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>'
+      + '<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:14px"><tr><td style="padding:12px 16px;background:#fff8e6;border-radius:8px;border-left:4px solid #f5a623;' + st + '"><strong>Wat te doen</strong><br>1. Open <a href="' + esc(r.gevonden.url) + '" style="color:#009f4b">het nieuwe model</a>.<br>2. Vergelijk de vragen met <a href="' + site + '/loonheffing.html" style="color:#009f4b">ons digitale formulier</a>.<br>3. Zelfde vragen? Klik in het dashboard bij <strong>Loonheffing</strong> op <strong>Nieuwe versie overnemen</strong>. Andere vragen? Laat het formulier aanpassen.</td></tr></table>'
+      + '<p style="' + F + 'font-size:12px;color:#888078;margin:0">Al getekende verklaringen blijven geldig; niemand hoeft opnieuw te tekenen.</p></td></tr>' + T.slaFoot()),
+    kort: { naam: 'HR-team', aantal: 1 } }, () => L.markeer({ gemeld: r.gevonden.bestand }));
+  return rap;
+}
+
 async function draai(naam, droog, bron) {
   const fn = CHECKS[naam]; if (!fn) throw new Error('Onbekende check: ' + naam);
   try { await require('./ontvangers').laad(); } catch (e) { console.warn('ontvangers laden:', e.message); } // v0.37.0
@@ -1260,4 +1287,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto };
+module.exports = { indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto, lhModel };
