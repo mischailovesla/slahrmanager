@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.43.0', datum: '04-11-2026', titel: 'MTO: keuken en logistiek apart, net als kantoor', punten: [
+    'In de MTO zijn er nu <b>11 winkels</b> en <b>3 zones</b>: Kantoor (HQ), Keuken en Logistiek. De zones tellen niet mee in <b>Winkels</b>, het SLA-totaal en de tabel Per winkel, en hebben elk een eigen knop en een eigen regel in de groepentabel en de PDF.',
+    'Geldt ook voor de lopende ronde en eerdere rondes. Een zone wordt pas getoond vanaf 4 reacties (anonimiteit).'
+  ] },
   { nummer: '0.42.1', datum: '03-11-2026', titel: 'Locatie in de loonheffingstabel', punten: [
     'In <b>Instroom → Loonheffing</b> staat onder de naam nu de <b>locatie</b> (📍 winkel uit Shiftbase). Staat iemand nog niet in Shiftbase, dan zie je dat er ook.'
   ] },

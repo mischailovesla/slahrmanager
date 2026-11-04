@@ -32,11 +32,16 @@ const ontvangers = () => ((C.SIGNALERING_ONTVANGERS || {}).mto || C.HR_EMAIL).sp
 const isManager = functie => /manager/i.test(String(functie || ''));
 // v0.37.0: kantoor (Shiftbase-team HQ) is een eigen groep 'kantoor'. Telt niet mee in de winkelscores (filter 'alle'),
 // en heeft een eigen score. Ook bestaande uitnodigingen/reacties met winkel HQ worden bij het lezen als 'kantoor' gezien.
-const KANTOOR = (C.MTO_KANTOOR_TEAMS || ['HQ']).map(s => String(s).trim().toLowerCase());
-const isKantoor = winkel => KANTOOR.includes(String(winkel || '').trim().toLowerCase());
-const groepVan = (winkel, functie) => isKantoor(winkel) ? 'kantoor' : isManager(functie) ? 'manager' : 'medewerker';
-const metGroep = lijst => (lijst || []).map(r => isKantoor(r.winkel) && r.groep !== 'kantoor' ? Object.assign({}, r, { groep: 'kantoor' }) : r);
-const GROEPEN = ['medewerker', 'manager', 'kantoor'];
+// v0.43.0: zelfde voor keuken en logistiek — 11 winkels + 3 zones (HQ, Keuken, Logistiek), elk een eigen groep.
+const ZONES = {}; Object.entries(C.MTO_ZONES || { HQ: 'kantoor' }).forEach(([team, g]) => { ZONES[String(team).trim().toLowerCase()] = g; });
+(C.MTO_KANTOOR_TEAMS || []).forEach(t => { const k = String(t).trim().toLowerCase(); if (!ZONES[k]) ZONES[k] = 'kantoor'; });
+const ZONE_GROEPEN = Array.from(new Set(Object.values(ZONES)));
+const zoneVan = winkel => ZONES[String(winkel || '').trim().toLowerCase()] || null;
+const isKantoor = winkel => zoneVan(winkel) === 'kantoor';
+const isZone = groep => ZONE_GROEPEN.includes(groep);
+const groepVan = (winkel, functie) => zoneVan(winkel) || (isManager(functie) ? 'manager' : 'medewerker');
+const metGroep = lijst => (lijst || []).map(r => { const z = zoneVan(r.winkel); return z && r.groep !== z ? Object.assign({}, r, { groep: z }) : r; });
+const GROEPEN = ['medewerker', 'manager'].concat(ZONE_GROEPEN);
 const r1 = x => x == null ? null : Math.round(x * 10) / 10;
 const fout = (e, wat) => { if (e) throw new Error(wat + ': ' + e.message + (/relation|does not exist/i.test(e.message) ? ' (migratie 0015 gedraaid?)' : '')); };
 
@@ -297,7 +302,7 @@ function aggregeer(lijst, metVragen) {
   return uit;
 }
 const normW = s => String(s || '').trim().toLowerCase();
-function filter(lijst, groep, winkel) { return lijst.filter(r => ((!groep || groep === 'alle') ? r.groep !== 'kantoor' : r.groep === groep) && (!winkel || normW(r.winkel) === normW(winkel))); }
+function filter(lijst, groep, winkel) { return lijst.filter(r => ((!groep || groep === 'alle') ? !isZone(r.groep) : r.groep === groep) && (!winkel || normW(r.winkel) === normW(winkel))); }
 
 async function rapport(rondeId, groep, winkel) {
   const db = admin(), alle = await rondes();
@@ -481,4 +486,4 @@ async function exportCsv(rondeId) {
   return [kop].concat(rijen).map(r => r.map(q).join(';')).join('\n');
 }
 
-module.exports = { isKantoor, groepVan, GROEPEN, filter, metGroep, MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, verlengen, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager, acties, actieOpslaan, actieVerwijderen, koppeling, spearman, samenvatting, voorWinkel };
+module.exports = { isKantoor, isZone, zoneVan, ZONE_GROEPEN, groepVan, GROEPEN, filter, metGroep, MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, verlengen, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager, acties, actieOpslaan, actieVerwijderen, koppeling, spearman, samenvatting, voorWinkel };

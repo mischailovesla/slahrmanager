@@ -3048,7 +3048,7 @@
 
   // ---------- Tevredenheidsonderzoek (MTO, fase 5) ----------
   var mtoData = null, mtoGroep = 'alle', mtoSort = 'thema', mtoKand = null;
-  var MTO_GROEP = { alle: 'Winkels', medewerker: 'SLA makers', manager: 'Store managers', kantoor: 'Kantoor (HQ)' };
+  var MTO_GROEP = { alle: 'Winkels', medewerker: 'SLA makers', manager: 'Store managers', kantoor: 'Kantoor (HQ)', keuken: 'Keuken', logistiek: 'Logistiek' };
   function mtoKl(x) { return x == null ? '' : x >= 3.75 ? 'mto-g' : x >= 2.75 ? 'mto-o' : 'mto-r'; } // zelfde grenzen als de PDF: Goed / Matig / Aandacht nodig
   function mtoGetal(x) { return x == null ? '-' : String(x).replace('.', ','); }
   function mtoEnps(x) { return x == null ? '-' : (x > 0 ? '+' : '') + x; }
@@ -3154,7 +3154,7 @@
     var el = g('mto-kand'); el.textContent = 'Shiftbase ophalen…';
     var d = await api('/api/mto-admin?kandidaten=1'); if (!d.success) { el.textContent = d.bericht; return; }
     mtoKand = d;
-    el.innerHTML = '<strong>' + d.aantal + '</strong> uitnodigingen: ' + (d.perGroep.medewerker || 0) + ' SLA makers en ' + (d.perGroep.manager || 0) + ' store managers' + (d.perGroep.kantoor ? ' en ' + d.perGroep.kantoor + ' kantoor (HQ)' : '')
+    el.innerHTML = '<strong>' + d.aantal + '</strong> uitnodigingen: ' + (d.perGroep.medewerker || 0) + ' SLA makers en ' + (d.perGroep.manager || 0) + ' store managers' + ['kantoor', 'keuken', 'logistiek'].filter(function (z) { return d.perGroep[z]; }).map(function (z) { return ' · ' + d.perGroep[z] + ' ' + MTO_GROEP[z].toLowerCase(); }).join('')
       + (d.managers.length ? ' <a href="#" onclick="event.preventDefault();this.nextElementSibling.style.display=\'block\'">(wie?)</a><span style="display:none">' + d.managers.map(function (m) { return esc(m.naam) + ' — ' + esc(m.functie) + (m.winkel ? ', ' + esc(m.winkel) : ''); }).join('<br>') + '</span>' : '')
       + (d.vertrekkers ? ' · ' + d.vertrekkers + ' vertrekker(s) overgeslagen' : '') + (d.zonderEmail.length ? ' · <span style="color:var(--rood)">' + d.zonderEmail.length + ' zonder e-mailadres: ' + d.zonderEmail.map(function (x) { return esc(x.naam); }).join(', ') + '</span>' : '');
   };

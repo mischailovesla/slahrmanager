@@ -148,6 +148,8 @@ module.exports = {
   ],
   // Medewerkertevredenheidsonderzoek (fase 5); vragen in _lib/mto-vragen.js
   MTO_KANTOOR_TEAMS: ['HQ'],         // v0.37.0: Shiftbase-teams die in de MTO als groep 'kantoor' tellen (niet in de winkelscores)
+  // v0.43.0: niet-winkel zones met een eigen MTO-groep (Shiftbase-team → groep). Tellen niet mee in de winkelscores.
+  MTO_ZONES: { HQ: 'kantoor', Keuken: 'keuken', Logistiek: 'logistiek' },
   MTO_MIN_N: 4,                      // een winkel/groep pas tonen vanaf zoveel reacties (anonimiteit)
   MTO_LOOPTIJD_DAGEN: 21,            // ronde sluit na zoveel dagen
   MTO_HERINNERING_DAGEN: [7, 14],    // herinneringen aan wie nog niet invulde
