@@ -127,3 +127,9 @@ console.log('vakantiepiek tests OK');
   assert.strictEqual(parseNLDatum('binnenkort'), null);
   console.log('datum flexibel OK');
 }
+
+// v0.43.7: duurTekst
+{ const { duurTekst } = require('../netlify/functions/_lib/util');
+  assert.strictEqual(duurTekst(20.4), '20 mnd 12 dgn'); assert.strictEqual(duurTekst(7), '7 mnd'); assert.strictEqual(duurTekst(34.5), '34 mnd 15 dgn');
+  assert.strictEqual(duurTekst(0.5), '15 dgn'); assert.strictEqual(duurTekst(11.99), '12 mnd'); assert.strictEqual(duurTekst(1.03, true), '1 maand 1 dag');
+  console.log('duurTekst OK'); }

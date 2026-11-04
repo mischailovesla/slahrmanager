@@ -6,6 +6,13 @@ function naamPast(a, b) {
   if (!A.length || !B.size) return true; // te weinig om te beoordelen
   return A.some(d => B.has(d));
 }
+// v0.43.7: duur in maanden (decimaal, bv. 20.4) leesbaar: '20 mnd 12 dgn'. lang = 'maanden'/'dagen' voluit.
+function duurTekst(m, lang) {
+  const n = Number(m); if (!isFinite(n) || n < 0) return String(m == null ? '' : m);
+  let mnd = Math.floor(n), d = Math.round((n - mnd) * 30.4375); if (d >= 30) { mnd++; d = 0; }
+  const M = lang ? (mnd === 1 ? ' maand' : ' maanden') : ' mnd', D = lang ? (d === 1 ? ' dag' : ' dagen') : (d === 1 ? ' dag' : ' dgn');
+  return mnd && d ? mnd + M + ' ' + d + D : mnd ? mnd + M : d + D;
+}
 function normNaam(s) {
   s = String(s || '').toLowerCase();
   try { s = s.normalize('NFD').replace(/[̀-ͯ]/g, ''); } catch (e) { /* noop */ }
@@ -61,4 +68,4 @@ function vindKolommen(headerRij, specs) {
   return res;
 }
 
-module.exports = { naamPast, normNaam, parseNLDatum, dagenTot, vandaagNL, toDownloadUrl, vindKolommen };
+module.exports = { duurTekst, naamPast, normNaam, parseNLDatum, dagenTot, vandaagNL, toDownloadUrl, vindKolommen };

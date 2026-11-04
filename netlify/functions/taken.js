@@ -62,7 +62,7 @@ function uitCheck(naam, items, tijd) {
     else if (naam === 'verlengingen') {
       // Fase 4c: één taak per aflopend contract (vervangt de losse aanzeg- en ketentaken voor dezelfde persoon)
       const persoon = { naam: g.naam, email: g.email || '', winkel: g.winkel || '', mid: g.mid, startIso: g.startIso, eindIso: g.eindIso, einddatum: g.einddatum, dagenTotEinde: g.dagenTotEinde, deadline: g.deadline, wettelijkeDeadline: g.wettelijkeDeadline, aanzegplichtig: g.aanzegplichtig, duurMnd: g.duurMnd, keten: g.keten, besluit: g.besluit, smAdvies: g.smAdvies || null };
-      const ketenTekst = (g.keten ? g.keten.aantal + ' contract' + (g.keten.aantal === 1 ? '' : 'en') + ', ' + g.keten.maanden + ' mnd' + (g.keten.vol ? ' · keten vol' : g.keten.laatste ? ' · volgende = laatste tijdelijke' : '') : '');
+      const ketenTekst = (g.keten ? g.keten.aantal + ' contract' + (g.keten.aantal === 1 ? '' : 'en') + ', ' + require('./_lib/util').duurTekst(g.keten.maanden) + (g.keten.vol ? ' · keten vol' : g.keten.laatste ? ' · volgende = laatste tijdelijke' : '') : '');
       // v0.31.2: wie het besluit vastlegde en wanneer
       const doorVan = d => { const n = String(d || '').split('@')[0]; return n ? n.charAt(0).toUpperCase() + n.slice(1) : ''; };
       const opNL = s => { const m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[3] + '-' + m[2] : ''; };

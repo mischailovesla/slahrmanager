@@ -118,7 +118,7 @@ function ketenTot(lijst, idx, vandaag, correctie) {
   const volDuur = dagen(start, plusMaanden(eind, 1)) > C.KETEN_MAX_MAANDEN * 30.4375; // zelfs 1 maand verlenging gaat over de grens
   const overDuur = dagen(start, eind) > C.KETEN_MAX_MAANDEN * 30.4375 + 1;           // al over de grens
   const vol = volAantal || volDuur;
-  const reden = volAantal ? aantal + 'e tijdelijke contract (max. ' + C.KETEN_MAX_CONTRACTEN + ')' : volDuur ? 'keten loopt tegen ' + C.KETEN_MAX_MAANDEN + ' maanden (nu ' + maanden + ')' : '';
+  const reden = volAantal ? aantal + 'e tijdelijke contract (max. ' + C.KETEN_MAX_CONTRACTEN + ')' : volDuur ? 'keten loopt tegen ' + C.KETEN_MAX_MAANDEN + ' maanden (nu ' + require('./util').duurTekst(maanden, true) + ')' : '';
   return { keten, aantal, maanden, vol, reden, gecorrigeerd, overGrens: aantal > C.KETEN_MAX_CONTRACTEN || overDuur, startKeten: keten[0].start };
 }
 

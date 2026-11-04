@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.43.7', datum: '04-11-2026', titel: 'Contractduur leesbaar: maanden en dagen', punten: [
+    'De duur van de contractketen staat nu als <b>20 mnd 12 dgn</b> in plaats van "20,4 mnd" (dat was 20 maanden en 0,4 van een maand). Geldt voor de takenlijst, het dossier, Contractverlenging en de contractmail aan HR.'
+  ] },
+  { nummer: '0.43.6', datum: '04-11-2026', titel: 'Herstel: dossiers openen weer', punten: [
+    'Sinds versie 0.42.0 gaven het medewerkersdossier en de dossier-PDF een foutmelding (502). Opgelost. De automatische controle vóór elke oplevering test nu ook of elke serverfunctie goed laadt, zodat dit niet meer onopgemerkt kan gebeuren.'
+  ] },
   { nummer: '0.43.5', datum: '04-11-2026', titel: 'Te doen: geen weekendtaken meer voor Zuidas', punten: [
     'De takenlijst liet nog weekendbeschikbaarheid-taken voor Zuidas zien uit de run van afgelopen maandag (van vóór de aanpassing). Die worden nu direct weggefilterd, zonder te wachten op de volgende run.'
   ] },
