@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.47.0', datum: '05-11-2026', titel: 'Fooiverdeling: PDF per winkel', punten: [
+    'In <b>Fooiverdeling</b> staat achter elke winkel een knop <b>📄 PDF</b>: de verdeling van die winkel op A4 (fooi, uren, fooi per uur, bij Ceintuur/Midden de verdeelsleutel, en per medewerker uren, aandeel en fooi).',
+    '<b>📄 PDF per winkel</b> bovenaan maakt in één keer een zip met een PDF per winkel.',
+    'Is de maand nog niet vastgelegd, dan staat er duidelijk <b>CONCEPT</b> op de PDF en in de bestandsnaam.'
+  ] },
   { nummer: '0.46.2', datum: '05-11-2026', titel: 'Fooiverdeling: omzet automatisch uit Shiftbase', punten: [
     'De omzet van Ceintuurbaan, Westerstraat, Middenweg en Haarlemmerdijk komt nu automatisch uit <b>Shiftbase</b> (de gerealiseerde omzet die daar elke dag vanuit de kassa wordt gezet). Er is geen extra Supabase-sleutel meer nodig.',
     'Lukt dat niet, dan kun je de omzet nog steeds zelf invullen.'

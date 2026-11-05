@@ -8,6 +8,12 @@ exports.handler = beveiligd('fooi', async (event, gebruiker) => {
   if (p.actie === 'plak') return F.leesPlaktekst(p.tekst);
   if (p.actie === 'bereken') { const r = await F.maakOverzicht(p.jaar, p.maand, F.schoonPotten(p.potten), F.schoonHandmatig(p.handmatig), !!p.ververs); r.opslag = p.opslag || null; return r; }
   if (p.actie === 'opslaan' || p.actie === 'definitief') return F.opslaan(p.jaar, p.maand, p.potten, p.handmatig, p.actie === 'definitief', gebruiker);
+  if (p.actie === 'pdf') { // v0.47.0: PDF per winkel (winkel = code) of zip met alle winkels (winkel = 'alle')
+    const r = await F.voorExport(p.jaar, p.maand, p.potten, p.handmatig);
+    const uit = await require('./_lib/fooi-pdf').exporteer(r, p.winkel || 'alle', gebruiker.naam || gebruiker.email);
+    await require('./_lib/auth').logActie({ door: gebruiker.email, actie: 'fooi-pdf', bron: 'fooi', naam: r.periode.label, details: (p.winkel || 'alle') + (r.opslag && r.opslag.status === 'definitief' ? ' (definitief)' : ' (concept)') });
+    return uit;
+  }
   if (p.actie === 'heropen') return F.heropen(p.jaar, p.maand, gebruiker);
   throw new Error('Onbekende actie.');
 });

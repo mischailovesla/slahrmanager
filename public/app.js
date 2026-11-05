@@ -2410,7 +2410,7 @@
           + '<td>' + esc(x.naam) + '<div class="lay-sub">' + esc(x.bv) + '</div></td><td style="text-align:right">' + foNum(x.uren) + '</td><td style="text-align:right">' + (p.gedeeld ? foEur(x.omzet) + (x.omzetBron === 'handmatig' ? '<div class="lay-sub">handmatig</div>' : '') : '<span class="no-doc">n.v.t.</span>') + '</td>'
           + '<td style="text-align:right">' + (p.gedeeld ? foPct(x.urenAandeel) : '') + '</td><td style="text-align:right">' + (p.gedeeld ? foPct(x.omzetAandeel) : '') + '</td><td style="text-align:right"><strong>' + (p.gedeeld ? foPct(x.sleutel) : '100%') + '</strong></td>'
           + '<td style="text-align:right"><strong>' + foEur(x.fooi) + '</strong></td><td style="text-align:right">' + (x.perUur == null ? '-' : foEur(x.perUur)) + '</td>'
-          + '<td>' + (x.medewerkers.length ? '<button class="btn bd bsm" onclick="var e=document.getElementById(\'' + id + '\');e.style.display=e.style.display===\'none\'?\'table-row\':\'none\'">' + x.medewerkers.length + ' mw ▾</button>' : '') + '</td></tr>';
+          + '<td style="white-space:nowrap">' + (x.medewerkers.length ? '<button class="btn bd bsm" onclick="var e=document.getElementById(\'' + id + '\');e.style.display=e.style.display===\'none\'?\'table-row\':\'none\'">' + x.medewerkers.length + ' mw ▾</button> <button class="btn bd bsm" title="PDF van deze winkel" onclick="foPdf(\'' + x.code + '\')">📄 PDF</button>' : '') + '</td></tr>';
         if (x.medewerkers.length) html += '<tr id="' + id + '" style="display:none"><td></td><td colspan="9" style="background:#faf8f6;padding:8px 14px"><table style="width:100%"><thead><tr><th>Naam</th><th style="text-align:right">Uren</th><th style="text-align:right">Aandeel</th><th style="text-align:right">Fooi</th></tr></thead><tbody>'
           + x.medewerkers.map(function (m) { return '<tr><td>' + esc(m.naam) + '</td><td style="text-align:right">' + foNum(m.uren) + '</td><td style="text-align:right">' + foPct(m.aandeel) + '</td><td style="text-align:right">' + foEur(m.fooi) + '</td></tr>'; }).join('') + '</tbody></table></td></tr>';
       });
@@ -2458,6 +2458,19 @@
     var r = await api('/api/fooi', { actie: 'heropen', jaar: foData.periode.jaar, maand: foData.periode.maand });
     if (!r.success) { toast(r.bericht, 'err'); return; }
     foTeken(r); toast('Heropend', 'ok');
+  };
+  // v0.47.0: PDF per winkel, of alle winkels als zip (één PDF per winkel)
+  window.foPdf = async function (code) {
+    if (!foData) { toast('Haal eerst een maand op', 'err'); return; }
+    var inv = foInvoer(); inv.actie = 'pdf'; inv.winkel = code || 'alle';
+    toast(code ? 'PDF maken…' : 'PDF\'s per winkel maken…', 'ok');
+    var r = await api('/api/fooi', inv);
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    var bin = atob(r.pdf), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([arr], { type: r.mime || 'application/pdf' })); a.download = r.bestandsnaam;
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 4000);
+    if (!code) toast(r.aantal + ' PDF\'s gedownload (zip)', 'ok');
   };
   window.foExport = function () {
     if (!foData || !foData.medewerkers.length) { toast('Nog niets om te exporteren', 'err'); return; }

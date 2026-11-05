@@ -331,6 +331,16 @@ async function opslaan(jaar, maand, potten, handmatig, definitief, gebruiker) {
   return r;
 }
 
+// v0.47.0: resultaat voor de PDF-export — definitief = bevroren momentopname, anders live met de invoer van het scherm
+async function voorExport(jaar, maand, potten, handmatig) {
+  const p = periode(jaar, maand);
+  const rd = await laadRonde(p.jaar, p.maand);
+  if (rd && rd.status === 'definitief' && rd.resultaat) return Object.assign({}, rd.resultaat, { opslag: { status: rd.status, door: rd.opgeslagen_door, op: rd.opgeslagen_op } });
+  const r = await maakOverzicht(p.jaar, p.maand, schoonPotten(potten), schoonHandmatig(handmatig), false);
+  r.opslag = rd && !rd.ontbreekt ? { status: 'concept', door: rd.opgeslagen_door, op: rd.opgeslagen_op } : null;
+  return r;
+}
+
 async function heropen(jaar, maand, gebruiker) {
   const p = periode(jaar, maand);
   const { admin, logActie } = require('./auth');
@@ -340,4 +350,4 @@ async function heropen(jaar, maand, gebruiker) {
   return getFooi(p.jaar, p.maand, true);
 }
 
-module.exports = { omzetUitTeamDays, POTTEN, OMZET_WINKEL, periode, bedrag, leesPlaktekst, verdeelCenten, urenVan, verwerkTimesheets, omzetPerCode, bereken, getFooi, opslaan, heropen, schoonPotten, schoonHandmatig, maakOverzicht };
+module.exports = { voorExport, omzetUitTeamDays, POTTEN, OMZET_WINKEL, periode, bedrag, leesPlaktekst, verdeelCenten, urenVan, verwerkTimesheets, omzetPerCode, bereken, getFooi, opslaan, heropen, schoonPotten, schoonHandmatig, maakOverzicht };
