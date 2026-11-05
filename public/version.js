@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.45.0', datum: '04-11-2026', titel: 'Loonheffingskorting wijzigen: alleen de digitale loonheffingsverklaring', punten: [
+    'De mail van <b>In dienst → Loonheffingskorting</b> (aanzetten, uitzetten, wijzigen) stuurt de medewerker nu naar de <b>online loonheffingsverklaring</b>, zonder indiensttredingsformulier. Gegevens staan al klaar, Ja/Nee en de ingangsdatum zijn vooraf gekozen volgens het verzoek. Downloaden, printen en uploaden is niet meer nodig; het papieren formulier uploaden kan nog wel.',
+    'De ondertekende PDF komt in het dossier loonheffingskorting (staat dan op Retour) en gaat via <b>→ Salaris</b> naar Mahdia zoals altijd. Kiest de medewerker iets anders dan gevraagd (bijv. Ja in plaats van Nee), dan staat dat in het logboek.',
+    'De uitnodiging bij <b>Instroom → Loonheffing</b> blijft voor nieuwe medewerkers: indiensttredingsformulier + loonheffingsverklaring.'
+  ] },
   { nummer: '0.44.4', datum: '04-11-2026', titel: 'Dossier en checklist werken ook als iemand uit Shiftbase is verwijderd', punten: [
     'Is een medewerker al uit Shiftbase verwijderd (zoals Alexandre Goncalves), dan gaf <b>Checklist</b> of <b>Dossier</b> de melding "Geef id, naam of e-mail op." Nu zoekt het dossier dan verder op naam en e-mail, zodat je de offboarding-checklist gewoon kunt aftekenen. Bovenaan staat dan "niet gevonden in Shiftbase".'
   ] },

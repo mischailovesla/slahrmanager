@@ -41,6 +41,11 @@ assert.ok(/loonheffing\.html\?t=/.test(T.loonHtml('herinnering', 'Test Persoon',
 const pl = T.personaliseerUploadLinks(T.loonPlain('uitnodiging', 'Test Persoon', '', false), 'Test Persoon');
 assert.ok(/loonheffing\.html\?t=/.test(pl) && /indienst\.html\?t=/.test(pl));
 assert.ok(/\/loonheffing\.html\?t=/.test(L.link('Test Persoon')));
+// v0.45.0: korting-mail → digitaal formulier met korting-token
+const U = require('../netlify/functions/_lib/uploads.js');
+const kl = L.link('Test Persoon', 'korting'); assert.strictEqual(U.leesToken(kl.split('t=')[1]).s, 'korting');
+const km = T.kortingHtml('Test Persoon', 'Uitzetten', '01-12-2026', '', false, false); assert.ok(/loonheffing\.html\?t=/.test(km) && /upload\.html\?t=/.test(km) && /Nee/.test(km));
+assert.ok(/loonheffing\.html\?t=/.test(T.kortingPlain('Test Persoon', 'Aanzetten', '', '', true, true)));
 // controle met een nagemaakte pagina (zonder opslaan)
 L.controleerModel({ haal: async () => html, opslaan: false }).then(async r => {
   assert.strictEqual(r.status, 'nieuw'); assert.strictEqual(r.gevonden.code, 'LH 008 - 2Z*13FOL');

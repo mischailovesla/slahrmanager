@@ -53,7 +53,7 @@
 (function () {
   var t = new URLSearchParams(location.search).get('t') || '', info = null, taal = /^en/i.test(navigator.language) ? 'en' : 'nl', w = {}, fouten = {}, klaar = false, streken = [], suggestie = null, laatsteZoek = '';
   var TX = {
-    nl: { titel: 'Loonheffingsverklaring', hallo: 'Hoi {n}, met dit formulier geef je de gegevens door die we nodig hebben om de juiste loonbelasting in te houden. Het vraagt hetzelfde als het formulier "Opgaaf gegevens voor de loonheffingen" van de Belastingdienst, maar dan online. Je ondertekent onderaan met je vinger of muis.',
+    nl: { titelK: 'Wijziging loonheffingskorting', halloK: 'Hoi {n}, je wilt de loonheffingskorting wijzigen. Daarvoor vul je je loonheffingsverklaring opnieuw in en onderteken je hem. Je gegevens staan al klaar: controleer ze, vul je BSN in en kies bij stap 2 wat je wilt.', titel: 'Loonheffingsverklaring', hallo: 'Hoi {n}, met dit formulier geef je de gegevens door die we nodig hebben om de juiste loonbelasting in te houden. Het vraagt hetzelfde als het formulier "Opgaaf gegevens voor de loonheffingen" van de Belastingdienst, maar dan online. Je ondertekent onderaan met je vinger of muis.',
       al: 'We hebben al een loonheffingsverklaring van je ontvangen ({d}). Wil je iets wijzigen, bijvoorbeeld de loonheffingskorting? Vul het formulier dan opnieuw in; de nieuwste versie telt.',
       vooraf: 'Je gegevens van het indiensttredingsformulier staan al ingevuld. Controleer ze en vul je BSN in.',
       s1: 'Jouw gegevens', s2: 'Loonheffingskorting', s3: 'Ondertekenen',
@@ -71,7 +71,7 @@
         'pc-onbekend': 'Deze postcode bestaat niet.', 'pc-huisnummer': 'Dit huisnummer bestaat niet bij deze postcode.', 'pc-woonplaats': 'Deze woonplaats hoort niet bij je postcode.' },
       Fx: { bsn: 'Dit is geen geldig BSN (9 cijfers).', handtekening: 'Zet je handtekening in het vak.', akkoord: 'Vink aan dat je het formulier ondertekent.', lhk: 'Kies Ja of Nee.' },
       voet: 'Je gegevens worden versleuteld opgeslagen in de beveiligde HR-omgeving van SLA en zijn alleen zichtbaar voor HR en de salarisadministratie. Vragen? <a href="mailto:hr@ilovesla.com" style="color:var(--groen)">hr@ilovesla.com</a>' },
-    en: { titel: 'Payroll tax statement', hallo: 'Hi {n}, with this form you give us the details we need to withhold the correct payroll tax. It asks the same as the Dutch tax office form "Opgaaf gegevens voor de loonheffingen", but online. You sign at the bottom with your finger or mouse.',
+    en: { titelK: 'Change of payroll tax credit', halloK: 'Hi {n}, you want to change your payroll tax credit. To do so, fill in your payroll tax statement again and sign it. Your details are already filled in: check them, enter your BSN and choose what you want in step 2.', titel: 'Payroll tax statement', hallo: 'Hi {n}, with this form you give us the details we need to withhold the correct payroll tax. It asks the same as the Dutch tax office form "Opgaaf gegevens voor de loonheffingen", but online. You sign at the bottom with your finger or mouse.',
       al: 'We already received a payroll tax statement from you ({d}). Want to change something, for example the payroll tax credit? Then fill in the form again; the latest version counts.',
       vooraf: 'Your details from the employment registration form are already filled in. Please check them and enter your BSN.',
       s1: 'Your details', s2: 'Payroll tax credit (loonheffingskorting)', s3: 'Sign',
@@ -120,10 +120,11 @@
   function render() {
     g('voet').innerHTML = tx('voet');
     if (!info) return;
-    if (klaar) { g('card').innerHTML = '<h1>✓ ' + esc(tx('titel')) + '</h1><div class="melding groen">' + esc(tx('klaar')) + '</div><p class="sub">' + esc(tx(w.lhk === 'ja' ? 'klaarJa' : 'klaarNee')) + '</p>'; return; }
-    var h = '<h1>' + esc(tx('titel')) + '</h1><p class="sub">' + esc(tx('hallo').replace('{n}', info.naam.split(' ')[0])) + '</p>'
+    if (klaar) { g('card').innerHTML = '<h1>✓ ' + esc(tx(info.modus === 'korting' ? 'titelK' : 'titel')) + '</h1><div class="melding groen">' + esc(tx('klaar')) + '</div><p class="sub">' + esc(tx(w.lhk === 'ja' ? 'klaarJa' : 'klaarNee')) + '</p>'; return; }
+    var K = info.modus === 'korting'; // v0.45.0: wijziging loonheffingskorting (bestaande medewerker)
+    var h = '<h1>' + esc(tx(K ? 'titelK' : 'titel')) + '</h1><p class="sub">' + esc(tx(K ? 'halloK' : 'hallo').replace('{n}', info.naam.split(' ')[0])) + '</p>'
       + (info.al ? '<div class="melding oranje">' + esc(tx('al').replace('{d}', new Date(info.al.op).toLocaleDateString(taal === 'en' ? 'en-GB' : 'nl-NL'))) + '</div>' : '')
-      + (info.voorinvullen && info.voorinvullen._uitIndienst ? '<div class="hint" style="margin:-8px 0 12px">' + esc(tx('vooraf')) + '</div>' : '') + '<div id="melding"></div>';
+      + (!K && info.voorinvullen && info.voorinvullen._uitIndienst ? '<div class="hint" style="margin:-8px 0 12px">' + esc(tx('vooraf')) + '</div>' : '') + '<div id="melding"></div>';
     h += '<h2><b>1</b>' + esc(tx('s1')) + '</h2>' + veld('bsn', 'text', { attr: ' inputmode="numeric" maxlength="11" autocomplete="off"', hint: 'bsnHint' })
       + '<div class="rij">' + veld('voorletters', 'text', { attr: ' maxlength="12"' }) + veld('tussenvoegsel', 'text', { attr: ' maxlength="20"' }) + '</div>'
       + '<div class="rij">' + veld('achternaam', 'text', { attr: ' autocomplete="family-name"' }) + veld('geboortedatum', 'date', { attr: ' autocomplete="bday"' }) + '</div>'

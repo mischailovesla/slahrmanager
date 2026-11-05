@@ -148,19 +148,21 @@ async function opslaan(tok, s, meta) {
   const bytes = await maakPdf(s, Object.assign({}, meta, { tijd, model, hash, werkgever }));
   const pdfHash = crypto.createHash('sha256').update(Buffer.from(bytes)).digest('hex');
   const bestandsnaam = 'Loonheffingsverklaring_' + (s.naamVoorletters || tok.n).replace(/[^\w\-]+/g, '_') + '.pdf';
-  const pad = 'loon/' + slug(tok.n) + '/' + Date.now() + '_loon_' + bestandsnaam;
+  const soort = tok.s === 'korting' ? 'korting' : 'loon', key = soort; // v0.45.0: ook voor een wijziging van de loonheffingskorting (bestaande medewerker)
+  const pad = soort + '/' + slug(tok.n) + '/' + Date.now() + '_' + key + '_' + bestandsnaam;
   const { error: e1 } = await db.storage.from(U.BUCKET).upload(pad, Buffer.from(bytes), { contentType: 'application/pdf', upsert: false });
   if (e1) throw new Error('Opslaan mislukt: ' + e1.message);
   const bsnHash = I().bsnHash(s.bsn);
   const gegevens = { lhk: s.lhk, lhkVanaf: s.lhkVanaf, buitenland: s.buitenland, model: model.code, getekendOp: tijd, gegevensHash: hash, pdfHash, bsnHash,
     bsnGelijkAanIndienst: ind && ind.bsnHash ? ind.bsnHash === bsnHash : null, geboortedatum: s.geboortedatum, woonplaats: s.woonplaats };
-  const bestand = { key: 'loon', label: LABEL, pad, naam_orig: bestandsnaam, bytes: bytes.length, mime: 'application/pdf', bron: 'webformulier', gegevens };
-  const { data, error } = await db.from('hr_uploads').insert({ soort: 'loon', naam: tok.n, email: (ind && ind.email) || meta.email || null, bestanden: [bestand], ip: meta.ip || null }).select('id').single();
+  const bestand = { key, label: soort === 'korting' ? 'Ondertekend formulier loonheffingskorting (digitaal)' : LABEL, pad, naam_orig: bestandsnaam, bytes: bytes.length, mime: 'application/pdf', bron: 'webformulier', gegevens };
+  if (meta.keuze) gegevens.gevraagd = meta.keuze;
+  const { data, error } = await db.from('hr_uploads').insert({ soort, naam: tok.n, email: (ind && ind.email) || meta.email || null, bestanden: [bestand], ip: meta.ip || null }).select('id').single();
   if (error) throw new Error('hr_uploads: ' + error.message);
-  const refs = { loon: 'sb:' + data.id + ':loon' };
+  const refs = { [key]: 'sb:' + data.id + ':' + key };
   try { await require('./vinkje').zetVinkje(tok, refs); } catch (e) { console.warn('vinkje loonheffing:', e.message); }
   try { const S = require('./sheets'); if (S.vergeetCache) S.vergeetCache(); } catch (e) { /* */ }
-  return { id: data.id, ref: refs.loon, pdfHash, gegevens };
+  return { id: data.id, ref: refs[key], pdfHash, gegevens };
 }
 
 // ---------- voorinvullen uit het indiensttredingsformulier (nooit het BSN) ----------
@@ -183,7 +185,12 @@ async function alAanwezig(naam) {
   for (const u of data || []) if (normNaam(u.naam) === normNaam(naam)) { const b = (u.bestanden || []).find(x => x.key === 'loon'); if (b) return { op: u.created_at, web: b.bron === 'webformulier' }; }
   return null;
 }
-const link = naam => require('./uploads').site() + '/loonheffing.html' + (naam ? '?t=' + require('./uploads').maakToken('loon', naam) : '');
+const link = (naam, soort) => require('./uploads').site() + '/loonheffing.html' + (naam ? '?t=' + require('./uploads').maakToken(soort === 'korting' ? 'korting' : 'loon', naam) : '');
+// v0.45.0: open dossier loonheffingskorting (nieuwste, nog niet retour) → { keuze, ingangsdatum }
+async function openKorting(naam) {
+  const r = (await require('./sheets').getKorting()).find(x => normNaam(x.naam) === normNaam(naam) && x.retour !== 'Ja');
+  return r ? { keuze: r.keuze || '', ingangsdatum: r.ingangsdatum || '', rij: r.rij } : null;
+}
 
 // ---------- versiecontrole van het model ----------
 function codeUitBestand(b) {
@@ -246,4 +253,4 @@ async function overnemen(door) {
   return nieuw;
 }
 
-module.exports = { LABEL, valideer, leesHandtekening, gegevensHash, maakPdf, opslaan, voorinvullen, alAanwezig, link, codeUitBestand, parseModelPagina, huidigModel, controleerModel, markeer, modelStatus, overnemen };
+module.exports = { openKorting, LABEL, valideer, leesHandtekening, gegevensHash, maakPdf, opslaan, voorinvullen, alAanwezig, link, codeUitBestand, parseModelPagina, huidigModel, controleerModel, markeer, modelStatus, overnemen };

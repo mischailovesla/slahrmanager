@@ -15,10 +15,15 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return json(405, { success: false, bericht: 'Gebruik POST' });
   try {
     const p = body(event), tok = U.leesToken(p.t);
-    if (tok.s !== 'loon') throw new Error('Ongeldige link.');
+    if (tok.s !== 'loon' && tok.s !== 'korting') throw new Error('Ongeldige link.');
+    const isKorting = tok.s === 'korting'; // v0.45.0: wijziging loonheffingskorting voor een bestaande medewerker
     if (!p.stap) {
-      const [pre, model, al] = await Promise.all([L.voorinvullen(tok.n), L.huidigModel(), L.alAanwezig(tok.n).catch(() => null)]);
-      return json(200, { success: true, naam: tok.n, voorinvullen: pre, model: { code: model.code }, al: al ? { op: al.op, web: al.web } : null });
+      const [pre, model, al, kort] = await Promise.all([L.voorinvullen(tok.n), L.huidigModel(), isKorting ? null : L.alAanwezig(tok.n).catch(() => null), isKorting ? L.openKorting(tok.n).catch(() => null) : null]);
+      if (kort) {
+        if (/^aan/i.test(kort.keuze)) pre.lhk = 'ja'; else if (/^uit/i.test(kort.keuze)) pre.lhk = 'nee';
+        const m = String(kort.ingangsdatum || '').match(/^(\d{2})-(\d{2})-(\d{4})$/); if (m) pre.lhkVanaf = m[3] + '-' + m[2] + '-' + m[1];
+      }
+      return json(200, { success: true, naam: tok.n, modus: isKorting ? 'korting' : 'loon', keuze: kort ? kort.keuze : '', voorinvullen: pre, model: { code: model.code }, al: al ? { op: al.op, web: al.web } : null });
     }
     if (p.stap === 'adres') { const a = await I.zoekAdres(p.postcode, p.huisnummer); return json(200, { success: true, adres: a || null, bereikbaar: a !== undefined }); }
     if (p.stap === 'verstuur') {
@@ -27,10 +32,12 @@ exports.handler = async (event) => {
       const sugg = v.fouten._suggestie; delete v.fouten._suggestie;
       if (Object.keys(v.fouten).length) { await I.logFouten(tok.n, Object.keys(v.fouten).map(k => 'lh-' + k), 'loonheffing').catch(() => {}); return json(200, { success: false, fouten: v.fouten, suggestie: sugg ? { woonplaats: sugg } : null, bericht: 'Controleer de gemarkeerde velden.' }); }
       const h = event.headers || {}, ip = h['x-nf-client-connection-ip'] || h['client-ip'] || null;
-      const r = await L.opslaan(tok, v.schoon, { ip, browser: h['user-agent'] || '', handtekening: v.handtekening });
+      const kort = isKorting ? await L.openKorting(tok.n).catch(() => null) : null;
+      const r = await L.opslaan(tok, v.schoon, { ip, browser: h['user-agent'] || '', handtekening: v.handtekening, keuze: kort ? kort.keuze : '' });
+      const afwijkend = kort && ((/^aan/i.test(kort.keuze) && v.schoon.lhk !== 'ja') || (/^uit/i.test(kort.keuze) && v.schoon.lhk !== 'nee'));
       // logboek zonder BSN
-      await logActie({ door: 'loonheffingformulier:' + tok.n, actie: 'upload', bron: 'loon', veld: 'loon', naam: tok.n, nieuw: r.id,
-        details: 'Loonheffingsverklaring digitaal ondertekend · loonheffingskorting ' + (v.schoon.lhk === 'ja' ? 'ja vanaf ' + v.schoon.lhkVanaf : 'nee') + ' · model ' + r.gegevens.model + ' · SHA-256 ' + r.pdfHash.slice(0, 16) + '…' + (r.gegevens.bsnGelijkAanIndienst === false ? ' · LET OP: BSN wijkt af van het indiensttredingsformulier' : '') });
+      await logActie({ door: 'loonheffingformulier:' + tok.n, actie: 'upload', bron: isKorting ? 'korting' : 'loon', veld: isKorting ? 'korting' : 'loon', naam: tok.n, nieuw: r.id,
+        details: (isKorting ? 'Wijziging loonheffingskorting digitaal ondertekend' + (afwijkend ? ' · LET OP: gevraagd was "' + kort.keuze + '", medewerker koos anders' : '') : 'Loonheffingsverklaring digitaal ondertekend') + ' · loonheffingskorting ' + (v.schoon.lhk === 'ja' ? 'ja vanaf ' + v.schoon.lhkVanaf : 'nee') + ' · model ' + r.gegevens.model + ' · SHA-256 ' + r.pdfHash.slice(0, 16) + '…' + (r.gegevens.bsnGelijkAanIndienst === false ? ' · LET OP: BSN wijkt af van het indiensttredingsformulier' : '') });
       return json(200, { success: true, lhk: v.schoon.lhk });
     }
     return json(400, { success: false, bericht: 'Onbekende stap' });
