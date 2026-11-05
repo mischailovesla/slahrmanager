@@ -8,13 +8,13 @@
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['sbtemplates', 'Shiftbase-templates'], ['checkin', 'Check-in 30/60'], ['eerstedienst', 'Tijd tot eerste dienst']] },
-    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
+    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['fooi', 'Fooiverdeling'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegang & log (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -68,6 +68,7 @@
     if (tab === 'loonheffingskorting' && !krtData) laadKorting();
     if (tab === 'contract' && !ctrData) laadContract(false);
     if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
+    if (tab === 'fooi' && !foData) foLaad(false); // v0.46.0
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
     if (tab === 'exit' && !exData) laadExit(12);
     if (tab === 'checkin' && !ciData) laadCheckin(6);
@@ -131,6 +132,7 @@
     overplaatsing: ['Overplaatsing', 'Overplaatsing naar een andere BV of standplaatswijziging, met brief en doorgeven aan salaris.'],
     vakantie: ['Vakantieplanner', 'Vakantie en afwezigheid per winkel per week.'],
     vastloners: ['Vastloners', 'Maandmutaties salaris voor de vaste krachten en store managers.'],
+    fooi: ['Fooiverdeling', 'Fooi per maand verdelen: gedeelde BV\'s naar winkel (50% uren / 50% omzet), daarna per medewerker naar gewerkte uren.'],
     training: ['Training & certificaten', 'Voortgang in SLA Academy per winkel en medewerker.'],
     verlenging: ['Contractverlengingen', 'Aflopende tijdelijke contracten: besluit vastleggen, advies van de Store Manager en vervolg.'],
     gesprekken: ['Gesprekken', 'Alle vastgelegde gesprekken en openstaande vervolgafspraken.'],
@@ -2343,6 +2345,129 @@
     });
     if (!n) t += 'Geen bijzonderheden deze maand.\n';
     navigator.clipboard.writeText(t).then(function () { toast('Overzicht gekopieerd', 'ok'); }, function () { toast('Kopiëren mislukt', 'err'); });
+  };
+
+  // ---------- Fooiverdeling (v0.46.0) ----------
+  var foData = null;
+  (function () {
+    var mn = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+    var nu = new Date(), vm = new Date(nu.getFullYear(), nu.getMonth() - 1, 1), h = '', jh = '';
+    for (var i = 0; i < 12; i++) h += '<option value="' + (i + 1) + '">' + mn[i] + '</option>';
+    for (var y = nu.getFullYear(); y >= nu.getFullYear() - 2; y--) jh += '<option value="' + y + '">' + y + '</option>';
+    g('fo-maand').innerHTML = h; g('fo-jaar').innerHTML = jh; g('fo-maand').value = String(vm.getMonth() + 1); g('fo-jaar').value = String(vm.getFullYear());
+  })();
+  var foEur = function (x) { return x == null ? '-' : '€ ' + Number(x).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var foNum = function (x, d) { return x == null ? '-' : Number(x).toLocaleString('nl-NL', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d }); };
+  var foPct = function (x) { return x == null ? '-' : (x * 100).toLocaleString('nl-NL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'; };
+  function foInvoer() {
+    var potten = {}, hand = {};
+    document.querySelectorAll('#fo-potten input[data-pot]').forEach(function (i) { if (i.value.trim() !== '') potten[i.getAttribute('data-pot')] = i.value.trim(); });
+    document.querySelectorAll('#fo-handmatig input[data-omzet]').forEach(function (i) { if (i.value.trim() !== '') hand[i.getAttribute('data-omzet')] = i.value.trim(); });
+    return { jaar: g('fo-jaar').value, maand: g('fo-maand').value, potten: potten, handmatig: hand };
+  }
+  function foTekenInvoer(r) {
+    var def = r.opslag && r.opslag.status === 'definitief', inv = (r.invoer && r.invoer.potten) || {};
+    g('fo-potten').innerHTML = (r.pottenConfig || []).map(function (p) {
+      var v = inv[p.id] != null ? String(inv[p.id]).replace('.', ',') : '';
+      return '<div class="fg" style="margin:0"><label style="font-size:.78rem">' + esc(p.naam) + (p.winkels.length > 1 ? ' <span style="color:#888;font-weight:400">(' + esc(p.winkels.join(' + ')) + ')</span>' : '') + '</label><input type="text" inputmode="decimal" data-pot="' + esc(p.id) + '" value="' + esc(v) + '" placeholder="0,00"' + (def ? ' disabled' : '') + '></div>';
+    }).join('');
+    // Handmatige omzet alleen tonen als de koppeling ontbreekt of er al iets handmatig staat
+    var hand = (r.invoer && r.invoer.handmatig) || {}, nodig = r.bronnen && r.bronnen.omzet !== 'omzetdashboard';
+    var hm = g('fo-handmatig');
+    if (!def && (nodig || Object.keys(hand).length)) {
+      hm.innerHTML = '<label style="font-weight:600;font-size:.82rem">Omzet gedeelde winkels (€ netto ex btw, uit het omzetdashboard)</label><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px">'
+        + [['CB', 'Ceintuurbaan'], ['WS', 'Westerstraat'], ['MW', 'Middenweg'], ['HD', 'Haarlemmerdijk']].map(function (w) { return '<div class="fg" style="margin:0"><label style="font-size:.78rem">' + w[1] + '</label><input type="text" inputmode="decimal" data-omzet="' + w[0] + '" value="' + esc(hand[w[0]] != null ? String(hand[w[0]]).replace('.', ',') : '') + '" placeholder="0,00"></div>'; }).join('') + '</div>';
+      hm.style.display = 'block';
+    } else { hm.innerHTML = ''; hm.style.display = 'none'; }
+    g('fo-invoer').style.display = def ? 'none' : 'block';
+  }
+  function foTeken(r) {
+    foData = r;
+    var def = r.opslag && r.opslag.status === 'definitief';
+    g('fo-pill').textContent = r.periode.label + (def ? ' · definitief' : r.opslag && r.opslag.status === 'concept' ? ' · concept' : '');
+    g('fo-status').innerHTML = 'Periode <strong>' + esc(r.periode.van.split('-').reverse().join('-')) + ' t/m ' + esc(r.periode.tot.split('-').reverse().join('-')) + '</strong> · uren: ' + esc(r.bronnen.uren) + ' · omzet: ' + esc(r.bronnen.omzet === 'omzetdashboard' ? 'omzetdashboard (automatisch)' : 'handmatig') + ' · opgehaald ' + esc(r.bronnen.opgehaald)
+      + (r.opslag && r.opslag.ontbreekt ? ' · <span style="color:#c0392b">tabel hr_fooi ontbreekt (migratie 0024) — bewaren kan nog niet</span>' : '');
+    foTekenInvoer(r);
+    var d = g('fo-def');
+    if (def) { d.innerHTML = '<div class="alert" style="margin:0;background:#e8f5ee;border-color:var(--groen)"><strong>✓ Definitief vastgelegd</strong> door ' + esc(r.opslag.door) + ' op ' + esc(new Date(r.opslag.op).toLocaleString('nl-NL')) + '. Dit is de bevroren verdeling. <button class="btn bd bsm" style="margin-left:10px" onclick="foHeropen()">Heropenen</button></div>'; d.style.display = 'block'; }
+    else { d.innerHTML = ''; d.style.display = 'none'; }
+    var t = r.totaal;
+    g('fo-kpi').innerHTML = '<div class="card cg"><div class="si sig">💶</div><div><div class="sv">' + foEur(t.fooi) + '</div><div class="sl">Fooi totaal</div></div></div>'
+      + '<div class="card cd"><div class="si sid">✓</div><div><div class="sv">' + foEur(t.verdeeld) + '</div><div class="sl">Verdeeld</div></div></div>'
+      + '<div class="card cw"><div class="si siw">👤</div><div><div class="sv">' + t.medewerkers + '</div><div class="sl">Medewerkers' + (t.meerdereWinkels ? ' · ' + t.meerdereWinkels + ' in 2 winkels' : '') + '</div></div></div>'
+      + '<div class="card" style="border-top:3px solid ' + (t.nietVerdeeld > 0.004 ? '#c0392b' : '#009f4b') + '"><div class="si" style="background:' + (t.nietVerdeeld > 0.004 ? '#fdecea' : '#e8f5ee') + '">' + (t.nietVerdeeld > 0.004 ? '⚠' : '=') + '</div><div><div class="sv">' + foEur(t.nietVerdeeld) + '</div><div class="sl">Niet verdeeld</div></div></div>';
+    g('fo-kpi').style.display = 'grid';
+    var w = g('fo-waarsch');
+    if (r.waarschuwingen.length) { w.innerHTML = '<div class="alert geel" style="margin:0"><strong>⚠ Controleren (' + r.waarschuwingen.length + ')</strong><ul style="margin:8px 0 0;padding-left:18px">' + r.waarschuwingen.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>'; w.style.display = 'block'; }
+    else { w.innerHTML = ''; w.style.display = 'none'; }
+    // Per pot / winkel, met uitklapbare medewerkerslijst
+    var html = '<table><thead><tr><th>Pot</th><th>Winkel</th><th style="text-align:right">Uren</th><th style="text-align:right">Omzet</th><th style="text-align:right">Uren-<br>aandeel</th><th style="text-align:right">Omzet-<br>aandeel</th><th style="text-align:right">Sleutel</th><th style="text-align:right">Fooi winkel</th><th style="text-align:right">Per uur</th><th></th></tr></thead><tbody>';
+    r.potten.forEach(function (p) {
+      if (!(p.bedrag > 0) && !p.winkels.some(function (x) { return x.uren > 0; })) return;
+      p.winkels.forEach(function (x, i) {
+        var id = 'fo-d-' + x.code;
+        html += '<tr' + (i === 0 ? ' style="border-top:2px solid #e8e2de"' : '') + '>' + (i === 0 ? '<td style="vertical-align:top"><strong>' + esc(p.naam) + '</strong><div class="lay-sub">' + foEur(p.bedrag) + '</div>' + (p.status !== 'ok' && p.status !== 'geenfooi' ? '<div class="lay-sub" style="color:#c0392b">' + esc(p.melding) + '</div>' : '') + (p.status === 'geenfooi' ? '<div class="lay-sub">geen fooi ingevuld</div>' : '') + '</td>' : '<td></td>')
+          + '<td>' + esc(x.naam) + '<div class="lay-sub">' + esc(x.bv) + '</div></td><td style="text-align:right">' + foNum(x.uren) + '</td><td style="text-align:right">' + (p.gedeeld ? foEur(x.omzet) + (x.omzetBron === 'handmatig' ? '<div class="lay-sub">handmatig</div>' : '') : '<span class="no-doc">n.v.t.</span>') + '</td>'
+          + '<td style="text-align:right">' + (p.gedeeld ? foPct(x.urenAandeel) : '') + '</td><td style="text-align:right">' + (p.gedeeld ? foPct(x.omzetAandeel) : '') + '</td><td style="text-align:right"><strong>' + (p.gedeeld ? foPct(x.sleutel) : '100%') + '</strong></td>'
+          + '<td style="text-align:right"><strong>' + foEur(x.fooi) + '</strong></td><td style="text-align:right">' + (x.perUur == null ? '-' : foEur(x.perUur)) + '</td>'
+          + '<td>' + (x.medewerkers.length ? '<button class="btn bd bsm" onclick="var e=document.getElementById(\'' + id + '\');e.style.display=e.style.display===\'none\'?\'table-row\':\'none\'">' + x.medewerkers.length + ' mw ▾</button>' : '') + '</td></tr>';
+        if (x.medewerkers.length) html += '<tr id="' + id + '" style="display:none"><td></td><td colspan="9" style="background:#faf8f6;padding:8px 14px"><table style="width:100%"><thead><tr><th>Naam</th><th style="text-align:right">Uren</th><th style="text-align:right">Aandeel</th><th style="text-align:right">Fooi</th></tr></thead><tbody>'
+          + x.medewerkers.map(function (m) { return '<tr><td>' + esc(m.naam) + '</td><td style="text-align:right">' + foNum(m.uren) + '</td><td style="text-align:right">' + foPct(m.aandeel) + '</td><td style="text-align:right">' + foEur(m.fooi) + '</td></tr>'; }).join('') + '</tbody></table></td></tr>';
+      });
+    });
+    g('fo-winkels').innerHTML = html + '</tbody></table>';
+    g('fo-mw-pill').textContent = r.medewerkers.length;
+    g('fo-mw-body').innerHTML = r.medewerkers.length ? r.medewerkers.map(function (m) {
+      return '<tr><td><strong>' + esc(m.naam) + '</strong></td><td>' + m.delen.map(function (d) { return '<span class="badge boat">' + esc(d.winkel) + '</span>' + (m.delen.length > 1 ? ' <span class="lay-sub" style="display:inline">' + foNum(d.uren) + ' u · ' + foEur(d.fooi) + '</span>' : ''); }).join('<br>') + '</td><td style="font-size:.78rem">' + m.delen.map(function (d) { return esc(d.bv); }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join('<br>') + '</td><td style="text-align:right">' + foNum(m.uren) + '</td><td style="text-align:right"><strong>' + foEur(m.fooi) + '</strong></td></tr>';
+    }).join('') : '<tr><td colspan="5" class="leeg grijs">Nog niets verdeeld — vul de fooi per pot in en klik op Bereken verdeling.</td></tr>';
+    g('fo-mw-sec').style.display = 'block';
+  }
+  window.foLaad = async function (ververs) {
+    var st = g('fo-status'); st.innerHTML = 'Uren uit Shiftbase en omzet ophalen…'; g('fo-kpi').style.display = 'none'; g('fo-winkels').innerHTML = '';
+    var r = await api('/api/fooi?jaar=' + g('fo-jaar').value + '&maand=' + g('fo-maand').value + (ververs ? '&ververs=1' : ''));
+    if (!r.success) { st.innerHTML = '<span style="color:#c0392b">' + esc(r.bericht) + '</span>'; return; }
+    foTeken(r);
+  };
+  window.foPlak = async function () {
+    var t = g('fo-plak').value; if (!t.trim()) { toast('Plak eerst de tabel uit de mail', 'err'); return; }
+    var r = await api('/api/fooi', { actie: 'plak', tekst: t });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    var n = 0;
+    document.querySelectorAll('#fo-potten input[data-pot]').forEach(function (i) { var id = i.getAttribute('data-pot'); if (r.potten[id] != null) { i.value = String(r.potten[id]).replace('.', ','); n++; } });
+    g('fo-plak-info').innerHTML = n + ' pot(ten) ingevuld' + (r.genegeerd.length ? ' · overgeslagen: ' + esc(r.genegeerd.map(function (x) { return x.replace(/\s[\d.,€\s]+$/, ''); }).join(', ')) : '') + (r.onbekend.length ? '<br><span style="color:#c0392b">Niet herkend: ' + esc(r.onbekend.join(' | ')) + '</span>' : '');
+    foBereken();
+  };
+  window.foBereken = async function () {
+    if (!foData) { toast('Haal eerst een maand op', 'err'); return; }
+    var inv = foInvoer(); inv.actie = 'bereken'; inv.opslag = foData.opslag;
+    g('fo-status').innerHTML = 'Berekenen…';
+    var r = await api('/api/fooi', inv);
+    if (!r.success) { g('fo-status').innerHTML = '<span style="color:#c0392b">' + esc(r.bericht) + '</span>'; return; }
+    foTeken(r);
+  };
+  window.foOpslaan = async function (definitief) {
+    if (!foData) { toast('Haal eerst een maand op', 'err'); return; }
+    if (definitief && !confirm('Verdeling van ' + foData.periode.label + ' definitief vastleggen? De uren en omzet worden dan bevroren.')) return;
+    var inv = foInvoer(); inv.actie = definitief ? 'definitief' : 'opslaan';
+    var r = await api('/api/fooi', inv);
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    foTeken(r); toast(definitief ? 'Verdeling definitief vastgelegd' : 'Concept bewaard', 'ok');
+  };
+  window.foHeropen = async function () {
+    if (!foData || !confirm('Deze maand heropenen? De bevroren verdeling vervalt en wordt opnieuw berekend met de actuele uren.')) return;
+    var r = await api('/api/fooi', { actie: 'heropen', jaar: foData.periode.jaar, maand: foData.periode.maand });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    foTeken(r); toast('Heropend', 'ok');
+  };
+  window.foExport = function () {
+    if (!foData || !foData.medewerkers.length) { toast('Nog niets om te exporteren', 'err'); return; }
+    var nl = function (x) { return Number(x).toFixed(2).replace('.', ','); }, q = function (s) { return '"' + String(s).replace(/"/g, '""') + '"'; };
+    var rows = [['Naam', 'Shiftbase-id', 'Winkel', 'BV', 'Uren', 'Fooi (EUR)'].join(';')];
+    foData.medewerkers.forEach(function (m) { m.delen.forEach(function (d) { rows.push([q(m.naam), m.userId, q(d.winkel), q(d.bv), nl(d.uren), nl(d.fooi)].join(';')); }); });
+    rows.push(['"Totaal"', '', '', '', nl(foData.totaal.uren), nl(foData.totaal.verdeeld)].join(';'));
+    var blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = 'fooi_' + foData.periode.jaar + '-' + String(foData.periode.maand).padStart(2, '0') + (foData.opslag && foData.opslag.status === 'definitief' ? '' : '_concept') + '.csv';
+    document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 500);
   };
 
   // ---------- Vakantieplanner (port van Shiftbase.gs v6: heatmap + stille afwezigen) ----------

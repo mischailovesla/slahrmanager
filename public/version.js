@@ -2,6 +2,16 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.46.0', datum: '05-11-2026', titel: 'Nieuw: Fooiverdeling', punten: [
+    'Nieuwe tab <b>In dienst → Fooiverdeling</b>. Plak de tabel uit de maandmail van Jop, en het dashboard vult de fooi per pot zelf in.',
+    '<b>Ceintuur BV</b> (Ceintuurbaan + Westerstraat) en <b>Midden BV</b> (Middenweg + Haarlemmerdijk) worden naar winkel verdeeld met <b>50% uren / 50% omzet</b>, net als het Excel-template. Omzet komt automatisch uit het omzetdashboard, uren uit Shiftbase.',
+    'Daarna per winkel per medewerker <b>naar rato van de geklokte uren</b> (iedereen, ook store managers). Werkte iemand in twee winkels, dan krijgt hij uit allebei een deel.',
+    '<b>Vastleggen</b> bevriest de verdeling; <b>Export voor salaris</b> geeft een CSV per medewerker met BV, uren en bedrag.'
+  ] },
+  { nummer: '0.45.2', datum: '05-11-2026', titel: 'Lege uploads worden geweigerd', punten: [
+    '<b>→ Salaris</b> gaf bij Cecile Bongers een foutmelding van de mailserver (Resend 422). Oorzaak: haar geüploade loonheffingsverklaring is <b>leeg aangekomen (0 bytes)</b>. Nu zegt het dashboard dat in gewone taal, met wat je kunt doen.',
+    'Een upload die leeg aankomt wordt voortaan meteen geweigerd, zodat de medewerker het direct opnieuw probeert.'
+  ] },
   { nummer: '0.45.1', datum: '05-11-2026', titel: 'Offboarding: uit Shiftbase verwijderd = einddatum geregeld', punten: [
     'Staat iemand met een open offboarding-checklist <b>niet meer in Shiftbase</b>, dan vinkt het dashboard het punt <b>Laatste werkdag + einddatum in Shiftbase gezet</b> automatisch af (door: systeem). In de takenlijst staat dan "niet meer in Shiftbase". De andere punten (verlof, salaris, spullen, toegang, getuigschrift, exit) blijven gewoon open tot je ze afvinkt of de checklist afrondt.'
   ] },

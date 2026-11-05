@@ -95,7 +95,11 @@ async function registreer(tok, bestanden, meta) {
     const pad = String(b.pad || ''); if (pad.indexOf(tok.s + '/' + slug(tok.n) + '/') !== 0) throw new Error('Ongeldig bestandspad.');
     const map = pad.substring(0, pad.lastIndexOf('/')), naam = pad.substring(pad.lastIndexOf('/') + 1);
     const { data, error } = await admin().storage.from(BUCKET).list(map, { search: naam });
-    if (error || !data || !data.some(o => o.name === naam)) throw new Error('Upload van "' + spec.label + '" niet gevonden in de opslag.');
+    const obj = !error && data ? data.find(o => o.name === naam) : null;
+    if (!obj) throw new Error('Upload van "' + spec.label + '" niet gevonden in de opslag.');
+    // v0.45.2: lege bestanden (0 bytes, bijv. een mislukte upload vanaf een telefoon) meteen weigeren, zodat de medewerker het opnieuw probeert
+    const grootte = obj.metadata && obj.metadata.size != null ? Number(obj.metadata.size) : null;
+    if (grootte === 0) throw new Error('Het bestand "' + (b.naam_orig || spec.label) + '" is leeg aangekomen (0 bytes). Probeer het opnieuw, of maak een foto/PDF opnieuw aan. · The file arrived empty (0 bytes). Please try again.');
     lijst.push({ key: b.key, label: spec.label, pad, naam_orig: String(b.naam_orig || '').slice(0, 120), bytes: Number(b.bytes) || 0, mime: String(b.mime || '') });
   }
   if (!lijst.length) throw new Error('Geen bestanden ontvangen.');
@@ -138,6 +142,7 @@ async function bestandMetLabel(ref, label, naam) {
   const { data, error } = await admin().storage.from(BUCKET).download(b.pad);
   if (error) throw new Error('Storage download: ' + error.message);
   const buf = Buffer.from(await data.arrayBuffer());
+  if (!buf.length) { const e = new Error('Het document "' + (b.label || label) + '" van ' + (naam || 'deze medewerker') + ' is leeg (0 bytes) in de opslag: de upload is mislukt. Vraag om een nieuw document (⋯ → 🔗 Uploadlink, of de online loonheffingsverklaring) of upload het zelf.'); e.leeg = true; throw e; } // v0.45.2
   const ext = (b.naam_orig && b.naam_orig.lastIndexOf('.') > -1 ? b.naam_orig.substring(b.naam_orig.lastIndexOf('.')) : TOEGESTAAN[b.mime]) || '';
   return { filename: label + '_' + String(naam || '').trim().replace(/\s+/g, '_') + ext.toLowerCase(), content: buf.toString('base64'), bytes: buf.length };
 }

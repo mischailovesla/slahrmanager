@@ -82,6 +82,12 @@ window.HR_HELP = {
       + '<tr><td>Shiftbase-datacontrole</td><td>Uitdienstdatum, contract, geboortedatum of e-mail aanpassen in Shiftbase.</td></tr>'
       + '<tr><td>CAO-jeugdlonen verouderd</td><td>Mischa vragen de nieuwe loontabel in te vullen (elk half jaar).</td></tr>'
       + '</tbody></table>' },
+    { id: 'fooi', titel: 'Fooiverdeling', html:
+      '<ol><li>Open <b>In dienst → Fooiverdeling</b>. De maand staat standaard op vorige maand.</li>'
+      + '<li>Plak de tabel uit de mail van Jop in het vak links en klik <b>Invullen</b>. Franchise en Haarlem worden overgeslagen.</li>'
+      + '<li>Controleer de gele meldingen. Staan er nog <i>niet-goedgekeurde timesheets</i>, laat die eerst goedkeuren in Shiftbase en klik ↻.</li>'
+      + '<li>Klik <b>✓ Vastleggen</b> en daarna <b>📥 Export voor salaris</b>.</li></ol>'
+      + '<p><b>Gedeelde BV:</b> sleutel per winkel = (urenaandeel + omzetaandeel) ÷ 2. <b>Per medewerker:</b> fooi winkel × eigen uren ÷ alle uren in die winkel. Geklokte uren excl. pauze; afgewezen timesheets tellen niet.</p>' },
     { id: 'cijfers', titel: 'Scorekaart en cijfers', html:
       '<p>De <b>Scorekaart</b> zet elke winkel naast het SLA-gemiddelde over 3, 6 of 12 maanden. <span class="badge br">rood</span> = duidelijk slechter, <span class="badge bo">oranje</span> = iets slechter, grijs = te weinig gegevens.</p>'
       + '<ul><li>Uitstroom: verloop, vertrek binnen 90 dagen, eNPS exit, aanzegging op tijd.</li><li>Instroom: uitval ≤ 90 dagen, check-in, onboarding op tijd.</li><li>In dienst: verzuim, meldingsfrequentie, frequent verzuim, verzuimgesprek ≤ 30 d.</li><li>Training: welkomstcollectie en certificaten (Academy).</li><li>Dossiers: loonheffing ≤ 7 d, getekend na.</li></ul>'
@@ -99,6 +105,8 @@ window.HR_HELP = {
       + '<li>Vrije brieven, waarschuwingen en sommaties opstellen.</li></ul>' }
   ],
   faq: [
+    { v: 'Waarom krijgt iemand fooi uit twee winkels?', a: 'Hij heeft die maand in beide winkels geklokt. Per winkel telt alleen de tijd die hij daar werkte. In de export staat hij dan op twee regels, met de juiste BV per regel.' },
+    { v: 'Kan ik een fooiverdeling nog aanpassen na het vastleggen?', a: 'Ja: klik <b>Heropenen</b>. De verdeling wordt dan opnieuw berekend met de actuele uren uit Shiftbase. Leg hem daarna opnieuw vast.' },
     { v: 'Ik heb iets afgehandeld, maar de taak staat er nog. Hoe kan dat?', a: 'De takenlijst toont de stand van de controles van vanochtend. Klik <b>Verse stand</b>: de controles draaien opnieuw en de nieuwe stand blijft bewaard. Staat het er dan nog, kies onder ⋯ een afhandel-optie.' },
     { v: 'Waarom ging een getekend dossier niet automatisch naar salaris?', a: 'Dan staat er een ⚠ bij (de dossiercontrole vond een afwijking met Shiftbase), het document staat nog in Google Drive, het dossier is van vóór 1 oktober 2026 of <i>Automatisch naar salaris</i> staat uit. Los de ⚠ op en klik <b>→ Salaris</b>.' },
     { v: 'Er staat een verkeerde datum of BV in een ontslagdossier. Hoe pas ik dat aan?', a: 'Uitstroom → bij de regel <b>✎ Gegevens wijzigen</b>. Is de brief al verstuurd met de foute gegevens, stuur dan een nieuwe brief op dezelfde regel; de oude ondertekening vervalt dan.' },
