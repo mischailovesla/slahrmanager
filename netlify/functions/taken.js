@@ -223,12 +223,25 @@ async function uitAcademy() {
 async function uitChecklists() {
   const t = [];
   try {
-    const { data } = await admin().from('hr_checklists').select('id,type,naam,email,winkel,items,gestart_op').is('afgerond_op', null).limit(500);
+    const { data } = await admin().from('hr_checklists').select('id,type,naam,email,winkel,items,gestart_op,medewerker_id').is('afgerond_op', null).limit(500);
+    // v0.45.1: staat iemand met een open offboarding niet meer in Shiftbase (verwijderd), dan is "einddatum in Shiftbase" geregeld → automatisch afvinken
+    let sb = null; try { sb = await require('./_lib/shiftbase').getMedewerkers(false); } catch (e) { sb = null; }
+    const { normNaam: nn } = require('./_lib/util');
+    const inSB = c => (sb || []).some(m => (c.medewerker_id && String(m.id) === String(c.medewerker_id)) || (c.email && String(m.email || '').toLowerCase() === String(c.email).toLowerCase()) || nn(m.naam) === nn(c.naam));
     for (const c of data || []) {
+      if (c.type === 'offboarding' && sb && sb.length > 50 && !inSB(c)) {
+        const li = (c.items || []).find(i => i.key === 'laatstedag' && !i.klaar);
+        if (li) {
+          const op = new Date().toLocaleString('sv-SE', { timeZone: 'Europe/Amsterdam' }).slice(0, 16);
+          c.items = c.items.map(i => i.key === 'laatstedag' ? Object.assign({}, i, { klaar: true, door: 'systeem (niet meer in Shiftbase)', op }) : i);
+          try { await admin().from('hr_checklists').update({ items: c.items, afgerond_op: c.items.every(i => i.klaar) ? new Date().toISOString() : null }).eq('id', c.id); } catch (e) { /* volgende keer opnieuw */ }
+        }
+        c.uitSB = true;
+      }
       const items = c.items || [], open = items.filter(i => !i.klaar);
       if (!open.length) continue;
       const dagen = Math.round((Date.now() - new Date(c.gestart_op).getTime()) / 864e5);
-      t.push({ bron: 'checklist', urgentie: c.type === 'offboarding' || dagen > 14 ? 'oranje' : 'grijs', sleutel: 'chk|' + c.id, datum: isoVan(c.gestart_op), titel: (c.type === 'onboarding' ? 'Onboarding' : 'Offboarding') + ': ' + open.length + ' van ' + items.length + ' punten open', sub: c.naam + ' · ' + (c.winkel || '-') + ' · gestart ' + dagen + ' dagen geleden · volgende: ' + open[0].label, naam: c.naam, email: c.email || '', winkel: c.winkel || '', actie: { soort: 'checklist', id: c.id, label: 'Checklist' } });
+      t.push({ bron: 'checklist', urgentie: c.type === 'offboarding' || dagen > 14 ? 'oranje' : 'grijs', sleutel: 'chk|' + c.id, datum: isoVan(c.gestart_op), titel: (c.type === 'onboarding' ? 'Onboarding' : 'Offboarding') + ': ' + open.length + ' van ' + items.length + ' punten open', sub: c.naam + ' · ' + (c.winkel || '-') + (c.uitSB ? ' · niet meer in Shiftbase' : '') + ' · gestart ' + dagen + ' dagen geleden · volgende: ' + open[0].label, naam: c.naam, email: c.email || '', winkel: c.winkel || '', actie: { soort: 'checklist', id: c.id, label: 'Checklist' } });
     }
   } catch (e) { /* tabel ontbreekt nog (migratie 0007) */ }
   return t;

@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.45.1', datum: '05-11-2026', titel: 'Offboarding: uit Shiftbase verwijderd = einddatum geregeld', punten: [
+    'Staat iemand met een open offboarding-checklist <b>niet meer in Shiftbase</b>, dan vinkt het dashboard het punt <b>Laatste werkdag + einddatum in Shiftbase gezet</b> automatisch af (door: systeem). In de takenlijst staat dan "niet meer in Shiftbase". De andere punten (verlof, salaris, spullen, toegang, getuigschrift, exit) blijven gewoon open tot je ze afvinkt of de checklist afrondt.'
+  ] },
   { nummer: '0.45.0', datum: '04-11-2026', titel: 'Loonheffingskorting wijzigen: alleen de digitale loonheffingsverklaring', punten: [
     'De mail van <b>In dienst → Loonheffingskorting</b> (aanzetten, uitzetten, wijzigen) stuurt de medewerker nu naar de <b>online loonheffingsverklaring</b>, zonder indiensttredingsformulier. Gegevens staan al klaar, Ja/Nee en de ingangsdatum zijn vooraf gekozen volgens het verzoek. Downloaden, printen en uploaden is niet meer nodig; het papieren formulier uploaden kan nog wel.',
     'De ondertekende PDF komt in het dossier loonheffingskorting (staat dan op Retour) en gaat via <b>→ Salaris</b> naar Mahdia zoals altijd. Kiest de medewerker iets anders dan gevraagd (bijv. Ja in plaats van Nee), dan staat dat in het logboek.',
