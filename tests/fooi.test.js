@@ -64,7 +64,14 @@ const ts = [
   { Timesheet: { user_id: 1, department_id: '153188', date: '2026-11-01', total: '8', status: 'Approved' } }
 ];
 const v = F.verwerkTimesheets(ts, [{ User: { id: 1, first_name: 'Anna', last_name: 'Jansen' } }], [{ Team: { id: 't1', department_id: '153188' } }], '2026-10-01', '2026-10-31');
-assert.deepStrictEqual(v.regels, [{ userId: '1', naam: 'Anna Jansen', code: 'CB', uren: 14.5 }]);
+assert.deepStrictEqual(v.regels, [{ userId: '1', naam: 'Anna Jansen', code: 'CB', uren: 14.5, uitDienst: '' }]);
+// v0.47.1: uit dienst halverwege de maand -> label + waarschuwing
+const v2 = F.verwerkTimesheets([{ Timesheet: { user_id: 2, department_id: '153188', date: '2026-10-05', total: 6, status: 'Approved' } }],
+  [{ User: { id: 2, first_name: 'Bo', last_name: 'Vos', enddate: '2026-10-15' } }], [], '2026-10-01', '2026-10-31', '2026-11-05');
+assert.strictEqual(v2.regels[0].uitDienst, '15-10-2026');
+const r5 = F.bereken({ potten: { ceintuur: 10 }, regels: v2.regels.concat([{ userId: '3', naam: 'Cas', code: 'WS', uren: 6 }]), omzet: { CB: 1, WS: 1 } });
+assert.strictEqual(r5.totaal.uitDienst, 1); assert.ok(r5.waarschuwingen.some(x => /Bo Vos/.test(x) && /contant/.test(x)));
+assert.strictEqual(r5.medewerkers.find(m => m.naam === 'Bo Vos').uitDienst, '15-10-2026');
 assert.strictEqual(v.openAantal, 1); assert.strictEqual(v.openUren, 6); assert.strictEqual(v.afgewezen, 1);
 assert.deepStrictEqual(F.omzetPerCode([{ winkel: 'Ceintuurbaan', netto: '10.5' }, { winkel: 'Ceintuurbaan', netto: 4.5 }, { winkel: 'Groningen', netto: 99 }]), { CB: 15 });
 assert.deepStrictEqual(F.periode(2026, 2), { jaar: 2026, maand: 2, label: 'februari 2026', van: '2026-02-01', tot: '2026-02-28' });

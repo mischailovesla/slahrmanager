@@ -63,8 +63,8 @@ async function maakWinkelPdf(r, code, door) {
   tegels.forEach((tg, i) => { const x = L + i * (tb + 10); pg.drawRectangle({ x, y: y - 44, width: tb, height: 44, color: KL.zand }); tekst(tg[0], x + 9, y - 20, 14, F.b); tekst(tg[1], x + 9, y - 34, 7.5, F.n, KL.grijs); });
   y -= 64;
 
-  // Gedeelde BV: verdeelsleutel
-  if (pot.gedeeld) {
+  // v0.47.1: verdeelsleutel tussen de gedeelde winkels staat bewust niet in de PDF (alleen in het dashboard)
+  if (false && pot.gedeeld) {
     tekst('Verdeling ' + pot.naam + ' (gedeelde fooi ' + eur(pot.bedrag) + ')', L, y, 11, F.b, KL.groen); y -= 8;
     tekst('Sleutel per winkel = (urenaandeel + omzetaandeel) / 2. Omzet = netto omzet ex btw van de maand.', L, y - 8, 7.5, F.i, KL.grijs); y -= 24;
     const k = { w: L, u: L + 175, o: L + 262, ua: L + 320, oa: L + 385, s: L + 422, f: A4[0] - R }; // rechterkanten
@@ -92,7 +92,7 @@ async function maakWinkelPdf(r, code, door) {
   w.medewerkers.forEach((m, i) => {
     if (y < 80) { nieuwePagina(); kopRegel(true); }
     if (i % 2) pg.drawRectangle({ x: L, y: y - 5, width: B, height: 17, color: KL.zand });
-    tekst(m.naam, kol.n + 4, y, 9.5); rechts(nl(m.uren), kol.u, y, 9.5); rechts(pct(m.aandeel), kol.a, y, 9.5, F.n, KL.grijs); rechts(eur(m.fooi), kol.f - 4, y, 9.5, F.b);
+    tekst(m.naam, kol.n + 4, y, 9.5); if (m.uitDienst) tekst(m.uitDienst === 'onbekend' ? 'uit dienst' : 'uit dienst per ' + m.uitDienst, kol.n + 10 + breed(m.naam, 9.5), y, 7.5, F.i, KL.rood); rechts(nl(m.uren), kol.u, y, 9.5); rechts(pct(m.aandeel), kol.a, y, 9.5, F.n, KL.grijs); rechts(eur(m.fooi), kol.f - 4, y, 9.5, F.b);
     y -= 17;
   });
   if (!w.medewerkers.length) { tekst('Geen geklokte uren in deze maand.', L, y, 9, F.i, KL.grijs); y -= 17; }

@@ -2359,6 +2359,7 @@
   var foEur = function (x) { return x == null ? '-' : '€ ' + Number(x).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
   var foNum = function (x, d) { return x == null ? '-' : Number(x).toLocaleString('nl-NL', { minimumFractionDigits: d == null ? 2 : d, maximumFractionDigits: d == null ? 2 : d }); };
   var foPct = function (x) { return x == null ? '-' : (x * 100).toLocaleString('nl-NL', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%'; };
+  function foUit(m) { return m.uitDienst ? ' <span class="badge br" title="Niet meer in dienst: afspreken hoe de contante fooi wordt overgedragen">uit dienst' + (m.uitDienst === 'onbekend' ? '' : ' per ' + esc(m.uitDienst)) + '</span>' : ''; } // v0.47.1
   function foInvoer() {
     var potten = {}, hand = {};
     document.querySelectorAll('#fo-potten input[data-pot]').forEach(function (i) { if (i.value.trim() !== '') potten[i.getAttribute('data-pot')] = i.value.trim(); });
@@ -2394,7 +2395,7 @@
     var t = r.totaal;
     g('fo-kpi').innerHTML = '<div class="card cg"><div class="si sig">💶</div><div><div class="sv">' + foEur(t.fooi) + '</div><div class="sl">Fooi totaal</div></div></div>'
       + '<div class="card cd"><div class="si sid">✓</div><div><div class="sv">' + foEur(t.verdeeld) + '</div><div class="sl">Verdeeld</div></div></div>'
-      + '<div class="card cw"><div class="si siw">👤</div><div><div class="sv">' + t.medewerkers + '</div><div class="sl">Medewerkers' + (t.meerdereWinkels ? ' · ' + t.meerdereWinkels + ' in 2 winkels' : '') + '</div></div></div>'
+      + '<div class="card cw"><div class="si siw">👤</div><div><div class="sv">' + t.medewerkers + '</div><div class="sl">Medewerkers' + (t.meerdereWinkels ? ' · ' + t.meerdereWinkels + ' in 2 winkels' : '') + (t.uitDienst ? ' · ' + t.uitDienst + ' uit dienst' : '') + '</div></div></div>'
       + '<div class="card" style="border-top:3px solid ' + (t.nietVerdeeld > 0.004 ? '#c0392b' : '#009f4b') + '"><div class="si" style="background:' + (t.nietVerdeeld > 0.004 ? '#fdecea' : '#e8f5ee') + '">' + (t.nietVerdeeld > 0.004 ? '⚠' : '=') + '</div><div><div class="sv">' + foEur(t.nietVerdeeld) + '</div><div class="sl">Niet verdeeld</div></div></div>';
     g('fo-kpi').style.display = 'grid';
     var w = g('fo-waarsch');
@@ -2412,13 +2413,13 @@
           + '<td style="text-align:right"><strong>' + foEur(x.fooi) + '</strong></td><td style="text-align:right">' + (x.perUur == null ? '-' : foEur(x.perUur)) + '</td>'
           + '<td style="white-space:nowrap">' + (x.medewerkers.length ? '<button class="btn bd bsm" onclick="var e=document.getElementById(\'' + id + '\');e.style.display=e.style.display===\'none\'?\'table-row\':\'none\'">' + x.medewerkers.length + ' mw ▾</button> <button class="btn bd bsm" title="PDF van deze winkel" onclick="foPdf(\'' + x.code + '\')">📄 PDF</button>' : '') + '</td></tr>';
         if (x.medewerkers.length) html += '<tr id="' + id + '" style="display:none"><td></td><td colspan="9" style="background:#faf8f6;padding:8px 14px"><table style="width:100%"><thead><tr><th>Naam</th><th style="text-align:right">Uren</th><th style="text-align:right">Aandeel</th><th style="text-align:right">Fooi</th></tr></thead><tbody>'
-          + x.medewerkers.map(function (m) { return '<tr><td>' + esc(m.naam) + '</td><td style="text-align:right">' + foNum(m.uren) + '</td><td style="text-align:right">' + foPct(m.aandeel) + '</td><td style="text-align:right">' + foEur(m.fooi) + '</td></tr>'; }).join('') + '</tbody></table></td></tr>';
+          + x.medewerkers.map(function (m) { return '<tr><td>' + esc(m.naam) + foUit(m) + '</td><td style="text-align:right">' + foNum(m.uren) + '</td><td style="text-align:right">' + foPct(m.aandeel) + '</td><td style="text-align:right">' + foEur(m.fooi) + '</td></tr>'; }).join('') + '</tbody></table></td></tr>';
       });
     });
     g('fo-winkels').innerHTML = html + '</tbody></table>';
     g('fo-mw-pill').textContent = r.medewerkers.length;
     g('fo-mw-body').innerHTML = r.medewerkers.length ? r.medewerkers.map(function (m) {
-      return '<tr><td><strong>' + esc(m.naam) + '</strong></td><td>' + m.delen.map(function (d) { return '<span class="badge boat">' + esc(d.winkel) + '</span>' + (m.delen.length > 1 ? ' <span class="lay-sub" style="display:inline">' + foNum(d.uren) + ' u · ' + foEur(d.fooi) + '</span>' : ''); }).join('<br>') + '</td><td style="font-size:.78rem">' + m.delen.map(function (d) { return esc(d.bv); }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join('<br>') + '</td><td style="text-align:right">' + foNum(m.uren) + '</td><td style="text-align:right"><strong>' + foEur(m.fooi) + '</strong></td></tr>';
+      return '<tr><td><strong>' + esc(m.naam) + '</strong>' + foUit(m) + '</td><td>' + m.delen.map(function (d) { return '<span class="badge boat">' + esc(d.winkel) + '</span>' + (m.delen.length > 1 ? ' <span class="lay-sub" style="display:inline">' + foNum(d.uren) + ' u · ' + foEur(d.fooi) + '</span>' : ''); }).join('<br>') + '</td><td style="font-size:.78rem">' + m.delen.map(function (d) { return esc(d.bv); }).filter(function (v, i, a) { return a.indexOf(v) === i; }).join('<br>') + '</td><td style="text-align:right">' + foNum(m.uren) + '</td><td style="text-align:right"><strong>' + foEur(m.fooi) + '</strong></td></tr>';
     }).join('') : '<tr><td colspan="5" class="leeg grijs">Nog niets verdeeld — vul de fooi per pot in en klik op Bereken verdeling.</td></tr>';
     g('fo-mw-sec').style.display = 'block';
   }
@@ -2475,8 +2476,8 @@
   window.foExport = function () {
     if (!foData || !foData.medewerkers.length) { toast('Nog niets om te exporteren', 'err'); return; }
     var nl = function (x) { return Number(x).toFixed(2).replace('.', ','); }, q = function (s) { return '"' + String(s).replace(/"/g, '""') + '"'; };
-    var rows = [['Naam', 'Shiftbase-id', 'Winkel', 'BV', 'Uren', 'Fooi (EUR)'].join(';')];
-    foData.medewerkers.forEach(function (m) { m.delen.forEach(function (d) { rows.push([q(m.naam), m.userId, q(d.winkel), q(d.bv), nl(d.uren), nl(d.fooi)].join(';')); }); });
+    var rows = [['Naam', 'Shiftbase-id', 'Winkel', 'BV', 'Uren', 'Fooi (EUR)', 'Uit dienst per'].join(';')];
+    foData.medewerkers.forEach(function (m) { m.delen.forEach(function (d) { rows.push([q(m.naam), m.userId, q(d.winkel), q(d.bv), nl(d.uren), nl(d.fooi), m.uitDienst || ''].join(';')); }); });
     rows.push(['"Totaal"', '', '', '', nl(foData.totaal.uren), nl(foData.totaal.verdeeld)].join(';'));
     var blob = new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'fooi_' + foData.periode.jaar + '-' + String(foData.periode.maand).padStart(2, '0') + (foData.opslag && foData.opslag.status === 'definitief' ? '' : '_concept') + '.csv';

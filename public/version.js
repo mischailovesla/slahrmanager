@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.47.1', datum: '05-11-2026', titel: 'Fooiverdeling: uit dienst gemarkeerd, PDF zonder verdeelsleutel', punten: [
+    'Medewerkers die inmiddels <b>uit dienst</b> zijn krijgen een rood label "uit dienst per [datum]" in de tabel, de PDF en de CSV, plus een melding, zodat de winkel kan afspreken hoe zij hun <b>contante</b> fooi krijgen.',
+    'De PDF per winkel toont de verdeelsleutel tussen Ceintuurbaan/Westerstraat en Middenweg/Haarlemmerdijk niet meer; die staat alleen nog in het dashboard.'
+  ] },
   { nummer: '0.47.0', datum: '05-11-2026', titel: 'Fooiverdeling: PDF per winkel', punten: [
     'In <b>Fooiverdeling</b> staat achter elke winkel een knop <b>📄 PDF</b>: de verdeling van die winkel op A4 (fooi, uren, fooi per uur, bij Ceintuur/Midden de verdeelsleutel, en per medewerker uren, aandeel en fooi).',
     '<b>📄 PDF per winkel</b> bovenaan maakt in één keer een zip met een PDF per winkel.',
@@ -19,7 +23,7 @@ window.HR_VERSIES = [
     'Nieuwe tab <b>In dienst → Fooiverdeling</b>. Plak de tabel uit de maandmail van Jop, en het dashboard vult de fooi per pot zelf in.',
     '<b>Ceintuur BV</b> (Ceintuurbaan + Westerstraat) en <b>Midden BV</b> (Middenweg + Haarlemmerdijk) worden naar winkel verdeeld met <b>50% uren / 50% omzet</b>, net als het Excel-template. Omzet komt automatisch uit het omzetdashboard, uren uit Shiftbase.',
     'Daarna per winkel per medewerker <b>naar rato van de geklokte uren</b> (iedereen, ook store managers). Werkte iemand in twee winkels, dan krijgt hij uit allebei een deel.',
-    '<b>Vastleggen</b> bevriest de verdeling; <b>Export voor salaris</b> geeft een CSV per medewerker met BV, uren en bedrag.'
+    '<b>Vastleggen</b> bevriest de verdeling; <b>📥 CSV</b> geeft een lijst per medewerker met BV, uren en bedrag.'
   ] },
   { nummer: '0.45.2', datum: '05-11-2026', titel: 'Lege uploads worden geweigerd', punten: [
     '<b>→ Salaris</b> gaf bij Cecile Bongers een foutmelding van de mailserver (Resend 422). Oorzaak: haar geüploade loonheffingsverklaring is <b>leeg aangekomen (0 bytes)</b>. Nu zegt het dashboard dat in gewone taal, met wat je kunt doen.',

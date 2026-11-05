@@ -86,7 +86,7 @@ window.HR_HELP = {
       '<ol><li>Open <b>In dienst → Fooiverdeling</b>. De maand staat standaard op vorige maand.</li>'
       + '<li>Plak de tabel uit de mail van Jop in het vak links en klik <b>Invullen</b>. Franchise en Haarlem worden overgeslagen.</li>'
       + '<li>Controleer de gele meldingen. Staan er nog <i>niet-goedgekeurde timesheets</i>, laat die eerst goedkeuren in Shiftbase en klik ↻.</li>'
-      + '<li>Klik <b>✓ Vastleggen</b>. Daarna <b>📄 PDF</b> achter een winkel, of <b>📄 PDF per winkel</b> voor een zip met alle winkels. <b>📥 CSV voor salaris</b> blijft ook beschikbaar.</li></ol>'
+      + '<li>Klik <b>✓ Vastleggen</b>. Daarna <b>📄 PDF</b> achter een winkel, of <b>📄 PDF per winkel</b> voor een zip met alle winkels. De fooi wordt <b>contant</b> uitgekeerd in de winkel; <b>📥 CSV</b> is er voor wie de lijst in Excel wil.</li></ol>'
       + '<p><b>Gedeelde BV:</b> sleutel per winkel = (urenaandeel + omzetaandeel) ÷ 2. <b>Per medewerker:</b> fooi winkel × eigen uren ÷ alle uren in die winkel. Geklokte uren excl. pauze; afgewezen timesheets tellen niet.</p>' },
     { id: 'cijfers', titel: 'Scorekaart en cijfers', html:
       '<p>De <b>Scorekaart</b> zet elke winkel naast het SLA-gemiddelde over 3, 6 of 12 maanden. <span class="badge br">rood</span> = duidelijk slechter, <span class="badge bo">oranje</span> = iets slechter, grijs = te weinig gegevens.</p>'

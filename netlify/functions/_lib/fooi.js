@@ -94,11 +94,17 @@ function urenVan(t) {
 }
 
 // Shiftbase-timesheets -> { regels: [{userId, naam, code, uren}], openUren, openAantal, afgewezen }
-function verwerkTimesheets(lijst, users, teams, van, tot) {
-  const namen = {}, teamDept = {};
+function verwerkTimesheets(lijst, users, teams, van, tot, vandaag) {
+  const namen = {}, teamDept = {}, uit = {};
+  vandaag = vandaag || new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
   for (const rec of users || []) {
     const u = (rec && rec.User) || rec || {};
-    if (u.id != null) namen[String(u.id)] = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
+    if (u.id == null) continue;
+    namen[String(u.id)] = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
+    // v0.47.1: uit dienst (einddatum t/m vandaag, of geanonimiseerd) -> fooi wordt contant uitgekeerd, dus afspreken hoe ze die krijgen
+    const e = String(u.enddate || '').slice(0, 10), anon = u.anonymized === true || u.anonymized === '1' || u.anonymized === 1;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(e) && e !== '0000-00-00' && e <= vandaag) uit[String(u.id)] = e.split('-').reverse().join('-');
+    else if (anon) uit[String(u.id)] = 'onbekend';
   }
   for (const rec of teams || []) { const t = (rec && rec.Team) || rec || {}; if (t.id != null) teamDept[String(t.id)] = String(t.department_id || ''); }
   const per = {}; let openUren = 0, openAantal = 0, afgewezen = 0;
@@ -118,7 +124,7 @@ function verwerkTimesheets(lijst, users, teams, van, tot) {
     const uren = urenVan(t); if (!(uren > 0)) continue;
     if (/pend|open|wacht/.test(st)) { openUren += uren; openAantal++; }
     const k = uid + '|' + code;
-    (per[k] || (per[k] = { userId: uid, naam, code, uren: 0 })).uren += uren;
+    (per[k] || (per[k] = { userId: uid, naam, code, uren: 0, uitDienst: uit[uid] || (namen[uid] == null && users && users.length ? 'onbekend' : '') })).uren += uren;
   }
   const regels = Object.values(per).map(x => Object.assign(x, { uren: r2(x.uren) }));
   return { regels, openUren: r2(openUren), openAantal, afgewezen };
@@ -165,7 +171,7 @@ function bereken({ potten, regels, omzet, handmatig }) {
       if (fc != null && fc > 0 && !(w.uren > 0)) { waarschuwingen.push(w.naam + ': er is € ' + (fc / 100).toFixed(2).replace('.', ',') + ' fooi, maar geen geklokte uren — dit bedrag wordt niet verdeeld.'); }
       else if (fc != null) {
         const mc = verdeelCenten(fc, w.mw.map(m => m.uren));
-        rij.medewerkers = w.mw.map((m, j) => ({ userId: m.userId, naam: m.naam, uren: m.uren, aandeel: w.uren > 0 ? m.uren / w.uren : 0, fooi: mc[j] / 100 }));
+        rij.medewerkers = w.mw.map((m, j) => ({ userId: m.userId, naam: m.naam, uitDienst: m.uitDienst || '', uren: m.uren, aandeel: w.uren > 0 ? m.uren / w.uren : 0, fooi: mc[j] / 100 }));
         verdeeldCent += mc.reduce((a, b) => a + b, 0);
       }
       pot.winkels.push(rij);
@@ -177,13 +183,15 @@ function bereken({ potten, regels, omzet, handmatig }) {
   // Per medewerker (iemand kan in twee winkels gewerkt hebben)
   const perMw = {};
   for (const pot of uit) for (const w of pot.winkels) for (const m of w.medewerkers) {
-    const x = perMw[m.userId] || (perMw[m.userId] = { userId: m.userId, naam: m.naam, uren: 0, fooiCent: 0, delen: [] });
+    const x = perMw[m.userId] || (perMw[m.userId] = { userId: m.userId, naam: m.naam, uitDienst: m.uitDienst || '', uren: 0, fooiCent: 0, delen: [] });
     x.uren += m.uren; x.fooiCent += Math.round(m.fooi * 100); x.delen.push({ code: w.code, winkel: w.naam, bv: w.bv, uren: m.uren, fooi: m.fooi });
   }
-  const medewerkers = Object.values(perMw).map(x => ({ userId: x.userId, naam: x.naam, uren: r2(x.uren), fooi: x.fooiCent / 100, delen: x.delen }))
+  const medewerkers = Object.values(perMw).map(x => ({ userId: x.userId, naam: x.naam, uitDienst: x.uitDienst, uren: r2(x.uren), fooi: x.fooiCent / 100, delen: x.delen }))
     .sort((a, b) => a.naam.localeCompare(b.naam, 'nl'));
   const meerdere = medewerkers.filter(m => m.delen.length > 1).length;
-  return { potten: uit, medewerkers, totaal: { fooi: totaalCent / 100, verdeeld: verdeeldCent / 100, nietVerdeeld: (totaalCent - verdeeldCent) / 100, medewerkers: medewerkers.length, uren: r2(regels.reduce((a, b) => a + b.uren, 0)), meerdereWinkels: meerdere }, waarschuwingen };
+  const uitD = medewerkers.filter(m => m.uitDienst && m.fooi > 0);
+  if (uitD.length) waarschuwingen.push(uitD.length + ' medewerker(s) met fooi zijn inmiddels uit dienst (' + uitD.map(m => m.naam).join(', ') + '). Fooi wordt contant uitgekeerd: spreek met de winkel af hoe zij hun fooi krijgen.');
+  return { potten: uit, medewerkers, totaal: { uitDienst: uitD.length, fooi: totaalCent / 100, verdeeld: verdeeldCent / 100, nietVerdeeld: (totaalCent - verdeeldCent) / 100, medewerkers: medewerkers.length, uren: r2(regels.reduce((a, b) => a + b.uren, 0)), meerdereWinkels: meerdere }, waarschuwingen };
 }
 
 // ---------- Bronnen ----------
