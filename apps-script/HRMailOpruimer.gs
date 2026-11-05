@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * HR Mail Opruimer v1.0 (04-11-2026) — voor de mailbox hr@ilovesla.com
+ * HR Mail Opruimer v1.1 (05-11-2026) — voor de mailbox hr@ilovesla.com
  * ============================================================
  * Draait in Google Apps Script ONDER HET ACCOUNT hr@ilovesla.com
  * (script.google.com → Nieuw project, ingelogd als hr@).
@@ -66,10 +66,10 @@ var REGELS = [
   { naam: 'Nieuwe medewerker / contractaanvraag', zoek: 'subject:("new hire" OR "nieuwe medewerker" OR "nieuwe sla maker" OR "nieuwe slamaker" OR "new employee" OR "first contract" OR "eerste contract" OR "hiring request" OR "contract request" OR slamaker OR "sla-maker" OR "sla maker")', label: 'Instroom/Nieuwe medewerker', ruis: false, actie: true },
   { naam: 'Contract / verlenging', zoek: 'subject:(contract OR arbeidsovereenkomst OR verlenging OR verlengen OR renewal OR proposal OR voorstel) -from:hrmonline.nl', label: 'Instroom/Contract', ruis: false, actie: true },
   { naam: 'Loonheffing', zoek: 'subject:(loonheffing OR loonheffingsverklaring OR loonheffingskorting OR "payroll tax")', label: 'Instroom/Loonheffing', ruis: false, actie: true },
-  { naam: 'Vragen over salaris / loonstrook', zoek: 'subject:(payslip OR payslips OR loonstrook OR salaris OR salary OR payment OR betaling OR uitbetaling OR jaaropgave) -from:hrmonline.nl -from:contracten@ilovesla.com', label: 'Salaris/Vragen medewerkers', ruis: false, actie: true },
+  { naam: 'Vragen over salaris / loonstrook', zoek: 'subject:(payslip OR payslips OR loonstrook OR salaris OR salary OR payment OR betaling OR uitbetaling OR jaaropgave) -subject:("eerste salaris" OR "first salary" OR Periodeverslagen) -from:hrmonline.nl -from:contracten@ilovesla.com', label: 'Salaris/Vragen medewerkers', ruis: false, actie: true },
   { naam: 'Verlof / vakantie', zoek: 'subject:(vakantie OR vacation OR verlof OR leave OR "day off")', label: 'In dienst/Verlof', ruis: false, actie: true },
   { naam: 'Ziek / beter', zoek: 'subject:(ziek OR ziekmelding OR betermelding OR sick OR verzuim)', label: 'In dienst/Ziek', ruis: false, actie: true },
-  { naam: 'UWV / Belastingdienst', zoek: '(uwv OR werkgeversportaal OR belastingdienst)', label: 'Overheid', ruis: false, actie: true }
+  { naam: 'UWV / Belastingdienst', zoek: 'from:(uwv.nl OR belastingdienst.nl) OR subject:(uwv OR werkgeversportaal OR belastingdienst)', label: 'Overheid', ruis: false, actie: true }
 ];
 
 // ============================================================

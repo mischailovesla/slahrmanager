@@ -40,6 +40,20 @@ async function laad(qs, ingelogd) {   // ingelogd = e-mail van de HR-gebruiker (
     { key: 'notitie', label: 'Notities', rijen: notities.filter(match) }
   ].concat(extra.map(t => ({ key: 'extra', label: t.label, rijen: t.rijen.filter(match), fout: t.fout })));
 
+  // v0.45.3: gearchiveerde dossiers (loonheffing, overplaatsing) ook in het medewerkersdossier tonen, met de archiefdatum in de status.
+  // Voorheen verdween bijv. een verstuurde overplaatsingsbrief uit het dossier zodra de rij in de tab Overplaatsing was gearchiveerd.
+  try {
+    const U = require('./_lib/uploads'), v = (r, i) => String(((r.velden || [])[i]) == null ? '' : r.velden[i]).trim();
+    const arch = r => ' · gearchiveerd ' + String(r.gearchiveerd || '').slice(0, 10) + (r.door ? ' (' + String(r.door).split('@')[0] + ')' : '');
+    const doc = (dl, naam, em, key) => { const e = String(em || '').toLowerCase(); const d = (e && dl.byEmail[e]) || dl.byNaam[normNaam(naam)] || {}; return d[key] || ''; };
+    const [aOv, aLh, dOv, dLh] = await Promise.all([S.getArchief('overplaatsing').catch(() => ({ rijen: [] })), S.getArchief('loonheffing').catch(() => ({ rijen: [] })), U.vindUploads('overplaatsing').catch(() => ({ byNaam: {}, byEmail: {} })), U.vindUploads('loon').catch(() => ({ byNaam: {}, byEmail: {} }))]);
+    const ov = (aOv.rijen || []).map(r => ({ rij: 'archief ' + r.rij, gearchiveerd: true, naam: v(r, 0), email: v(r, 1), adres: v(r, 2), huidigeBV: v(r, 3), nieuweBV: v(r, 4), datumIndienst: v(r, 5), ingangsdatum: v(r, 6), functie: v(r, 7), standplaats: v(r, 8), taal: v(r, 9) || 'NL', status: v(r, 10) + arch(r), verzenddatum: v(r, 11), ondertekend: /^ja$/i.test(v(r, 12)) ? 'Ja' : 'Nee', herinnering: v(r, 13), aantalHer: parseInt(v(r, 14), 10) || 0, type: v(r, 15), briefUrl: v(r, 16), docUrl: doc(dOv, v(r, 0), v(r, 1), 'overplaatsing') })).filter(match);
+    const lh = (aLh.rijen || []).map(r => ({ rij: 'archief ' + r.rij, gearchiveerd: true, naam: v(r, 0), email: v(r, 1), deadline: v(r, 2), status: v(r, 3) + arch(r), verzenddatum: v(r, 4), ontvangen: /^ja$/i.test(v(r, 5)) ? 'Ja' : 'Nee', taal: v(r, 6) || 'NL', herinnering: v(r, 7), aantalHer: parseInt(v(r, 8), 10) || 0, mahdia: /^ja$/i.test(v(r, 9)) ? 'Ja' : 'Nee', salaris: v(r, 10), docUrl: doc(dLh, v(r, 0), v(r, 1), 'loon'), docUrl2: doc(dLh, v(r, 0), v(r, 1), 'indienst') })).filter(match);
+    const sec = k => secties.find(x => x.key === k);
+    if (ov.length) sec('overplaatsing').rijen = sec('overplaatsing').rijen.concat(ov);
+    if (lh.length) sec('loonheffing').rijen = sec('loonheffing').rijen.concat(lh);
+  } catch (e) { console.warn('dossier archief:', e.message); }
+
   // Contractstatus + aanzeg-alert (42 dagen) uit Shiftbase
   let contract = null;
   if (persoon) {

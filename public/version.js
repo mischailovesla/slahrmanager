@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.45.3', datum: '05-11-2026', titel: 'Dossier toont ook gearchiveerde overplaatsingen en loonheffing', punten: [
+    'In het medewerkersdossier staan nu ook <b>gearchiveerde</b> overplaatsingen/standplaatswijzigingen en loonheffingsdossiers, met "gearchiveerd" en de datum in de status. Voorheen verdwenen ze uit het dossier zodra de rij in de tab werd gearchiveerd. Zo stond de overplaatsing van Ilia Pellapaisiotou (Ceintuur → Zuidas per 01-09-2026, verstuurd 30-07-2026) niet meer in haar dossier: die is op 21-10-2026 gearchiveerd.'
+  ] },
   { nummer: '0.47.1', datum: '05-11-2026', titel: 'Fooiverdeling: uit dienst gemarkeerd, PDF zonder verdeelsleutel', punten: [
     'Medewerkers die inmiddels <b>uit dienst</b> zijn krijgen een rood label "uit dienst per [datum]" in de tabel, de PDF en de CSV, plus een melding, zodat de winkel kan afspreken hoe zij hun <b>contante</b> fooi krijgen.',
     'De PDF per winkel toont de verdeelsleutel tussen Ceintuurbaan/Westerstraat en Middenweg/Haarlemmerdijk niet meer; die staat alleen nog in het dashboard.'
