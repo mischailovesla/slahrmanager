@@ -138,7 +138,8 @@ const INDIENST_HER_SLEUTEL = 'indienst_herinnering';   // hr_instellingen: { [no
 function indienstOntbreektKandidaten(rijen, her, vandaag) {
   const uit = [];
   for (const r of rijen || []) {
-    if (r.ontvangen !== 'Ja' || r.docUrl2 || r.salaris || r.mahdia === 'Ja' || !r.email || r.email.indexOf('@') === -1) continue;
+    // v0.47.2: ook als het dossier al naar salaris ging (vóór v0.38.2 kon dat zonder indienst) — het formulier moet alsnog binnenkomen
+    if (r.ontvangen !== 'Ja' || r.docUrl2 || !r.email || r.email.indexOf('@') === -1) continue;
     const sindsUitn = dagenSinds(r.verzenddatum || String(r.status || '').replace(/^Verzonden op\s*/i, ''), vandaag);
     if (sindsUitn === null || sindsUitn > C.INDIENST_HER_VENSTER_DAGEN) continue;   // oude dossiers (Drive/Forms-tijd) niet meer mailen
     const h = her[normNaam(r.naam)] || { n: 0 };
@@ -1287,4 +1288,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto, lhModel };
+module.exports = { INDIENST_HER_SLEUTEL, indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto, lhModel };

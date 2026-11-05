@@ -60,7 +60,7 @@ console.log('vakantiepiek tests OK');
   const vandaag = new Date(2026, 10, 3);
   const rij = (x) => Object.assign({ naam: 'Maud Glass', email: 'm@x.nl', ontvangen: 'Ja', docUrl: 'sb:1:loon', docUrl2: '', salaris: '', mahdia: 'Nee', verzenddatum: '29-10-2026 16:45' }, x);
   let k = SIG.indienstOntbreektKandidaten([rij({}), rij({ naam: 'Heeft Beide', docUrl2: 'sb:2:indienst' }), rij({ naam: 'Nog Niets', ontvangen: 'Nee', docUrl: '' }), rij({ naam: 'Oud Dossier', verzenddatum: '01-06-2026 10:00' }), rij({ naam: 'Al Salaris', salaris: 'x' })], {}, vandaag);
-  assert.deepStrictEqual(k.map(x => x.r.naam), ['Maud Glass']); assert.ok(k[0].nu);
+  assert.deepStrictEqual(k.map(x => x.r.naam), ['Maud Glass', 'Al Salaris']); assert.ok(k[0].nu); // v0.47.2: al naar salaris zonder indienst = toch herinneren
   k = SIG.indienstOntbreektKandidaten([rij({})], { 'maud glass': { op: new Date(2026, 10, 2).toISOString(), n: 1 } }, vandaag);
   assert.ok(!k[0].nu, 'cooldown 3 dagen');
   k = SIG.indienstOntbreektKandidaten([rij({})], { 'maud glass': { op: new Date(2026, 9, 20).toISOString(), n: 3 } }, vandaag);

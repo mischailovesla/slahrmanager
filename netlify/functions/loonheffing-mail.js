@@ -25,6 +25,24 @@ function stempel() {
 exports.handler = beveiligd('loonheffing-mail', async (event, g) => {
   if (event.httpMethod !== 'POST') throw new Error('Gebruik POST');
   const p = body(event);
+  // v0.47.2: alleen de link naar het indiensttredingsformulier mailen (loonheffing is al binnen)
+  if (p.template === 'indienst-ontbreekt') {
+    const rijen = await S.getLoonheffing();
+    const r = rijen.find(x => x.rij === (parseInt(p.rij, 10) || 0));
+    if (!r) throw new Error('Dossier niet gevonden.');
+    if (r.docUrl2) throw new Error('Het indiensttredingsformulier van ' + r.naam + ' is al binnen.');
+    if (!r.email || r.email.indexOf('@') === -1) throw new Error('Geen geldig e-mailadres bij ' + r.naam + '.');
+    const subj = T.INDIENST_ONTBREEKT_ONDERWERP;
+    if (p.preview) return { subject: subj, text: T.indienstOntbreektPlain(r.naam), html: T.indienstOntbreektHtml(r.naam) };
+    const rid = await M.verstuur({ to: r.email, subject: subj, text: T.indienstOntbreektPlain(r.naam), html: T.indienstOntbreektHtml(r.naam), tags: [{ name: 'bron', value: 'loonheffing' }, { name: 'type', value: 'indienst-ontbreekt' }] });
+    // zelfde teller als de automatische herinnering, zodat die niet direct nog een keer mailt
+    const I = require('./_lib/instellingen'), SG = require('./_lib/signaleringen'), { normNaam } = require('./_lib/util');
+    const her = Object.assign({}, (await I.lees(SG.INDIENST_HER_SLEUTEL, {})) || {}), k = normNaam(r.naam), n = ((her[k] && her[k].n) || 0) + 1;
+    her[k] = { op: new Date().toISOString(), n }; await I.schrijf(SG.INDIENST_HER_SLEUTEL, her, g.email);
+    await M.logMail({ door: g.email, bron: 'loonheffing', type: 'indienst-ontbreekt', naar: r.email, naam: r.naam, onderwerp: subj, taal: 'NL/EN', rij: r.rij, resend_id: rid });
+    await logActie({ door: g.email, actie: 'mail', bron: 'loonheffing', veld: 'indienst-ontbreekt', rij: r.rij, naam: r.naam, nieuw: r.email, details: subj + ' (' + n + 'e keer)' });
+    return { bericht: 'Link naar het indiensttredingsformulier gemaild naar ' + r.email + ' (' + n + 'e herinnering indienst).' + (r.salaris ? ' Let op: dit dossier ging al naar salaris; stuur na ontvangst nog een keer met → Salaris.' : ''), rij: r.rij, resendId: rid };
+  }
   const tpl = T.LOON_TEMPLATES.find(x => x.key === p.template);
   if (!tpl) throw new Error('Onbekend template: ' + p.template);
   const naam = String(p.naam || '').trim();

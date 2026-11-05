@@ -2,8 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
-  { nummer: '0.45.3', datum: '05-11-2026', titel: 'Dossier toont ook gearchiveerde overplaatsingen en loonheffing', punten: [
-    'In het medewerkersdossier staan nu ook <b>gearchiveerde</b> overplaatsingen/standplaatswijzigingen en loonheffingsdossiers, met "gearchiveerd" en de datum in de status. Voorheen verdwenen ze uit het dossier zodra de rij in de tab werd gearchiveerd. Zo stond de overplaatsing van Ilia Pellapaisiotou (Ceintuur → Zuidas per 01-09-2026, verstuurd 30-07-2026) niet meer in haar dossier: die is op 21-10-2026 gearchiveerd.'
+  { nummer: '0.47.2', datum: '05-11-2026', titel: 'Herinnering alleen voor het indiensttredingsformulier', punten: [
+    'Mist alleen het <b>indiensttredingsformulier</b> (status <b>Half · indienst mist</b>), dan staat er bij Loonheffing en in het dossier een knop <b>📨 Herinner indienst</b>. De medewerker krijgt een korte mail (NL + EN) met alleen de persoonlijke link naar het online formulier.',
+    'De automatische indienst-herinnering (max. 3 keer, om de 3 dagen) slaat dossiers niet meer over die al naar salaris gingen. Vóór 03-11 kon een dossier zonder indiensttredingsformulier naar Mahdia gaan; die medewerkers kregen daardoor geen herinnering. Komt het formulier daarna binnen, stuur het dossier dan nog een keer met <b>→ Salaris</b>.'
   ] },
   { nummer: '0.47.1', datum: '05-11-2026', titel: 'Fooiverdeling: uit dienst gemarkeerd, PDF zonder verdeelsleutel', punten: [
     'Medewerkers die inmiddels <b>uit dienst</b> zijn krijgen een rood label "uit dienst per [datum]" in de tabel, de PDF en de CSV, plus een melding, zodat de winkel kan afspreken hoe zij hun <b>contante</b> fooi krijgen.',
@@ -27,6 +28,9 @@ window.HR_VERSIES = [
     '<b>Ceintuur BV</b> (Ceintuurbaan + Westerstraat) en <b>Midden BV</b> (Middenweg + Haarlemmerdijk) worden naar winkel verdeeld met <b>50% uren / 50% omzet</b>, net als het Excel-template. Omzet komt automatisch uit het omzetdashboard, uren uit Shiftbase.',
     'Daarna per winkel per medewerker <b>naar rato van de geklokte uren</b> (iedereen, ook store managers). Werkte iemand in twee winkels, dan krijgt hij uit allebei een deel.',
     '<b>Vastleggen</b> bevriest de verdeling; <b>📥 CSV</b> geeft een lijst per medewerker met BV, uren en bedrag.'
+  ] },
+  { nummer: '0.45.3', datum: '05-11-2026', titel: 'Dossier toont ook gearchiveerde overplaatsingen en loonheffing', punten: [
+    'In het medewerkersdossier staan nu ook <b>gearchiveerde</b> overplaatsingen/standplaatswijzigingen en loonheffingsdossiers, met "gearchiveerd" en de datum in de status. Voorheen verdwenen ze uit het dossier zodra de rij in de tab werd gearchiveerd. Zo stond de overplaatsing van Ilia Pellapaisiotou (Ceintuur → Zuidas per 01-09-2026, verstuurd 30-07-2026) niet meer in haar dossier: die is op 21-10-2026 gearchiveerd.'
   ] },
   { nummer: '0.45.2', datum: '05-11-2026', titel: 'Lege uploads worden geweigerd', punten: [
     '<b>→ Salaris</b> gaf bij Cecile Bongers een foutmelding van de mailserver (Resend 422). Oorzaak: haar geüploade loonheffingsverklaring is <b>leeg aangekomen (0 bytes)</b>. Nu zegt het dashboard dat in gewone taal, met wat je kunt doen.',
