@@ -2,6 +2,14 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.46.2', datum: '05-11-2026', titel: 'Fooiverdeling: omzet automatisch uit Shiftbase', punten: [
+    'De omzet van Ceintuurbaan, Westerstraat, Middenweg en Haarlemmerdijk komt nu automatisch uit <b>Shiftbase</b> (de gerealiseerde omzet die daar elke dag vanuit de kassa wordt gezet). Er is geen extra Supabase-sleutel meer nodig.',
+    'Lukt dat niet, dan kun je de omzet nog steeds zelf invullen.'
+  ] },
+  { nummer: '0.46.1', datum: '05-11-2026', titel: 'Fooiverdeling: lege omzetvelden duidelijker', punten: [
+    'Mislukt het ophalen van de omzet, dan zegt de melding nu wat er mis is (verkeerd project of sleutel geweigerd). Een URL die eindigt op /rest/v1 werkt ook.',
+    'Zolang de omzetkoppeling niet is ingesteld, staan de lege omzetvelden van Ceintuurbaan, Westerstraat, Middenweg en Haarlemmerdijk nu oranje met "nog invullen" (eerder leek "0,00" al een ingevuld bedrag).'
+  ] },
   { nummer: '0.46.0', datum: '05-11-2026', titel: 'Nieuw: Fooiverdeling', punten: [
     'Nieuwe tab <b>In dienst → Fooiverdeling</b>. Plak de tabel uit de maandmail van Jop, en het dashboard vult de fooi per pot zelf in.',
     '<b>Ceintuur BV</b> (Ceintuurbaan + Westerstraat) en <b>Midden BV</b> (Middenweg + Haarlemmerdijk) worden naar winkel verdeeld met <b>50% uren / 50% omzet</b>, net als het Excel-template. Omzet komt automatisch uit het omzetdashboard, uren uit Shiftbase.',

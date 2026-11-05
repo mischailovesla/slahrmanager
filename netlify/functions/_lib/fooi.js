@@ -187,18 +187,70 @@ function bereken({ potten, regels, omzet, handmatig }) {
 }
 
 // ---------- Bronnen ----------
-async function laadOmzet(van, tot) {
+async function laadOmzetSupabase(van, tot) {
   const url = process.env.OMZET_SUPABASE_URL, key = process.env.OMZET_SUPABASE_KEY;
   if (!url || !key) return { omzet: {}, bron: 'ontbreekt', melding: 'Omzetkoppeling (OMZET_SUPABASE_URL / OMZET_SUPABASE_KEY) is nog niet ingesteld in Netlify — vul de omzet van de gedeelde winkels zelf in.' };
   const rijen = [];
   for (let offset = 0; offset < 50000; offset += 1000) {
-    const r = await fetch(url.replace(/\/$/, '') + '/rest/v1/omzet_dag?select=winkel,netto&datum=gte.' + van + '&datum=lte.' + tot + '&order=datum.asc,winkel.asc,kanaal.asc&limit=1000&offset=' + offset,
-      { headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' } });
-    if (!r.ok) return { omzet: {}, bron: 'fout', melding: 'Omzet ophalen mislukt (HTTP ' + r.status + ') — vul de omzet van de gedeelde winkels zelf in.' };
+    const basis = String(url).trim().replace(/\/+$/, '').replace(/\/rest\/v1$/, '').replace(/\/+$/, ''); // ook goed als iemand .../rest/v1 plakt
+    const r = await fetch(basis + '/rest/v1/omzet_dag?select=winkel,netto&datum=gte.' + van + '&datum=lte.' + tot + '&order=datum.asc,winkel.asc,kanaal.asc&limit=1000&offset=' + offset,
+      { headers: Object.assign({ apikey: key, Accept: 'application/json' }, /^eyJ/.test(key) ? { Authorization: 'Bearer ' + key } : {}) }); // nieuwe sb_secret_-sleutels alleen als apikey
+    if (!r.ok) {
+      let detail = ''; try { const j = await r.json(); detail = j.message || j.msg || j.error || ''; } catch (e) { /* geen json */ }
+      const uitleg = r.status === 404 ? 'tabel omzet_dag niet gevonden — staat OMZET_SUPABASE_URL op het SLA-project (niet het HR-project)? Nu: ' + basis
+        : r.status === 401 || r.status === 403 ? 'sleutel geweigerd — controleer OMZET_SUPABASE_KEY (service_role of sb_secret_ van het SLA-project)' : '';
+      return { omzet: {}, bron: 'fout', melding: 'Omzet ophalen mislukt (HTTP ' + r.status + (uitleg ? ': ' + uitleg : '') + (detail ? ' · ' + String(detail).slice(0, 120) : '') + ') — vul de omzet van de gedeelde winkels zelf in.' };
+    }
     const deel = await r.json(); rijen.push(...deel);
     if (deel.length < 1000) break;
   }
   return { omzet: omzetPerCode(rijen), bron: 'omzetdashboard', melding: '' };
+}
+
+// v0.46.2: gerealiseerde omzet uit Shiftbase (team_days.turnover). Die wordt dagelijks vanuit Vita Mojo in Shiftbase gezet
+// (omzet_naar_shiftbase: OrderItems.netSales ex btw excl. fees = zelfde definitie als het omzetdashboard), dus geen extra sleutel nodig.
+const TURNOVER_VELDEN = ['turnover', 'actual_turnover', 'realized_turnover', 'revenue'];
+function omzetUitTeamDays(lijst, teams, van, tot) {
+  const teamDept = {};
+  for (const rec of teams || []) { const t = (rec && rec.Team) || rec || {}; if (t.id != null) teamDept[String(t.id)] = String(t.department_id || ''); }
+  const omzet = {}, dagen = {};
+  for (const rec of lijst || []) {
+    const d = (rec && (rec.TeamDay || rec.Turnover)) || rec || {};
+    const datum = String(d.date || '').slice(0, 10); if (!datum || datum < van || datum > tot) continue;
+    const veld = TURNOVER_VELDEN.find(k => d[k] != null && d[k] !== '' && isFinite(Number(d[k])));
+    if (!veld) continue;
+    const w = Number(d[veld]); if (!(w > 0)) continue;
+    const code = SB_DEPT_CODE[String(d.department_id || teamDept[String(d.team_id || '')] || '')]; if (!code) continue;
+    omzet[code] = (omzet[code] || 0) + w; (dagen[code] || (dagen[code] = new Set())).add(datum);
+  }
+  for (const c in omzet) omzet[c] = r2(omzet[c]);
+  const aantal = {}; for (const c in dagen) aantal[c] = dagen[c].size;
+  return { omzet, dagen: aantal };
+}
+async function laadOmzetShiftbase(van, tot) {
+  const SB = require('./shiftbase');
+  const [td, teams] = await Promise.all([SB.sbGet('team_days?min_date=' + van + '&max_date=' + tot), SB.sbGet('teams').catch(() => [])]);
+  return omzetUitTeamDays((td && td.data) || td || [], teams, van, tot);
+}
+
+// Volgorde: SLA-Supabase (als ingesteld en werkend) -> Shiftbase -> handmatig
+async function laadOmzet(van, tot) {
+  let sup = null;
+  if (process.env.OMZET_SUPABASE_URL && process.env.OMZET_SUPABASE_KEY) {
+    try { sup = await laadOmzetSupabase(van, tot); } catch (e) { sup = { omzet: {}, bron: 'fout', melding: 'Omzet uit Supabase mislukt: ' + e.message }; }
+    if (sup.bron === 'omzetdashboard') return sup;
+  }
+  try {
+    const sb = await laadOmzetShiftbase(van, tot);
+    const nodig = ['CB', 'WS', 'MW', 'HD'];
+    if (nodig.every(c => sb.omzet[c] > 0)) {
+      const dgn = Number(tot.slice(8, 10)), kort = nodig.filter(c => (sb.dagen[c] || 0) < dgn - 3);
+      return { omzet: sb.omzet, bron: 'shiftbase', melding: kort.length ? 'Omzet uit Shiftbase: voor ' + kort.map(winkelNaam).join(', ') + ' staan minder dagen met omzet dan verwacht (' + kort.map(c => sb.dagen[c] || 0).join('/') + ' van ' + dgn + '). Controleer dit even met het omzetdashboard.' : '' };
+    }
+    return { omzet: {}, bron: 'ontbreekt', melding: 'Geen gerealiseerde omzet gevonden in Shiftbase voor de gedeelde winkels' + (sup && sup.melding ? ' (en: ' + sup.melding.replace(/ — vul.*$/, '') + ')' : '') + ' — vul de omzet zelf in.' };
+  } catch (e) {
+    return { omzet: {}, bron: 'fout', melding: 'Omzet uit Shiftbase ophalen mislukt (' + e.message + ') — vul de omzet van de gedeelde winkels zelf in.' };
+  }
 }
 
 const _cache = {};
@@ -288,4 +340,4 @@ async function heropen(jaar, maand, gebruiker) {
   return getFooi(p.jaar, p.maand, true);
 }
 
-module.exports = { POTTEN, OMZET_WINKEL, periode, bedrag, leesPlaktekst, verdeelCenten, urenVan, verwerkTimesheets, omzetPerCode, bereken, getFooi, opslaan, heropen, schoonPotten, schoonHandmatig, maakOverzicht };
+module.exports = { omzetUitTeamDays, POTTEN, OMZET_WINKEL, periode, bedrag, leesPlaktekst, verdeelCenten, urenVan, verwerkTimesheets, omzetPerCode, bereken, getFooi, opslaan, heropen, schoonPotten, schoonHandmatig, maakOverzicht };

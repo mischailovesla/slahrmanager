@@ -68,4 +68,13 @@ assert.deepStrictEqual(v.regels, [{ userId: '1', naam: 'Anna Jansen', code: 'CB'
 assert.strictEqual(v.openAantal, 1); assert.strictEqual(v.openUren, 6); assert.strictEqual(v.afgewezen, 1);
 assert.deepStrictEqual(F.omzetPerCode([{ winkel: 'Ceintuurbaan', netto: '10.5' }, { winkel: 'Ceintuurbaan', netto: 4.5 }, { winkel: 'Groningen', netto: 99 }]), { CB: 15 });
 assert.deepStrictEqual(F.periode(2026, 2), { jaar: 2026, maand: 2, label: 'februari 2026', van: '2026-02-01', tot: '2026-02-28' });
+// 7. Omzet uit Shiftbase team_days (team -> afdeling), buiten de maand en verwachte omzet tellen niet
+const od = F.omzetUitTeamDays([
+  { TeamDay: { team_id: 228093, date: '2026-10-01', turnover: '1000.50', expected_turnover: '900' } },
+  { TeamDay: { team_id: 228093, date: '2026-10-02', turnover: 500 } },
+  { TeamDay: { team_id: 228093, date: '2026-11-01', turnover: 999 } },
+  { TeamDay: { team_id: 228093, date: '2026-10-03', expected_turnover: 800 } },
+  { TeamDay: { team_id: 777, date: '2026-10-03', turnover: 50 } }
+], [{ Team: { id: '228093', department_id: '153188' } }], '2026-10-01', '2026-10-31');
+assert.deepStrictEqual(od, { omzet: { CB: 1500.5 }, dagen: { CB: 2 } });
 console.log('fooi tests OK');

@@ -2372,11 +2372,11 @@
       return '<div class="fg" style="margin:0"><label style="font-size:.78rem">' + esc(p.naam) + (p.winkels.length > 1 ? ' <span style="color:#888;font-weight:400">(' + esc(p.winkels.join(' + ')) + ')</span>' : '') + '</label><input type="text" inputmode="decimal" data-pot="' + esc(p.id) + '" value="' + esc(v) + '" placeholder="0,00"' + (def ? ' disabled' : '') + '></div>';
     }).join('');
     // Handmatige omzet alleen tonen als de koppeling ontbreekt of er al iets handmatig staat
-    var hand = (r.invoer && r.invoer.handmatig) || {}, nodig = r.bronnen && r.bronnen.omzet !== 'omzetdashboard';
+    var hand = (r.invoer && r.invoer.handmatig) || {}, nodig = r.bronnen && r.bronnen.omzet !== 'omzetdashboard' && r.bronnen.omzet !== 'shiftbase';
     var hm = g('fo-handmatig');
     if (!def && (nodig || Object.keys(hand).length)) {
       hm.innerHTML = '<label style="font-weight:600;font-size:.82rem">Omzet gedeelde winkels (€ netto ex btw, uit het omzetdashboard)</label><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:8px">'
-        + [['CB', 'Ceintuurbaan'], ['WS', 'Westerstraat'], ['MW', 'Middenweg'], ['HD', 'Haarlemmerdijk']].map(function (w) { return '<div class="fg" style="margin:0"><label style="font-size:.78rem">' + w[1] + '</label><input type="text" inputmode="decimal" data-omzet="' + w[0] + '" value="' + esc(hand[w[0]] != null ? String(hand[w[0]]).replace('.', ',') : '') + '" placeholder="0,00"></div>'; }).join('') + '</div>';
+        + [['CB', 'Ceintuurbaan'], ['WS', 'Westerstraat'], ['MW', 'Middenweg'], ['HD', 'Haarlemmerdijk']].map(function (w) { return '<div class="fg" style="margin:0"><label style="font-size:.78rem">' + w[1] + '</label><input type="text" inputmode="decimal" data-omzet="' + w[0] + '" value="' + esc(hand[w[0]] != null ? String(hand[w[0]]).replace('.', ',') : '') + '" placeholder="nog invullen" style="border-color:' + (hand[w[0]] != null ? '' : '#e0a030') + '"></div>'; }).join('') + '</div>';
       hm.style.display = 'block';
     } else { hm.innerHTML = ''; hm.style.display = 'none'; }
     g('fo-invoer').style.display = def ? 'none' : 'block';
@@ -2385,7 +2385,7 @@
     foData = r;
     var def = r.opslag && r.opslag.status === 'definitief';
     g('fo-pill').textContent = r.periode.label + (def ? ' · definitief' : r.opslag && r.opslag.status === 'concept' ? ' · concept' : '');
-    g('fo-status').innerHTML = 'Periode <strong>' + esc(r.periode.van.split('-').reverse().join('-')) + ' t/m ' + esc(r.periode.tot.split('-').reverse().join('-')) + '</strong> · uren: ' + esc(r.bronnen.uren) + ' · omzet: ' + esc(r.bronnen.omzet === 'omzetdashboard' ? 'omzetdashboard (automatisch)' : 'handmatig') + ' · opgehaald ' + esc(r.bronnen.opgehaald)
+    g('fo-status').innerHTML = 'Periode <strong>' + esc(r.periode.van.split('-').reverse().join('-')) + ' t/m ' + esc(r.periode.tot.split('-').reverse().join('-')) + '</strong> · uren: ' + esc(r.bronnen.uren) + ' · omzet: ' + esc(r.bronnen.omzet === 'omzetdashboard' ? 'omzetdashboard (automatisch)' : r.bronnen.omzet === 'shiftbase' ? 'Shiftbase, gerealiseerde omzet (automatisch)' : 'handmatig') + ' · opgehaald ' + esc(r.bronnen.opgehaald)
       + (r.opslag && r.opslag.ontbreekt ? ' · <span style="color:#c0392b">tabel hr_fooi ontbreekt (migratie 0024) — bewaren kan nog niet</span>' : '');
     foTekenInvoer(r);
     var d = g('fo-def');
