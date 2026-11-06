@@ -44,6 +44,8 @@ Elke 15 minuten krijgt nieuwe mail een label. Wat ruis is, gaat na een vaste ter
 | Overige mail van HRM Online | Salaris/HRM Online | Blijft staan, telt mee voor Actie nodig |
 | Alle gelezen mail ouder dan 60 dagen | Opgeruimd (oud) | Uit de inbox, behalve als er Actie nodig op staat |
 
+Ongelezen mail die ouder is dan 90 dagen (en geen Actie nodig heeft) gaat ook uit de inbox. Die blijft ongelezen en staat onder het label **Auto/Opgeruimd (oud, ongelezen)**.
+
 Uit de inbox betekent gearchiveerd: de mail staat nog in *Alle berichten* en onder het label.
 
 ## Wat het script nooit doet

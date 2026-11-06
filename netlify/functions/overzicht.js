@@ -16,7 +16,12 @@ exports.handler = beveiligd('overzicht', async () => {
   // Alleen recente dossiers (verstuurd ≤ KLAAR_DAGEN geleden), zodat oude rijen van vóór de salaris-knop niet terugkomen.
   const KLAAR_DAGEN = 90;
   const recent = d => { const v = parseNLDatum(String(d.verzenddatum || '').split(' ')[0]); const n = v ? dagenTot(v) : null; return n !== null && n >= -KLAAR_DAGEN; };
-  const loonOpen = loon.filter(d => d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ontvangen !== 'Ja' || recent(d))) || d.herinnering));
+  // v0.47.3: loonheffing binnen maar indiensttredingsformulier ontbreekt → blijft open (ook als de loonheffing al naar salaris ging), zolang de uitnodiging
+  // binnen het herinneringsvenster valt — zelfde selectie als de herinneringen 'indienst ontbreekt'
+  const VENSTER = require('./_lib/config').INDIENST_HER_VENSTER_DAGEN || 60;
+  const recentIndienst = d => { const v = parseNLDatum(String(d.verzenddatum || String(d.status || '').replace(/^\D*/, '')).split(' ')[0]); const n = v ? dagenTot(v) : null; return n !== null && n >= -VENSTER; };
+  const indienstMist = d => d.ontvangen === 'Ja' && !d.docUrl2 && recentIndienst(d);
+  const loonOpen = loon.filter(d => (d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ontvangen !== 'Ja' || recent(d))) || d.herinnering)) || indienstMist(d));
   await require('./_lib/indienstcontrole').controleer(loonOpen); // v0.35.2: controle indiensttredingsformulier
   const ontslagOpen = ontslag.filter(d => d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ondertekend !== 'Ja' || recent(d))) || d.herinnering));
   try { const ctl = await require('./_lib/dossiercontrole').laad(ontslag); ontslagOpen.forEach(r => { if (ctl[r.rij]) r.controle = ctl[r.rij]; }); } catch (e) { console.warn('dossiercontrole:', e.message); } // v0.27.2

@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * HR Mail Opruimer v1.1 (05-11-2026) — voor de mailbox hr@ilovesla.com
+ * HR Mail Opruimer v1.2 (06-11-2026) — voor de mailbox hr@ilovesla.com
  * ============================================================
  * Draait in Google Apps Script ONDER HET ACCOUNT hr@ilovesla.com
  * (script.google.com → Nieuw project, ingelogd als hr@).
@@ -12,7 +12,8 @@
  *     Gearchiveerd = uit de inbox, NIET weg. Alles blijft vindbaar onder het label.
  *  3. Actielaag: "Actie nodig" (laatste bericht is van iemand anders, nog niet beantwoord)
  *     en "Wacht op antwoord" (laatste bericht is van HR, al 3+ dagen geen reactie).
- *  4. Achterstand: gelezen mail ouder dan 60 dagen zonder actie-label gaat uit de inbox.
+ *  4. Achterstand: gelezen mail ouder dan 60 dagen en ongelezen mail ouder dan 90 dagen
+ *     (zonder actie-label) gaat uit de inbox. Ongelezen blijft ongelezen, onder Auto/Opgeruimd (oud, ongelezen).
  *
  * Veiligheid
  *  - Er wordt NOOIT iets verwijderd. Alleen labelen, als gelezen markeren en archiveren.
@@ -40,6 +41,7 @@ var ACTIE_NODIG = 'Actie nodig';
 var WACHT_OP = 'Wacht op antwoord';
 var WACHT_DAGEN = 3;                      // na hoeveel dagen zonder reactie → "Wacht op antwoord"
 var ACHTERSTAND_DAGEN = 60;               // gelezen mail ouder dan dit → uit de inbox
+var ONGELEZEN_DAGEN = 90;                  // v1.2: ook ONgelezen mail ouder dan dit → uit de inbox (blijft ongelezen, label Auto/Opgeruimd (oud, ongelezen)); 0 = uit
 var MAX_SECONDEN = 270;                   // Apps Script stopt bij 6 min; wij stoppen eerder
 var LOGBOEK_NAAM = 'HR-mail opruimen – logboek';
 
@@ -160,6 +162,18 @@ function archiveerOud(log, start) {
     lbl.addToThreads(threads); GmailApp.moveThreadsToArchive(threads);
   }
   if (totaal) log.push(regel('Achterstand', 'gelezen mail ouder dan ' + ACHTERSTAND_DAGEN + ' dagen uit de inbox', totaal + (DRY_RUN && totaal === 500 ? '+' : ''), vb));
+  // v1.2: ongelezen mail die al maanden ligt, wordt in de praktijk niet meer opgepakt → uit de inbox, maar blijft ongelezen
+  if (!ONGELEZEN_DAGEN) return;
+  var q2 = 'in:inbox is:unread -is:starred older_than:' + ONGELEZEN_DAGEN + 'd -label:' + qLabel(ACTIE_NODIG) + beschermdQuery();
+  var lbl2 = label(ROOT + '/Opgeruimd (oud, ongelezen)'), n2 = 0, vb2 = '';
+  while (!tijdOp(start)) {
+    var t2 = GmailApp.search(q2, 0, 100);
+    if (!t2.length) break;
+    vb2 = vb2 || t2[0].getFirstMessageSubject();
+    if (DRY_RUN) { n2 = GmailApp.search(q2, 0, 500).length; break; }
+    n2 += t2.length; lbl2.addToThreads(t2); GmailApp.moveThreadsToArchive(t2);
+  }
+  if (n2) log.push(regel('Achterstand ongelezen', 'ongelezen mail ouder dan ' + ONGELEZEN_DAGEN + ' dagen uit de inbox (blijft ongelezen)', n2 + (DRY_RUN && n2 === 500 ? '+' : ''), vb2));
 }
 
 // "Actie nodig" = in de inbox, valt onder een actie-regel, laatste bericht NIET van HR.

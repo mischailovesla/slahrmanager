@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.47.3', datum: '06-11-2026', titel: 'Indienst ontbreekt: zichtbaar in Lopende dossiers', punten: [
+    'Is de loonheffing binnen maar het <b>indiensttredingsformulier</b> nog niet (zoals bij Zuzanna Szewczuk en Febe Hout), dan staat het dossier nu weer in <b>Lopende dossiers → Instroom · loonheffing → Wacht op formulier</b>, met het label <b>Indienst ontbreekt</b> en de knop <b>📨 Herinner indienst</b>. Ook als de loonheffing al eerder naar salaris ging.',
+    'Het blijft daar staan zolang de uitnodiging niet ouder is dan 60 dagen (zelfde termijn als de automatische herinneringen). Zodra het formulier binnen is, schuift het door naar <b>Klaar voor salaris</b>.'
+  ] },
   { nummer: '0.47.2', datum: '05-11-2026', titel: 'Herinnering alleen voor het indiensttredingsformulier', punten: [
     'Mist alleen het <b>indiensttredingsformulier</b> (status <b>Half · indienst mist</b>), dan staat er bij Loonheffing en in het dossier een knop <b>📨 Herinner indienst</b>. De medewerker krijgt een korte mail (NL + EN) met alleen de persoonlijke link naar het online formulier.',
     'De automatische indienst-herinnering (max. 3 keer, om de 3 dagen) slaat dossiers niet meer over die al naar salaris gingen. Vóór 03-11 kon een dossier zonder indiensttredingsformulier naar Mahdia gaan; die medewerkers kregen daardoor geen herinnering. Komt het formulier daarna binnen, stuur het dossier dan nog een keer met <b>→ Salaris</b>.'
