@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.47.4', datum: '06-11-2026', titel: 'Vaste winkel: correctie als het Shiftbase-team afwijkt', punten: [
+    '<b>Anita Sposito</b> staat nu bij <b>Haarlemmerdijk</b>. In Shiftbase zit ze in het team Westerstraat omdat ze daar is ingewerkt; dat team bepaalde tot nu toe haar winkel in het dashboard (takenlijst, winkelfilter, winkelmail, MTO-groep).',
+    'Algemeen: zit iemand in meerdere winkelteams, dan telt voortaan de winkel van het <b>huidige contract</b> in Shiftbase. Voor uitzonderingen zoals Anita is er een vaste correctielijst; haal haar daar weg zodra ze in Shiftbase alleen nog in het team Haarlemmerdijk zit.'
+  ] },
   { nummer: '0.47.3', datum: '06-11-2026', titel: 'Indienst ontbreekt: zichtbaar in Lopende dossiers', punten: [
     'Is de loonheffing binnen maar het <b>indiensttredingsformulier</b> nog niet (zoals bij Zuzanna Szewczuk en Febe Hout), dan staat het dossier nu weer in <b>Lopende dossiers → Instroom · loonheffing → Wacht op formulier</b>, met het label <b>Indienst ontbreekt</b> en de knop <b>📨 Herinner indienst</b>. Ook als de loonheffing al eerder naar salaris ging.',
     'Het blijft daar staan zolang de uitnodiging niet ouder is dan 60 dagen (zelfde termijn als de automatische herinneringen). Zodra het formulier binnen is, schuift het door naar <b>Klaar voor salaris</b>.'

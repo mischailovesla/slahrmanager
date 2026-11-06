@@ -325,6 +325,11 @@ module.exports = {
   },
 
   // Shiftbase department_id -> winkelcode (uit Shiftbase.gs v9.4)
+  // v0.47.4: vaste winkel handmatig vastzetten als het Shiftbase-team niet de echte winkel is (bijv. ingewerkt in een andere winkel).
+  // Sleutel = volledige naam zoals in Shiftbase, in kleine letters; waarde = winkelcode uit WINKEL_BV_MAP. Weghalen zodra Shiftbase klopt.
+  LOCATIE_CORRECTIE: {
+    'anita sposito': 'HD'   // Store Manager Haarlemmerdijk, ingewerkt bij Westerstraat (06-11-2026)
+  },
   SB_DEPT_CODE: {
     '153188': 'CB', '153128': 'WS', '153130': 'MW', '153129': 'HD',
     '153189': 'ZA', '153127': 'US', '153126': 'AW', '153192': 'AD',

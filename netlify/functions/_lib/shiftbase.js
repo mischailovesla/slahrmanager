@@ -61,6 +61,7 @@ function verwerk(usersLijst, contractsLijst, typeNamen) {
         p.einde = (ed && ed !== '0000-00-00') ? ed : '';
         p.contractType = String((c.ContractType && c.ContractType.name) || typeNamen[String(c.contract_type_id || '')] || c.contract_type || '').trim();
         p.uren = c.contract_hours != null && c.contract_hours !== '' ? Number(c.contract_hours) : null; // v0.35.2: contracturen per week
+        p.dept = String(c.department_id || ''); // v0.47.4: afdeling (winkel) van het huidige contract
       }
     }
   }
@@ -79,6 +80,14 @@ function verwerk(usersLijst, contractsLijst, typeNamen) {
       if (!winkelNaam && t.name) winkelNaam = String(t.name).replace(/^SLA\s*/i, '').trim();
     }
     if (!code && /^hq$/i.test(winkelNaam)) code = 'HO'; // v0.33.1: kantoor → SLA Holding BV
+    // v0.47.4: vaste winkel. 1) handmatige correctie in config (LOCATIE_CORRECTIE, bijv. ingewerkt in een andere winkel);
+    // 2) zit iemand in meerdere winkelteams, dan telt de winkel van het huidige contract.
+    {
+      const C2 = require('./config'), nm = normNaam(((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim());
+      const corr = (C2.LOCATIE_CORRECTIE || {})[nm], cdept = (perUser[String(u.id)] || {}).dept;
+      if (corr && WINKEL_BV_MAP[corr]) { code = corr; winkelNaam = WINKEL_BV_MAP[corr].naam; }
+      else if (eigen.length > 1 && cdept && SB_DEPT_CODE[cdept] && eigen.some(t => String(t.department_id || '') === cdept)) { code = SB_DEPT_CODE[cdept]; winkelNaam = WINKEL_BV_MAP[code].naam; }
+    }
     if (alleenFranchise || require('./config').FRANCHISE_NAAM.test(winkelNaam)) continue;
     const naam = ((u.first_name || '') + ' ' + (u.prefix ? u.prefix + ' ' : '') + (u.last_name || '')).replace(/\s+/g, ' ').trim();
     if (!naam || UITGESLOTEN.has(normNaam(naam))) continue;
