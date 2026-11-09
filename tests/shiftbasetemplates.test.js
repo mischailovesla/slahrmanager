@@ -44,7 +44,7 @@ for (const s of SB.SOORTEN) {
   else assert.ok(tekst.includes('aan het einde van de maand') && !/14e van de volgende maand/.test(tekst), s.key + ': betaling Store Manager (vastloner)');
   assert.ok(!tekst.includes('10.00') && tekst.includes('09.00'), s.key + ': werktijden');
   assert.strictEqual(tekst.includes('7:628 lid 5'), s.key === 'nieuw-slamaker', s.key + ': 7:628 lid 5');
-  assert.strictEqual(/indien opgeroepen/.test(tekst), /slamaker/.test(s.key), s.key + ': indien opgeroepen');
+  assert.strictEqual(/indien opgeroepen/.test(tekst), /slamaker$/.test(s.key), s.key + ': indien opgeroepen'); // v0.47.5: -vast zonder oproep
   assert.ok(tekst.includes('functie van {job_title}') || tekst.includes('functie van  {job_title}'), s.key + ': {job_title}');
   assert.ok(tekst.includes(/slamaker/.test(s.key) ? 'A.3.I' : /junior/.test(s.key) ? 'A.4.I' : 'A.5.I'), s.key + ': functie-indeling');
   assert.ok(!/B\.\d\.I/.test(tekst), s.key + ': geen B-indeling meer');
@@ -80,3 +80,15 @@ console.log('✓ shiftbasetemplates');
 { const r = CM.HUISREGELS.join(' ');
   assert.ok(r.includes('lisa@ilovesla.com') && r.includes('siska@ilovesla.com'), 'vertrouwenspersonen Lisa + Siska');
   assert.ok(!/jodi@|ymke@/i.test(r), 'geen oude vertrouwenspersonen'); }
+
+// v0.47.5: vaste-uren-varianten hebben het uren-veld en geen oproep-bepalingen
+{
+  const zipLees = b => Z.lees(b).find(d => d.naam === 'word/document.xml').data.toString('utf8').replace(/<[^>]+>/g, '');
+  for (const k of ['nieuw-slamaker-vast', 'verlenging-slamaker-vast', 'onbepaald-slamaker-vast']) {
+    const t = zipLees(SB.maak(k, 'HD', { huisregels: ['x'] }).data);
+    assert.ok(t.includes('{weekly_working_hours}'), k + ': uren-veld');
+    assert.ok(!/indien opgeroepen|gehoor te geven|7:628 lid 5/.test(t), k + ': geen oproep-tekst');
+    assert.ok(t.includes('{hourly_wage}'), k + ': uurloon');
+  }
+  console.log('shiftbasetemplates vaste uren OK');
+}

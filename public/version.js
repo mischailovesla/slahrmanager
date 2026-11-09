@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.47.5', datum: '09-11-2026', titel: 'Shiftbase-templates: Sla maker met vaste uren', punten: [
+    'In <b>Instroom → Shiftbase-templates</b> staan drie nieuwe soorten per winkel: <b>Sla maker vaste uren (bepaalde tijd)</b>, <b>Verlenging Sla maker vaste uren</b> en <b>Sla maker vaste uren voor onbepaalde tijd</b>.',
+    'Ze bevatten het Shiftbase-veld <b>uren per week</b>, zodat Shiftbase bij het genereren om het aantal uren vraagt. De oproep-bepalingen (beschikbaar houden, oproep 4 dagen vooraf, artikel 7:628 lid 5) zijn vervangen door een vaste arbeidsomvang volgens rooster, met meeruren tegen het uurloon. Verder gelijk aan de gewone Sla maker-templates (uurloon, vakantie, ziekte, huisregels).',
+    'Eenmalig per winkel downloaden en in Shiftbase uploaden als nieuw template.'
+  ] },
   { nummer: '0.47.4', datum: '06-11-2026', titel: 'Vaste winkel: correctie als het Shiftbase-team afwijkt', punten: [
     '<b>Anita Sposito</b> staat nu bij <b>Haarlemmerdijk</b>. In Shiftbase zit ze in het team Westerstraat omdat ze daar is ingewerkt; dat team bepaalde tot nu toe haar winkel in het dashboard (takenlijst, winkelfilter, winkelmail, MTO-groep).',
     'Algemeen: zit iemand in meerdere winkelteams, dan telt voortaan de winkel van het <b>huidige contract</b> in Shiftbase. Voor uitzonderingen zoals Anita is er een vaste correctielijst; haal haar daar weg zodra ze in Shiftbase alleen nog in het team Haarlemmerdijk zit.'

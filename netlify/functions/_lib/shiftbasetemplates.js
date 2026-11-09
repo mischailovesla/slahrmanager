@@ -19,7 +19,11 @@ const SOORTEN = [
   { key: 'verlenging-slamaker',  groep: 'verlenging', titel: 'Verlenging Sla maker' },
   { key: 'verlenging-junior-sm', groep: 'verlenging', titel: 'Verlenging Junior Store Manager' },
   { key: 'verlenging-sm',        groep: 'verlenging', titel: 'Verlenging Store Manager' },
-  { key: 'onbepaald-slamaker',   groep: 'verlenging', titel: 'Sla maker voortzetten voor onbepaalde tijd' }
+  { key: 'onbepaald-slamaker',   groep: 'verlenging', titel: 'Sla maker voortzetten voor onbepaalde tijd' },
+  // v0.47.5: Sla maker met vaste uren (Shiftbase-veld {weekly_working_hours}); masters gemaakt met scripts/shiftbase-vast.py
+  { key: 'nieuw-slamaker-vast',      groep: 'nieuw',      titel: 'Sla maker vaste uren (bepaalde tijd)' },
+  { key: 'verlenging-slamaker-vast', groep: 'verlenging', titel: 'Verlenging Sla maker vaste uren' },
+  { key: 'onbepaald-slamaker-vast',  groep: 'verlenging', titel: 'Sla maker vaste uren voor onbepaalde tijd' }
 ];
 // v0.34.3: de werkgever tekent altijd namens de eigenaar (C.AFZENDER_NAAM = Jop van de Graaf), niet namens een operations manager
 const STANDAARD = { vertegenwoordiger: C.AFZENDER_NAAM || 'Jop van de Graaf' };
