@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.47.6', datum: '12-11-2026', titel: 'Te doen: winkel bij loonheffingstaken', punten: [
+    'Bij <b>Loonheffingsverklaring niet ontvangen</b>, <b>Indiensttredingsformulier ontbreekt</b> en <b>Loonheffingskorting-formulier niet retour</b> staat nu de <b>winkel</b> achter de naam, net als bij de andere taken. De winkel komt uit Shiftbase.'
+  ] },
   { nummer: '0.47.5', datum: '09-11-2026', titel: 'Shiftbase-templates: Sla maker met vaste uren', punten: [
     'In <b>Instroom → Shiftbase-templates</b> staan drie nieuwe soorten per winkel: <b>Sla maker vaste uren (bepaalde tijd)</b>, <b>Verlenging Sla maker vaste uren</b> en <b>Sla maker vaste uren voor onbepaalde tijd</b>.',
     'Ze bevatten het Shiftbase-veld <b>uren per week</b>, zodat Shiftbase bij het genereren om het aantal uren vraagt. De oproep-bepalingen (beschikbaar houden, oproep 4 dagen vooraf, artikel 7:628 lid 5) zijn vervangen door een vaste arbeidsomvang volgens rooster, met meeruren tegen het uurloon. Verder gelijk aan de gewone Sla maker-templates (uurloon, vakantie, ziekte, huisregels).',

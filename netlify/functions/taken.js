@@ -297,6 +297,16 @@ exports.handler = beveiligd('taken', async (event, g) => {
     if (naam === 'weekend-beschikbaarheid') { const nw = w => String(w || '').trim().toLowerCase().replace(/^sla\s+/, ''), uit = new Set((C.WEEKEND_UITGESLOTEN_WINKELS || []).map(nw)); items = (items || []).filter(x => !uit.has(nw(x.winkel))); }
     taken.push(...uitCheck(naam, items, runs[naam].tijd));
   }
+  // v0.47.6: loonheffing- en kortingstaken komen uit de loonheffingssheet (zonder winkel) — winkel uit Shiftbase erbij zetten in de subregel.
+  // Alleen weergave: t.winkel blijft leeg, zodat deze HR-taken niet naar de keukenrol verschuiven.
+  try {
+    const zonder = taken.filter(t => (t.bron === 'loonheffing-herinneringen' || t.bron === 'korting-herinneringen') && t.naam && !t.winkel);
+    if (zonder.length) {
+      const { normNaam: nn3 } = require('./_lib/util'), wk = {};
+      (await require('./_lib/shiftbase').getMedewerkers(false) || []).forEach(m => { if (m.winkelNaam) wk[nn3(m.naam)] = m.winkelNaam; });
+      for (const t of zonder) { const w = wk[nn3(t.naam)]; if (w && t.sub && t.sub.indexOf(t.naam + ' · ') === 0) t.sub = t.naam + ' · ' + w + t.sub.slice(t.naam.length); }
+    }
+  } catch (e) { fouten.push('winkel bij loonheffing: ' + e.message); }
   // v0.31.4: Arbeidstijdenwet-afwijkingen per medewerker samenvoegen (één taak met de diensten erin, i.p.v. één taak per dienst)
   {
     const atw = taken.filter(t => /^jeugd\|atw\|/.test(t.sleutel || '')), per = {};
