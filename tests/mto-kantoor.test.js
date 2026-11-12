@@ -19,4 +19,9 @@ assert.strictEqual(MTO.groepVan('logistiek', 'Chauffeur'), 'keuken', 'logistiek 
 assert.ok(!/store manager/i.test(JSON.stringify(Q.voorPagina('EN', 'keuken'))));
 const tekst = JSON.stringify(Q.voorPagina('EN', 'kantoor'));
 assert.ok(!/store manager/i.test(tekst), 'kantoor krijgt geen "store manager" in de vragen');
+// v0.47.7: nog niet in dienst → geen MTO
+assert.strictEqual(MTO.nogNietInDienst({ indienst: '30-11-2026' }, '2026-11-12'), true);
+assert.strictEqual(MTO.nogNietInDienst({ indienst: '12-11-2026' }, '2026-11-12'), false, 'startdag zelf telt als in dienst');
+assert.strictEqual(MTO.nogNietInDienst({ indienst: '01-03-2024' }, '2026-11-12'), false);
+assert.strictEqual(MTO.nogNietInDienst({ indienst: '' }, '2026-11-12'), false, 'onbekend = gewoon uitnodigen');
 console.log('mto kantoor tests OK');

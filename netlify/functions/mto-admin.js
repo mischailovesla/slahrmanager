@@ -69,7 +69,7 @@ exports.handler = beveiligd('mto-admin', async (event, g) => {
   if (q.kandidaten) {
     const k = await MTO.kandidaten();
     const tel = {}; k.uit.forEach(x => { tel[x.groep] = (tel[x.groep] || 0) + 1; });
-    return { aantal: k.uit.length, perGroep: tel, zonderEmail: k.zonderEmail.map(x => ({ naam: x.naam, winkel: x.winkel })), vertrekkers: k.vertrekkers.length,
+    return { aantal: k.uit.length, perGroep: tel, zonderEmail: k.zonderEmail.map(x => ({ naam: x.naam, winkel: x.winkel })), vertrekkers: k.vertrekkers.length, nogNietInDienst: (k.nogNietInDienst || []).map(x => ({ naam: x.naam, winkel: x.winkel, indienst: x.indienst })),
       managers: k.uit.filter(x => x.groep === 'manager').map(x => ({ naam: x.naam, winkel: x.winkel, functie: x.functie })) };
   }
   if (q.csv) return { csv: await MTO.exportCsv(q.csv) };

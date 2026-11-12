@@ -110,20 +110,33 @@ async function openRonde() {
   return (data || [])[0] || null;
 }
 
-// Wie krijgt een uitnodiging: iedereen in dienst (Shiftbase), behalve vertrekkers en wie geen e-mailadres heeft
+// v0.47.7: nog niet in dienst = eerste contract (Shiftbase, 'indienst' dd-mm-jjjj) begint na vandaag
+function nogNietInDienst(m, vandaagIso) {
+  const d = String((m && m.indienst) || '').match(/^(\d{2})-(\d{2})-(\d{4})$/);
+  if (!d) return false;
+  return (d[3] + '-' + d[2] + '-' + d[1]) > (vandaagIso || require('./shiftbase').isoVandaag());
+}
+async function nogNietInDienstIds() {
+  const SB = require('./shiftbase'), vandaag = SB.isoVandaag();
+  return new Set((await SB.getMedewerkers(true)).filter(m => nogNietInDienst(m, vandaag)).map(m => String(m.id)));
+}
+
+// Wie krijgt een uitnodiging: iedereen in dienst (Shiftbase), behalve vertrekkers, wie geen e-mailadres heeft
+// en (v0.47.7) wie nog niet in dienst is (contract begint na vandaag)
 async function kandidaten() {
   const SB = require('./shiftbase'), SIG = require('./signaleringen');
-  const med = await SB.getMedewerkers(true);
+  const med = await SB.getMedewerkers(true), vandaag = SB.isoVandaag();
   let vertrek = new Set(); try { vertrek = await SIG.vertrekkers(); } catch (e) { console.warn('mto vertrekkers:', e.message); }
-  const uit = [], zonder = [], weg = [];
+  const uit = [], zonder = [], weg = [], nogNiet = [];
   for (const m of med) {
     const email = String(m.email || '').trim().toLowerCase();
-    const k = { medewerker_id: String(m.id), naam: m.naam, email, winkel: m.winkelNaam || '', groep: groepVan(m.winkelNaam, m.functie), functie: m.functie || '' };
+    const k = { medewerker_id: String(m.id), naam: m.naam, email, winkel: m.winkelNaam || '', groep: groepVan(m.winkelNaam, m.functie), functie: m.functie || '', indienst: m.indienst || '' };
+    if (nogNietInDienst(m, vandaag)) { nogNiet.push(k); continue; }
     if (SIG.vertrekt(vertrek, k)) { weg.push(k); continue; }
     if (email.indexOf('@') === -1) { zonder.push(k); continue; }
     uit.push(k);
   }
-  return { uit: uit.sort((a, b) => a.naam.localeCompare(b.naam, 'nl')), zonderEmail: zonder, vertrekkers: weg };
+  return { uit: uit.sort((a, b) => a.naam.localeCompare(b.naam, 'nl')), zonderEmail: zonder, vertrekkers: weg, nogNietInDienst: nogNiet };
 }
 
 async function start(door, naam) {
@@ -132,14 +145,14 @@ async function start(door, naam) {
   if (!k.uit.length) throw new Error('Geen medewerkers met een e-mailadres gevonden in Shiftbase.');
   const db = admin(), nu = new Date();
   const sluit = new Date(nu.getTime() + LOOPTIJD * 864e5); sluit.setHours(23, 59, 0, 0);
-  const { data, error } = await db.from('hr_mto_ronde').insert({ naam: String(naam || '').trim() || rondeNaam(nu), gestart_door: door || '', sluit_op: sluit.toISOString(), opmerking: k.zonderEmail.length ? k.zonderEmail.length + ' medewerker(s) zonder e-mailadres overgeslagen' : '' }).select('*');
+  const { data, error } = await db.from('hr_mto_ronde').insert({ naam: String(naam || '').trim() || rondeNaam(nu), gestart_door: door || '', sluit_op: sluit.toISOString(), opmerking: [k.zonderEmail.length ? k.zonderEmail.length + ' medewerker(s) zonder e-mailadres overgeslagen' : '', k.nogNietInDienst.length ? k.nogNietInDienst.length + ' medewerker(s) nog niet in dienst overgeslagen' : ''].filter(Boolean).join('; ') }).select('*');
   fout(error, 'Ronde aanmaken');
   const ronde = data[0];
   for (let i = 0; i < k.uit.length; i += 200) {
     const { error: e2 } = await db.from('hr_mto_uitnodiging').insert(k.uit.slice(i, i + 200).map(x => ({ ronde_id: ronde.id, medewerker_id: x.medewerker_id, naam: x.naam, email: x.email, winkel: x.winkel, groep: x.groep })));
     if (e2) { await db.from('hr_mto_ronde').delete().eq('id', ronde.id); fout(e2, 'Uitnodigingen aanmaken'); }
   }
-  return { ronde, aantal: k.uit.length, zonderEmail: k.zonderEmail, vertrekkers: k.vertrekkers.length };
+  return { ronde, aantal: k.uit.length, zonderEmail: k.zonderEmail, vertrekkers: k.vertrekkers.length, nogNietInDienst: k.nogNietInDienst.length };
 }
 
 // Mails in blokken van 100 (Resend batch). soort: uitnodiging | herinnering1 | herinnering2
@@ -181,15 +194,21 @@ async function versturenDeel(rondeId, door, budgetMs) {
 // Wie krijgt vandaag een herinnering (droog = alleen tellen)
 async function herinneringen(ronde, droog, door) {
   const db = admin(), uit = [];
+  // v0.47.7: wie (nog) niet in dienst is en niet invulde, krijgt geen herinnering; de uitnodiging vervalt (telt ook niet mee in de respons)
+  let nogNiet = new Set(); try { nogNiet = await nogNietInDienstIds(); } catch (e) { console.warn('mto nog niet in dienst:', e.message); }
+  if (nogNiet.size && !droog) {
+    const { error: eW } = await db.from('hr_mto_uitnodiging').delete().eq('ronde_id', ronde.id).eq('ingevuld', false).in('medewerker_id', [...nogNiet]);
+    if (eW) console.warn('mto uitnodigingen nog niet in dienst opruimen:', eW.message);
+  }
   const dagen = (Date.now() - new Date(ronde.gestart_op).getTime()) / 864e5;
   for (let i = 0; i < HERINNER.length; i++) {
     if (dagen < HERINNER[i]) continue;
     const veld = i === 0 ? 'herinnerd_1' : 'herinnerd_2', soort = i === 0 ? 'herinnering1' : 'herinnering2';
     // tweede herinnering alleen als de eerste niet nog gaat (anders twee mails op één dag na een gemiste run)
     if (i === 0 && HERINNER[1] && dagen >= HERINNER[1]) continue;
-    const { data, error } = await db.from('hr_mto_uitnodiging').select('id,naam,email').eq('ronde_id', ronde.id).eq('ingevuld', false).not('verstuurd_op', 'is', null).is(veld, null);
+    const { data, error } = await db.from('hr_mto_uitnodiging').select('id,naam,email,medewerker_id').eq('ronde_id', ronde.id).eq('ingevuld', false).not('verstuurd_op', 'is', null).is(veld, null);
     fout(error, 'Herinneringen lezen');
-    const lijst = data || [];
+    const lijst = (data || []).filter(r => !nogNiet.has(String(r.medewerker_id)));
     if (droog) { uit.push({ soort, aantal: lijst.length, droog: true }); continue; }
     let n = 0;
     for (let j = 0; j < lijst.length; j += 100) n += await verstuurBlok(ronde, lijst.slice(j, j + 100), soort, door);
@@ -486,4 +505,4 @@ async function exportCsv(rondeId) {
   return [kop].concat(rijen).map(r => r.map(q).join(';')).join('\n');
 }
 
-module.exports = { isKantoor, isZone, zoneVan, ZONE_GROEPEN, groepVan, GROEPEN, filter, metGroep, MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, verlengen, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager, acties, actieOpslaan, actieVerwijderen, koppeling, spearman, samenvatting, voorWinkel };
+module.exports = { nogNietInDienst, nogNietInDienstIds, isKantoor, isZone, zoneVan, ZONE_GROEPEN, groepVan, GROEPEN, filter, metGroep, MIN_N, LOOPTIJD, HERINNER, MAANDEN, rondeNaam, link, leesToken, onderwerp, mailHtml, mailPlain, rondes, openRonde, kandidaten, start, versturenDeel, herinneringen, sluiten, verlengen, hrHerinneringNodig, hrHerinnering, uitnodigingVoor, opslaan, importNulmeting, aggregeer, rapport, pdfSecties, exportCsv, isManager, acties, actieOpslaan, actieVerwijderen, koppeling, spearman, samenvatting, voorWinkel };

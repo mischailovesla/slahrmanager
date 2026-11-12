@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.47.7', datum: '12-11-2026', titel: 'MTO: alleen voor wie al in dienst is', punten: [
+    'Wie een contract heeft dat nog moet ingaan, krijgt geen MTO-uitnodiging meer.',
+    'Loopt er al een ronde, dan krijgen zij ook geen herinnering; hun uitnodiging vervalt en telt niet mee in de respons.',
+    'Bij "Ronde starten" zie je wie om deze reden is overgeslagen.'
+  ] },
   { nummer: '0.47.6', datum: '12-11-2026', titel: 'Te doen: winkel bij loonheffingstaken', punten: [
     'Bij <b>Loonheffingsverklaring niet ontvangen</b>, <b>Indiensttredingsformulier ontbreekt</b> en <b>Loonheffingskorting-formulier niet retour</b> staat nu de <b>winkel</b> achter de naam, net als bij de andere taken. De winkel komt uit Shiftbase.'
   ] },
