@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * HR Mail Opruimer v1.2 (06-11-2026) — voor de mailbox hr@ilovesla.com
+ * HR Mail Opruimer v1.3 (13-11-2026) — voor de mailbox hr@ilovesla.com
  * ============================================================
  * Draait in Google Apps Script ONDER HET ACCOUNT hr@ilovesla.com
  * (script.google.com → Nieuw project, ingelogd als hr@).
@@ -40,7 +40,8 @@ var ROOT = 'Auto';
 var ACTIE_NODIG = 'Actie nodig';
 var WACHT_OP = 'Wacht op antwoord';
 var WACHT_DAGEN = 3;                      // na hoeveel dagen zonder reactie → "Wacht op antwoord"
-var ACHTERSTAND_DAGEN = 60;               // gelezen mail ouder dan dit → uit de inbox
+var ACHTERSTAND_DAGEN = 30;               // gelezen mail ouder dan dit → uit de inbox (v1.3: was 60)
+var WACHT_ARCHIVEREN = true;              // v1.3: 'Wacht op antwoord' uit de inbox; komt vanzelf terug zodra iemand antwoordt
 var ONGELEZEN_DAGEN = 90;                  // v1.2: ook ONgelezen mail ouder dan dit → uit de inbox (blijft ongelezen, label Auto/Opgeruimd (oud, ongelezen)); 0 = uit
 var MAX_SECONDEN = 270;                   // Apps Script stopt bij 6 min; wij stoppen eerder
 var LOGBOEK_NAAM = 'HR-mail opruimen – logboek';
@@ -60,9 +61,9 @@ var REGELS = [
   { naam: 'Afwezigheidsberichten', zoek: 'subject:("Automatisch antwoord" OR "Automatic reply" OR "Out of office" OR "Afwezigheidsbericht")', label: 'Ruis/Afwezig', ruis: true, naDagen: 0 },
   { naam: 'Onbestelbaar (bounces)', zoek: 'from:(mailer-daemon OR postmaster) OR subject:("Undeliverable" OR "niet bezorgd" OR "Delivery Status Notification")', label: 'Ruis/Bounces', ruis: false, actie: true },
   { naam: 'Loonstroken (kopie)', zoek: 'from:contracten@ilovesla.com subject:Loonstrook', label: 'Salaris/Loonstroken', ruis: true, naDagen: 0 },
-  { naam: 'HRM Online overig', zoek: 'from:hrmonline.nl -subject:Periodeverslagen', label: 'Salaris/HRM Online', ruis: false, actie: true },
+  { naam: 'HRM Online overig', zoek: 'from:hrmonline.nl -subject:Periodeverslagen', label: 'Salaris/HRM Online', ruis: true, naDagen: 14, actie: true },
   { naam: 'Sollicitaties (werkenbij)', zoek: 'from:werkenbij@ilovesla.com subject:"Nieuwe sollicitatie"', label: 'Werving/Sollicitaties', ruis: true, naDagen: 7 },
-  { naam: 'Reacties kandidaten (werkenbij)', zoek: 'from:werkenbij@ilovesla.com subject:"Nieuw antwoord van"', label: 'Werving/Reacties kandidaat', ruis: false, actie: true },
+  { naam: 'Reacties kandidaten (werkenbij)', zoek: 'from:werkenbij@ilovesla.com subject:"Nieuw antwoord van"', label: 'Werving/Reacties kandidaat', ruis: true, naDagen: 7 }, // v1.3: beantwoorden gaat in het werkenbij-platform, niet in deze inbox
   { naam: 'Systeemmeldingen', zoek: 'from:(no-reply@accounts.google.com OR drive-shares-dm-noreply@google.com OR esignature-noreply@google.com OR uber.com OR exact.com OR exactonline.nl OR apprendo.nl OR notifications@sign.com OR noreply OR no-reply) -from:ilovesla.com', label: 'Systeem', ruis: true, naDagen: 3 },
   { naam: 'Ontslag / opzegging', zoek: 'subject:(ontslag OR resignation OR opzegging OR opzeggen OR termination OR "notice" OR "laatste werkdag" OR "uit dienst")', label: 'Uitstroom/Ontslag', ruis: false, actie: true },
   { naam: 'Nieuwe medewerker / contractaanvraag', zoek: 'subject:("new hire" OR "nieuwe medewerker" OR "nieuwe sla maker" OR "nieuwe slamaker" OR "new employee" OR "first contract" OR "eerste contract" OR "hiring request" OR "contract request" OR slamaker OR "sla-maker" OR "sla maker")', label: 'Instroom/Nieuwe medewerker', ruis: false, actie: true },
@@ -142,7 +143,7 @@ function sorteer(r, bereik, log) {
 }
 
 function ruimOp(r, log) {
-  var q = 'in:inbox label:' + qLabel(ROOT + '/' + r.label) + (r.naDagen ? ' older_than:' + r.naDagen + 'd' : '') + beschermdQuery();
+  var q = 'in:inbox label:' + qLabel(ROOT + '/' + r.label) + (r.naDagen ? ' older_than:' + r.naDagen + 'd' : '') + ' -label:' + qLabel(ACTIE_NODIG) + beschermdQuery(); // v1.3: nooit iets met Actie nodig
   if (DRY_RUN) q = 'in:inbox (' + r.zoek + ')' + (r.naDagen ? ' older_than:' + r.naDagen + 'd' : '') + beschermdQuery();
   var threads = GmailApp.search(q, 0, 500).filter(function (t) { return !heeftCollega(t); });
   if (!threads.length) return;
@@ -196,7 +197,16 @@ function actieLaag(log, start) {
   GmailApp.search('label:' + qLabel(ACTIE_NODIG), 0, 200).forEach(function (t) {
     var m = t.getMessages(); if (m[m.length - 1].getFrom().toLowerCase().indexOf(HR_ADRES) > -1) { nWeg++; if (!DRY_RUN) t.removeLabel(actie); }
   });
-  log.push(regel('Actielaag', 'Actie nodig +' + nA + ' / −' + nWeg + ' · Wacht op antwoord +' + nW, nA + nW + nWeg, ''));
+  // v1.3: reacties van kandidaten horen niet in Actie nodig (beantwoorden gaat via het werkenbij-platform)
+  GmailApp.search('label:' + qLabel(ACTIE_NODIG) + ' label:' + qLabel(ROOT + '/Werving/Reacties kandidaat'), 0, 200).forEach(function (t) { nWeg++; if (!DRY_RUN) t.removeLabel(actie); });
+  // v1.3: 'Wacht op antwoord' uit de inbox. Gmail zet het gesprek automatisch terug in de inbox zodra er een antwoord komt.
+  var nArch = 0;
+  if (WACHT_ARCHIVEREN) {
+    var wq = 'in:inbox label:' + qLabel(WACHT_OP) + ' -label:' + qLabel(ACTIE_NODIG) + beschermdQuery();
+    var wt = GmailApp.search(wq, 0, 300); nArch = wt.length;
+    if (!DRY_RUN) for (var i = 0; i < wt.length; i += 100) GmailApp.moveThreadsToArchive(wt.slice(i, i + 100));
+  }
+  log.push(regel('Actielaag', 'Actie nodig +' + nA + ' / −' + nWeg + ' · Wacht op antwoord +' + nW + ' · ' + nArch + ' wachtend uit de inbox', nA + nW + nWeg + nArch, ''));
 }
 
 // ---------- hulpjes ----------

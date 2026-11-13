@@ -17,7 +17,7 @@ Links in Gmail verschijnen twee nieuwe labels bovenaan en een map **Auto** met s
 | Label | Betekenis |
 | --- | --- |
 | **Actie nodig** | Het laatste bericht is van iemand anders: wij moeten nog antwoorden. Verdwijnt vanzelf zodra hr@ heeft geantwoord. |
-| **Wacht op antwoord** | Wij hebben als laatste gemaild en hebben al 3 dagen niets gehoord. Tijd om na te bellen of te herinneren. |
+| **Wacht op antwoord** | Wij hebben als laatste gemaild en hebben al 3 dagen niets gehoord. Tijd om na te bellen of te herinneren. Deze gesprekken staan niet in de inbox, alleen onder dit label; Gmail zet ze vanzelf terug in de inbox zodra er een antwoord komt. |
 | Auto/Instroom/… | Nieuwe medewerker, Contract, Loonheffing |
 | Auto/In dienst/… | Verlof, Ziek |
 | Auto/Uitstroom/Ontslag | Opzeggingen en ontslagmails |
@@ -25,7 +25,7 @@ Links in Gmail verschijnen twee nieuwe labels bovenaan en een map **Auto** met s
 | Auto/Werving/… | Sollicitaties, Reacties kandidaat |
 | Auto/Overheid | UWV en Belastingdienst |
 | Auto/Systeem, Auto/Ruis/… | Systeemmeldingen, afwezigheidsberichten, onbestelbare mail |
-| Auto/Opgeruimd (oud) | Gelezen mail ouder dan 60 dagen die uit de inbox is gehaald |
+| Auto/Opgeruimd (oud) | Gelezen mail ouder dan 30 dagen die uit de inbox is gehaald |
 
 ## Wat er automatisch gebeurt
 
@@ -38,11 +38,11 @@ Elke 15 minuten krijgt nieuwe mail een label. Wat ruis is, gaat na een vaste ter
 | Afwezigheidsberichten | Ruis/Afwezig | Meteen gelezen + uit de inbox |
 | Systeemmeldingen (Google, Exact, Uber, Apprendo, Drive) | Systeem | Na 3 dagen gelezen + uit de inbox |
 | Nieuwe sollicitatie (werkenbij) | Werving/Sollicitaties | Na 7 dagen gelezen + uit de inbox |
-| Reactie van een kandidaat | Werving/Reacties kandidaat | Blijft staan, telt mee voor Actie nodig |
+| Reactie van een kandidaat | Werving/Reacties kandidaat | Na 7 dagen gelezen + uit de inbox (beantwoorden gaat via werkenbij) |
 | Ontslag, nieuwe medewerker, contract, loonheffing, salarisvragen, verlof, ziek, UWV | eigen label (zie hierboven) | Blijft staan, telt mee voor Actie nodig |
 | Onbestelbare mail | Ruis/Bounces | Blijft staan: het mailadres van iemand klopt niet |
-| Overige mail van HRM Online | Salaris/HRM Online | Blijft staan, telt mee voor Actie nodig |
-| Alle gelezen mail ouder dan 60 dagen | Opgeruimd (oud) | Uit de inbox, behalve als er Actie nodig op staat |
+| Overige mail van HRM Online | Salaris/HRM Online | Telt mee voor Actie nodig; zonder openstaande actie na 14 dagen uit de inbox |
+| Alle gelezen mail ouder dan 30 dagen | Opgeruimd (oud) | Uit de inbox, behalve als er Actie nodig op staat |
 
 Ongelezen mail die ouder is dan 90 dagen (en geen Actie nodig heeft) gaat ook uit de inbox. Die blijft ongelezen en staat onder het label **Auto/Opgeruimd (oud, ongelezen)**.
 
