@@ -2,6 +2,13 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.50.0', datum: '16-11-2026', titel: 'Nieuw: HACCP-naleving', punten: [
+    'Nieuwe pagina <b>Dossier → HACCP-naleving</b>: per winkel hoeveel verplichte HACCP-lijsten (dagcontrole, serveertemperatuur, levering) <b>niet zijn afgerond</b> of te laat, uit SLA Academy.',
+    'Het rooster uit <b>Shiftbase</b> ligt ernaast: per gemiste lijst zie je wie er in het <b>tijdvak</b> van die lijst op het rooster stond (bijv. 06:00–13:30). Dagen zonder rooster (winkel dicht) tellen niet mee.',
+    'Per medewerker: hoe vaak hij/zij in zo\'n tijdvak stond en hoe vaak de lijst toen niet is afgerond, met eerdere HACCP-waarschuwingen.',
+    '<b>⚠ Waarschuwing</b> opent de gewone waarschuwing, al ingevuld met de dagen, lijsten en diensten, en met de regels HR50 en HR57 aangevinkt.',
+    'Vijf nieuwe HACCP-huisregels in de waarschuwingslijst (HR57–HR61): op tijd afronden, de leidinggevende van de dienst regelt het, naar waarheid registreren, alleen je eigen winkelcode, en melden als het niet lukt.'
+  ] },
   { nummer: '0.49.2', datum: '16-11-2026', titel: 'Gesprekken: lange afspraken ingekort', punten: [
     'In <b>Gesprekken</b> (open vervolgafspraken en alle gesprekken) toont elke cel met aanleiding, besproken of afspraken nog maar <b>3 regels</b>. Lange werkafspraken maken de tabel niet meer metershoog.',
     'Klik op de tekst of op <b>Lees alles →</b> en het hele gesprek opent in een leesvenster: aanleiding, besproken en afspraken onder elkaar, met de oorspronkelijke regelovergangen.'

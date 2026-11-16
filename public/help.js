@@ -82,6 +82,12 @@ window.HR_HELP = {
       + '<tr><td>Shiftbase-datacontrole</td><td>Uitdienstdatum, contract, geboortedatum of e-mail aanpassen in Shiftbase.</td></tr>'
       + '<tr><td>CAO-jeugdlonen verouderd</td><td>Mischa vragen de nieuwe loontabel in te vullen (elk half jaar).</td></tr>'
       + '</tbody></table>' },
+    { id: 'haccp', titel: 'HACCP-naleving', html:
+      '<ol><li>Open <b>Dossier → HACCP-naleving</b>. Standaard zie je de afgelopen 4 weken; kies eventueel één lijst.</li>'
+      + '<li>Bovenaan per winkel: hoeveel verplichte lijsten er waren, hoeveel <b>niet zijn afgerond</b> en hoeveel te laat. Te laat is alleen een signaal.</li>'
+      + '<li><b>Per medewerker</b>: hoe vaak iemand in het tijdvak van een verplichte lijst op het rooster stond en hoe vaak die lijst toen niet is afgerond. Klik <b>Details</b> voor de dagen.</li>'
+      + '<li>Klik <b>⚠ Waarschuwing</b>. De gewone waarschuwing opent met de dagen en diensten in de toelichting en HR50 + HR57 aangevinkt. Lees na, pas aan en verstuur.</li></ol>'
+      + '<p>Een dienst telt mee als hij minstens 30 minuten in het tijdvak valt. Een dag waarop niemand op het rooster stond, telt niet mee. Klopt een lijst niet voor een winkel (bijv. geen levering op die dag), zet hem dan in Kas uit voor die winkel.</p>' },
     { id: 'declaraties', titel: 'Declaraties', html:
       '<ol><li>Medewerkers dienen een voorgeschoten uitgave in via <b>SLA Academy → Profiel → Declaraties</b>: datum, waar gekocht, bedrag, omschrijving, IBAN en een foto of scan van het bonnetje. Het IBAN hoeven ze maar één keer in te vullen.</li>'
       + '<li>Open <b>In dienst → Declaraties</b>. Onder <b>Open</b> staat alles wat nog betaald moet worden. Klik <b>🧾</b> om het bonnetje te bekijken.</li>'

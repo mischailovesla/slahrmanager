@@ -9,12 +9,12 @@
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['sbtemplates', 'Shiftbase-templates'], ['checkin', 'Check-in 30/60'], ['eerstedienst', 'Tijd tot eerste dienst']] },
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['fooi', 'Fooiverdeling'], ['declaraties', 'Declaraties'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
-    { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['eindtijd', 'Eindtijd & afsluiten'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
+    { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['eindtijd', 'Eindtijd & afsluiten'], ['haccp', 'HACCP-naleving'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegang & log (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, eindtijd: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, declaraties: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, eindtijd: 1, haccp: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, declaraties: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -70,6 +70,7 @@
     if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
     if (tab === 'fooi' && !foData) foLaad(false); // v0.46.0
     if (tab === 'declaraties') dcLaad(); // v0.49.0
+    if (tab === 'haccp' && !hcData) hcLaad(false); // v0.50.0
     if (tab === 'eindtijd' && !etCfg) api('/api/eindtijd').then(function (c) { if (c.success) etCfg = c; }); // v0.48.0
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
     if (tab === 'exit' && !exData) laadExit(12);
@@ -135,6 +136,7 @@
     vakantie: ['Vakantieplanner', 'Vakantie en afwezigheid per winkel per week.'],
     vastloners: ['Vastloners', 'Maandmutaties salaris voor de vaste krachten en store managers.'],
     fooi: ['Fooiverdeling', 'Fooi per maand verdelen: gedeelde BV\'s naar winkel (50% uren / 50% omzet), daarna per medewerker naar gewerkte uren.'],
+    haccp: ['HACCP-naleving', 'Verplichte HACCP-lijsten die niet zijn afgerond, naast het rooster: wie stond er in het tijdvak, en waarschuwen waar nodig.'],
     declaraties: ['Declaraties', 'Voorgeschoten uitgaven die medewerkers in SLA Academy indienen: bonnetje bekijken, betalen of afwijzen.'],
     training: ['Training & certificaten', 'Voortgang in SLA Academy per winkel en medewerker.'],
     verlenging: ['Contractverlengingen', 'Aflopende tijdelijke contracten: besluit vastleggen, advies van de Store Manager en vervolg.'],
@@ -2411,6 +2413,54 @@
     navigator.clipboard.writeText(t).then(function () { toast('Overzicht gekopieerd', 'ok'); }, function () { toast('Kopiëren mislukt', 'err'); });
   };
 
+  // ---------- HACCP-naleving (v0.50.0): Academy-lijsten naast het Shiftbase-rooster ----------
+  var hcData = null;
+  (function () { var t = new Date(); t.setDate(t.getDate() - 1); var v = new Date(t); v.setDate(v.getDate() - 27); if (g('hc-van')) { g('hc-van').value = v.toLocaleDateString('sv-SE'); g('hc-tot').value = t.toLocaleDateString('sv-SE'); } })();
+  var hcDat = function (iso) { return iso ? iso.slice(8, 10) + '-' + iso.slice(5, 7) : ''; };
+  window.hcLaad = async function (ververs) {
+    var st = g('hc-status'); st.innerHTML = '<span class="sp" style="border-color:rgba(0,0,0,.15);border-top-color:#009f4b"></span> HACCP uit Academy en rooster uit Shiftbase ophalen…';
+    var r = await api('/api/haccp?van=' + g('hc-van').value + '&tot=' + g('hc-tot').value + '&lijst=' + encodeURIComponent(g('hc-lijst').value) + (ververs ? '&ververs=1' : ''));
+    if (!r.success) { st.innerHTML = '<span style="color:#c0392b">' + esc(r.bericht) + '</span>'; return; }
+    hcData = r; hcTeken();
+  };
+  function hcTeken() {
+    var r = hcData, t = r.totaal, gekozen = g('hc-lijst').value;
+    g('hc-lijst').innerHTML = '<option value="">Alle verplichte lijsten</option>' + r.lijstnamen.map(function (n) { return '<option' + (n === gekozen ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
+    g('hc-status').innerHTML = 'Periode ' + hcDat(r.periode.van) + '-' + r.periode.van.slice(0, 4) + ' t/m ' + hcDat(r.periode.tot) + '-' + r.periode.tot.slice(0, 4) + ' · ' + r.roosterDiensten + ' diensten uit Shiftbase · een dienst telt mee als hij minstens ' + r.minOverlap + ' min in het tijdvak van de lijst valt · dagen zonder rooster (winkel dicht) tellen niet mee';
+    g('hc-kpi').innerHTML = '<div class="card cg"><div class="si sig">📋</div><div><div class="sv">' + t.verwacht + '</div><div class="sl">Verplichte lijsten</div></div></div>'
+      + '<div class="card ' + (t.gemist ? 'cw' : 'cd') + '"><div class="si ' + (t.gemist ? 'siw' : 'sid') + '">✕</div><div><div class="sv">' + t.gemist + ' <small style="font-size:.9rem">(' + t.pctGemist + '%)</small></div><div class="sl">Niet afgerond</div></div></div>'
+      + '<div class="card cd"><div class="si sid">⏱</div><div><div class="sv">' + t.laat + '</div><div class="sl">Te laat (signaal)</div></div></div>'
+      + '<div class="card cw"><div class="si siw">👤</div><div><div class="sv">' + t.medewerkers + '</div><div class="sl">Medewerkers betrokken</div></div></div>';
+    g('hc-winkels').innerHTML = r.winkels.filter(function (w) { return w.verwacht; }).map(function (w) {
+      var kl = w.pctGemist >= 20 ? 'br' : w.pctGemist >= 10 ? 'bo' : 'bg';
+      return '<tr><td><strong>' + esc(w.naam) + '</strong></td><td style="text-align:right">' + w.verwacht + '</td><td style="text-align:right">' + w.gemist + ' <span class="badge ' + kl + '">' + w.pctGemist + '%</span></td><td style="text-align:right">' + w.laat + '</td><td style="text-align:right">' + w.pctOpTijd + '%</td><td style="text-align:right" class="lay-sub">' + (w.dicht || '') + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="leeg grijs">Geen gegevens.</td></tr>';
+    g('hc-mw-pill').textContent = r.medewerkers.length;
+    g('hc-mw').innerHTML = r.medewerkers.map(function (m, i) {
+      var p = m.persoon || {}, kl = m.pct >= 50 ? 'br' : m.pct >= 25 ? 'bo' : 'boat';
+      return '<tr><td><strong>' + esc(m.naam) + '</strong>' + (p.inDienst ? '' : ' <span class="badge boat">niet meer in Shiftbase</span>') + '<div class="lay-sub">' + esc(m.winkels.join(', ')) + '</div></td>'
+        + '<td style="text-align:right">' + m.inTijdvak + '</td><td style="text-align:right"><strong>' + m.gemist + '</strong> <span class="badge ' + kl + '">' + m.pct + '%</span></td>'
+        + '<td>' + hcDat(m.laatste) + '</td><td>' + (p.eerdereHaccp && p.eerdereHaccp.length ? '<span class="badge br" title="Eerdere waarschuwing met een HACCP-regel">' + p.eerdereHaccp.length + '× (' + esc(p.eerdereHaccp[p.eerdereHaccp.length - 1]) + ')</span>' : '<span class="no-doc">-</span>') + '</td>'
+        + '<td style="white-space:nowrap"><button class="btn bd bsm" data-hc-lees="' + i + '">Details</button> <button class="btn bd bsm" data-hc-wr="' + i + '" style="border-color:#c0392b;color:#c0392b"' + (p.email ? '' : ' title="Geen e-mailadres in Shiftbase"') + '>⚠ Waarschuwing</button> ' + (p.inDienst ? dosBtn(p.naam, p.email) : '') + '</td></tr>';
+    }).join('') || '<tr><td colspan="6" class="leeg grijs">Niemand: elke verplichte lijst is afgerond. 🎉</td></tr>';
+    g('hc-gemist-pill').textContent = r.gemist.length;
+    g('hc-gemist').innerHTML = r.gemist.map(function (x) {
+      return '<tr><td style="white-space:nowrap">' + esc(x.dag) + '</td><td>' + esc(x.winkel) + '</td><td><span class="badge boat">' + esc(x.lijst) + '</span></td><td style="white-space:nowrap">' + esc(x.tijdvak) + '</td><td style="font-size:.82rem">'
+        + (x.ploeg.length ? x.ploeg.map(function (d) { return '<span style="white-space:nowrap">' + esc(d.naam) + ' <span class="lay-sub" style="display:inline">' + esc(d.dienst) + '</span></span>'; }).join(' · ') : '<span class="lay-sub">niemand in dit tijdvak (wel later die dag)</span>') + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="leeg grijs">Geen gemiste lijsten in deze periode.</td></tr>';
+  }
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest && e.target.closest('[data-hc-lees],[data-hc-wr]'); if (!b || !hcData) return;
+    var m = hcData.medewerkers[+(b.getAttribute('data-hc-lees') || b.getAttribute('data-hc-wr'))]; if (!m) return;
+    if (b.hasAttribute('data-hc-lees')) {
+      leesVenster('HACCP — ' + m.naam, '<div class="lay-sub" style="margin-bottom:10px">' + m.inTijdvak + ' keer geroosterd in het tijdvak van een verplichte lijst · ' + m.gemist + ' keer niet afgerond (' + m.pct + '%) · ' + m.laat + ' keer te laat</div>'
+        + '<table style="width:100%"><thead><tr><th>Datum</th><th>Winkel</th><th>Lijst</th><th>Tijdvak</th><th>Dienst</th></tr></thead><tbody>' + m.voorvallen.map(function (v) { return '<tr><td>' + esc(v.datum.split('-').reverse().join('-')) + '</td><td>' + esc(v.winkel) + '</td><td>' + esc(v.lijst) + '</td><td>' + esc(v.tijdvak) + '</td><td>' + esc(v.dienst) + '</td></tr>'; }).join('') + '</tbody></table>');
+      return;
+    }
+    var p = m.persoon || {};
+    if (p.eerdereHaccp && p.eerdereHaccp.length && !confirm(m.naam + ' kreeg al eerder een waarschuwing met een HACCP-regel (' + p.eerdereHaccp.join(', ') + '). Toch een nieuwe opstellen?')) return;
+    openWrModal({ naam: p.naam || m.naam, email: p.email || '', adres: p.adres || '', winkel: p.winkelNaam || '', datumOvertreding: m.datumOvertreding, toelichting: m.toelichting, taal: p.taal || 'NL', regels: (hcData.regelTeksten || []).join(' | ') });
+  });
   // ---------- Declaraties uit SLA Academy (v0.49.0) ----------
   var dcData = null, dcStatus = 'open';
   var dcEur = function (x) { return '€ ' + Number(x || 0).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };

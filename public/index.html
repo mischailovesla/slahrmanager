@@ -731,6 +731,24 @@
   </div>
 
   <!-- FOOIVERDELING (v0.46.0) -->
+  <div class="tc" id="tab-haccp">
+    <div class="sec">
+      <div class="sh"><div class="st">HACCP-naleving</div>
+        <div class="hr2"><input type="date" id="hc-van" class="sb" style="width:auto"><input type="date" id="hc-tot" class="sb" style="width:auto"><select id="hc-lijst" class="sb" style="width:auto"><option value="">Alle verplichte lijsten</option></select><button class="btn bp bsm" onclick="hcLaad(false)">Ophalen</button><button class="btn bd bsm" onclick="hcLaad(true)" title="Rooster opnieuw uit Shiftbase halen">↻</button></div></div>
+      <div id="hc-status" class="lay-sub" style="padding:10px 24px 0">Kies een periode en klik op Ophalen.</div>
+      <div class="stats" id="hc-kpi" style="padding:16px 24px 0"></div>
+      <div class="tw"><table><thead><tr><th>Winkel</th><th style="text-align:right">Verplicht</th><th style="text-align:right">Niet afgerond</th><th style="text-align:right">Te laat</th><th style="text-align:right">Op tijd</th><th style="text-align:right" title="Dagen zonder rooster: winkel dicht, telt niet mee">Dicht</th></tr></thead><tbody id="hc-winkels"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Per medewerker <span class="pill" id="hc-mw-pill">-</span></div><div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('hc-mw',this.value)"></div></div>
+      <div class="tw"><table><thead><tr><th>Medewerker</th><th style="text-align:right" title="Zo vaak stond hij/zij in het tijdvak van een verplichte lijst op het rooster">In tijdvak</th><th style="text-align:right">Lijst niet afgerond</th><th>Laatste</th><th>Eerdere HACCP-waarschuwing</th><th></th></tr></thead><tbody id="hc-mw"></tbody></table></div>
+    </div>
+    <div class="sec">
+      <div class="sh"><div class="st">Niet afgeronde lijsten <span class="pill" id="hc-gemist-pill">-</span></div><div class="hr2"><input class="sb" type="text" placeholder="Zoek op winkel, naam..." oninput="flt('hc-gemist',this.value)"></div></div>
+      <div class="tw"><table><thead><tr><th>Dag</th><th>Winkel</th><th>Lijst</th><th>Tijdvak</th><th>Op het rooster in dit tijdvak</th></tr></thead><tbody id="hc-gemist"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Werkwijze:</strong> de verplichte HACCP-lijsten komen uit <b>SLA Academy</b> (de lijsten in SLA Winkel), het rooster uit <b>Shiftbase</b>. Per winkel en per dag kijkt het dashboard welke lijst <b>niet is afgerond</b> (en niet op n.v.t. staat). Iedereen die in het <b>tijdvak</b> van die lijst op het rooster stond (bijv. HACCP dagcontrole 06:00–13:30, minstens 30 minuten overlap) staat erbij. Een dag zonder rooster telt niet mee (winkel dicht). <b>Te laat</b> afgeronde lijsten zijn alleen een signaal, geen overtreding. <b>⚠ Waarschuwing</b> opent de gewone waarschuwing met <b>HR50</b> en <b>HR57</b> aangevinkt en de dagen, lijsten en diensten in de toelichting; controleer en pas aan vóór je verstuurt. Klopt een lijst niet voor een winkel (bijv. geen levering op die dag), zet hem dan in Kas uit voor die winkel, dan verdwijnt hij hier ook.</div>
+  </div>
   <div class="tc" id="tab-declaraties">
     <div class="sec">
       <div class="sh"><div class="st">Declaraties <span class="pill" id="dc-pill">-</span></div>
