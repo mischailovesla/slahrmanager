@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.50.1', datum: '16-11-2026', titel: 'Loonheffing afkeuren', punten: [
+    'Bij <b>Klaar voor salaris</b> staat onder <b>⋯</b> nu <b>🗑 Loonheffing afkeuren</b>. Gebruik dit als de loonheffingsverklaring leeg, onleesbaar of het verkeerde formulier is, ook als het dashboard het bestand zelf niet als leeg herkent.',
+    'Je geeft een reden op. Het document gaat uit het dossier (niet echt gewist; wie, wanneer en waarom blijft zichtbaar) en het dossier gaat terug naar <b>Wacht op formulier</b>. Met <b>Herinner</b> stuur je daarna een nieuwe uploadlink.'
+  ] },
   { nummer: '0.50.0', datum: '16-11-2026', titel: 'Nieuw: HACCP-naleving', punten: [
     'Nieuwe pagina <b>Dossier → HACCP-naleving</b>: per winkel hoeveel verplichte HACCP-lijsten (dagcontrole, serveertemperatuur, levering) <b>niet zijn afgerond</b> of te laat, uit SLA Academy.',
     'Het rooster uit <b>Shiftbase</b> ligt ernaast: per gemiste lijst zie je wie er in het <b>tijdvak</b> van die lijst op het rooster stond (bijv. 06:00–13:30). Dagen zonder rooster (winkel dicht) tellen niet mee.',

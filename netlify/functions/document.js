@@ -7,11 +7,12 @@ const U = require('./_lib/uploads');
 exports.handler = beveiligd('document', async (event, g) => {
   if (event.httpMethod === 'POST') {
     const p = body(event);
-    if (p.actie !== 'verwijder-leeg') throw new Error('Onbekende actie.');
+    if (p.actie !== 'verwijder-leeg' && p.actie !== 'afkeuren') throw new Error('Onbekende actie.');
+    if (p.actie === 'afkeuren' && String(p.reden || '').trim().length < 3) throw new Error('Geef een reden op.');
     if (!U.isRef(p.ref)) throw new Error('Ongeldige documentverwijzing.');
     const S = require('./_lib/sheets'), C = require('./_lib/config');
     const voor = p.ref.split(':')[2] === 'loon' ? (await S.getLoonheffing()).filter(r => r.docUrl === p.ref) : [];
-    const uit = await U.verwijderLeeg(p.ref, g.email);
+    const uit = await U.verwijderLeeg(p.ref, g.email, p.actie === 'afkeuren' ? p.reden : '');
     let teruggezet = 0;
     if (voor.length) {
       if (S.vergeetCache) S.vergeetCache();
@@ -19,8 +20,8 @@ exports.handler = beveiligd('document', async (event, g) => {
       for (const r of voor) { const nu = na.find(x => x.rij === r.rij); if (nu && nu.ontvangen === 'Ja' && !nu.docUrl && !nu.salaris) { await S.zetCel(C.SHEETS.loonheffing.id, null, r.rij, 6, '', S.KLEUR.wit); teruggezet++; } }
     }
     if (S.vergeetCache) S.vergeetCache();
-    await logActie({ door: g.email, actie: 'verwijder', bron: 'upload', veld: uit.key, rij: voor.length ? voor[0].rij : 0, naam: uit.naam, oud: p.ref, nieuw: '', details: 'Leeg document (0 bytes) verwijderd: ' + uit.label + (teruggezet ? '; Ontvangen weer uit' : '') });
-    return { bericht: 'Leeg document "' + uit.label + '" van ' + uit.naam + ' verwijderd.' + (teruggezet ? ' Het dossier staat weer op "wacht op formulier"; de herinneringen lopen weer.' : '') };
+    await logActie({ door: g.email, actie: 'verwijder', bron: 'upload', veld: uit.key, rij: voor.length ? voor[0].rij : 0, naam: uit.naam, oud: p.ref, nieuw: '', details: (p.actie === 'afkeuren' ? 'Document afgekeurd (' + String(p.reden).trim().slice(0, 200) + '): ' : 'Leeg document (0 bytes) verwijderd: ') + uit.label + (teruggezet ? '; Ontvangen weer uit' : '') });
+    return { bericht: (p.actie === 'afkeuren' ? 'Document "' : 'Leeg document "') + uit.label + '" van ' + uit.naam + ' verwijderd.' + (teruggezet ? ' Het dossier staat weer op "wacht op formulier"; de herinneringen lopen weer.' : '') };
   }
   const ref = (event.queryStringParameters || {}).ref;
   if (!U.isRef(ref)) throw new Error('Ongeldige documentverwijzing.');

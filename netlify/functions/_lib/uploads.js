@@ -155,12 +155,14 @@ async function grootte(b) {
 }
 // v0.48.3: leeg document (0 bytes) uit het dossier halen. Niet echt wissen: de sleutel krijgt '_leeg' erachter, met wie/wanneer/waarom,
 // zodat vindUploads hem niet meer ziet en het dossier weer op 'wacht op formulier' komt. Alleen voor lege bestanden.
-async function verwijderLeeg(ref, door) {
+async function verwijderLeeg(ref, door, reden) {
   const b = await zoekBestand(ref);
-  const g = await grootte(b);
-  if (g !== 0) throw new Error(g == null ? 'Kon de grootte van het document niet controleren; er is niets verwijderd.' : 'Dit document is niet leeg (' + g + ' bytes). Alleen lege documenten kunnen hier worden verwijderd.');
+  // v0.50.1: met een reden (HR keurt het document af: onleesbaar, verkeerd formulier, ...) mag elk document eruit; zonder reden alleen 0 bytes
+  const handmatig = String(reden || '').trim().length >= 3;
+  const g = handmatig ? null : await grootte(b);
+  if (!handmatig && g !== 0) throw new Error(g == null ? 'Kon de grootte van het document niet controleren; er is niets verwijderd.' : 'Dit document is niet leeg (' + g + ' bytes). Alleen lege documenten kunnen hier worden verwijderd.');
   const key = ref.split(':')[2];
-  const bestanden = (b.upload.bestanden || []).map(x => x.key === key ? Object.assign({}, x, { key: key + '_leeg', oorspronkelijkeKey: key, verwijderd_op: new Date().toISOString(), verwijderd_door: door || '', reden: 'leeg (0 bytes): upload mislukt' }) : x);
+  const bestanden = (b.upload.bestanden || []).map(x => x.key === key ? Object.assign({}, x, { key: key + (handmatig ? '_afgekeurd' : '_leeg'), oorspronkelijkeKey: key, verwijderd_op: new Date().toISOString(), verwijderd_door: door || '', reden: handmatig ? 'afgekeurd door HR: ' + String(reden).trim().slice(0, 300) : 'leeg (0 bytes): upload mislukt' }) : x);
   const { error } = await admin().from('hr_uploads').update({ bestanden }).eq('id', b.upload.id);
   if (error) throw new Error('hr_uploads: ' + error.message);
   return { key, label: b.label, naam: b.upload.naam };

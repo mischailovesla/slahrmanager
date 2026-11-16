@@ -488,6 +488,19 @@
       + d.medewerkers.map(function (m) { return '<tr><td>' + esc(m.naam) + '</td><td>' + esc(m.winkel) + '</td><td>' + dt(m.indienst) + '</td><td>' + (m.eersteDienst ? dt(m.eersteDienst) + (m.gepland ? ' <span class="badge boat">gepland</span>' : '') : '<span class="badge bo">nog geen dienst</span> <span class="lay-sub">(' + m.dagenInDienst + ' d in dienst)</span>') + '</td><td>' + (m.dagen == null ? '–' : m.dagen < 0 ? '<span class="badge br" title="Dienst vóór de indienstdatum">' + m.dagen + '</span>' : m.dagen > 14 ? '<span class="badge bo">' + m.dagen + '</span>' : m.dagen) + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
     el.innerHTML = h;
   };
+  // v0.50.1: loonheffingsverklaring afkeuren (onleesbaar, leeg, verkeerd formulier) -> uit het dossier, terug naar 'wacht op formulier'
+  function bAfkeur(r) { return /^sb:/.test(r.docUrl || '') ? '<button class="btn bd bsm" data-afkeur-ref="' + esc(r.docUrl) + '" data-afkeur-naam="' + esc(r.naam) + '">🗑 Loonheffing afkeuren</button>' : ''; }
+  document.addEventListener('click', async function (e) {
+    var b = e.target.closest && e.target.closest('button[data-afkeur-ref]'); if (!b) return;
+    var naam = b.getAttribute('data-afkeur-naam');
+    var reden = prompt('Loonheffingsverklaring van ' + naam + ' afkeuren.\n\nHet document gaat uit het dossier (niet echt gewist; wie/wanneer/waarom blijft zichtbaar), het dossier gaat terug naar "wacht op formulier" en de herinneringen lopen weer. Daarna kun je op Herinner klikken voor een nieuwe uploadlink.\n\nReden:', 'Document is leeg of onleesbaar');
+    if (reden === null) return;
+    if (String(reden).trim().length < 3) { toast('Geef een reden op', 'err'); return; }
+    var v = await api('/api/document', { actie: 'afkeuren', ref: b.getAttribute('data-afkeur-ref'), reden: reden });
+    if (!v.success) { toast('Afkeuren: ' + v.bericht, 'err'); return; }
+    toast(v.bericht, 'ok');
+    laadOverzicht();
+  });
   function renderPijp() {
     var el = g('ov-pijp'); if (!el || !ovData) return;
     var o = ovData.open, f = function (lijst) { return (lijst || []).filter(function (r) { return inWinkel(r.naam, r.email); }); };
@@ -501,7 +514,7 @@
         if (r.ontvangen === 'Ja') return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' <span class="badge br" title="Het online indiensttredingsformulier is nog niet ingevuld. Herinneringen gaan automatisch (max. 1 per 3 dagen).">Indienst ontbreekt</span>' + (r.salaris ? ' <span class="lay-sub">loonheffing al naar salaris ' + esc(String(r.salaris).split(' ')[0]) + '</span>' : ''), dagenSinds(r.verzenddatum || r.status), idhBtn(r) || '', [bUp('loonheffing', r, true), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)], true);
         return kaart(r, 'deadline ' + esc(r.deadline || '-') + ' · ' + (r.aantalHer || 0) + 'x herinnerd', dagenSinds(r.status), lmBtn(r).replace('>Mail<', '>Herinner<'), [bUp('loonheffing', r, false), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)], true); }) },
       { naam: 'Indienst retour', items: loon.filter(function (r) { return r.indienstRetour && !r.salaris; }).map(function (r) { return kaart(r, '↩ ' + esc(r.indienstRetour.reden) + ' · ' + bDoc(r.docUrl2, 'Indienst (oud)'), irDagen(r), irKnop(r, 'herinner'), [irKnop(r, 'intrekken'), bDoc(r.docUrl, 'Loonheffing'), dosBtn(r.naam, r.email)], true); }) },
-      { naam: 'Klaar voor salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && !r.salaris && !r.indienstRetour && r.docUrl2 && r.docUrl; }).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + (r.docUrl2 ? bDoc(r.docUrl2, 'Indienst') : '<span class="badge br" title="Gaat niet naar salaris zonder indiensttredingsformulier">Indienst ontbreekt</span>') + bIc(r), dagenSinds(r.status), bSal('loonheffing', r), icKnoppen(r).concat([irKnop(r, 'retour'), lmBtn(r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)])); }) },
+      { naam: 'Klaar voor salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && !r.salaris && !r.indienstRetour && r.docUrl2 && r.docUrl; }).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + (r.docUrl2 ? bDoc(r.docUrl2, 'Indienst') : '<span class="badge br" title="Gaat niet naar salaris zonder indiensttredingsformulier">Indienst ontbreekt</span>') + bIc(r), dagenSinds(r.status), bSal('loonheffing', r), icKnoppen(r).concat([bAfkeur(r), irKnop(r, 'retour'), lmBtn(r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)])); }) },
     ] });
     var ont = f(o.ontslag), tp = function (r) { return (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + ' · ' + esc(r.bedrijf || '-') + ' · einde ' + esc(r.einddatum || '-') + bCtl(r); };
     proc.push({ naam: 'Uitstroom', stappen: [

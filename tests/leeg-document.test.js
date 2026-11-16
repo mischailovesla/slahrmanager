@@ -22,6 +22,11 @@ const U = require(${JSON.stringify(path.join(__dirname, '..', 'netlify', 'functi
   const b = db.update.v.bestanden;
   assert.deepStrictEqual(b.map(x => x.key), ['loon_leeg', 'indienst']);
   assert.strictEqual(b[0].verwijderd_door, 'hr@x'); assert.strictEqual(b[0].oorspronkelijkeKey, 'loon');
+  // v0.50.1: afkeuren met reden mag ook bij een niet-leeg document
+  const af = await U.verwijderLeeg('sb:' + id + ':indienst', 'hr@x', 'onleesbaar');
+  assert.strictEqual(af.key, 'indienst');
+  assert.strictEqual(db.update.v.bestanden[1].key, 'indienst_afgekeurd');
+  assert.ok(/afgekeurd door HR: onleesbaar/.test(db.update.v.bestanden[1].reden));
   console.log('leeg-document tests OK');
 })().catch(e => { console.error(e.message); process.exit(1); });
 `;
