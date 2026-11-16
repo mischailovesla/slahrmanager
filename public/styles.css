@@ -300,6 +300,9 @@ tbody tr:hover td{background:#fdfaf8}
 /* Lange tekst in tabellen: één regel, klik = leesvenster */
 .cel-kort{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .cel-kort:hover{color:var(--groen)}
+.cel-klem{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;cursor:pointer;font-size:.82rem;max-width:340px;line-height:1.4}
+.cel-klem:hover{color:var(--groen)}
+.cel-klem+.cel-meer,.cel-meer{border:none;background:none;padding:2px 0 0;font-family:inherit;font-size:.74rem;font-weight:700;color:var(--groen);cursor:pointer}
 td .lay-sub.cel-kort{max-width:200px}
 .lees-v{padding:12px 0;border-bottom:1px solid var(--lijn2)}.lees-v:last-child{border-bottom:none}
 .lees-vr{font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--grijs);margin-bottom:4px}

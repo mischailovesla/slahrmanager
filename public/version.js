@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.49.2', datum: '16-11-2026', titel: 'Gesprekken: lange afspraken ingekort', punten: [
+    'In <b>Gesprekken</b> (open vervolgafspraken en alle gesprekken) toont elke cel met aanleiding, besproken of afspraken nog maar <b>3 regels</b>. Lange werkafspraken maken de tabel niet meer metershoog.',
+    'Klik op de tekst of op <b>Lees alles →</b> en het hele gesprek opent in een leesvenster: aanleiding, besproken en afspraken onder elkaar, met de oorspronkelijke regelovergangen.'
+  ] },
   { nummer: '0.49.1', datum: '16-11-2026', titel: 'Declaraties op het Overzicht', punten: [
     'Op het <b>Overzicht</b> staat rechts onder <b>Deze week</b> een blok <b>Declaraties</b>: aantal en totaalbedrag van wat nog betaald moet worden, en de oudste vijf met hoe lang ze al wachten. Met <b>Alle →</b> ga je naar de pagina Declaraties.',
     'Het winkelfilter rechtsboven werkt ook voor dit blok.',

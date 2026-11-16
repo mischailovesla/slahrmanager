@@ -1686,6 +1686,18 @@
     return '<div style="border:1px solid #e8e2de;border-radius:10px;padding:10px 14px;margin:8px 0;background:#fff;font-size:.86rem"><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="badge boat">' + esc(x.soortLabel) + '</span><strong>' + esc(x.datumNL) + '</strong><span class="lay-sub">' + esc([x.kanaal, x.gevoerdDoor].filter(Boolean).join(' · ')) + '</span>' + vv + '<span style="margin-left:auto;display:flex;gap:6px">' + (x.vervolgOpen ? '<button class="btn bp bsm" data-gs-vervolg="' + esc(x.id) + '">Vervolggesprek</button><button class="btn bd bsm" data-gs-af="' + esc(x.id) + '">✓ Vervolg afvinken</button>' : '') + '<button class="btn bd bsm" data-gs-bewerk="' + esc(x.id) + '">Bewerken</button></span></div>'
       + blok('Aanleiding', x.aanleiding) + blok('Besproken', x.besproken) + blok('Afspraken', x.afspraken) + (x.bijgewerkt ? '<div class="lay-sub" style="margin-top:4px">bewerkt ' + esc(x.bijgewerkt) + ' door ' + esc(x.bijgewerktDoor) + '</div>' : '') + '</div>';
   }
+  // v0.49.2: lange teksten in de gesprekstabellen ingekort tot 3 regels; klik = het hele gesprek in een leesvenster
+  function gsKort(id, tekst, extra) {
+    if (!tekst && !extra) return '<span class="no-doc">-</span>';
+    var lang = String(tekst || '').length + String(extra || '').length > 160 || /\n/.test(String(tekst || '') + String(extra || ''));
+    return '<div class="cel-klem" data-gs-lees="' + esc(id) + '" title="Klik om alles te lezen">' + esc(tekst || '') + (extra ? (tekst ? ' — ' : '') + '<span class="lay-sub" style="display:inline">' + esc(extra) + '</span>' : '') + '</div>' + (lang ? '<button class="cel-meer" data-gs-lees="' + esc(id) + '">Lees alles →</button>' : '');
+  }
+  function gsLees(x) {
+    var sec = function (t, v) { return v ? '<div class="lees-v"><div class="lees-vr">' + t + '</div><div class="lees-tl" style="font-style:normal">' + esc(v) + '</div></div>' : ''; };
+    leesVenster(x.soortLabel + ' — ' + x.naam + ' · ' + x.datumNL,
+      '<div class="lay-sub" style="margin-bottom:10px">' + esc([x.winkel, x.kanaal, x.gevoerdDoor ? 'gevoerd door ' + x.gevoerdDoor : ''].filter(Boolean).join(' · ')) + (x.vervolgDatum ? ' · vervolg ' + esc(x.vervolgNL) + (x.vervolgOpen ? '' : ' ✓') : '') + '</div>'
+      + (sec('Aanleiding', x.aanleiding) + sec('Besproken', x.besproken) + sec('Afspraken', x.afspraken) || '<div class="lay-sub">Geen tekst vastgelegd.</div>'));
+  }
   window.openGesprek = async function (o) {
     o = o || {}; gsOpts = o; await gsZorgMeta();
     var gs = o.gesprek || null, p = o.persoon || (gs ? { naam: gs.naam, email: gs.email, mid: gs.medewerker_id, winkel: gs.winkel } : {});
@@ -1741,6 +1753,7 @@
     var pl = e.target.closest && e.target.closest('button[data-gs-plus]'); if (pl) { var n = +pl.getAttribute('data-gs-plus'); g('gs-vervolg').value = n ? gsPlus(n) : ''; return; }
     var nw = e.target.closest && e.target.closest('button[data-gs-nieuw]'); if (nw) { openGesprek({ persoon: dosPersoon }); return; }
     var bron = function (id) { return (dosGesprekken || []).concat(gsData ? gsData.gesprekken.concat(gsData.open) : []).find(function (x) { return x.id === id; }); };
+    var ls = e.target.closest && e.target.closest('[data-gs-lees]'); if (ls) { var z = bron(ls.getAttribute('data-gs-lees')); if (z) gsLees(z); return; }
     var bw = e.target.closest && e.target.closest('button[data-gs-bewerk]'); if (bw) { var x = bron(bw.getAttribute('data-gs-bewerk')); if (x) openGesprek({ gesprek: x }); return; }
     var vv = e.target.closest && e.target.closest('button[data-gs-vervolg]'); if (vv) { var y = bron(vv.getAttribute('data-gs-vervolg')); if (y) openGesprek({ persoon: { naam: y.naam, email: y.email, mid: y.medewerker_id, winkel: y.winkel }, soort: y.soort, vervolgVan: y.id, aanleiding: 'Vervolg op ' + y.soortLabel.toLowerCase() + ' van ' + y.datumNL + (y.afspraken ? '. Afspraak was: ' + y.afspraken : ''), naOpslaan: function () { if (tkData) laadTaken(false); } }); return; }
     var af = e.target.closest && e.target.closest('button[data-gs-af]'); if (af) {
@@ -1759,14 +1772,14 @@
     gsData = d; gsMeta = { soorten: d.soorten, kanalen: d.kanalen, verzuimVelden: d.verzuimVelden || [] };
     var fs = g('gs-fsoort'), keuze = fs.value; fs.innerHTML = '<option value="">Alle soorten</option>' + d.soorten.map(function (s) { return '<option value="' + s.key + '">' + esc(s.label) + '</option>'; }).join(''); fs.value = keuze;
     g('gs-ocount').textContent = d.open.length;
-    g('gs-obody').innerHTML = d.open.length ? d.open.map(function (x) { return '<tr><td><span class="badge ' + (x.vervolgTeLaat ? 'br' : 'bo') + '">' + esc(x.vervolgNL) + '</span></td><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td>' + esc(x.soortLabel) + '</td><td>' + esc(x.datumNL) + '</td><td style="max-width:320px;white-space:normal;font-size:.82rem">' + esc(x.afspraken || '') + '</td><td style="white-space:nowrap"><button class="btn bp bsm" data-gs-vervolg="' + esc(x.id) + '">Vervolggesprek</button> <button class="btn bd bsm" data-gs-af="' + esc(x.id) + '">✓ Afvinken</button> ' + dosBtn(x.naam, x.email) + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="leeg grijs">Geen openstaande vervolgafspraken.</td></tr>';
+    g('gs-obody').innerHTML = d.open.length ? d.open.map(function (x) { return '<tr><td><span class="badge ' + (x.vervolgTeLaat ? 'br' : 'bo') + '">' + esc(x.vervolgNL) + '</span></td><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td>' + esc(x.soortLabel) + '</td><td>' + esc(x.datumNL) + '</td><td>' + gsKort(x.id, x.afspraken) + '</td><td style="white-space:nowrap"><button class="btn bp bsm" data-gs-vervolg="' + esc(x.id) + '">Vervolggesprek</button> <button class="btn bd bsm" data-gs-af="' + esc(x.id) + '">✓ Afvinken</button> ' + dosBtn(x.naam, x.email) + '</td></tr>'; }).join('') : '<tr><td colspan="7" class="leeg grijs">Geen openstaande vervolgafspraken.</td></tr>';
     gsRender();
   };
   window.gsRender = function () {
     var d = gsData; if (!d) return; var fs = g('gs-fsoort').value;
     var rijen = d.gesprekken.filter(function (x) { return !fs || x.soort === fs; });
     g('gs-count').textContent = rijen.length;
-    g('gs-body').innerHTML = rijen.length ? rijen.map(function (x) { return '<tr><td>' + esc(x.datumNL) + '</td><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td><span class="badge boat">' + esc(x.soortLabel) + '</span></td><td>' + esc(x.gevoerdDoor || '') + '</td><td style="max-width:300px;white-space:normal;font-size:.82rem">' + esc(x.aanleiding || '') + (x.besproken ? '<div class="lay-sub">' + esc(x.besproken.slice(0, 160)) + (x.besproken.length > 160 ? '…' : '') + '</div>' : '') + '</td><td style="max-width:260px;white-space:normal;font-size:.82rem">' + esc(x.afspraken || '') + '</td><td>' + (x.vervolgDatum ? '<span class="badge ' + (x.vervolgOpen ? (x.vervolgTeLaat ? 'br' : 'bo') : 'bg') + '">' + esc(x.vervolgNL) + (x.vervolgOpen ? '' : ' ✓') + '</span>' : '<span class="no-doc">-</span>') + '</td><td><button class="btn bd bsm" data-gs-bewerk="' + esc(x.id) + '">Bewerken</button> ' + dosBtn(x.naam, x.email) + '</td></tr>'; }).join('') : '<tr><td colspan="9" class="leeg grijs">Geen gesprekken in deze periode.</td></tr>';
+    g('gs-body').innerHTML = rijen.length ? rijen.map(function (x) { return '<tr><td>' + esc(x.datumNL) + '</td><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel || '-') + '</td><td><span class="badge boat">' + esc(x.soortLabel) + '</span></td><td>' + esc(x.gevoerdDoor || '') + '</td><td>' + gsKort(x.id, x.aanleiding, x.besproken) + '</td><td>' + gsKort(x.id, x.afspraken) + '</td><td>' + (x.vervolgDatum ? '<span class="badge ' + (x.vervolgOpen ? (x.vervolgTeLaat ? 'br' : 'bo') : 'bg') + '">' + esc(x.vervolgNL) + (x.vervolgOpen ? '' : ' ✓') + '</span>' : '<span class="no-doc">-</span>') + '</td><td><button class="btn bd bsm" data-gs-bewerk="' + esc(x.id) + '">Bewerken</button> ' + dosBtn(x.naam, x.email) + '</td></tr>'; }).join('') : '<tr><td colspan="9" class="leeg grijs">Geen gesprekken in deze periode.</td></tr>';
   };
   window.gsExport = function () {
     if (!gsData || !gsData.gesprekken.length) { toast('Geen gesprekken om te exporteren', 'err'); return; }
