@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.48.0', datum: '16-11-2026', titel: 'Nieuw: Eindtijd & afsluiten', punten: [
+    'Nieuwe pagina <b>Dossier → Eindtijd &amp; afsluiten</b>: per winkel zie je hoe vaak het team na een <b>sluitdienst</b> (rooster tot 20:00 of later) te laat klaar is, op hoeveel avonden meer dan een half uur, en wat de extra uren kosten. Bron: Shiftbase, of een geüploade Excel-export <i>Urenregistratie</i>.',
+    'Per medewerker: sluitdiensten, hoe vaak meer dan 30 minuten te laat, hoe vaak na 22:00, gemiddelde uitloop en de grootste overschrijding. Wie minstens 3 keer én bij minstens de helft van de sluitdiensten meer dan 30 minuten te laat is, staat als <b>voor te dragen</b> gemarkeerd.',
+    '<b>✉ Teambrief</b>: brief over de eindtijd en het afsluiten aan de hele winkel, met de cijfers van het team al ingevuld. Iedereen krijgt een eigen mail; de brief komt in het dossier.',
+    '<b>⚠ Waarschuwing</b>: persoonlijke schriftelijke waarschuwing met de eigen klokcijfers, als PDF. De zin over het eerdere bericht staat alleen aan als de teambrief via het dashboard is ontvangen; de zin over contractverlenging staat uit bij een vast contract. De waarschuwing komt in het dossier en kan digitaal voor gezien worden getekend.'
+  ] },
   { nummer: '0.47.7', datum: '12-11-2026', titel: 'MTO: alleen voor wie al in dienst is', punten: [
     'Wie een contract heeft dat nog moet ingaan, krijgt geen MTO-uitnodiging meer.',
     'Loopt er al een ronde, dan krijgen zij ook geen herinnering; hun uitnodiging vervalt en telt niet mee in de respons.',

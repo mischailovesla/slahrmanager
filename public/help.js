@@ -88,6 +88,13 @@ window.HR_HELP = {
       + '<li>Controleer de gele meldingen. Staan er nog <i>niet-goedgekeurde timesheets</i>, laat die eerst goedkeuren in Shiftbase en klik ↻.</li>'
       + '<li>Klik <b>✓ Vastleggen</b>. Daarna <b>📄 PDF</b> achter een winkel, of <b>📄 PDF per winkel</b> voor een zip met alle winkels. De fooi wordt <b>contant</b> uitgekeerd in de winkel; <b>📥 CSV</b> is er voor wie de lijst in Excel wil.</li></ol>'
       + '<p><b>Gedeelde BV:</b> sleutel per winkel = (urenaandeel + omzetaandeel) ÷ 2. <b>Per medewerker:</b> fooi winkel × eigen uren ÷ alle uren in die winkel. Geklokte uren excl. pauze; afgewezen timesheets tellen niet.</p>' },
+    { id: 'eindtijd', titel: 'Eindtijd & afsluiten', html:
+      '<ol><li>Open <b>Dossier → Eindtijd &amp; afsluiten</b>. Kies een periode en klik <b>Analyseer</b>: de klokdata komt uit Shiftbase (timesheets + rooster). Heb je een Excel-export <i>Urenregistratie</i> uit Shiftbase, kies dan <b>Excel-export</b> en upload die.</li>'
+      + '<li>De tabel bovenaan vergelijkt alle winkels: op hoeveel avonden de laatste uitklok meer dan 30 minuten na het laatste roostereinde lag, de gemiddelde uitloop, de extra betaalde uren en de kosten inclusief 35% werkgeverslasten. Klik een winkel voor de details.</li>'
+      + '<li>Per medewerker zie je de sluitdiensten, hoe vaak meer dan 30 minuten te laat, hoe vaak na 22:00 en of de teambrief al is ontvangen. <b>Diensten</b> toont elke dienst met rooster, uitklok en wie hem goedkeurde.</li>'
+      + '<li>Stuur eerst de <b>✉ Teambrief</b> aan de winkel (iedereen krijgt een eigen mail; de brief komt in het dossier onder Vrije brieven).</li>'
+      + '<li>Blijft het gebeuren, gebruik dan <b>⚠ Waarschuwing</b>. De cijfers van de medewerker staan er al in; de tekst kun je aanpassen. De waarschuwing gaat als PDF mee, komt in het dossier en kan digitaal voor gezien worden getekend (zie Waarschuwingen).</li></ol>'
+      + '<p><b>Sluitdienst</b> = geroosterde eindtijd vanaf 20:00. <b>Te laat</b> = uitklok min roostereinde. Zonder uitklok telt de eindtijd van de timesheet (gemarkeerd). Afgekeurde timesheets en diensten zonder rooster tellen niet. <b>Voor te dragen</b> = minstens 3 sluitdiensten meer dan 30 minuten te laat én minstens de helft van de eigen sluitdiensten.</p>' },
     { id: 'cijfers', titel: 'Scorekaart en cijfers', html:
       '<p>De <b>Scorekaart</b> zet elke winkel naast het SLA-gemiddelde over 3, 6 of 12 maanden. <span class="badge br">rood</span> = duidelijk slechter, <span class="badge bo">oranje</span> = iets slechter, grijs = te weinig gegevens.</p>'
       + '<ul><li>Uitstroom: verloop, vertrek binnen 90 dagen, eNPS exit, aanzegging op tijd.</li><li>Instroom: uitval ≤ 90 dagen, check-in, onboarding op tijd.</li><li>In dienst: verzuim, meldingsfrequentie, frequent verzuim, verzuimgesprek ≤ 30 d.</li><li>Training: welkomstcollectie en certificaten (Academy).</li><li>Dossiers: loonheffing ≤ 7 d, getekend na.</li></ul>'
@@ -105,6 +112,8 @@ window.HR_HELP = {
       + '<li>Vrije brieven, waarschuwingen en sommaties opstellen.</li></ul>' }
   ],
   faq: [
+    { v: 'Zet de waarschuwing de zin over het eerdere bericht altijd aan?', a: 'Alleen als die medewerker de teambrief via het dashboard kreeg (dan staat de datum al ingevuld). Kreeg iemand het bericht op een andere manier, zet de zin dan zelf aan en vul de datum in. Kreeg hij het niet, laat de zin uit.' },
+    { v: 'Waarom staat bij een sluitdienst "zonder uitklok"?', a: 'De medewerker klokte niet uit; dan telt de eindtijd die in de timesheet staat (vaak door de store manager ingevuld). Controleer die diensten extra voordat je een waarschuwing stuurt.' },
     { v: 'Waarom krijgt iemand fooi uit twee winkels?', a: 'Hij heeft die maand in beide winkels geklokt. Per winkel telt alleen de tijd die hij daar werkte. In de export staat hij dan op twee regels, met de juiste BV per regel.' },
     { v: 'Kan ik een fooiverdeling nog aanpassen na het vastleggen?', a: 'Ja: klik <b>Heropenen</b>. De verdeling wordt dan opnieuw berekend met de actuele uren uit Shiftbase. Leg hem daarna opnieuw vast.' },
     { v: 'Ik heb iets afgehandeld, maar de taak staat er nog. Hoe kan dat?', a: 'De takenlijst toont de stand van de controles van vanochtend. Klik <b>Verse stand</b>: de controles draaien opnieuw en de nieuwe stand blijft bewaard. Staat het er dan nog, kies onder ⋯ een afhandel-optie.' },

@@ -385,6 +385,41 @@
     <div class="mf"><button class="btn bd" id="wr-pdfbtn" onclick="wrPdf()">⬇ PDF bekijken</button><button class="btn" style="background:#c0392b;color:#fff" id="wr-sbtn" onclick="wrVerstuur()"><span id="wr-slbl">Verstuur waarschuwing + PDF</span></button></div>
   </div></div>
 
+  <!-- EINDTIJD & AFSLUITEN (v0.48.0) -->
+  <div class="tc" id="tab-eindtijd">
+    <div class="sec">
+      <div class="sh"><div class="st">Uitloop na sluitdiensten <span class="pill" id="et-pill">-</span></div>
+        <div class="hr2"><div class="tbar" id="et-bron"><button type="button" class="tb sel" data-bron="shiftbase">Shiftbase</button><button type="button" class="tb" data-bron="xlsx">Excel-export</button></div>
+          <label class="btn bd bsm" id="et-file-lbl" style="display:none;cursor:pointer" title="Shiftbase → Urenregistratie → Exporteren (xlsx)">📎 <span id="et-file-naam">Kies export</span><input type="file" id="et-file" accept=".xlsx" style="display:none"></label>
+          <input type="date" id="et-van" class="sb" style="width:auto" title="Van"><input type="date" id="et-tot" class="sb" style="width:auto" title="Tot en met">
+          <button class="btn bp bsm" onclick="etLaad(false)">Analyseer</button><button class="btn bd bsm" id="et-ververs" onclick="etLaad(true)" title="Opnieuw ophalen uit Shiftbase">↻</button></div></div>
+      <div id="et-status" class="lay-sub" style="padding:10px 24px 0">Kies een periode en klik op Analyseer. Een sluitdienst is een dienst met een geroosterde eindtijd vanaf 20:00.</div>
+      <div id="et-overzicht" class="tw"></div>
+    </div>
+    <div class="sec" id="et-detail-sec" style="display:none">
+      <div class="sh"><div class="st"><span id="et-detail-titel">-</span> <span class="pill" id="et-detail-pill">-</span></div>
+        <div class="hr2"><input class="sb" type="text" placeholder="Zoek op naam..." oninput="flt('et-body',this.value)"><button class="btn bd bsm" onclick="etCsv()">📥 CSV</button><button class="btn bp bsm" onclick="etOpenTeam()">✉ Teambrief opstellen</button></div></div>
+      <div class="stats" id="et-kpi" style="padding:16px 24px 0"></div>
+      <div id="et-info" style="padding:12px 24px 0"></div>
+      <div class="tw"><table><thead><tr><th>Naam</th><th style="text-align:right">Sluitdiensten</th><th style="text-align:right">&gt; 30 min te laat</th><th style="text-align:right">Na 22:00</th><th style="text-align:right">Gem. te laat</th><th style="text-align:right">Zonder uitklok</th><th>Contract</th><th>Teambrief</th><th>Actie</th></tr></thead><tbody id="et-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Werkwijze:</strong> haal de klokdata op uit <b>Shiftbase</b> (timesheets + rooster) of upload de <b>Excel-export Urenregistratie</b> van Shiftbase. Een <b>sluitdienst</b> is een dienst met een geroosterde eindtijd vanaf 20:00. <b>Te laat</b> = uitkloktijd min geroosterde eindtijd (over middernacht doorgeteld); zonder uitklok telt de eindtijd van de timesheet en staat er "zonder uitklok" bij. Afgekeurde timesheets en diensten zonder rooster tellen niet mee. <b>Voor te dragen</b> voor een waarschuwing: minstens 3 sluitdiensten meer dan 30 minuten te laat én minstens de helft van de eigen sluitdiensten. Per winkel stuur je eerst de <b>teambrief</b> (komt bij iedereen in het dossier onder Vrije brieven). Een <b>waarschuwing</b> gaat als PDF mee, komt in het dossier onder Officiële waarschuwingen en kan digitaal voor gezien worden getekend. De zin over het eerdere bericht staat alleen aan als die medewerker de teambrief via het dashboard kreeg; de zin over contractverlenging staat uit bij een vast contract (geen einddatum in Shiftbase). Controleer altijd de cijfers van de medewerker zelf voordat je een waarschuwing verstuurt. Uren aantoonbaar gewerkt en goedgekeurd blijven gewoon betaald; de gevolgen zitten in de waarschuwing en de fooiverdeling.</div>
+  </div>
+  <div class="mo" id="et-modal"><div class="modal" style="width:860px">
+    <div class="mh" id="et-m-kop"><div class="mti" id="et-m-titel">-</div><button class="mc" onclick="etSluit()">×</button></div>
+    <div class="mb2">
+      <div id="et-m-info"></div>
+      <div class="fr"><div class="fg"><label>Ingangsdatum nieuwe afspraken</label><input type="date" id="et-ingang"></div>
+        <div class="fg"><label>Afzender (naam)</label><input type="text" id="et-af-naam"></div>
+        <div class="fg"><label>Functie afzender</label><input type="text" id="et-af-functie" placeholder="bijv. Operations Manager"></div></div>
+      <div class="fg" id="et-m-opties"></div>
+      <div class="fg"><label>Onderwerp</label><input type="text" id="et-onderwerp"></div>
+      <div class="fg"><label>Tekst <span style="color:#888;font-weight:400" id="et-tekst-hint">(nog aan te passen; **vet**, "- " opsomming, "1. " genummerd)</span></label><textarea id="et-tekst" rows="18" style="min-height:340px;font-size:.84rem;line-height:1.5"></textarea></div>
+      <div class="fg" id="et-ontv-wrap" style="display:none"><label>Ontvangers <span id="et-ontv-tel" style="color:#888;font-weight:400"></span> <a href="#" id="et-ontv-alle" style="font-weight:400;font-size:.78rem">alles aan/uit</a></label><div id="et-ontv" style="border:1.5px solid #e8e2de;border-radius:8px;max-height:220px;overflow-y:auto;background:#fff"></div></div>
+    </div>
+    <div class="mf"><button class="btn bd" onclick="etVoorbeeld()">👁 Voorbeeld mail</button><button class="btn bd" id="et-pdfbtn" onclick="etPdf()">⬇ PDF bekijken</button><button class="btn bp" id="et-sbtn" onclick="etVerstuur()"><span id="et-slbl">Versturen</span></button></div>
+  </div></div>
+
   <!-- BESCHIKBAARHEID (Beschikbaarheid.gs v1 + onderbouwing v9.2) -->
   <div class="tc" id="tab-beschikbaarheid">
     <div class="sec">

@@ -9,12 +9,12 @@
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['sbtemplates', 'Shiftbase-templates'], ['checkin', 'Check-in 30/60'], ['eerstedienst', 'Tijd tot eerste dienst']] },
     { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['fooi', 'Fooiverdeling'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
-    { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
+    { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['eindtijd', 'Eindtijd & afsluiten'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegang & log (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, eindtijd: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -69,6 +69,7 @@
     if (tab === 'contract' && !ctrData) laadContract(false);
     if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
     if (tab === 'fooi' && !foData) foLaad(false); // v0.46.0
+    if (tab === 'eindtijd' && !etCfg) api('/api/eindtijd').then(function (c) { if (c.success) etCfg = c; }); // v0.48.0
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
     if (tab === 'exit' && !exData) laadExit(12);
     if (tab === 'checkin' && !ciData) laadCheckin(6);
@@ -138,6 +139,7 @@
     gesprekken: ['Gesprekken', 'Alle vastgelegde gesprekken en openstaande vervolgafspraken.'],
     beschikbaarheid: ['Beschikbaarheid', 'Kennisgeving bij te weinig weekendbeschikbaarheid (huisregel 2).'],
     waarschuwing: ['Waarschuwingen', 'Schriftelijke waarschuwing bij overtreding van de huisregels.'],
+    eindtijd: ['Eindtijd & afsluiten', 'Wie is na een sluitdienst structureel te laat klaar? Klokdata per winkel en medewerker, met teambrief en waarschuwing.'],
     sommatie: ['Sommaties', 'Oproepbrief, sommaties en ontslag op staande voet bij afwezigheid zonder bericht.'],
     brief: ['Vrije brieven', 'Zelf een brief opstellen in SLA-huisstijl, met of zonder PDF.'],
     ontslag: ['Ontslag & aanzegging', 'Ontslagbevestigingen, aanzeggingen en proeftijdbrieven: versturen, ondertekening volgen en naar salaris.'],
@@ -4034,6 +4036,261 @@
     var t = g('sbt-groep'); if (!t) return;
     t.addEventListener('click', function (e) { var b = e.target.closest('[data-g]'); if (!b) return; t.querySelectorAll('.tb').forEach(function (x) { x.classList.toggle('sel', x === b); }); sbtGroep = b.getAttribute('data-g'); if (sbtData) sbtRender(); });
   })();
+
+  // ---------- Eindtijd & afsluiten (v0.48.0) ----------
+  var etData = null, etCfg = null, etWinkel = '', etXlsx = null, etModus = '', etMw = null, etBewerkt = false;
+  var ET_MAAND = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+  function etIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function etLang(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? (+m[3]) + ' ' + ET_MAAND[+m[2] - 1] + ' ' + m[1] : ''; }
+  // Zelfde regels als vul() in _lib/eindtijd.js: [[x]]…[[/x]] optioneel, [[!x]]…[[/!x]] alleen als x uit staat, {var} invullen
+  function etVul(tekst, vars, opties) {
+    var t = String(tekst || '').replace(/\[\[(!?)(\w+)\]\]([\s\S]*?)\[\[\/\1\2\]\]/g, function (m, neg, naam, binnen) { return (neg ? !opties[naam] : !!opties[naam]) ? binnen : ''; });
+    t = t.replace(/\{(\w+)\}/g, function (m, k) { return vars[k] != null && vars[k] !== '' ? String(vars[k]) : m; });
+    return t.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+  (function () {
+    var tot = new Date(); tot.setDate(tot.getDate() - 1);
+    var van = new Date(tot); van.setDate(van.getDate() - 41);
+    g('et-van').value = etIso(van); g('et-tot').value = etIso(tot);
+    var b = g('et-bron');
+    b.addEventListener('click', function (e) {
+      var k = e.target.closest('[data-bron]'); if (!k) return;
+      b.querySelectorAll('.tb').forEach(function (x) { x.classList.toggle('sel', x === k); });
+      var x = k.getAttribute('data-bron') === 'xlsx';
+      g('et-file-lbl').style.display = x ? '' : 'none'; g('et-ververs').style.display = x ? 'none' : '';
+      g('et-status').textContent = x ? 'Kies de Excel-export (Shiftbase → Urenregistratie → Exporteren). Laat van/tot leeg om de hele export te gebruiken.' : 'Kies een periode en klik op Analyseer.';
+    });
+    g('et-file').addEventListener('change', function () {
+      var f = this.files && this.files[0]; if (!f) return;
+      if (f.size > 4 * 1024 * 1024) { toast('Bestand is te groot (max. 4 MB). Exporteer een kortere periode.', 'err'); return; }
+      var rd = new FileReader();
+      rd.onload = function () { etXlsx = { b64: String(rd.result).split(',')[1], naam: f.name }; g('et-file-naam').textContent = f.name; g('et-van').value = ''; g('et-tot').value = ''; etLaad(false); };
+      rd.readAsDataURL(f);
+    });
+    g('et-tekst').addEventListener('input', function () { etBewerkt = true; });
+    ['et-ingang', 'et-af-naam', 'et-af-functie'].forEach(function (id) { g(id).addEventListener('change', function () { etHerbouw(true); }); });
+    g('et-ontv-alle').addEventListener('click', function (e) {
+      e.preventDefault(); var c = g('et-ontv').querySelectorAll('input:not(:disabled)'), aan = Array.prototype.some.call(c, function (x) { return !x.checked; });
+      c.forEach(function (x) { x.checked = aan; }); etTelOntv();
+    });
+    g('et-modal').addEventListener('click', function (e) { if (e.target === this) etSluit(); });
+  })();
+  function etBron() { var b = g('et-bron').querySelector('.tb.sel'); return b ? b.getAttribute('data-bron') : 'shiftbase'; }
+
+  window.etLaad = async function (ververs) {
+    if (!etCfg) { var c = await api('/api/eindtijd'); if (!c.success) { toast('Eindtijd: ' + c.bericht, 'err'); return; } etCfg = c; }
+    var bron = etBron(), p = { actie: 'analyse', bron: bron, van: g('et-van').value, tot: g('et-tot').value, ververs: !!ververs };
+    if (bron === 'xlsx') { if (!etXlsx) { toast('Kies eerst de Excel-export', 'err'); g('et-file').click(); return; } p.xlsx = etXlsx.b64; p.bestandsnaam = etXlsx.naam; }
+    g('et-status').textContent = bron === 'xlsx' ? 'Export inlezen…' : 'Timesheets en rooster ophalen uit Shiftbase… (kan 10-20 seconden duren)';
+    var r = await api('/api/eindtijd', p);
+    if (!r.success) { g('et-status').innerHTML = '<span style="color:#c0392b">' + esc(r.bericht) + '</span>'; return; }
+    etData = r;
+    if (!g('et-van').value) g('et-van').value = r.periode.van;
+    if (!g('et-tot').value) g('et-tot').value = r.periode.tot;
+    g('et-status').innerHTML = 'Periode <b>' + esc(r.periode.tekst) + '</b> · bron: ' + esc(r.bron) + ' · opgehaald ' + esc(r.opgehaald);
+    g('et-pill').textContent = r.overzicht.length + ' winkels';
+    etRenderOverzicht();
+    var kies = r.winkels[etWinkel] ? etWinkel : r.overzicht[0].code;
+    etKies(kies);
+  };
+  function etRenderOverzicht() {
+    var o = etData.overzicht, eur = function (x) { return '€ ' + Math.round(x).toLocaleString('nl-NL'); };
+    var tot = o.reduce(function (a, w) { return { u: a.u + w.extraUren, k: a.k + w.kostenInclLasten, v: a.v + w.voorgedragen }; }, { u: 0, k: 0, v: 0 });
+    g('et-overzicht').innerHTML = '<table><thead><tr><th>Winkel</th><th style="text-align:right">Sluitdiensten</th><th style="text-align:right">Avonden &gt; 30 min uitloop</th><th style="text-align:right">Gem. te laat</th><th style="text-align:right">Langste uitloop</th><th style="text-align:right">Extra uren</th><th style="text-align:right">Kosten incl. lasten</th><th style="text-align:right">Voor te dragen</th><th></th></tr></thead><tbody>'
+      + o.map(function (w) {
+        var kl = w.pctAvonden30 >= 50 ? 'br' : w.pctAvonden30 >= 25 ? 'bo' : 'bg';
+        return '<tr data-et-w="' + esc(w.code) + '" style="cursor:pointer' + (w.code === etWinkel ? ';background:#f8f3f0' : '') + '"><td><strong>' + esc(w.naam) + '</strong></td><td style="text-align:right">' + w.sluitdiensten + '</td><td style="text-align:right"><span class="badge ' + kl + '">' + w.pctAvonden30 + '%</span> <span class="lay-sub" style="display:inline">van ' + w.avonden + '</span></td><td style="text-align:right">' + w.gemMin + ' min</td><td style="text-align:right">' + w.maxMin + ' min</td><td style="text-align:right">' + String(w.extraUren).replace('.', ',') + ' u</td><td style="text-align:right">' + eur(w.kostenInclLasten) + '</td><td style="text-align:right">' + (w.voorgedragen ? '<span class="badge br">' + w.voorgedragen + '</span>' : '<span class="lay-sub" style="display:inline">0</span>') + '</td><td><button class="btn bd bsm" data-et-w="' + esc(w.code) + '">Bekijk</button></td></tr>';
+      }).join('')
+      + '<tr style="border-top:2px solid #e8e2de"><td><strong>Totaal</strong></td><td colspan="4"></td><td style="text-align:right"><strong>' + String(Math.round(tot.u * 10) / 10).replace('.', ',') + ' u</strong></td><td style="text-align:right"><strong>' + eur(tot.k) + '</strong></td><td style="text-align:right"><strong>' + tot.v + '</strong></td><td></td></tr></tbody></table>';
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest && e.target.closest('[data-et-w]'); if (t && etData) { etKies(t.getAttribute('data-et-w')); return; }
+    var d = e.target.closest && e.target.closest('[data-et-dienst]'); if (d) { var rij = g('et-d-' + d.getAttribute('data-et-dienst')); if (rij) rij.style.display = rij.style.display === 'none' ? '' : 'none'; return; }
+    var w = e.target.closest && e.target.closest('[data-et-wrs]'); if (w) etOpenWaarschuwing(w.getAttribute('data-et-wrs'));
+  });
+  function etKies(code) {
+    etWinkel = code; etRenderOverzicht();
+    var w = etData.winkels[code]; if (!w) return;
+    g('et-detail-sec').style.display = '';
+    g('et-detail-titel').textContent = 'SLA ' + w.naam;
+    var vg = w.medewerkers.filter(function (m) { return m.voorgedragen; }).length;
+    g('et-detail-pill').textContent = w.medewerkers.length + ' sluiters · ' + vg + ' voor te dragen';
+    var kaart = function (kl, ic, v, l) { return '<div class="card ' + kl + '"><div class="si ' + (kl === 'cr' ? 'sir' : kl === 'cw' ? 'siw' : 'sig') + '">' + ic + '</div><div><div class="sv">' + v + '</div><div class="sl">' + l + '</div></div></div>'; };
+    g('et-kpi').innerHTML = kaart('cg', '🌙', w.team.sluitdiensten, 'sluitdiensten op ' + w.team.avonden + ' avonden')
+      + kaart(w.team.pctAvonden30 >= 50 ? 'cr' : 'cw', '⏱', w.team.pctAvonden30 + '%', 'avonden > 30 min uitloop')
+      + kaart('cw', '⌀', w.team.gemMin + ' min', 'gemiddeld te laat · max ' + w.team.maxMin)
+      + kaart('cr', '€', '€ ' + w.kosten.inclLasten.toLocaleString('nl-NL'), String(w.kosten.extraUren).replace('.', ',') + ' extra uur (incl. ' + Math.round(etData.instellingen.lasten * 100) + '% lasten)');
+    var info = [];
+    if (w.goedkeuring.length) info.push('<b>Goedgekeurd</b>: ' + w.goedkeuring.map(function (x) { return esc(x.naam) + ' ' + x.aantal + (x.laat ? ' (waarvan ' + x.laat + ' &gt; 30 min te laat)' : ''); }).join(' · '));
+    info.push('<b>Gem. uitloop per weekdag</b>: ' + w.team.weekdagen.map(function (x) { return esc(x.dag) + ' ' + x.gemMin; }).join(' · ') + ' min');
+    var let_ = [];
+    if (w.team.zonderUitklok) let_.push(w.team.zonderUitklok + ' sluitdienst(en) zonder uitklok (eindtijd van de timesheet gebruikt)');
+    if (w.team.onbeslist) let_.push(w.team.onbeslist + ' nog niet goedgekeurd in Shiftbase');
+    g('et-info').innerHTML = '<div class="lay-sub" style="line-height:1.7">' + info.join('<br>') + (let_.length ? '<br><span style="color:#b9770e">Let op: ' + let_.join(' · ') + '</span>' : '') + '</div>';
+    g('et-body').innerHTML = w.medewerkers.map(function (m, i) {
+      var p = m.persoon || {}, id = code + i;
+      var contract = !p.inDienst ? '<span class="badge br">uit dienst</span>' : p.vast ? '<span class="badge bdk" title="Geen einddatum in Shiftbase">vast</span>' : '<span class="badge boat" title="Einddatum contract">t/m ' + esc(p.contractEinde) + '</span>';
+      var tb = p.eerderBericht ? '<span class="badge bg">' + esc(p.eerderBericht.tekst) + '</span>' : '<span class="lay-sub" style="display:inline">-</span>';
+      var wrsEerder = (p.eerdereWaarschuwingen || []).length ? '<div class="lay-sub">eerder gewaarschuwd: ' + esc(p.eerdereWaarschuwingen.join(', ')) + '</div>' : '';
+      var knop = !p.inDienst ? '' : '<button class="btn bsm ' + (m.voorgedragen ? '" style="background:#c0392b;color:#fff"' : 'bd"') + ' data-et-wrs="' + i + '">⚠ Waarschuwing</button>';
+      return '<tr><td><strong>' + esc(m.naam) + '</strong>' + (m.voorgedragen ? ' <span class="badge br">voor te dragen</span>' : '') + (p.andereWinkel ? ' <span class="badge boat">vaste winkel: ' + esc(p.winkelNaam || '?') + '</span>' : '') + wrsEerder + '</td>'
+        + '<td style="text-align:right">' + m.aantalTotaal + '</td><td style="text-align:right"><strong>' + m.aantalLaat + '</strong> <span class="lay-sub" style="display:inline">(' + m.pctLaat + '%)</span></td><td style="text-align:right">' + m.aantalNa22 + '</td><td style="text-align:right">' + m.gemMin + ' min</td><td style="text-align:right">' + (m.zonderUitklok ? '<span class="badge bo">' + m.zonderUitklok + '</span>' : '0') + '</td>'
+        + '<td>' + contract + '</td><td>' + tb + '</td><td><div class="vb-knoppen"><button class="btn bd bsm" data-et-dienst="' + id + '">Diensten</button>' + knop + (p.inDienst ? dosBtn(p.naam, p.email) : '') + '</div></td></tr>'
+        + '<tr id="et-d-' + id + '" style="display:none"><td></td><td colspan="8" style="background:#faf8f6;padding:8px 14px"><table style="width:100%"><thead><tr><th>Datum</th><th>Rooster tot</th><th>Uitgeklokt</th><th style="text-align:right">Te laat</th><th>Status</th><th>Goedgekeurd door</th></tr></thead><tbody>'
+        + m.diensten.map(function (d) { return '<tr><td>' + esc(etLang(d.datum)) + '</td><td>' + esc(d.roosterEind) + '</td><td>' + esc(d.eind) + (d.zonderUitklok ? ' <span class="badge bo">zonder uitklok</span>' : '') + '</td><td style="text-align:right;' + (d.laat > etData.instellingen.drempel ? 'color:#c0392b;font-weight:700' : '') + '">' + d.laat + ' min</td><td>' + esc(d.status) + '</td><td>' + esc(d.gekeurdDoor || '-') + '</td></tr>'; }).join('')
+        + '</tbody></table></td></tr>';
+    }).join('') || '<tr><td colspan="9" class="leeg grijs">Geen sluitdiensten in deze periode</td></tr>';
+  }
+  window.etCsv = function () {
+    var w = etData && etData.winkels[etWinkel]; if (!w) return;
+    var q = function (s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; };
+    var rows = [['Naam', 'Winkel', 'Sluitdiensten', '> 30 min te laat', '% te laat', 'Na 22:00', 'Gem. minuten te laat', 'Zonder uitklok', 'Extra uren', 'Grootste overschrijding', 'Voor te dragen', 'Teambrief ontvangen'].join(';')];
+    w.medewerkers.forEach(function (m) { rows.push([q(m.naam), q(w.naam), m.aantalTotaal, m.aantalLaat, m.pctLaat, m.aantalNa22, m.gemMin, m.zonderUitklok, String(m.extraUren).replace('.', ','), q(m.ergste.datum + ' rooster ' + m.ergste.roosterEind + ' uitklok ' + m.ergste.uitklok), m.voorgedragen ? 'ja' : 'nee', q(m.persoon && m.persoon.eerderBericht ? m.persoon.eerderBericht.tekst : '')].join(';')); });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + rows.join('\n')], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'eindtijd_' + w.naam.replace(/\s+/g, '_') + '_' + etData.periode.van + '_' + etData.periode.tot + '.csv'; a.click();
+  };
+
+  // --- Modal: teambrief en waarschuwing ---
+  function etModalOpen(modus) {
+    etModus = modus; etBewerkt = false;
+    var wrs = modus === 'waarschuwing';
+    g('et-m-kop').style.background = wrs ? '#c0392b' : '';
+    g('et-pdfbtn').style.display = wrs ? '' : 'none';
+    g('et-ontv-wrap').style.display = wrs ? 'none' : '';
+    if (!g('et-ingang').value) { var d = new Date(); d.setDate(d.getDate() + 14); g('et-ingang').value = etIso(d); }
+    if (!g('et-af-naam').value) g('et-af-naam').value = (etCfg && etCfg.afzender && etCfg.afzender.naam) || '';
+    if (!g('et-af-functie').value) { try { g('et-af-functie').value = localStorage.getItem('et-af-functie') || ''; } catch (e) { } }
+    g('et-modal').classList.add('open');
+  }
+  window.etSluit = function () { g('et-modal').classList.remove('open'); };
+  function etOptie(id, label, aan, extra) { return '<label class="chk" style="margin:4px 0"><input type="checkbox" id="' + id + '"' + (aan ? ' checked' : '') + '> <span>' + label + '</span></label>' + (extra || ''); }
+  function etKoppelOpties() { g('et-m-opties').querySelectorAll('input').forEach(function (x) { x.addEventListener('change', function () { etHerbouw(true); }); }); }
+  function etBasisVars() {
+    var w = etData.winkels[etWinkel];
+    return { winkel: w.naam, periode: etData.periode.tekst, ingangsdatum: etLang(g('et-ingang').value), afzender_naam: g('et-af-naam').value.trim(), afzender_functie: g('et-af-functie').value.trim() };
+  }
+  function etHerbouw(vraag) {
+    if (vraag && etBewerkt && !confirm('De tekst opnieuw opbouwen? Je eigen aanpassingen in de tekst gaan dan verloren.')) return;
+    var w = etData.winkels[etWinkel], v = etBasisVars(), sj, opt = {};
+    try { localStorage.setItem('et-af-functie', v.afzender_functie); } catch (e) { }
+    if (etModus === 'team') {
+      sj = etCfg.sjablonen.team;
+      Object.assign(v, { team_gem_min: w.team.gemMin, team_pct_dagen_30: w.team.pctAvonden30, team_max_min: w.team.maxMin, beste_dagen: w.team.besteDagen });
+      opt.beste = !!(g('et-o-beste') && g('et-o-beste').checked);
+    } else {
+      sj = etCfg.sjablonen.waarschuwing;
+      var m = etMw;
+      Object.assign(v, { voornaam: m.persoon.voornaam, aantal_laat: m.aantalLaat, aantal_totaal: m.aantalTotaal, gem_min: m.gemMin, aantal_na_22: m.aantalNa22, ergste_datum: etLangDag(m.ergste.datum), rooster_eind: m.ergste.roosterEind, uitklok: m.ergste.uitklok, datum_eerder_bericht: etLang(g('et-o-eerder-d') ? g('et-o-eerder-d').value : '') });
+      opt.eerder = !!(g('et-o-eerder') && g('et-o-eerder').checked);
+      opt.contract = !!(g('et-o-contract') && g('et-o-contract').checked);
+    }
+    g('et-onderwerp').value = etVul(sj.onderwerp, v, opt);
+    g('et-tekst').value = etVul(sj.tekst, v, opt);
+    etBewerkt = false;
+  }
+  function etLangDag(iso) { var d = new Date(iso + 'T12:00:00'); return ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'][d.getDay()] + ' ' + etLang(iso); }
+
+  window.etOpenTeam = function () {
+    var w = etData && etData.winkels[etWinkel]; if (!w) return;
+    g('et-m-titel').textContent = '✉ Teambrief eindtijd & afsluiten · SLA ' + w.naam;
+    g('et-m-info').innerHTML = '<div class="alert grijs" style="margin:0 0 14px;font-size:.8rem">Cijfers over <b>' + esc(etData.periode.tekst) + '</b>: gemiddeld <b>' + w.team.gemMin + ' min</b> te laat, op <b>' + w.team.pctAvonden30 + '%</b> van de avonden meer dan een half uur, langste uitloop <b>' + w.team.maxMin + ' min</b>. Iedere ontvanger krijgt een eigen mail met de eigen voornaam; de brief komt in het dossier onder Vrije brieven (categorie "Eindtijd &amp; afsluiten").</div>';
+    var bd = w.team.besteDagen;
+    g('et-m-opties').innerHTML = '<label>Optionele zinnen</label>' + etOptie('et-o-beste', bd ? 'Zin over de beste dag(en): "Op ' + esc(bd) + ' lukt het wel om op tijd klaar te zijn." <span style="color:#888">(' + esc(w.team.weekdagen.filter(function (x) { return bd.indexOf(x.dag) > -1; }).map(function (x) { return x.dag + ' gem. ' + x.gemMin + ' min'; }).join(', ')) + ')</span>' : '<span style="color:#888">Zin over de beste dag(en): geen weekdag gemiddeld binnen 30 minuten</span>', !!bd);
+    etKoppelOpties(); if (!bd) g('et-o-beste').disabled = true;
+    g('et-ontv').innerHTML = w.ontvangers.map(function (o, i) {
+      var ok = o.email && o.email.indexOf('@') > -1;
+      return '<label class="chk" style="padding:6px 12px;border-bottom:1px solid #f1ece8;margin:0;font-size:.82rem"><input type="checkbox" value="' + i + '"' + (ok ? ' checked' : ' disabled') + '> <span><b>' + esc(o.naam) + '</b> <span style="color:#888">' + esc(o.email || 'geen e-mail') + (o.functie ? ' · ' + esc(o.functie) : '') + '</span>' + (o.andereWinkel ? ' <span class="badge boat">vaste winkel ' + esc(o.winkelNaam || '?') + '</span>' : '') + (o.eerderBericht ? ' <span class="badge bg">al ontvangen ' + esc(o.eerderBericht.tekst) + '</span>' : '') + '</span></label>';
+    }).join('') || '<div class="leeg grijs" style="padding:12px">Geen medewerkers gevonden voor deze winkel</div>';
+    g('et-ontv').querySelectorAll('input').forEach(function (x) { x.onchange = etTelOntv; });
+    etModalOpen('team'); etHerbouw(false); etTelOntv();
+    g('et-slbl').textContent = 'Versturen naar ' + etGekozen().length;
+  };
+  function etGekozen() { var w = etData.winkels[etWinkel]; return Array.prototype.map.call(g('et-ontv').querySelectorAll('input:checked'), function (c) { return w.ontvangers[+c.value]; }); }
+  function etTelOntv() { var n = etGekozen().length; g('et-ontv-tel').textContent = '(' + n + ' gekozen)'; if (etModus === 'team') g('et-slbl').textContent = 'Versturen naar ' + n; }
+
+  function etOpenWaarschuwing(i) {
+    var w = etData.winkels[etWinkel], m = w.medewerkers[+i]; if (!m) return;
+    etMw = m; var p = m.persoon;
+    g('et-m-titel').textContent = '⚠ Schriftelijke waarschuwing · ' + m.naam;
+    var waarsch = [];
+    if (!m.voorgedragen) waarsch.push('Valt <b>niet</b> onder de drempel voor een waarschuwing (minstens 3 sluitdiensten &gt; 30 min te laat én minstens de helft).');
+    if (m.ergste.zonderUitklok) waarsch.push('De grootste overschrijding is een dienst <b>zonder uitklok</b>; pas de zin aan als dat niet klopt.');
+    if (m.zonderUitklok) waarsch.push(m.zonderUitklok + ' van de ' + m.aantalTotaal + ' sluitdiensten hebben geen uitklok (eindtijd van de timesheet gebruikt).');
+    if (!p.email) waarsch.push('Geen e-mailadres in Shiftbase.');
+    if ((p.eerdereWaarschuwingen || []).length) waarsch.push('Al eerder een eindtijd-waarschuwing: ' + esc(p.eerdereWaarschuwingen.join(', ')) + '.');
+    g('et-m-info').innerHTML = '<div class="alert grijs" style="margin:0 0 14px;font-size:.8rem"><b>' + esc(m.naam) + '</b> · ' + esc(p.email || '-') + ' · SLA ' + esc(w.naam) + ' · ' + (p.vast ? 'vast contract' : 'contract t/m ' + esc(p.contractEinde || '?')) + '<br>' + m.aantalLaat + ' van ' + m.aantalTotaal + ' sluitdiensten &gt; 30 min te laat · gemiddeld ' + m.gemMin + ' min · ' + m.aantalNa22 + '× na 22:00 · grootste: ' + esc(etLang(m.ergste.datum)) + ' rooster ' + esc(m.ergste.roosterEind) + ', uitklok ' + esc(m.ergste.uitklok) + '. Controleer de diensten (knop Diensten) voordat je verstuurt.</div>'
+      + (waarsch.length ? '<div class="alert geel" style="margin:0 0 14px;font-size:.8rem">' + waarsch.join('<br>') + '</div>' : '');
+    var eb = p.eerderBericht;
+    g('et-m-opties').innerHTML = '<label>Optionele zinnen</label>'
+      + etOptie('et-o-eerder', 'Zin over het eerdere bericht (teambrief) van <input type="date" id="et-o-eerder-d" value="' + esc(eb ? eb.iso : '') + '" style="width:auto;display:inline-block;padding:3px 6px"> ' + (eb ? '<span style="color:#2e7d32">ontvangen via het dashboard</span>' : '<span style="color:#b9770e">geen teambrief via het dashboard gevonden: alleen aanzetten als deze persoon het bericht echt kreeg</span>'), !!eb)
+      + etOptie('et-o-contract', 'Zin over gevolgen voor de verlenging van het contract' + (p.vast ? ' <span style="color:#888">(staat uit: vast contract)</span>' : ''), !p.vast);
+    etKoppelOpties();
+    etModalOpen('waarschuwing'); etHerbouw(false);
+    g('et-slbl').textContent = 'Verstuur waarschuwing + PDF';
+  }
+  function etWrsBody(extra) {
+    var w = etData.winkels[etWinkel], m = etMw, p = m.persoon;
+    return Object.assign({ actie: 'waarschuwing', winkel: etWinkel, mw: { naam: p.naam || m.naam, email: p.email, adres: p.adres, voornaam: p.voornaam }, onderwerp: g('et-onderwerp').value.trim(), tekst: g('et-tekst').value, periode: etData.periode.tekst,
+      cijfers: { aantal_laat: m.aantalLaat, aantal_totaal: m.aantalTotaal, gem_min: m.gemMin, aantal_na_22: m.aantalNa22, ergste_datum: m.ergste.datum, rooster_eind: m.ergste.roosterEind, uitklok: m.ergste.uitklok, zonder_uitklok: m.zonderUitklok },
+      afzender: { naam: g('et-af-naam').value.trim(), functie: g('et-af-functie').value.trim() } }, extra || {});
+  }
+  function etCheck() {
+    if (!g('et-ingang').value) return 'Vul de ingangsdatum in';
+    if (!g('et-af-naam').value.trim() || !g('et-af-functie').value.trim()) return 'Vul de naam en functie van de afzender in';
+    var open = (g('et-tekst').value + ' ' + g('et-onderwerp').value).match(/\{(\w+)\}/g) || [];
+    open = open.filter(function (x) { return x !== '{voornaam}'; });
+    if (open.length) return 'Nog niet ingevuld: ' + open.join(', ');
+    if (etModus === 'waarschuwing' && g('et-o-eerder').checked && !g('et-o-eerder-d').value) return 'Vul de datum van het eerdere bericht in, of zet die zin uit';
+    return '';
+  }
+  window.etVoorbeeld = async function () {
+    var f = etCheck(); if (f) { toast(f, 'err'); return; }
+    var r;
+    if (etModus === 'team') { var o = etGekozen()[0] || { naam: 'Voorbeeld Medewerker', voornaam: 'Voorbeeld', email: '' }; r = await api('/api/eindtijd', { actie: 'team', winkel: etWinkel, onderwerp: g('et-onderwerp').value.trim(), tekst: g('et-tekst').value, ontvanger: o, preview: true }); }
+    else r = await api('/api/eindtijd', etWrsBody({ preview: true }));
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    var win = window.open('', '_blank'); if (!win) { toast('Pop-up geblokkeerd', 'err'); return; }
+    win.document.write('<title>' + esc(r.subject) + '</title><div style="font-family:Arial;padding:10px 20px;color:#555">Onderwerp: <b>' + esc(r.subject) + '</b></div>' + r.html); win.document.close();
+  };
+  window.etPdf = async function () {
+    var f = etCheck(); if (f) { toast(f, 'err'); return; }
+    var b = g('et-pdfbtn'); b.disabled = true; toast('PDF maken…', 'ok');
+    var r = await api('/api/eindtijd', etWrsBody({ alleenPdf: true }));
+    b.disabled = false;
+    if (!r.success) { toast('PDF: ' + r.bericht, 'err'); return; }
+    downloadB64(r.pdf, r.bestandsnaam);
+  };
+  window.etVerstuur = async function () {
+    var f = etCheck(); if (f) { toast(f, 'err'); return; }
+    var b = g('et-sbtn');
+    if (etModus === 'waarschuwing') {
+      var p = etMw.persoon;
+      if (!p.email) { toast('Geen e-mailadres bekend', 'err'); return; }
+      if (!confirm('Schriftelijke waarschuwing + PDF versturen naar ' + (p.naam || etMw.naam) + ' (' + p.email + ')?\n\nDe brief komt in het personeelsdossier.')) return;
+      b.disabled = true; g('et-slbl').textContent = 'PDF maken en versturen…';
+      var r = await api('/api/eindtijd', etWrsBody());
+      b.disabled = false; g('et-slbl').textContent = 'Verstuur waarschuwing + PDF';
+      if (!r.success) { toast('Fout: ' + r.bericht, 'err'); return; }
+      toast(r.bericht, 'ok'); etSluit();
+      p.eerdereWaarschuwingen = (p.eerdereWaarschuwingen || []).concat([etIso(new Date()).split('-').reverse().join('-')]); etKies(etWinkel);
+      wrData = null; return;
+    }
+    var lijst = etGekozen(); if (!lijst.length) { toast('Kies minstens één ontvanger', 'err'); return; }
+    var al = lijst.filter(function (o) { return o.eerderBericht; }).length;
+    if (!confirm('Teambrief versturen naar ' + lijst.length + ' medewerker(s) van SLA ' + etData.winkels[etWinkel].naam + '?' + (al ? '\n\nLet op: ' + al + ' van hen kregen deze brief al eerder.' : ''))) return;
+    b.disabled = true; var ok = 0, fout = [];
+    for (var i = 0; i < lijst.length; i++) {
+      g('et-slbl').textContent = 'Versturen… ' + (i + 1) + ' / ' + lijst.length;
+      var o = lijst[i];
+      var r2 = await api('/api/eindtijd', { actie: 'team', winkel: etWinkel, onderwerp: g('et-onderwerp').value.trim(), tekst: g('et-tekst').value, ontvanger: { naam: o.naam, email: o.email, voornaam: o.voornaam } });
+      if (r2.success) { ok++; o.eerderBericht = { iso: etIso(new Date()), tekst: etLang(etIso(new Date())) }; } else fout.push(o.naam + ': ' + r2.bericht);
+    }
+    b.disabled = false; etTelOntv();
+    etData.winkels[etWinkel].medewerkers.forEach(function (m) { var o = lijst.find(function (x) { return x.email && m.persoon && x.email === m.persoon.email; }); if (o && o.eerderBericht) m.persoon.eerderBericht = o.eerderBericht; });
+    if (fout.length) alert(ok + ' verstuurd, ' + fout.length + ' mislukt:\n\n' + fout.join('\n'));
+    else { toast('Teambrief verstuurd naar ' + ok + ' medewerker(s)', 'ok'); etSluit(); }
+    etKies(etWinkel);
+  };
 
   // ---------- Toast ----------
   function toast(msg, type) { var t = g('toast'); t.textContent = msg; t.className = 'toast ' + (type === 'ok' ? 'tok' : 'terr') + ' show'; setTimeout(function () { t.classList.remove('show'); }, 3400); }
