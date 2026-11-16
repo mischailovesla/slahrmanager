@@ -87,12 +87,29 @@ async function mailOfDroog(rap, opts, doen) {
 }
 
 // ---- 1. Formulierstatus syncen (syncLoonheffingFormulieren / syncOntslagFormulieren) ----
+// v0.48.2: 'Ontvangen = Ja' zonder loonheffingsverklaring (alleen het indiensttredingsformulier kwam binnen via dezelfde uploadlink).
+// Alleen open dossiers sinds SALARIS_AUTO_VANAF die nog niet naar salaris gingen; oudere regels blijven ongemoeid.
+function ontvangenZonderLoonheffing(loon, vanaf) {
+  const grens = vanaf ? new Date(vanaf + 'T00:00:00') : null;
+  return (loon || []).filter(r => {
+    if (r.ontvangen !== 'Ja' || r.docUrl || r.salaris || r.mahdia === 'Ja') return false;
+    const d = parseNLDatum(r.verzenddatum); return !!d && (!grens || d >= grens);
+  });
+}
 async function syncFormulieren(droog) {
   const rap = { naam: 'sync-formulieren', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
   const [loon, ontslag] = await Promise.all([S.getLoonheffing(), S.getOntslag()]);
   for (const r of loon) if (r.ontvangen !== 'Ja' && r.docUrl) {
     rap.gevonden.push({ bron: 'loonheffing', naam: r.naam, rij: r.rij });
     if (!rap.droog) { try { await S.zetCel(C.SHEETS.loonheffing.id, null, r.rij, 6, 'Ja', S.KLEUR.groen); } catch (e) { rap.fouten.push(r.naam + ': ' + e.message); } }
+  }
+  // v0.48.2: onterecht 'Ontvangen' terugzetten, zodat de herinneringen voor de loonheffingsverklaring weer lopen
+  for (const r of ontvangenZonderLoonheffing(loon, C.SALARIS_AUTO_VANAF)) {
+    rap.gevonden.push({ bron: 'loonheffing', naam: r.naam, rij: r.rij, actie: 'ontvangen teruggezet: loonheffingsverklaring ontbreekt' });
+    if (!rap.droog) {
+      try { await S.zetCel(C.SHEETS.loonheffing.id, null, r.rij, 6, '', S.KLEUR.wit); await require('./auth').logActie({ door: 'signalering', actie: 'toggle', bron: 'loonheffing', veld: 'ontvangen', rij: r.rij, naam: r.naam, oud: 'Ja', nieuw: '', details: 'Alleen het indiensttredingsformulier is binnen; loonheffingsverklaring ontbreekt' }); }
+      catch (e) { rap.fouten.push(r.naam + ': ' + e.message); }
+    }
   }
   for (const r of ontslag) if (r.ondertekend !== 'Ja' && r.docUrl) {
     rap.gevonden.push({ bron: 'ontslag', naam: r.naam, rij: r.rij });
@@ -1158,6 +1175,9 @@ async function salaris(droog) {
     try { for (const r of (await SAL.lijstVan(type)).filter(r => r.salaris && r.mahdia !== 'Ja')) { await SAL.vinkVerwerkt(type, r.rij); (rap.bijgewerkt = rap.bijgewerkt || []).push(r.naam); } }
     catch (e) { rap.fouten.push('vinkjes ' + type + ': ' + e.message); }
   }
+  // v0.48.2: niet stil overslaan — 'Ontvangen' staat aan, maar de loonheffingsverklaring zelf ontbreekt
+  try { for (const r of (await SAL.lijstVan('loonheffing')).filter(r => recent(r) && !r.salaris && r.ontvangen === 'Ja' && !r.docUrl)) rap.handmatig.push({ type: 'loonheffing', naam: r.naam, rij: r.rij, winkel: medW[normNaam(r.naam)] || '', reden: 'loonheffingsverklaring ontbreekt (alleen het indiensttredingsformulier is binnen)' }); }
+  catch (e) { rap.fouten.push('loonheffing zonder verklaring: ' + e.message); }
   for (const type of Object.keys(klaar)) {
     let lijst = [];
     try { lijst = (await SAL.lijstVan(type)).filter(klaar[type]); } catch (e) { rap.fouten.push(type + ': ' + e.message); continue; }
@@ -1288,4 +1308,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { INDIENST_HER_SLEUTEL, indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto, lhModel };
+module.exports = { ontvangenZonderLoonheffing, INDIENST_HER_SLEUTEL, indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto, lhModel };

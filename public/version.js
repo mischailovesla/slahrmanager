@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.48.2', datum: '16-11-2026', titel: 'Loonheffing: alleen "ontvangen" als de loonheffingsverklaring er echt is', punten: [
+    'Uploadde iemand via de uploadlink alleen het <b>indiensttredingsformulier</b>, dan zette het dashboard toch <b>Ontvangen</b> aan. Daardoor stonden zij in <b>Klaar voor salaris</b> zonder loonheffingsverklaring, en kregen zij geen herinneringen meer. Dat gebeurde bij <b>Zoë Schrama</b> en <b>Goncagül Aisha Bagcan</b>.',
+    'Nu gaat <b>Ontvangen</b> alleen nog aan als de loonheffingsverklaring zelf binnen is. Bij wie het al fout stond, zet de formuliercontrole (elke 4 uur) het automatisch terug. De herinneringen voor de loonheffingsverklaring lopen dan weer.',
+    'In <b>Lopende dossiers</b> staan zij nu bij <b>Wacht op formulier</b>, met het label <b>Loonheffing ontbreekt</b> en de knop <b>Herinner</b>. Pas als beide formulieren binnen zijn, schuiven ze door naar Klaar voor salaris.',
+    'Ziet de automatische ronde <b>naar salaris</b> zo\'n dossier toch nog, dan staat het in het overzicht aan HR onder "handmatig" met de reden. Het wordt niet meer stil overgeslagen.'
+  ] },
   { nummer: '0.48.1', datum: '16-11-2026', titel: 'Eindtijd & afsluiten: ook in het Engels', punten: [
     'De <b>teambrief</b> en de <b>waarschuwing</b> over de eindtijd zijn er nu ook in het <b>Engels</b>. Kies bovenaan in het venster <b>Nederlands</b>, <b>English</b> of (alleen bij de teambrief) <b>Nederlands + English</b> in één mail.',
     'De taal staat al goed: de waarschuwing volgt de taal waarin de medewerker zijn loonheffingsuitnodiging kreeg. Zit er in de winkel iemand met Engels, dan staat de teambrief op Nederlands + English.',

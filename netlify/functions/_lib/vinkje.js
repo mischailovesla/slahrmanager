@@ -8,7 +8,9 @@ async function zetVinkje(tok, refs, rijHint) {
   const match = r => normNaam(r.naam) === nn;
   if (tok.s === 'loon') {
     const r = (await S.getLoonheffing()).find(match); if (!r) return 0;
-    if (r.ontvangen !== 'Ja') await S.zetCel(C.SHEETS.loonheffing.id, null, r.rij, 6, 'Ja', S.KLEUR.groen);
+    // v0.48.2: de uploadlink is dezelfde voor loonheffingsverklaring én indiensttredingsformulier.
+    // 'Ontvangen' gaat alleen over de loonheffingsverklaring: alleen indienst binnen = nog niet ontvangen (herinneringen lopen door).
+    if (r.ontvangen !== 'Ja' && refs && refs.loon) await S.zetCel(C.SHEETS.loonheffing.id, null, r.rij, 6, 'Ja', S.KLEUR.groen);
     return r.rij;
   }
   if (tok.s === 'ontslag') {
