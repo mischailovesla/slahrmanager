@@ -21,7 +21,7 @@ security definer
 set search_path = public, pg_temp
 as $$
 declare
-  r jsonb;
+  v_res jsonb;
   v_tot date := least(coalesce(p_tot, current_date - 1), (now() at time zone 'Europe/Amsterdam')::date - 1);
   v_van date := coalesce(p_van, v_tot - 27);
 begin
@@ -58,11 +58,11 @@ begin
     select v.*, k.klaar, k.door
       from verw v
       left join lateral (
-        select coalesce(r.completed_at, r.started_at) as klaar, e.full_name as door
-          from public.checklist_runs r left join public.employees e on e.id = r.employee_id
-         where r.template_id = v.template_id and r.location_id = v.location_id and r.run_date = v.datum
-           and (r.completed_at is not null or coalesce(r.nvt, false))
-         order by coalesce(r.completed_at, r.started_at) limit 1
+        select coalesce(cr.completed_at, cr.started_at) as klaar, e.full_name as door
+          from public.checklist_runs cr left join public.employees e on e.id = cr.employee_id
+         where cr.template_id = v.template_id and cr.location_id = v.location_id and cr.run_date = v.datum
+           and (cr.completed_at is not null or coalesce(cr.nvt, false))
+         order by coalesce(cr.completed_at, cr.started_at) limit 1
       ) k on true
   ),
   st2 as (
@@ -80,11 +80,14 @@ begin
         'klaar', case when klaar is null then null else to_char(klaar at time zone 'Europe/Amsterdam', 'HH24:MI') end,
         'door', case when status = 'laat' then door end
       ) order by datum, code, lijst) from st2), '[]'::jsonb)
-  ) into r;
-  return r;
+  ) into v_res;
+  return v_res;
 end
 $$;
 
 revoke all on function public.hr_haccp_naleving(text, date, date) from public;
 grant execute on function public.hr_haccp_naleving(text, date, date) to anon, authenticated;
 comment on function public.hr_haccp_naleving(text, date, date) is 'HR Dashboard: verplichte HACCP-lijsten per eigen winkel per dag (gemist/laat/ok) met tijdvak. Alleen met de sleutel uit hr_koppeling.';
+
+-- Controle: moet 1 rij geven met hr_haccp_naleving
+select proname from pg_proc where proname = 'hr_haccp_naleving';
