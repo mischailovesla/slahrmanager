@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.49.1', datum: '16-11-2026', titel: 'Declaraties op het Overzicht', punten: [
+    'Op het <b>Overzicht</b> staat rechts onder <b>Deze week</b> een blok <b>Declaraties</b>: aantal en totaalbedrag van wat nog betaald moet worden, en de oudste vijf met hoe lang ze al wachten. Met <b>Alle →</b> ga je naar de pagina Declaraties.',
+    'Het winkelfilter rechtsboven werkt ook voor dit blok.',
+    'De laatste open declaratie uit het Google Form (Laura Janssen, Voorstraat, € 14,20) is overgezet. Het bonnetje opent vanuit Google Drive.'
+  ] },
   { nummer: '0.49.0', datum: '16-11-2026', titel: 'Nieuw: Declaraties via SLA Academy', punten: [
     'Medewerkers dienen voorgeschoten uitgaven nu in via <b>SLA Academy → Profiel → Declaraties</b>, met een foto of scan van het bonnetje. Het Google Form is niet meer nodig.',
     'Nieuwe pagina <b>In dienst → Declaraties</b>: bonnetje bekijken, één of meer declaraties tegelijk op <b>Betaald</b> zetten, of <b>afwijzen</b> met een reden (de medewerker krijgt een mail in zijn eigen taal).',

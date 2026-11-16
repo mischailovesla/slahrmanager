@@ -51,6 +51,7 @@ exports.handler = beveiligd('declaraties', async (event, g) => {
   if (p.actie === 'bon') {
     const { data: r } = await db.from('hr_declaraties').select('bon,naam').eq('id', String(p.id || '')).maybeSingle();
     if (!r) throw new Error('Declaratie niet gevonden.');
+    if (r.bon && r.bon.drive) return { url: r.bon.drive };   // overgezet uit het Google Form: bonnetje staat in Drive
     const { data, error } = await db.storage.from(D.BUCKET).createSignedUrl(r.bon.pad, 300);
     if (error) throw new Error('Opslag: ' + error.message);
     return { url: data.signedUrl };

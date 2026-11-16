@@ -408,15 +408,36 @@
     if (b) openDossier(b.getAttribute('data-dos-naam'), b.getAttribute('data-dos-email'));
   });
 
+  // v0.49.1: klein overzicht van openstaande declaraties op het Overzicht
+  var ovDecl = null;
+  async function ovDeclLaad() { var r = await api('/api/declaraties?status=open'); ovDecl = r.success && !r.ontbreekt ? r : null; renderOvDecl(); }
+  function renderOvDecl() {
+    var sec = g('ov-decl-sec'); if (!sec) return;
+    if (!ovDecl) { sec.style.display = 'none'; return; }
+    sec.style.display = '';
+    var w = winkelFilter(), rijen = ovDecl.rijen.filter(function (x) { return !w || normN(x.winkel) === normN(w) || hoortBijWinkel(x.naam, x.email, w); });
+    var som = rijen.reduce(function (a, x) { return a + x.bedrag; }, 0);
+    g('ov-decl-pill').textContent = rijen.length ? rijen.length + ' open · ' + dcEur(som) : '0 open';
+    var nb = document.querySelector('.nav button[data-tab="declaraties"]'); if (nb && !winkelFilter()) nb.textContent = 'Declaraties' + (rijen.length ? ' (' + rijen.length + ')' : '');
+    if (!rijen.length) { g('ov-decl').innerHTML = '<div class="leeg grijs" style="padding:14px 20px">Geen openstaande declaraties.</div>'; return; }
+    var oud = rijen.slice().sort(function (a, b) { return String(a.ingediend).localeCompare(String(b.ingediend)); });
+    g('ov-decl').innerHTML = oud.slice(0, 5).map(function (x) {
+      var dagen = Math.floor((Date.now() - new Date(x.ingediend).getTime()) / 864e5);
+      return '<div class="ov-dc"><div class="ov-dc-t"><strong>' + esc(x.naam) + '</strong>' + (x.winkel_code ? ' <span class="ov-wk-w">' + esc(x.winkel_code) + '</span>' : '') + (x.dubbel ? ' <span class="badge br">dubbel?</span>' : '')
+        + '<div>' + esc(x.leverancier) + ' · ' + esc(x.omschrijving) + '</div></div>'
+        + '<span class="badge ' + (dagen > 14 ? 'br' : dagen > 7 ? 'bo' : 'boat') + '" title="Dagen sinds indienen">' + dagen + ' d</span><span class="ov-dc-b">' + dcEur(x.bedrag) + '</span></div>';
+    }).join('') + (oud.length > 5 ? '<button class="tk-meer" onclick="swT(\'declaraties\',\'Declaraties\')">+ ' + (oud.length - 5) + ' meer — alle declaraties</button>' : '');
+  }
   window.laadOverzicht = async function () {
     laadTaken(false);
+    ovDeclLaad();
     var d = await api('/api/overzicht');
     if (!d.success) { toast('Overzicht: ' + d.bericht, 'err'); g('ov-pijp').innerHTML = '<div class="leeg grijs" style="padding:18px 24px">' + esc(d.bericht) + '</div>'; return; }
     ovData = d;
     renderOvDelen();
   };
   // Overzicht v2 (v0.21): week-tijdlijn + dossier-pijplijn (tegels en takenlijst: renderTaken)
-  window.renderOvDelen = function () { renderWeek(); renderPijp(); renderKop(); if (tkData) renderTegels(tkZichtbaar()); };
+  window.renderOvDelen = function () { renderWeek(); renderPijp(); renderKop(); renderOvDecl(); if (tkData) renderTegels(tkZichtbaar()); };
   function ovDatum(s) { var m = String(s || '').match(/(\d{1,2})-(\d{1,2})-(\d{4})/); return m ? new Date(+m[3], +m[2] - 1, +m[1]) : null; }
   function dagenSinds(s) { var d = ovDatum(s); if (!d) return null; var n = new Date(); n.setHours(0, 0, 0, 0); return Math.round((n - d) / 864e5); }
   function inWinkel(naam, email, winkel) { var w = winkelFilter(); if (!w) return true; if (winkel) return normN(winkel) === normN(w); return hoortBijWinkel(naam, email, w); }
@@ -2389,6 +2410,7 @@
     var r = await api('/api/declaraties?status=' + dcStatus);
     if (!r.success) { g('dc-body').innerHTML = '<tr><td colspan="9" class="leeg" style="color:#c0392b">' + esc(r.bericht) + '</td></tr>'; return; }
     dcData = r; dcTeken();
+    if (dcStatus === 'open') { ovDecl = r; renderOvDecl(); }
   };
   function dcTeken() {
     var r = dcData, t = r.tellingen || {}, dub = r.rijen.filter(function (x) { return x.dubbel && x.status === 'ingediend'; }).length;

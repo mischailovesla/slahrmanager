@@ -251,6 +251,12 @@ tbody tr:hover td{background:#fdfaf8}
 .tk-meer{display:block;width:100%;border:none;background:#fff;color:var(--groen);font-weight:700;font-size:.78rem;padding:9px 24px;text-align:left;cursor:pointer;border-bottom:1px solid var(--lijn2);font-family:inherit}
 .tk-meer:hover{background:var(--zand)}
 .ov-week #ov-week{padding:6px 0 10px}
+.ov-rechts>.sec{margin-bottom:22px}
+.ov-decl #ov-decl{padding:4px 0 8px}
+.ov-dc{display:flex;align-items:center;gap:10px;padding:7px 20px;font-size:.84rem;border-bottom:1px solid var(--lijn2)}
+.ov-dc:last-child{border-bottom:none}
+.ov-dc-t{flex:1;min-width:0}.ov-dc-t div{color:var(--grijs);font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ov-dc-b{font-weight:700;white-space:nowrap}
 .ov-dag{padding:8px 20px}
 .ov-dag-kop{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--grijs);margin-bottom:6px}
 .ov-dag-kop.nu{color:var(--groen)}

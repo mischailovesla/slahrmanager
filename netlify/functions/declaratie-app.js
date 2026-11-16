@@ -67,6 +67,7 @@ exports.handler = async (event) => {
       const { data: r } = await db.from('hr_declaraties').select('*').eq('id', String(p.id || '')).eq('email', m.email).maybeSingle();
       if (!r) return antwoord(event, 404, { success: false, bericht: 'Declaratie niet gevonden. · Not found.' });
       if (p.actie === 'bon') {
+        if (r.bon && r.bon.drive) return antwoord(event, 200, { success: true, url: r.bon.drive });
         const { data, error } = await db.storage.from(D.BUCKET).createSignedUrl(r.bon.pad, 300);
         if (error) throw new Error('Opslag: ' + error.message);
         return antwoord(event, 200, { success: true, url: data.signedUrl });
@@ -74,7 +75,7 @@ exports.handler = async (event) => {
       if (r.status !== 'ingediend') return antwoord(event, 400, { success: false, bericht: 'Deze declaratie is al verwerkt door HR. · This expense has already been processed.' });
       const { error } = await db.from('hr_declaraties').delete().eq('id', r.id).eq('status', 'ingediend');
       if (error) throw new Error(error.message);
-      try { await db.storage.from(D.BUCKET).remove([r.bon.pad]); } catch (e) { console.warn('bon verwijderen:', e.message); }
+      try { if (r.bon && r.bon.pad) await db.storage.from(D.BUCKET).remove([r.bon.pad]); } catch (e) { console.warn('bon verwijderen:', e.message); }
       await logActie({ door: 'academy:' + m.email, actie: 'declaratie', bron: 'declaraties', veld: 'ingetrokken', naam: m.naam, oud: r.id, details: '€ ' + Number(r.bedrag).toFixed(2) + ' · ' + r.leverancier });
       return antwoord(event, 200, { success: true });
     }
