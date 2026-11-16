@@ -113,6 +113,7 @@ window.HR_HELP = {
       + '<li>Vrije brieven, waarschuwingen en sommaties opstellen.</li></ul>' }
   ],
   faq: [
+    { v: 'Een document opent als lege pagina. Wat nu?', a: 'Dan is de upload mislukt (0 bytes). Klik op het document; het dashboard ziet dat het leeg is en vraagt of het uit het dossier mag. Daarna staat het dossier weer op <i>Wacht op formulier</i> en krijgt de medewerker weer herinneringen. Je kunt ook meteen <b>Herinner</b> klikken.' },
     { v: 'Iemand heeft het indiensttredingsformulier ingevuld, maar staat niet bij Klaar voor salaris. Waarom?', a: 'Dan ontbreekt de <b>loonheffingsverklaring</b> nog (label <i>Loonheffing ontbreekt</i> bij Wacht op formulier). Zonder die verklaring geldt het anoniementarief, dus het dossier gaat pas naar salaris als beide formulieren binnen zijn. De medewerker krijgt automatisch herinneringen; met <b>Herinner</b> stuur je er zelf een.' },
     { v: 'Zet de waarschuwing de zin over het eerdere bericht altijd aan?', a: 'Alleen als die medewerker de teambrief via het dashboard kreeg (dan staat de datum al ingevuld). Kreeg iemand het bericht op een andere manier, zet de zin dan zelf aan en vul de datum in. Kreeg hij het niet, laat de zin uit.' },
     { v: 'Waarom staat bij een sluitdienst "zonder uitklok"?', a: 'De medewerker klokte niet uit; dan telt de eindtijd die in de timesheet staat (vaak door de store manager ingevuld). Controleer die diensten extra voordat je een waarschuwing stuurt.' },

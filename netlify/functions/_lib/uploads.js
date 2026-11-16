@@ -146,4 +146,23 @@ async function bestandMetLabel(ref, label, naam) {
   const ext = (b.naam_orig && b.naam_orig.lastIndexOf('.') > -1 ? b.naam_orig.substring(b.naam_orig.lastIndexOf('.')) : TOEGESTAAN[b.mime]) || '';
   return { filename: label + '_' + String(naam || '').trim().replace(/\s+/g, '_') + ext.toLowerCase(), content: buf.toString('base64'), bytes: buf.length };
 }
-module.exports = { site, SOORTEN, BUCKET, tekenToken, leesGetekend, maakToken, leesToken, tokenLeeftijdDagen, uploadLink, startUpload, registreer, vindUploads, isRef, zoekBestand, signedUrl, bestandMetLabel };
+// v0.48.3: werkelijke grootte in de opslag (null = onbekend). Een mislukte upload van vóór v0.45.2 kan 0 bytes zijn.
+async function grootte(b) {
+  const map = b.pad.substring(0, b.pad.lastIndexOf('/')), naam = b.pad.substring(b.pad.lastIndexOf('/') + 1);
+  const { data, error } = await admin().storage.from(BUCKET).list(map, { search: naam });
+  const obj = !error && data ? data.find(o => o.name === naam) : null;
+  return obj && obj.metadata && obj.metadata.size != null ? Number(obj.metadata.size) : null;
+}
+// v0.48.3: leeg document (0 bytes) uit het dossier halen. Niet echt wissen: de sleutel krijgt '_leeg' erachter, met wie/wanneer/waarom,
+// zodat vindUploads hem niet meer ziet en het dossier weer op 'wacht op formulier' komt. Alleen voor lege bestanden.
+async function verwijderLeeg(ref, door) {
+  const b = await zoekBestand(ref);
+  const g = await grootte(b);
+  if (g !== 0) throw new Error(g == null ? 'Kon de grootte van het document niet controleren; er is niets verwijderd.' : 'Dit document is niet leeg (' + g + ' bytes). Alleen lege documenten kunnen hier worden verwijderd.');
+  const key = ref.split(':')[2];
+  const bestanden = (b.upload.bestanden || []).map(x => x.key === key ? Object.assign({}, x, { key: key + '_leeg', oorspronkelijkeKey: key, verwijderd_op: new Date().toISOString(), verwijderd_door: door || '', reden: 'leeg (0 bytes): upload mislukt' }) : x);
+  const { error } = await admin().from('hr_uploads').update({ bestanden }).eq('id', b.upload.id);
+  if (error) throw new Error('hr_uploads: ' + error.message);
+  return { key, label: b.label, naam: b.upload.naam };
+}
+module.exports = { grootte, verwijderLeeg, site, SOORTEN, BUCKET, tekenToken, leesGetekend, maakToken, leesToken, tokenLeeftijdDagen, uploadLink, startUpload, registreer, vindUploads, isRef, zoekBestand, signedUrl, bestandMetLabel };

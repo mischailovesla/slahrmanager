@@ -384,8 +384,20 @@
     var a = e.target.closest && e.target.closest('a[data-doc-ref]'); if (!a) return;
     e.preventDefault();
     var w = window.open('', '_blank');
-    var r = await api('/api/document?ref=' + encodeURIComponent(a.getAttribute('data-doc-ref')));
+    var ref = a.getAttribute('data-doc-ref');
+    var r = await api('/api/document?ref=' + encodeURIComponent(ref));
     if (!r.success) { if (w) w.close(); toast('Document: ' + r.bericht, 'err'); return; }
+    // v0.48.3: leeg document (0 bytes, mislukte upload) → aanbieden om het uit het dossier te halen
+    if (r.leeg) {
+      if (w) w.close();
+      if (!confirm('"' + (r.label || 'Dit document') + '" van ' + (r.naam || 'deze medewerker') + ' is leeg (0 bytes): de upload is mislukt.\n\nVerwijderen uit het dossier? Daarna telt het niet meer als ontvangen, staat het dossier weer op "wacht op formulier" en lopen de herinneringen weer.')) return;
+      var v = await api('/api/document', { actie: 'verwijder-leeg', ref: ref });
+      if (!v.success) { toast('Verwijderen: ' + v.bericht, 'err'); return; }
+      toast(v.bericht, 'ok');
+      if (typeof laadOverzicht === 'function') laadOverzicht();
+      if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier);
+      return;
+    }
     if (w) w.location = r.url; else window.open(r.url, '_blank');
   });
   function dosBtn(naam, email) { return '<button class="btn bd bsm" data-dos-naam="' + esc(naam) + '" data-dos-email="' + esc(email || '') + '">Dossier</button>'; }

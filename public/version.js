@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.48.3', datum: '16-11-2026', titel: 'Leeg document verwijderen', punten: [
+    'Klik je op een document dat <b>leeg</b> is (0 bytes, een mislukte upload), dan opent het dashboard geen lege pagina meer. Je krijgt de vraag of het uit het dossier mag.',
+    'Na het verwijderen telt een lege <b>loonheffingsverklaring</b> niet meer als ontvangen. Het dossier gaat terug naar <b>Wacht op formulier</b> en de medewerker krijgt weer herinneringen. Dit was het geval bij <b>Cecile Bongers</b>.',
+    'Alleen lege documenten kunnen zo worden verwijderd. Het bestand wordt niet echt gewist: in het dossier staat wie het wanneer heeft weggehaald.',
+    'Stuit de automatische ronde <b>naar salaris</b> op een leeg document, dan meldt hij dat aan HR als handwerk en niet meer als storing.'
+  ] },
   { nummer: '0.48.2', datum: '16-11-2026', titel: 'Loonheffing: alleen "ontvangen" als de loonheffingsverklaring er echt is', punten: [
     'Uploadde iemand via de uploadlink alleen het <b>indiensttredingsformulier</b>, dan zette het dashboard toch <b>Ontvangen</b> aan. Daardoor stonden zij in <b>Klaar voor salaris</b> zonder loonheffingsverklaring, en kregen zij geen herinneringen meer. Dat gebeurde bij <b>Zoë Schrama</b> en <b>Goncagül Aisha Bagcan</b>.',
     'Nu gaat <b>Ontvangen</b> alleen nog aan als de loonheffingsverklaring zelf binnen is. Bij wie het al fout stond, zet de formuliercontrole (elke 4 uur) het automatisch terug. De herinneringen voor de loonheffingsverklaring lopen dan weer.',

@@ -1199,7 +1199,11 @@ async function salaris(droog) {
         const uit = await SAL.stuur(type, r, 'signalering', { zonderDocument: true });
         if (uit && uit.success === false) rap.handmatig.push(Object.assign({ reden: uit.bericht || 'niet verstuurd' }, item));
         else rap.verstuurd.push(Object.assign({ resendId: uit && uit.resendId }, item));
-      } catch (e) { rap.fouten.push(type + ' ' + r.naam + ': ' + e.message); }
+      } catch (e) {
+        // v0.48.3: leeg document (0 bytes) is geen storing maar handwerk: verwijderen en om een nieuw document vragen
+        if (e.leeg) rap.handmatig.push(Object.assign({ reden: 'document is leeg (0 bytes): klik op het document in Lopende dossiers om het te verwijderen, daarna lopen de herinneringen weer' }, item));
+        else rap.fouten.push(type + ' ' + r.naam + ': ' + e.message);
+      }
     }
   }
   // Kort overzicht aan HR (alleen als er iets is gebeurd of handmatig moet)
