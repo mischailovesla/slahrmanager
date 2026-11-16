@@ -107,4 +107,23 @@ assert.ok(/<strong>vet<\/strong>/.test(html) && /<ol/.test(html) && /<ul/.test(h
 assert.strictEqual(E.naarPdfTekst('- a\n1. b'), '• a\n1. b');
 assert.strictEqual(E.opsomming(['maandag', 'dinsdag', 'zaterdag']), 'maandag, dinsdag en zaterdag');
 
+// ---------- 4. Engels (v0.48.1) ----------
+assert.strictEqual(a2.periode.tekstEn, '6 October to 7 October 2026');
+assert.strictEqual(E.periodeTekst('2026-12-20', '2027-01-10', 'EN'), '20 December 2026 to 10 January 2027');
+assert.strictEqual(E.opsomming(['Monday', 'Saturday'], 'EN'), 'Monday and Saturday');
+const vEn = Object.assign(E.medewerkerVars(anna, w, a.periode, 'EN'), { voornaam: 'Anna', datum_eerder_bericht: '17 November 2026', ingangsdatum: '1 December 2026', afzender_naam: 'Test Afzender', afzender_functie: 'HR' });
+const en = E.vul(E.WAARSCHUWING_EN.tekst, vEn, { eerder: true, contract: false });
+assert.ok(/^Dear Anna,\n\nOn 17 November 2026 we informed the team of SLA Den Haag/.test(en));
+assert.ok(/\*\*4 of 4\*\*/.test(en) && /Thursday 8 October 2026\*\*: scheduled until 21:30, clocked out at 00:20/.test(en));
+assert.ok(!/renewal of your contract/.test(en));
+assert.deepStrictEqual(E.openVariabelen(en), []);
+const teamEn = E.vul(E.TEAMBRIEF_EN.tekst, Object.assign(E.teamVars(w, a.periode, 'EN'), { ingangsdatum: '1 December 2026', afzender_naam: 'X', afzender_functie: 'Y' }), { beste: false });
+assert.deepStrictEqual(E.openVariabelen(teamEn, ['voornaam']), []);
+assert.ok(/for 5 October to 9 October 2026 shows that the team clocked out on average 71 minutes/.test(teamEn));
+// Zelfde variabelen en optionele blokken in NL en EN
+const sleutels = t => Array.from(new Set((t.match(/\{\w+\}|\[\[!?\w+\]\]/g) || []))).sort();
+assert.deepStrictEqual(sleutels(E.TEAMBRIEF_EN.tekst), sleutels(E.TEAMBRIEF.tekst));
+assert.deepStrictEqual(sleutels(E.WAARSCHUWING_EN.tekst), sleutels(E.WAARSCHUWING.tekst));
+assert.strictEqual(E.SJABLONEN.team.NL, E.TEAMBRIEF); assert.strictEqual(E.SJABLONEN.waarschuwing.EN, E.WAARSCHUWING_EN);
+
 console.log('eindtijd tests OK');

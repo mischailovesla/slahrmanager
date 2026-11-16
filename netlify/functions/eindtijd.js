@@ -3,9 +3,9 @@
 // GET  /api/eindtijd                     -> sjablonen, instellingen, winkels, afzender (ingelogde gebruiker)
 // POST /api/eindtijd { actie: 'analyse', bron: 'shiftbase'|'xlsx', xlsx?: base64, van?, tot?, ververs? }
 //        -> per winkel: sluitdiensten, uitloop, kosten, medewerkers (met e-mail/contract/eerder bericht) en ontvangers teambrief
-// POST /api/eindtijd { actie: 'team', winkel, onderwerp, tekst, ontvanger: {naam,email,voornaam}, preview? }
+// POST /api/eindtijd { actie: 'team', winkel, onderwerp, tekst, ontvanger: {naam,email,voornaam}, taal?: 'NL'|'EN'|'NL+EN', preview? }
 //        -> teambrief naar één medewerker (de browser loopt de ontvangers af), gelogd als vrije brief (categorie "Eindtijd & afsluiten")
-// POST /api/eindtijd { actie: 'waarschuwing', winkel, mw: {naam,email,adres,voornaam}, onderwerp, tekst, periode, cijfers, afzender, preview?, alleenPdf? }
+// POST /api/eindtijd { actie: 'waarschuwing', winkel, mw: {naam,email,adres,voornaam}, onderwerp, tekst, periode, cijfers, afzender, taal?: 'NL'|'EN', preview?, alleenPdf? }
 //        -> schriftelijke waarschuwing als PDF + mail, in het dossier (Waarschuwingen) en klaar om voor gezien te tekenen
 // ============================================================
 const { beveiligd, body, logActie } = require('./_lib/auth');
@@ -39,8 +39,8 @@ async function laadShiftbase(van, tot, ververs) {
 
 // Dossiergegevens erbij: e-mail, contract, eerder ontvangen teambrief, eerdere eindtijd-waarschuwingen
 async function verrijk(a) {
-  const [med, brieven, wrs] = await Promise.all([
-    SB.getMedewerkers(false).catch(() => []), S.getBrieven().catch(() => []), S.getWaarschuwingen().catch(() => [])
+  const [med, brieven, wrs, loon] = await Promise.all([
+    SB.getMedewerkers(false).catch(() => []), S.getBrieven().catch(() => []), S.getWaarschuwingen().catch(() => []), S.getLoonheffing().catch(() => [])
   ]);
   const opId = {}, opNaam = {};
   med.forEach(m => { opId[m.id] = m; opNaam[normNaam(m.naam)] = m; });
@@ -58,6 +58,8 @@ async function verrijk(a) {
     const p = m ? { naam: m.naam, voornaam: m.voornaam || String(m.naam).split(' ')[0], email: m.email, adres: m.adres, winkelCode: m.winkelCode, winkelNaam: m.winkelNaam, bv: m.winkelBv, functie: m.functie, contractType: m.contractType, contractEinde: m.contractEinde, vast: !m.contractEinde, inDienst: true }
       : { naam, voornaam: String(naam || '').split(' ')[0], email: '', adres: '', inDienst: false, vast: false };
     p.eerderBericht = eerder(p); p.eerdereWaarschuwingen = eerdereWrs(p);
+    // v0.48.1: taal uit de loonheffingsuitnodiging (NL/EN), anders NL
+    const lh = loon.filter(r => zelfde(r, p)).pop(); p.taal = lh && String(lh.taal || '').toUpperCase() === 'EN' ? 'EN' : 'NL';
     return p;
   };
   Object.values(a.winkels).forEach(w => {
@@ -84,7 +86,7 @@ function controleer(tekst, behalve) {
 exports.handler = beveiligd('eindtijd', async (event, g) => {
   if (event.httpMethod === 'GET') {
     const winkels = Object.values(WINKELS).sort((a, b) => a.naam.localeCompare(b.naam));
-    return { sjablonen: { team: E.TEAMBRIEF, waarschuwing: E.WAARSCHUWING }, instellingen: E.INSTELLINGEN, winkels, afzender: { naam: g.naam || '' } };
+    return { sjablonen: E.SJABLONEN, instellingen: E.INSTELLINGEN, winkels, afzender: { naam: g.naam || '' } };
   }
   const p = body(event);
 
@@ -117,15 +119,16 @@ exports.handler = beveiligd('eindtijd', async (event, g) => {
     if (!onderwerp) throw new Error('Vul het onderwerp in.');
     const tekst = E.vul(String(p.tekst || ''), { voornaam }, {});
     controleer(tekst); controleer(onderwerp);
-    const html = mailHtml(tekst, 'SLA HR &middot; Afspraken eindtijd'), text = platteTekst(tekst);
+    const taal = ['NL', 'EN', 'NL+EN'].includes(String(p.taal || '').toUpperCase()) ? String(p.taal).toUpperCase() : 'NL';
+    const html = mailHtml(tekst, taal === 'EN' ? 'SLA HR &middot; Finishing time' : taal === 'NL+EN' ? 'SLA HR &middot; Afspraken eindtijd / Finishing time' : 'SLA HR &middot; Afspraken eindtijd'), text = platteTekst(tekst);
     if (p.preview) return { subject: onderwerp, html, text };
     if (!naam) throw new Error('Ontvanger zonder naam.');
     if (!email || email.indexOf('@') === -1) throw new Error('Geen geldig e-mailadres voor ' + naam + '.');
-    const resendId = await require('./_lib/mail').verstuur({ to: email, subject: onderwerp, text, html, tags: [{ name: 'bron', value: 'eindtijd' }, { name: 'type', value: 'teambrief' }] });
+    const resendId = await require('./_lib/mail').verstuur({ to: email, subject: onderwerp, text, html, tags: [{ name: 'bron', value: 'eindtijd' }, { name: 'type', value: 'teambrief' }, { name: 'taal', value: taal.replace('+', '_') }] });
     let rij = 0;
     try { rij = await S.logBrief({ naam, email, bv: w.bv, categorie: E.CATEGORIE_TEAMBRIEF, onderwerp, tekst, metPdf: false }, D.stempel()); }
     catch (e) { console.warn('eindtijd logBrief:', e.message); }
-    await require('./_lib/mail').logMail({ door: g.email, bron: 'eindtijd', type: 'teambrief', naar: email, naam, onderwerp, taal: 'NL', rij, resend_id: resendId });
+    await require('./_lib/mail').logMail({ door: g.email, bron: 'eindtijd', type: 'teambrief', naar: email, naam, onderwerp, taal, rij, resend_id: resendId });
     await logActie({ door: g.email, actie: 'mail', bron: 'eindtijd', veld: 'teambrief ' + w.naam, rij, naam, nieuw: email, details: onderwerp });
     return { bericht: 'Verstuurd naar ' + naam, rij };
   }
@@ -134,30 +137,33 @@ exports.handler = beveiligd('eindtijd', async (event, g) => {
     const w = winkelVan(p.winkel);
     const mw = p.mw || {};
     const naam = String(mw.naam || '').trim(), to = String(mw.email || '').trim(), adres = String(mw.adres || '').trim();
-    const onderwerp = String(p.onderwerp || '').trim() || E.WAARSCHUWING.onderwerp;
+    const en = String(p.taal || '').toUpperCase() === 'EN';
+    const onderwerp = String(p.onderwerp || '').trim() || (en ? E.WAARSCHUWING_EN : E.WAARSCHUWING).onderwerp;
     const tekst = String(p.tekst || '').trim();
     if (!naam) throw new Error('Geen medewerker gekozen.');
     if (!tekst) throw new Error('De brief is leeg.');
     controleer(tekst); controleer(onderwerp);
-    const kop = '**' + w.bv + '**\n\n' + naam + (adres ? '\n' + adres : '') + '\n\nAmsterdam, ' + D.briefDatum(false) + '\n\n**Betreft: ' + onderwerp + '**\n\n';
-    const voet = '\n\n\n**Voor gezien**\n' + naam + '\n\n................................................\nDatum:';
-    const pdf = await require('./_lib/pdf').maakOpgemaakteBrief(kop + E.naarPdfTekst(tekst) + voet, { titel: 'Schriftelijke waarschuwing - ' + naam });
-    const bestandsnaam = 'Waarschuwing_eindtijd_' + D.veiligeNaam(naam) + '.pdf';
+    const kop = '**' + w.bv + '**\n\n' + naam + (adres ? '\n' + adres : '') + '\n\nAmsterdam, ' + D.briefDatum(en) + '\n\n**' + (en ? 'Re: ' : 'Betreft: ') + onderwerp + '**\n\n';
+    // 'Voor gezien' / 'Signed for receipt' markeert de plek van de digitale handtekening (pdf.js ZONE)
+    const voet = en ? '\n\n\n**Signed for receipt (seen)**\n' + naam + '\n\n................................................\nDate:' : '\n\n\n**Voor gezien**\n' + naam + '\n\n................................................\nDatum:';
+    const titel = (en ? 'Written warning - ' : 'Schriftelijke waarschuwing - ') + naam;
+    const pdf = await require('./_lib/pdf').maakOpgemaakteBrief(kop + E.naarPdfTekst(tekst) + voet, { titel });
+    const bestandsnaam = (en ? 'Warning_finishing_time_' : 'Waarschuwing_eindtijd_') + D.veiligeNaam(naam) + '.pdf';
     if (p.alleenPdf) return { pdf: pdf.toString('base64'), bestandsnaam };
     const T = require('./_lib/sjablonen');
     const link = require('./_lib/uploads').uploadLink('waarschuwing', naam);
-    const html = T.metGezienKnop(mailHtml(tekst, 'SLA HR &middot; Schriftelijke waarschuwing', '#c0392b'), link, false);
-    const text = platteTekst(tekst) + T.gezienPlain(link, false);
+    const html = T.metGezienKnop(mailHtml(tekst, en ? 'SLA HR &middot; Written warning' : 'SLA HR &middot; Schriftelijke waarschuwing', '#c0392b'), link, en);
+    const text = platteTekst(tekst) + T.gezienPlain(link, en);
     if (p.preview) return { subject: onderwerp, html, text };
     if (!to || to.indexOf('@') === -1) throw new Error('Geen geldig e-mailadres voor ' + naam + '.');
-    const resendId = await require('./_lib/mail').verstuur({ to, subject: onderwerp, text, html, attachments: [{ filename: bestandsnaam, content: pdf.toString('base64') }], tags: [{ name: 'bron', value: 'eindtijd' }, { name: 'type', value: 'waarschuwing' }] });
+    const resendId = await require('./_lib/mail').verstuur({ to, subject: onderwerp, text, html, attachments: [{ filename: bestandsnaam, content: pdf.toString('base64') }], tags: [{ name: 'bron', value: 'eindtijd' }, { name: 'type', value: 'waarschuwing' }, { name: 'taal', value: en ? 'EN' : 'NL' }] });
     // Dossier: tab Waarschuwingen (datum, sjabloon, cijfers, afzender) + digitaal voor gezien tekenen
     const c = p.cijfers || {}, af = p.afzender || {};
-    const toelichting = 'Sjabloon: eindtijd-waarschuwing · Periode: ' + String(p.periode || '') + ' · Cijfers: ' + c.aantal_laat + ' van ' + c.aantal_totaal + ' sluitdiensten > 30 min te laat, gemiddeld ' + c.gem_min + ' min, ' + c.aantal_na_22 + '× na 22:00, grootste: ' + c.ergste_datum + ' (rooster ' + c.rooster_eind + ', uitklok ' + c.uitklok + ')' + (c.zonder_uitklok ? ', ' + c.zonder_uitklok + ' dienst(en) zonder uitklok' : '') + ' · Afzender: ' + String(af.naam || g.naam || g.email) + (af.functie ? ' (' + af.functie + ')' : '') + ' · Verstuurd door: ' + g.email;
+    const toelichting = 'Sjabloon: eindtijd-waarschuwing (' + (en ? 'EN' : 'NL') + ') · Periode: ' + String(p.periode || '') + ' · Cijfers: ' + c.aantal_laat + ' van ' + c.aantal_totaal + ' sluitdiensten > 30 min te laat, gemiddeld ' + c.gem_min + ' min, ' + c.aantal_na_22 + '× na 22:00, grootste: ' + c.ergste_datum + ' (rooster ' + c.rooster_eind + ', uitklok ' + c.uitklok + ')' + (c.zonder_uitklok ? ', ' + c.zonder_uitklok + ' dienst(en) zonder uitklok' : '') + ' · Afzender: ' + String(af.naam || g.naam || g.email) + (af.functie ? ' (' + af.functie + ')' : '') + ' · Verstuurd door: ' + g.email;
     const nu = D.stempel();
-    const rij = await S.logWaarschuwing({ naam, to, adres, datumOvertreding: String(p.periode || ''), toelichting, taal: 'NL' }, { naam: w.naam, bv: w.bv }, [REGEL_WAARSCHUWING], nu);
-    try { await require('./_lib/ondertekening').aanmaken({ soort: 'waarschuwing', type: 'waarschuwing', titel: 'Waarschuwing eindtijd - ' + naam, naam, email: to, rij, taal: 'NL', pdf, door: g.email }); } catch (e) { console.warn('eindtijd ondertekening:', e.message); }
-    await require('./_lib/mail').logMail({ door: g.email, bron: 'eindtijd', type: 'waarschuwing-pdf', naar: to, naam, onderwerp, taal: 'NL', rij, resend_id: resendId });
+    const rij = await S.logWaarschuwing({ naam, to, adres, datumOvertreding: String(p.periode || ''), toelichting, taal: en ? 'EN' : 'NL' }, { naam: w.naam, bv: w.bv }, [REGEL_WAARSCHUWING], nu);
+    try { await require('./_lib/ondertekening').aanmaken({ soort: 'waarschuwing', type: 'waarschuwing', titel: (en ? 'Warning finishing time - ' : 'Waarschuwing eindtijd - ') + naam, naam, email: to, rij, taal: en ? 'EN' : 'NL', pdf, door: g.email }); } catch (e) { console.warn('eindtijd ondertekening:', e.message); }
+    await require('./_lib/mail').logMail({ door: g.email, bron: 'eindtijd', type: 'waarschuwing-pdf', naar: to, naam, onderwerp, taal: en ? 'EN' : 'NL', rij, resend_id: resendId });
     await logActie({ door: g.email, actie: 'mail', bron: 'eindtijd', veld: 'waarschuwing', rij, naam, nieuw: to, details: onderwerp + ' (+PDF)' });
     return { bericht: 'Waarschuwing + PDF verstuurd naar ' + to + '. Staat in het dossier en wacht op "voor gezien".', rij };
   }

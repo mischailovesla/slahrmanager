@@ -16,6 +16,9 @@ const INSTELLINGEN = { sluitVanaf: 20 * 60, drempel: 30, grens: 22 * 60, minLaat
 const CATEGORIE_TEAMBRIEF = 'Eindtijd & afsluiten';
 const WEEKDAG = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'];
 const MAAND = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+// v0.48.1: Engelse brieven
+const WEEKDAG_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MAAND_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 // ---------- kleine helpers ----------
 const r1 = x => Math.round(x * 10) / 10;
@@ -42,14 +45,18 @@ const dagVerschil = (a, b) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.pa
 const weekdag = iso => new Date(iso + 'T12:00:00Z').getUTCDay();
 function hhmm(min) { if (min == null) return ''; const m = Math.round(((min % 1440) + 1440) % 1440); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
 function nlDatum(iso) { return iso ? iso.slice(8, 10) + '-' + iso.slice(5, 7) + '-' + iso.slice(0, 4) : ''; }
-function langeDatum(iso, metDag) { if (!iso) return ''; const d = new Date(iso + 'T12:00:00Z'); return (metDag ? WEEKDAG[d.getUTCDay()] + ' ' : '') + d.getUTCDate() + ' ' + MAAND[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
-function periodeTekst(van, tot) {
-  if (!van || !tot) return '';
-  const a = new Date(van + 'T12:00:00Z'), b = new Date(tot + 'T12:00:00Z');
-  const links = a.getUTCDate() + ' ' + MAAND[a.getUTCMonth()] + (a.getUTCFullYear() !== b.getUTCFullYear() ? ' ' + a.getUTCFullYear() : '');
-  return links + ' t/m ' + langeDatum(tot);
+const isEn = taal => String(taal || '').toUpperCase() === 'EN';
+function langeDatum(iso, metDag, taal) {
+  if (!iso) return ''; const d = new Date(iso + 'T12:00:00Z'), en = isEn(taal);
+  return (metDag ? (en ? WEEKDAG_EN : WEEKDAG)[d.getUTCDay()] + ' ' : '') + d.getUTCDate() + ' ' + (en ? MAAND_EN : MAAND)[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
 }
-function opsomming(lijst) { return lijst.length <= 1 ? (lijst[0] || '') : lijst.slice(0, -1).join(', ') + ' en ' + lijst[lijst.length - 1]; }
+function periodeTekst(van, tot, taal) {
+  if (!van || !tot) return '';
+  const a = new Date(van + 'T12:00:00Z'), b = new Date(tot + 'T12:00:00Z'), en = isEn(taal);
+  const links = a.getUTCDate() + ' ' + (en ? MAAND_EN : MAAND)[a.getUTCMonth()] + (a.getUTCFullYear() !== b.getUTCFullYear() ? ' ' + a.getUTCFullYear() : '');
+  return links + (en ? ' to ' : ' t/m ') + langeDatum(tot, false, taal);
+}
+function opsomming(lijst, taal) { return lijst.length <= 1 ? (lijst[0] || '') : lijst.slice(0, -1).join(', ') + (isEn(taal) ? ' and ' : ' en ') + lijst[lijst.length - 1]; }
 const winkelLabel = team => String(team || '').replace(/^SLA\s+/i, '').trim();
 function statusVan(s) {
   const t = String(s || '').toLowerCase();
@@ -153,7 +160,7 @@ function analyseer(diensten, o) {
   for (const code of Object.keys(perWinkel)) winkels[code] = winkelDetail(perWinkel[code], I);
   const overzicht = Object.values(winkels).map(w => ({ code: w.code, naam: w.naam, sluitdiensten: w.team.sluitdiensten, avonden: w.team.avonden, gemMin: w.team.gemMin, pctAvonden30: w.team.pctAvonden30, maxMin: w.team.maxMin, extraUren: w.kosten.extraUren, kostenInclLasten: w.kosten.inclLasten, voorgedragen: w.medewerkers.filter(m => m.voorgedragen).length }))
     .sort((a, b) => b.pctAvonden30 - a.pctAvonden30 || b.sluitdiensten - a.sluitdiensten);
-  return { periode: { van, tot, tekst: periodeTekst(van, tot) }, instellingen: I, overzicht, winkels };
+  return { periode: { van, tot, tekst: periodeTekst(van, tot), tekstEn: periodeTekst(van, tot, 'EN') }, instellingen: I, overzicht, winkels };
 }
 
 function winkelDetail(w, I) {
@@ -192,7 +199,7 @@ function winkelDetail(w, I) {
   const avonden = Object.keys(avond).sort().map(dt => ({ datum: dt, uitloop: avond[dt].eind - avond[dt].rEind }));
   const perWd = {};
   avonden.forEach(a => { const wd = weekdag(a.datum); (perWd[wd] || (perWd[wd] = [])).push(a.uitloop); });
-  const weekdagen = [1, 2, 3, 4, 5, 6, 0].filter(wd => perWd[wd]).map(wd => ({ dag: WEEKDAG[wd], avonden: perWd[wd].length, gemMin: Math.round(perWd[wd].reduce((s, x) => s + x, 0) / perWd[wd].length) }));
+  const weekdagen = [1, 2, 3, 4, 5, 6, 0].filter(wd => perWd[wd]).map(wd => ({ dag: WEEKDAG[wd], dagEn: WEEKDAG_EN[wd], avonden: perWd[wd].length, gemMin: Math.round(perWd[wd].reduce((s, x) => s + x, 0) / perWd[wd].length) }));
   const beste = weekdagen.filter(x => x.avonden >= 2 && x.gemMin <= I.drempel).sort((a, b) => a.gemMin - b.gemMin);
   // Goedkeuring
   const gk = {};
@@ -206,7 +213,7 @@ function winkelDetail(w, I) {
       gemMin: sluit.length ? Math.round(sluit.reduce((s, d) => s + d.laat, 0) / sluit.length) : 0,
       pctAvonden30: avonden.length ? Math.round(avonden.filter(a => a.uitloop > I.drempel).length / avonden.length * 100) : 0,
       maxMin: avonden.length ? Math.round(Math.max.apply(null, avonden.map(a => a.uitloop))) : 0,
-      besteDagen: opsomming(beste.map(x => x.dag)), weekdagen,
+      besteDagen: opsomming(beste.map(x => x.dag)), besteDagenEn: opsomming(beste.map(x => x.dagEn), 'EN'), weekdagen,
       zonderUitklok: sluit.filter(d => d.zonderUitklok).length,
       onbeslist: sluit.filter(d => d.status === 'onbeslist').length
     },
@@ -288,6 +295,76 @@ Met vriendelijke groet,
 {afzender_functie}, SLA`
 };
 
+const TEAMBRIEF_EN = {
+  onderwerp: 'Agreements about your finishing time and closing at SLA {winkel}',
+  tekst: `Dear {voornaam},
+
+Over the past few weeks, we have often finished well after the scheduled end time at SLA {winkel}. The clock data for {periode} shows that the team clocked out on average {team_gem_min} minutes later than planned, more than half an hour late on {team_pct_dagen_30}% of the days, and sometimes up to {team_max_min} minutes later.[[beste]] On {beste_dagen} we do manage to finish on time. So it can be done.[[/beste]]
+
+That is why we are setting out the agreements clearly one more time:
+
+1. **Your scheduled end time is your end time.** Closing (cleaning, closing checklist, till) fits within your shift. Start the closing tasks in time.
+2. **Can't make it? Discuss it in advance.** Can you see that you will finish later, because it is busy, something breaks down or a delivery comes in? Report this before your scheduled end time to your store manager or the manager on duty.
+3. **Working longer only with permission.** Hours after your end time without permission are not approved automatically. We will discuss them with you, and your manager will decide whether they were justified.
+4. **We do not work after 22:00 without permission.**
+5. **Clock out as soon as you are done.**
+
+From {ingangsdatum}, hours worked after your scheduled end time without permission will not count towards the tip distribution.
+
+**What happens if these agreements are not followed?**
+
+- The first time, your store manager will discuss it with you.
+- If it happens again without permission, you will receive a written warning in your personnel file.
+- If it keeps happening, further employment measures may follow.
+
+We are not asking this to be difficult. Working too long is bad for your rest and your journey home. It is also unfair to colleagues who do finish on time. And it makes the schedule and labour costs unpredictable.
+
+Do you think the closing work does not fit within the time? Let us know. Then we will look together at the division of tasks, the order of closing or the schedule.
+
+Kind regards,
+{afzender_naam}
+{afzender_functie}, SLA`
+};
+
+const WAARSCHUWING_EN = {
+  onderwerp: 'Warning: repeatedly finishing late without permission',
+  tekst: `Dear {voornaam},
+
+[[eerder]]On {datum_eerder_bericht} we informed the team of SLA {winkel} that you should not keep working after your scheduled end time without permission, and that working after 22:00 is only allowed with permission given in advance. Despite that message, the clock data shows that you regularly clock out well after your scheduled end time, without having asked for permission.[[/eerder]][[!eerder]]The clock data shows that you regularly clock out well after your scheduled end time, without having asked for permission.[[/!eerder]]
+
+**Your figures for {periode}:**
+
+- Closing shifts more than 30 minutes past your end time: **{aantal_laat} of {aantal_totaal}**
+- On average later than scheduled: **{gem_min} minutes**
+- Shifts clocked out after 22:00: **{aantal_na_22}**
+- Largest overrun: **{ergste_datum}**: scheduled until {rooster_eind}, clocked out at {uitklok}
+
+This is not acceptable. You cannot simply finish one or two hours after your scheduled time without discussing it first. This affects the schedule and labour costs. It is also unfair to your colleagues: they finish on time and therefore receive a smaller share of the tips.
+
+**What we expect from you from now on:**
+
+1. You finish at your scheduled end time. The closing work fits within your shift.
+2. Can you see that you won't make it? Then report it before your end time to your store manager or the manager on duty. You only stay longer with their permission.
+3. You do not work after 22:00 without permission given in advance.
+4. You clock out as soon as you are done.
+
+**What changes from {ingangsdatum}:**
+
+- Hours after your scheduled end time without permission are not approved automatically. Your manager will discuss and assess them with you.
+- These hours do not count towards the tip distribution.
+
+**Consequences:** this letter is a written warning and will be added to your personnel file. If you continue to work past your end time without permission after this warning, further employment measures will follow.[[contract]] If it happens again, this may also affect the renewal of your contract.[[/contract]]
+
+We would like to solve this together. Do you really think the closing work does not fit within the time? Then discuss it with your store manager this week.
+
+Please sign this letter as seen via the link in the email. This only confirms that you have received it, not that you agree with its content.
+
+Kind regards,
+{afzender_naam}
+{afzender_functie}, SLA`
+};
+const SJABLONEN = { team: { NL: null, EN: TEAMBRIEF_EN }, waarschuwing: { NL: null, EN: WAARSCHUWING_EN } };
+
 function vul(tekst, vars, opties) {
   opties = opties || {};
   let t = String(tekst || '');
@@ -298,11 +375,14 @@ function vul(tekst, vars, opties) {
 // Welke {variabelen} staan er nog in (niet ingevuld)?
 function openVariabelen(tekst, behalve) { const s = new Set(); String(tekst || '').replace(/\{(\w+)\}/g, (m, k) => { if (!(behalve || []).includes(k)) s.add(k); }); return Array.from(s); }
 
-function teamVars(w, periode) {
-  return { winkel: w.naam, periode: periode.tekst, team_gem_min: w.team.gemMin, team_pct_dagen_30: w.team.pctAvonden30, team_max_min: w.team.maxMin, beste_dagen: w.team.besteDagen };
+SJABLONEN.team.NL = TEAMBRIEF; SJABLONEN.waarschuwing.NL = WAARSCHUWING;
+function teamVars(w, periode, taal) {
+  const en = isEn(taal);
+  return { winkel: w.naam, periode: en ? periode.tekstEn : periode.tekst, team_gem_min: w.team.gemMin, team_pct_dagen_30: w.team.pctAvonden30, team_max_min: w.team.maxMin, beste_dagen: en ? w.team.besteDagenEn : w.team.besteDagen };
 }
-function medewerkerVars(m, w, periode) {
-  return { winkel: w.naam, periode: periode.tekst, aantal_laat: m.aantalLaat, aantal_totaal: m.aantalTotaal, gem_min: m.gemMin, aantal_na_22: m.aantalNa22, ergste_datum: langeDatum(m.ergste.datum, true), rooster_eind: m.ergste.roosterEind, uitklok: m.ergste.uitklok };
+function medewerkerVars(m, w, periode, taal) {
+  const en = isEn(taal);
+  return { winkel: w.naam, periode: en ? periode.tekstEn : periode.tekst, aantal_laat: m.aantalLaat, aantal_totaal: m.aantalTotaal, gem_min: m.gemMin, aantal_na_22: m.aantalNa22, ergste_datum: langeDatum(m.ergste.datum, true, taal), rooster_eind: m.ergste.roosterEind, uitklok: m.ergste.uitklok };
 }
 
 // ---------- Opmaak: tekst -> HTML (mail) en -> pdf-tekst (maakOpgemaakteBrief) ----------
@@ -321,4 +401,4 @@ function naarHtml(tekst) {
 }
 function naarPdfTekst(tekst) { return String(tekst || '').replace(/^(\s*)-\s+/gm, '$1• '); }
 
-module.exports = { INSTELLINGEN, CATEGORIE_TEAMBRIEF, TEAMBRIEF, WAARSCHUWING, vanExport, vanApi, analyseer, vul, openVariabelen, teamVars, medewerkerVars, naarHtml, naarPdfTekst, tijdMin, isoDatum, hhmm, nlDatum, langeDatum, periodeTekst, opsomming };
+module.exports = { INSTELLINGEN, CATEGORIE_TEAMBRIEF, TEAMBRIEF, WAARSCHUWING, TEAMBRIEF_EN, WAARSCHUWING_EN, SJABLONEN, vanExport, vanApi, analyseer, vul, openVariabelen, teamVars, medewerkerVars, naarHtml, naarPdfTekst, tijdMin, isoDatum, hhmm, nlDatum, langeDatum, periodeTekst, opsomming };

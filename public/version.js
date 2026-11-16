@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.48.1', datum: '16-11-2026', titel: 'Eindtijd & afsluiten: ook in het Engels', punten: [
+    'De <b>teambrief</b> en de <b>waarschuwing</b> over de eindtijd zijn er nu ook in het <b>Engels</b>. Kies bovenaan in het venster <b>Nederlands</b>, <b>English</b> of (alleen bij de teambrief) <b>Nederlands + English</b> in één mail.',
+    'De taal staat al goed: de waarschuwing volgt de taal waarin de medewerker zijn loonheffingsuitnodiging kreeg. Zit er in de winkel iemand met Engels, dan staat de teambrief op Nederlands + English.',
+    'Een Engelse waarschuwing krijgt ook een Engelse PDF, mail en knop om voor gezien te tekenen.'
+  ] },
   { nummer: '0.48.0', datum: '16-11-2026', titel: 'Nieuw: Eindtijd & afsluiten', punten: [
     'Nieuwe pagina <b>Dossier → Eindtijd &amp; afsluiten</b>: per winkel zie je hoe vaak het team na een <b>sluitdienst</b> (rooster tot 20:00 of later) te laat klaar is, op hoeveel avonden meer dan een half uur, en wat de extra uren kosten. Bron: Shiftbase, of een geüploade Excel-export <i>Urenregistratie</i>.',
     'Per medewerker: sluitdiensten, hoe vaak meer dan 30 minuten te laat, hoe vaak na 22:00, gemiddelde uitloop en de grootste overschrijding. Wie minstens 3 keer én bij minstens de helft van de sluitdiensten meer dan 30 minuten te laat is, staat als <b>voor te dragen</b> gemarkeerd.',

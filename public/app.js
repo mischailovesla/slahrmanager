@@ -4040,8 +4040,12 @@
   // ---------- Eindtijd & afsluiten (v0.48.0) ----------
   var etData = null, etCfg = null, etWinkel = '', etXlsx = null, etModus = '', etMw = null, etBewerkt = false;
   var ET_MAAND = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+  var ET_MAAND_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  var ET_DAG = ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'], ET_DAG_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
   function etIso(d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
-  function etLang(iso) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? (+m[3]) + ' ' + ET_MAAND[+m[2] - 1] + ' ' + m[1] : ''; }
+  function etLang(iso, en) { var m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? (+m[3]) + ' ' + (en ? ET_MAAND_EN : ET_MAAND)[+m[2] - 1] + ' ' + m[1] : ''; }
+  function etTaal() { var b = g('et-taal').querySelector('.tb.sel'); return b ? b.getAttribute('data-taal') : 'NL'; }
+  function etZetTaal(t) { g('et-taal').querySelectorAll('.tb').forEach(function (x) { x.classList.toggle('sel', x.getAttribute('data-taal') === t); }); }
   // Zelfde regels als vul() in _lib/eindtijd.js: [[x]]…[[/x]] optioneel, [[!x]]…[[/!x]] alleen als x uit staat, {var} invullen
   function etVul(tekst, vars, opties) {
     var t = String(tekst || '').replace(/\[\[(!?)(\w+)\]\]([\s\S]*?)\[\[\/\1\2\]\]/g, function (m, neg, naam, binnen) { return (neg ? !opties[naam] : !!opties[naam]) ? binnen : ''; });
@@ -4074,6 +4078,7 @@
       c.forEach(function (x) { x.checked = aan; }); etTelOntv();
     });
     g('et-modal').addEventListener('click', function (e) { if (e.target === this) etSluit(); });
+    g('et-taal').addEventListener('click', function (e) { var k = e.target.closest('[data-taal]'); if (!k || k.classList.contains('sel')) return; if (etBewerkt && !confirm('De tekst opnieuw opbouwen in de andere taal? Je eigen aanpassingen gaan dan verloren.')) return; etZetTaal(k.getAttribute('data-taal')); etHerbouw(false); });
   })();
   function etBron() { var b = g('et-bron').querySelector('.tb.sel'); return b ? b.getAttribute('data-bron') : 'shiftbase'; }
 
@@ -4151,9 +4156,11 @@
   };
 
   // --- Modal: teambrief en waarschuwing ---
-  function etModalOpen(modus) {
+  function etModalOpen(modus, taal) {
     etModus = modus; etBewerkt = false;
     var wrs = modus === 'waarschuwing';
+    g('et-taal').querySelector('[data-taal="NL+EN"]').style.display = wrs ? 'none' : '';
+    etZetTaal(taal || 'NL');
     g('et-m-kop').style.background = wrs ? '#c0392b' : '';
     g('et-pdfbtn').style.display = wrs ? '' : 'none';
     g('et-ontv-wrap').style.display = wrs ? 'none' : '';
@@ -4165,30 +4172,37 @@
   window.etSluit = function () { g('et-modal').classList.remove('open'); };
   function etOptie(id, label, aan, extra) { return '<label class="chk" style="margin:4px 0"><input type="checkbox" id="' + id + '"' + (aan ? ' checked' : '') + '> <span>' + label + '</span></label>' + (extra || ''); }
   function etKoppelOpties() { g('et-m-opties').querySelectorAll('input').forEach(function (x) { x.addEventListener('change', function () { etHerbouw(true); }); }); }
-  function etBasisVars() {
+  function etBasisVars(en) {
     var w = etData.winkels[etWinkel];
-    return { winkel: w.naam, periode: etData.periode.tekst, ingangsdatum: etLang(g('et-ingang').value), afzender_naam: g('et-af-naam').value.trim(), afzender_functie: g('et-af-functie').value.trim() };
+    return { winkel: w.naam, periode: en ? etData.periode.tekstEn : etData.periode.tekst, ingangsdatum: etLang(g('et-ingang').value, en), afzender_naam: g('et-af-naam').value.trim(), afzender_functie: g('et-af-functie').value.trim() };
   }
-  function etHerbouw(vraag) {
-    if (vraag && etBewerkt && !confirm('De tekst opnieuw opbouwen? Je eigen aanpassingen in de tekst gaan dan verloren.')) return;
-    var w = etData.winkels[etWinkel], v = etBasisVars(), sj, opt = {};
-    try { localStorage.setItem('et-af-functie', v.afzender_functie); } catch (e) { }
+  // v0.48.1: NL, EN of (teambrief) NL + EN in één mail
+  function etTekstIn(taal) {
+    var en = taal === 'EN', w = etData.winkels[etWinkel], v = etBasisVars(en), sj, opt = {};
     if (etModus === 'team') {
-      sj = etCfg.sjablonen.team;
-      Object.assign(v, { team_gem_min: w.team.gemMin, team_pct_dagen_30: w.team.pctAvonden30, team_max_min: w.team.maxMin, beste_dagen: w.team.besteDagen });
+      sj = etCfg.sjablonen.team[taal];
+      Object.assign(v, { team_gem_min: w.team.gemMin, team_pct_dagen_30: w.team.pctAvonden30, team_max_min: w.team.maxMin, beste_dagen: en ? w.team.besteDagenEn : w.team.besteDagen });
       opt.beste = !!(g('et-o-beste') && g('et-o-beste').checked);
     } else {
-      sj = etCfg.sjablonen.waarschuwing;
+      sj = etCfg.sjablonen.waarschuwing[taal];
       var m = etMw;
-      Object.assign(v, { voornaam: m.persoon.voornaam, aantal_laat: m.aantalLaat, aantal_totaal: m.aantalTotaal, gem_min: m.gemMin, aantal_na_22: m.aantalNa22, ergste_datum: etLangDag(m.ergste.datum), rooster_eind: m.ergste.roosterEind, uitklok: m.ergste.uitklok, datum_eerder_bericht: etLang(g('et-o-eerder-d') ? g('et-o-eerder-d').value : '') });
+      Object.assign(v, { voornaam: m.persoon.voornaam, aantal_laat: m.aantalLaat, aantal_totaal: m.aantalTotaal, gem_min: m.gemMin, aantal_na_22: m.aantalNa22, ergste_datum: etLangDag(m.ergste.datum, en), rooster_eind: m.ergste.roosterEind, uitklok: m.ergste.uitklok, datum_eerder_bericht: etLang(g('et-o-eerder-d') ? g('et-o-eerder-d').value : '', en) });
       opt.eerder = !!(g('et-o-eerder') && g('et-o-eerder').checked);
       opt.contract = !!(g('et-o-contract') && g('et-o-contract').checked);
     }
-    g('et-onderwerp').value = etVul(sj.onderwerp, v, opt);
-    g('et-tekst').value = etVul(sj.tekst, v, opt);
+    return { onderwerp: etVul(sj.onderwerp, v, opt), tekst: etVul(sj.tekst, v, opt) };
+  }
+  function etHerbouw(vraag) {
+    if (vraag && etBewerkt && !confirm('De tekst opnieuw opbouwen? Je eigen aanpassingen in de tekst gaan dan verloren.')) return;
+    try { localStorage.setItem('et-af-functie', g('et-af-functie').value.trim()); } catch (e) { }
+    var taal = etTaal(), t;
+    if (taal === 'NL+EN') { var a = etTekstIn('NL'), b = etTekstIn('EN'); t = { onderwerp: a.onderwerp + ' / ' + b.onderwerp, tekst: a.tekst + '\n\n— — —\n\n**English version**\n\n' + b.tekst }; }
+    else t = etTekstIn(taal);
+    g('et-onderwerp').value = t.onderwerp;
+    g('et-tekst').value = t.tekst;
     etBewerkt = false;
   }
-  function etLangDag(iso) { var d = new Date(iso + 'T12:00:00'); return ['zondag', 'maandag', 'dinsdag', 'woensdag', 'donderdag', 'vrijdag', 'zaterdag'][d.getDay()] + ' ' + etLang(iso); }
+  function etLangDag(iso, en) { var d = new Date(iso + 'T12:00:00'); return (en ? ET_DAG_EN : ET_DAG)[d.getDay()] + ' ' + etLang(iso, en); }
 
   window.etOpenTeam = function () {
     var w = etData && etData.winkels[etWinkel]; if (!w) return;
@@ -4199,10 +4213,12 @@
     etKoppelOpties(); if (!bd) g('et-o-beste').disabled = true;
     g('et-ontv').innerHTML = w.ontvangers.map(function (o, i) {
       var ok = o.email && o.email.indexOf('@') > -1;
-      return '<label class="chk" style="padding:6px 12px;border-bottom:1px solid #f1ece8;margin:0;font-size:.82rem"><input type="checkbox" value="' + i + '"' + (ok ? ' checked' : ' disabled') + '> <span><b>' + esc(o.naam) + '</b> <span style="color:#888">' + esc(o.email || 'geen e-mail') + (o.functie ? ' · ' + esc(o.functie) : '') + '</span>' + (o.andereWinkel ? ' <span class="badge boat">vaste winkel ' + esc(o.winkelNaam || '?') + '</span>' : '') + (o.eerderBericht ? ' <span class="badge bg">al ontvangen ' + esc(o.eerderBericht.tekst) + '</span>' : '') + '</span></label>';
+      return '<label class="chk" style="padding:6px 12px;border-bottom:1px solid #f1ece8;margin:0;font-size:.82rem"><input type="checkbox" value="' + i + '"' + (ok ? ' checked' : ' disabled') + '> <span><b>' + esc(o.naam) + '</b> <span style="color:#888">' + esc(o.email || 'geen e-mail') + (o.functie ? ' · ' + esc(o.functie) : '') + '</span>' + (o.andereWinkel ? ' <span class="badge boat">vaste winkel ' + esc(o.winkelNaam || '?') + '</span>' : '') + (o.taal === 'EN' ? ' <span class="badge bb">EN</span>' : '') + (o.eerderBericht ? ' <span class="badge bg">al ontvangen ' + esc(o.eerderBericht.tekst) + '</span>' : '') + '</span></label>';
     }).join('') || '<div class="leeg grijs" style="padding:12px">Geen medewerkers gevonden voor deze winkel</div>';
     g('et-ontv').querySelectorAll('input').forEach(function (x) { x.onchange = etTelOntv; });
-    etModalOpen('team'); etHerbouw(false); etTelOntv();
+    var nEn = w.ontvangers.filter(function (o) { return o.taal === 'EN'; }).length;
+    etModalOpen('team', nEn ? 'NL+EN' : 'NL'); etHerbouw(false); etTelOntv();
+    if (nEn) toast(nEn + ' ontvanger(s) kregen hun uitnodiging in het Engels: de brief staat op Nederlands + Engels', 'ok');
     g('et-slbl').textContent = 'Versturen naar ' + etGekozen().length;
   };
   function etGekozen() { var w = etData.winkels[etWinkel]; return Array.prototype.map.call(g('et-ontv').querySelectorAll('input:checked'), function (c) { return w.ontvangers[+c.value]; }); }
@@ -4218,21 +4234,21 @@
     if (m.zonderUitklok) waarsch.push(m.zonderUitklok + ' van de ' + m.aantalTotaal + ' sluitdiensten hebben geen uitklok (eindtijd van de timesheet gebruikt).');
     if (!p.email) waarsch.push('Geen e-mailadres in Shiftbase.');
     if ((p.eerdereWaarschuwingen || []).length) waarsch.push('Al eerder een eindtijd-waarschuwing: ' + esc(p.eerdereWaarschuwingen.join(', ')) + '.');
-    g('et-m-info').innerHTML = '<div class="alert grijs" style="margin:0 0 14px;font-size:.8rem"><b>' + esc(m.naam) + '</b> · ' + esc(p.email || '-') + ' · SLA ' + esc(w.naam) + ' · ' + (p.vast ? 'vast contract' : 'contract t/m ' + esc(p.contractEinde || '?')) + '<br>' + m.aantalLaat + ' van ' + m.aantalTotaal + ' sluitdiensten &gt; 30 min te laat · gemiddeld ' + m.gemMin + ' min · ' + m.aantalNa22 + '× na 22:00 · grootste: ' + esc(etLang(m.ergste.datum)) + ' rooster ' + esc(m.ergste.roosterEind) + ', uitklok ' + esc(m.ergste.uitklok) + '. Controleer de diensten (knop Diensten) voordat je verstuurt.</div>'
+    g('et-m-info').innerHTML = '<div class="alert grijs" style="margin:0 0 14px;font-size:.8rem"><b>' + esc(m.naam) + '</b> · ' + esc(p.email || '-') + ' · SLA ' + esc(w.naam) + ' · taal ' + (p.taal === 'EN' ? 'Engels' : 'Nederlands') + ' · ' + (p.vast ? 'vast contract' : 'contract t/m ' + esc(p.contractEinde || '?')) + '<br>' + m.aantalLaat + ' van ' + m.aantalTotaal + ' sluitdiensten &gt; 30 min te laat · gemiddeld ' + m.gemMin + ' min · ' + m.aantalNa22 + '× na 22:00 · grootste: ' + esc(etLang(m.ergste.datum)) + ' rooster ' + esc(m.ergste.roosterEind) + ', uitklok ' + esc(m.ergste.uitklok) + '. Controleer de diensten (knop Diensten) voordat je verstuurt.</div>'
       + (waarsch.length ? '<div class="alert geel" style="margin:0 0 14px;font-size:.8rem">' + waarsch.join('<br>') + '</div>' : '');
     var eb = p.eerderBericht;
     g('et-m-opties').innerHTML = '<label>Optionele zinnen</label>'
       + etOptie('et-o-eerder', 'Zin over het eerdere bericht (teambrief) van <input type="date" id="et-o-eerder-d" value="' + esc(eb ? eb.iso : '') + '" style="width:auto;display:inline-block;padding:3px 6px"> ' + (eb ? '<span style="color:#2e7d32">ontvangen via het dashboard</span>' : '<span style="color:#b9770e">geen teambrief via het dashboard gevonden: alleen aanzetten als deze persoon het bericht echt kreeg</span>'), !!eb)
       + etOptie('et-o-contract', 'Zin over gevolgen voor de verlenging van het contract' + (p.vast ? ' <span style="color:#888">(staat uit: vast contract)</span>' : ''), !p.vast);
     etKoppelOpties();
-    etModalOpen('waarschuwing'); etHerbouw(false);
+    etModalOpen('waarschuwing', p.taal === 'EN' ? 'EN' : 'NL'); etHerbouw(false);
     g('et-slbl').textContent = 'Verstuur waarschuwing + PDF';
   }
   function etWrsBody(extra) {
     var w = etData.winkels[etWinkel], m = etMw, p = m.persoon;
     return Object.assign({ actie: 'waarschuwing', winkel: etWinkel, mw: { naam: p.naam || m.naam, email: p.email, adres: p.adres, voornaam: p.voornaam }, onderwerp: g('et-onderwerp').value.trim(), tekst: g('et-tekst').value, periode: etData.periode.tekst,
       cijfers: { aantal_laat: m.aantalLaat, aantal_totaal: m.aantalTotaal, gem_min: m.gemMin, aantal_na_22: m.aantalNa22, ergste_datum: m.ergste.datum, rooster_eind: m.ergste.roosterEind, uitklok: m.ergste.uitklok, zonder_uitklok: m.zonderUitklok },
-      afzender: { naam: g('et-af-naam').value.trim(), functie: g('et-af-functie').value.trim() } }, extra || {});
+      afzender: { naam: g('et-af-naam').value.trim(), functie: g('et-af-functie').value.trim() }, taal: etTaal() }, extra || {});
   }
   function etCheck() {
     if (!g('et-ingang').value) return 'Vul de ingangsdatum in';
@@ -4246,7 +4262,7 @@
   window.etVoorbeeld = async function () {
     var f = etCheck(); if (f) { toast(f, 'err'); return; }
     var r;
-    if (etModus === 'team') { var o = etGekozen()[0] || { naam: 'Voorbeeld Medewerker', voornaam: 'Voorbeeld', email: '' }; r = await api('/api/eindtijd', { actie: 'team', winkel: etWinkel, onderwerp: g('et-onderwerp').value.trim(), tekst: g('et-tekst').value, ontvanger: o, preview: true }); }
+    if (etModus === 'team') { var o = etGekozen()[0] || { naam: 'Voorbeeld Medewerker', voornaam: 'Voorbeeld', email: '' }; r = await api('/api/eindtijd', { actie: 'team', winkel: etWinkel, onderwerp: g('et-onderwerp').value.trim(), tekst: g('et-tekst').value, ontvanger: o, taal: etTaal(), preview: true }); }
     else r = await api('/api/eindtijd', etWrsBody({ preview: true }));
     if (!r.success) { toast(r.bericht, 'err'); return; }
     var win = window.open('', '_blank'); if (!win) { toast('Pop-up geblokkeerd', 'err'); return; }
@@ -4282,7 +4298,7 @@
     for (var i = 0; i < lijst.length; i++) {
       g('et-slbl').textContent = 'Versturen… ' + (i + 1) + ' / ' + lijst.length;
       var o = lijst[i];
-      var r2 = await api('/api/eindtijd', { actie: 'team', winkel: etWinkel, onderwerp: g('et-onderwerp').value.trim(), tekst: g('et-tekst').value, ontvanger: { naam: o.naam, email: o.email, voornaam: o.voornaam } });
+      var r2 = await api('/api/eindtijd', { actie: 'team', winkel: etWinkel, onderwerp: g('et-onderwerp').value.trim(), tekst: g('et-tekst').value, ontvanger: { naam: o.naam, email: o.email, voornaam: o.voornaam }, taal: etTaal() });
       if (r2.success) { ok++; o.eerderBericht = { iso: etIso(new Date()), tekst: etLang(etIso(new Date())) }; } else fout.push(o.naam + ': ' + r2.bericht);
     }
     b.disabled = false; etTelOntv();
