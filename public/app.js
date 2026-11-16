@@ -8,13 +8,13 @@
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['sbtemplates', 'Shiftbase-templates'], ['checkin', 'Check-in 30/60'], ['eerstedienst', 'Tijd tot eerste dienst']] },
-    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['fooi', 'Fooiverdeling'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
+    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['fooi', 'Fooiverdeling'], ['declaraties', 'Declaraties'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['eindtijd', 'Eindtijd & afsluiten'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegang & log (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, eindtijd: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, eindtijd: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, declaraties: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -69,6 +69,7 @@
     if (tab === 'contract' && !ctrData) laadContract(false);
     if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
     if (tab === 'fooi' && !foData) foLaad(false); // v0.46.0
+    if (tab === 'declaraties') dcLaad(); // v0.49.0
     if (tab === 'eindtijd' && !etCfg) api('/api/eindtijd').then(function (c) { if (c.success) etCfg = c; }); // v0.48.0
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
     if (tab === 'exit' && !exData) laadExit(12);
@@ -134,6 +135,7 @@
     vakantie: ['Vakantieplanner', 'Vakantie en afwezigheid per winkel per week.'],
     vastloners: ['Vastloners', 'Maandmutaties salaris voor de vaste krachten en store managers.'],
     fooi: ['Fooiverdeling', 'Fooi per maand verdelen: gedeelde BV\'s naar winkel (50% uren / 50% omzet), daarna per medewerker naar gewerkte uren.'],
+    declaraties: ['Declaraties', 'Voorgeschoten uitgaven die medewerkers in SLA Academy indienen: bonnetje bekijken, betalen of afwijzen.'],
     training: ['Training & certificaten', 'Voortgang in SLA Academy per winkel en medewerker.'],
     verlenging: ['Contractverlengingen', 'Aflopende tijdelijke contracten: besluit vastleggen, advies van de Store Manager en vervolg.'],
     gesprekken: ['Gesprekken', 'Alle vastgelegde gesprekken en openstaande vervolgafspraken.'],
@@ -2375,6 +2377,98 @@
     navigator.clipboard.writeText(t).then(function () { toast('Overzicht gekopieerd', 'ok'); }, function () { toast('Kopiëren mislukt', 'err'); });
   };
 
+  // ---------- Declaraties uit SLA Academy (v0.49.0) ----------
+  var dcData = null, dcStatus = 'open';
+  var dcEur = function (x) { return '€ ' + Number(x || 0).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };
+  var dcDat = function (iso) { return iso ? String(iso).slice(8, 10) + '-' + String(iso).slice(5, 7) + '-' + String(iso).slice(0, 4) : ''; };
+  var dcVandaag = function () { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+  window.dcLaad = async function (st) {
+    if (st) dcStatus = st;
+    document.querySelectorAll('#dc-filter button').forEach(function (b) { b.classList.toggle('bp', b.getAttribute('data-st') === dcStatus); b.classList.toggle('bd', b.getAttribute('data-st') !== dcStatus); });
+    g('dc-body').innerHTML = '<tr><td colspan="9" class="leeg grijs">Laden…</td></tr>';
+    var r = await api('/api/declaraties?status=' + dcStatus);
+    if (!r.success) { g('dc-body').innerHTML = '<tr><td colspan="9" class="leeg" style="color:#c0392b">' + esc(r.bericht) + '</td></tr>'; return; }
+    dcData = r; dcTeken();
+  };
+  function dcTeken() {
+    var r = dcData, t = r.tellingen || {}, dub = r.rijen.filter(function (x) { return x.dubbel && x.status === 'ingediend'; }).length;
+    g('dc-pill').textContent = (t.ingediend || 0) + ' open';
+    var nb = document.querySelector('.nav button[data-tab="declaraties"]'); if (nb) nb.textContent = 'Declaraties' + (t.ingediend ? ' (' + t.ingediend + ')' : '');
+    g('dc-kpi').innerHTML = r.ontbreekt ? '<div class="alert" style="grid-column:1/-1">Tabel <b>hr_declaraties</b> ontbreekt nog: draai <b>supabase/migrations/0025_declaraties.sql</b> in Supabase (SLA HR Manager).</div>'
+      : '<div class="card cw"><div class="si siw">🧾</div><div><div class="sv">' + (t.ingediend || 0) + '</div><div class="sl">Te betalen</div></div></div>'
+      + '<div class="card cg"><div class="si sig">💶</div><div><div class="sv">' + dcEur(r.openBedrag) + '</div><div class="sl">Openstaand bedrag</div></div></div>'
+      + '<div class="card cd"><div class="si sid">✓</div><div><div class="sv">' + (t.betaald || 0) + '</div><div class="sl">Betaald (totaal)</div></div></div>'
+      + '<div class="card ' + (dub ? 'cw' : 'cd') + '"><div class="si ' + (dub ? 'siw' : 'sid') + '">⚠</div><div><div class="sv">' + dub + '</div><div class="sl">Mogelijk dubbel</div></div></div>';
+    var open = dcStatus === 'open';
+    g('dc-alles').style.display = open ? '' : 'none'; g('dc-betaal').style.display = open ? '' : 'none';
+    g('dc-alles').checked = false;
+    g('dc-body').innerHTML = r.rijen.length ? r.rijen.map(function (x) {
+      var st = x.status === 'betaald' ? '<span class="badge bg">betaald ' + dcDat(x.betaald_op) + '</span>' : x.status === 'afgewezen' ? '<span class="badge br" title="' + esc(x.reden) + '">afgewezen</span><div class="lay-sub">' + esc(x.reden) + '</div>' : '<span class="badge bo">ingediend</span>';
+      var acties = x.status === 'ingediend'
+        ? '<button class="btn bp bsm" onclick="dcBetaald([\'' + x.id + '\'])" title="Betaald (vandaag)">✓ Betaald</button> <button class="btn bd bsm" onclick="dcAfwijzen(\'' + x.id + '\')" title="Afwijzen met reden; medewerker krijgt een mail">✕</button>'
+        : '<button class="btn bd bsm" onclick="dcHeropen(\'' + x.id + '\')" title="Terug naar ingediend">↺</button>' + (x.verwerkt_door ? '<div class="lay-sub">' + esc(x.verwerkt_door.split('@')[0]) + '</div>' : '');
+      return '<tr data-dc="' + x.id + '">'
+        + '<td>' + (x.status === 'ingediend' ? '<input type="checkbox" class="dc-kies" value="' + x.id + '" onchange="dcSom()">' : '') + '</td>'
+        + '<td style="white-space:nowrap">' + dcDat(String(x.ingediend).slice(0, 10)) + '</td>'
+        + '<td><strong>' + esc(x.naam) + '</strong>' + (x.winkel_code ? ' <span class="badge boat">' + esc(x.winkel_code) + '</span>' : '') + (x.dubbel ? ' <span class="badge br" title="Zelfde medewerker, aankoopdatum en bedrag als een andere declaratie">mogelijk dubbel</span>' : '') + '</td>'
+        + '<td style="white-space:nowrap">' + dcDat(x.datum) + '<div class="lay-sub">' + esc(x.leverancier) + '</div></td>'
+        + '<td style="max-width:280px"><span class="cel-kort" data-lees-titel="Omschrijving — ' + esc(x.naam) + '">' + esc(x.omschrijving) + '</span></td>'
+        + '<td style="text-align:right;white-space:nowrap"><strong>' + dcEur(x.bedrag) + '</strong></td>'
+        + '<td style="white-space:nowrap;font-size:.8rem">' + esc(x.iban) + '<div class="lay-sub">' + esc(x.iban_naam) + '</div></td>'
+        + '<td><button class="btn bd bsm" onclick="dcBon(\'' + x.id + '\')" title="Bonnetje bekijken">' + (x.bon_mime === 'application/pdf' ? '📄' : '🧾') + '</button></td>'
+        + '<td>' + st + '<div style="margin-top:4px;white-space:nowrap">' + acties + '</div></td></tr>';
+    }).join('') : '<tr><td colspan="9" class="leeg grijs">' + (open ? 'Geen openstaande declaraties. 🎉' : 'Niets gevonden.') + '</td></tr>';
+    dcSom();
+  }
+  window.dcSom = function () {
+    var ids = Array.prototype.map.call(document.querySelectorAll('.dc-kies:checked'), function (c) { return c.value; });
+    var som = dcData ? dcData.rijen.filter(function (x) { return ids.indexOf(x.id) > -1; }).reduce(function (a, x) { return a + x.bedrag; }, 0) : 0;
+    g('dc-betaal').textContent = ids.length ? '✓ ' + ids.length + ' betaald (' + dcEur(som) + ')' : '✓ Geselecteerde betaald';
+    g('dc-betaal').disabled = !ids.length;
+  };
+  window.dcAllesKiezen = function (aan) { document.querySelectorAll('.dc-kies').forEach(function (c) { if (c.closest('tr').style.display !== 'none') c.checked = aan; }); dcSom(); };
+  window.dcBetaaldSelectie = function () { var ids = Array.prototype.map.call(document.querySelectorAll('.dc-kies:checked'), function (c) { return c.value; }); if (ids.length) dcBetaald(ids); };
+  window.dcBetaald = async function (ids) {
+    var d = prompt('Betaaldatum (dd-mm-jjjj). Leeg = vandaag.', dcDat(dcVandaag()));
+    if (d === null) return;
+    var m = String(d).trim().match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/), iso = m ? m[3] + '-' + m[2].padStart(2, '0') + '-' + m[1].padStart(2, '0') : '';
+    if (String(d).trim() && !iso) { alert('Gebruik de notatie dd-mm-jjjj.'); return; }
+    var r = await api('/api/declaraties', { actie: 'betaald', ids: ids, datum: iso });
+    if (!r.success) { alert(r.bericht); return; }
+    toast(r.aantal + ' declaratie' + (r.aantal === 1 ? '' : 's') + ' op betaald (' + dcEur(r.totaal) + ')', 'ok');
+    dcLaad();
+  };
+  window.dcAfwijzen = async function (id) {
+    var x = dcData.rijen.find(function (y) { return y.id === id; }); if (!x) return;
+    var reden = prompt('Waarom wordt de declaratie van ' + x.naam + ' (' + dcEur(x.bedrag) + ', ' + x.leverancier + ') afgewezen?\n' + (x.dubbel ? 'Voorstel: dubbel ingediend.\n' : '') + 'De medewerker krijgt deze reden per mail (' + x.email + ').', x.dubbel ? 'Deze declaratie is dubbel ingediend.' : '');
+    if (reden === null) return;
+    if (String(reden).trim().length < 3) { alert('Geef een reden op.'); return; }
+    var r = await api('/api/declaraties', { actie: 'afgewezen', id: id, reden: reden });
+    if (!r.success) { alert(r.bericht); return; }
+    toast('Afgewezen' + (r.mail === 'verstuurd' ? ' · mail verstuurd' : r.mail ? ' · mail ' + r.mail : ''), r.mail && r.mail !== 'verstuurd' ? 'err' : 'ok');
+    dcLaad();
+  };
+  window.dcHeropen = async function (id) {
+    if (!confirm('Deze declaratie terugzetten naar "ingediend"?')) return;
+    var r = await api('/api/declaraties', { actie: 'heropen', id: id });
+    if (!r.success) { alert(r.bericht); return; }
+    dcLaad();
+  };
+  window.dcBon = async function (id) {
+    var w = window.open('', '_blank');
+    var r = await api('/api/declaraties', { actie: 'bon', id: id });
+    if (!r.success) { if (w) w.close(); alert(r.bericht); return; }
+    if (w) w.location = r.url; else location.href = r.url;
+  };
+  window.dcExport = function () {
+    if (!dcData || !dcData.rijen.length) { alert('Geen declaraties in deze lijst.'); return; }
+    var q = function (s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; }, nl = function (n) { return Number(n).toFixed(2).replace('.', ','); };
+    var rows = [['Ingediend', 'Naam', 'E-mail', 'Winkel', 'Aankoopdatum', 'Gekocht bij', 'Omschrijving', 'Bedrag (EUR)', 'IBAN', 'Tenaamstelling', 'Status', 'Betaald op', 'Reden afwijzing'].join(';')];
+    dcData.rijen.forEach(function (x) { rows.push([dcDat(String(x.ingediend).slice(0, 10)), q(x.naam), x.email, q(x.winkel), dcDat(x.datum), q(x.leverancier), q(x.omschrijving), nl(x.bedrag), x.iban.replace(/\s/g, ''), q(x.iban_naam), x.status, dcDat(x.betaald_op), q(x.reden)].join(';')); });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'declaraties_' + dcStatus + '_' + dcVandaag() + '.csv'; a.click();
+  };
   // ---------- Fooiverdeling (v0.46.0) ----------
   var foData = null;
   (function () {

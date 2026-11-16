@@ -2,6 +2,13 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.49.0', datum: '16-11-2026', titel: 'Nieuw: Declaraties via SLA Academy', punten: [
+    'Medewerkers dienen voorgeschoten uitgaven nu in via <b>SLA Academy → Profiel → Declaraties</b>, met een foto of scan van het bonnetje. Het Google Form is niet meer nodig.',
+    'Nieuwe pagina <b>In dienst → Declaraties</b>: bonnetje bekijken, één of meer declaraties tegelijk op <b>Betaald</b> zetten, of <b>afwijzen</b> met een reden (de medewerker krijgt een mail in zijn eigen taal).',
+    'Naam, winkel en e-mail komen uit het Academy-account, dus geen typfouten meer in namen. Het IBAN wordt gecontroleerd en na de eerste keer onthouden.',
+    'Zelfde medewerker, aankoopdatum en bedrag krijgt het label <b>mogelijk dubbel</b>. <b>📥 CSV</b> geeft de lijst met IBAN\'s voor de bank.',
+    'De medewerker ziet in Academy of zijn declaratie is ingediend, betaald of afgewezen, en kan hem intrekken zolang HR hem nog niet heeft verwerkt.'
+  ] },
   { nummer: '0.48.3', datum: '16-11-2026', titel: 'Leeg document verwijderen', punten: [
     'Klik je op een document dat <b>leeg</b> is (0 bytes, een mislukte upload), dan opent het dashboard geen lege pagina meer. Je krijgt de vraag of het uit het dossier mag.',
     'Na het verwijderen telt een lege <b>loonheffingsverklaring</b> niet meer als ontvangen. Het dossier gaat terug naar <b>Wacht op formulier</b> en de medewerker krijgt weer herinneringen. Dit was het geval bij <b>Cecile Bongers</b>.',

@@ -82,6 +82,12 @@ window.HR_HELP = {
       + '<tr><td>Shiftbase-datacontrole</td><td>Uitdienstdatum, contract, geboortedatum of e-mail aanpassen in Shiftbase.</td></tr>'
       + '<tr><td>CAO-jeugdlonen verouderd</td><td>Mischa vragen de nieuwe loontabel in te vullen (elk half jaar).</td></tr>'
       + '</tbody></table>' },
+    { id: 'declaraties', titel: 'Declaraties', html:
+      '<ol><li>Medewerkers dienen een voorgeschoten uitgave in via <b>SLA Academy → Profiel → Declaraties</b>: datum, waar gekocht, bedrag, omschrijving, IBAN en een foto of scan van het bonnetje. Het IBAN hoeven ze maar één keer in te vullen.</li>'
+      + '<li>Open <b>In dienst → Declaraties</b>. Onder <b>Open</b> staat alles wat nog betaald moet worden. Klik <b>🧾</b> om het bonnetje te bekijken.</li>'
+      + '<li>Betaal via de bank (handig: <b>📥 CSV</b> met naam, IBAN en bedrag). Vink daarna de betaalde declaraties aan en klik <b>✓ Geselecteerde betaald</b>, of <b>✓ Betaald</b> op één regel.</li>'
+      + '<li>Klopt er iets niet? Klik <b>✕</b> en geef een reden. De medewerker krijgt die per mail en kan een verbeterde declaratie indienen.</li></ol>'
+      + '<p><b>Mogelijk dubbel</b> betekent: zelfde medewerker, zelfde aankoopdatum en zelfde bedrag. Kijk dan even naar beide bonnetjes.</p>' },
     { id: 'fooi', titel: 'Fooiverdeling', html:
       '<ol><li>Open <b>In dienst → Fooiverdeling</b>. De maand staat standaard op vorige maand.</li>'
       + '<li>Plak de tabel uit de mail van Jop in het vak links en klik <b>Invullen</b>. Franchise en Haarlem worden overgeslagen.</li>'
@@ -117,6 +123,8 @@ window.HR_HELP = {
     { v: 'Iemand heeft het indiensttredingsformulier ingevuld, maar staat niet bij Klaar voor salaris. Waarom?', a: 'Dan ontbreekt de <b>loonheffingsverklaring</b> nog (label <i>Loonheffing ontbreekt</i> bij Wacht op formulier). Zonder die verklaring geldt het anoniementarief, dus het dossier gaat pas naar salaris als beide formulieren binnen zijn. De medewerker krijgt automatisch herinneringen; met <b>Herinner</b> stuur je er zelf een.' },
     { v: 'Zet de waarschuwing de zin over het eerdere bericht altijd aan?', a: 'Alleen als die medewerker de teambrief via het dashboard kreeg (dan staat de datum al ingevuld). Kreeg iemand het bericht op een andere manier, zet de zin dan zelf aan en vul de datum in. Kreeg hij het niet, laat de zin uit.' },
     { v: 'Waarom staat bij een sluitdienst "zonder uitklok"?', a: 'De medewerker klokte niet uit; dan telt de eindtijd die in de timesheet staat (vaak door de store manager ingevuld). Controleer die diensten extra voordat je een waarschuwing stuurt.' },
+    { v: 'Waar dienen medewerkers een declaratie in?', a: 'In <b>SLA Academy</b>, onder <b>Profiel → Declaraties</b>. Het oude Google Form is niet meer nodig; de oude antwoorden blijven in de sheet staan als archief.' },
+    { v: 'Ik heb een declaratie per ongeluk op betaald of afgewezen gezet.', a: 'Klik op <b>↺</b> bij de declaratie (lijst <b>Betaald</b> of <b>Afgewezen</b>). Hij staat dan weer op ingediend. Een al verstuurde afwijsmail wordt niet teruggehaald.' },
     { v: 'Waarom krijgt iemand fooi uit twee winkels?', a: 'Hij heeft die maand in beide winkels geklokt. Per winkel telt alleen de tijd die hij daar werkte. In de export staat hij dan op twee regels, met de juiste BV per regel.' },
     { v: 'Kan ik een fooiverdeling nog aanpassen na het vastleggen?', a: 'Ja: klik <b>Heropenen</b>. De verdeling wordt dan opnieuw berekend met de actuele uren uit Shiftbase. Leg hem daarna opnieuw vast.' },
     { v: 'Ik heb iets afgehandeld, maar de taak staat er nog. Hoe kan dat?', a: 'De takenlijst toont de stand van de controles van vanochtend. Klik <b>Verse stand</b>: de controles draaien opnieuw en de nieuwe stand blijft bewaard. Staat het er dan nog, kies onder ⋯ een afhandel-optie.' },

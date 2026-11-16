@@ -725,6 +725,17 @@
   </div>
 
   <!-- FOOIVERDELING (v0.46.0) -->
+  <div class="tc" id="tab-declaraties">
+    <div class="sec">
+      <div class="sh"><div class="st">Declaraties <span class="pill" id="dc-pill">-</span></div>
+        <div class="hr2"><span id="dc-filter"><button class="btn bp bsm" data-st="open" onclick="dcLaad('open')">Open</button> <button class="btn bd bsm" data-st="betaald" onclick="dcLaad('betaald')">Betaald</button> <button class="btn bd bsm" data-st="afgewezen" onclick="dcLaad('afgewezen')">Afgewezen</button> <button class="btn bd bsm" data-st="alle" onclick="dcLaad('alle')">Alle</button></span>
+          <input class="sb" type="text" placeholder="Zoek op naam, winkel..." oninput="flt('dc-body',this.value)"><button class="btn bd bsm" onclick="dcLaad()" title="Opnieuw ophalen">↻</button><button class="btn bd bsm" onclick="dcExport()" title="Deze lijst als CSV (met IBAN's) voor de bank of de boekhouding">📥 CSV</button></div></div>
+      <div class="stats" id="dc-kpi" style="padding:16px 24px 0"></div>
+      <div style="padding:12px 24px 0"><button class="btn bp bsm" id="dc-betaal" onclick="dcBetaaldSelectie()" disabled>✓ Geselecteerde betaald</button></div>
+      <div class="tw"><table><thead><tr><th><input type="checkbox" id="dc-alles" onchange="dcAllesKiezen(this.checked)" title="Alles selecteren"></th><th>Ingediend</th><th>Medewerker</th><th>Aankoop</th><th>Omschrijving</th><th style="text-align:right">Bedrag</th><th>IBAN</th><th>Bon</th><th>Status</th></tr></thead><tbody id="dc-body"></tbody></table></div>
+    </div>
+    <div class="alert grijs"><strong>Werkwijze:</strong> medewerkers dienen een voorgeschoten uitgave in via <b>SLA Academy → Profiel → Declaraties</b>, met een foto of scan van het bonnetje. Naam, winkel en e-mail komen uit hun Academy-account; het IBAN vullen ze één keer in en is daarna vooringevuld. De app controleert het IBAN (controlegetal), het bedrag (max. € 2.500) en de datum (niet in de toekomst, niet ouder dan een jaar). <b>Mogelijk dubbel</b> = zelfde medewerker, aankoopdatum en bedrag. Betaal via de bank en zet de declaratie hier op <b>Betaald</b> (meerdere tegelijk via de vinkjes); de medewerker ziet de status in de app. <b>Afwijzen</b> vraagt om een reden; die gaat per mail naar de medewerker (in zijn eigen taal). Franchisewinkels kunnen niet declareren via de app. Het oude Google Form-archief blijft in de sheet "SLA Declaratie Formulier (Responses)".</div>
+  </div>
   <div class="tc" id="tab-fooi">
     <div class="sec">
       <div class="sh"><div class="st">Fooiverdeling <span class="pill" id="fo-pill">-</span></div>
