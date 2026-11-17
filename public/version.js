@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.52.2', datum: '17-11-2026', titel: 'Loonstroken: filter op te koppelen', punten: [
+    'Op <b>In dienst → Loonstroken</b> staat bovenin de knop <b>Alleen te koppelen</b>: je ziet dan alleen de stroken die nog niet (zeker) gekoppeld zijn, uit alle maanden en BV\'s. Nog een keer klikken zet het filter uit.',
+    'De melding boven de tabel heeft een link <b>Toon alleen deze →</b> die hetzelfde doet. Na het koppelen verdwijnt de strook uit de gefilterde lijst.'
+  ] },
   { nummer: '0.52.0', datum: '17-11-2026', titel: 'Loonstroken automatisch uit de mail', punten: [
     'De loonstroken die de salarisadministratie (HRM Online) per BV mailt, komen nu <b>vanzelf</b> in <b>In dienst → Loonstroken</b>. Een script in hr@ stuurt elk uur de bijlage <i>Loonstroken_….pdf</i> door; slepen is niet meer nodig.',
     'Alleen de loonstroken gaan mee, niet de betaallijst of journaalposten. De mail krijgt het label <b>Auto/Salaris/Loonstroken in HR</b>.',

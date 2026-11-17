@@ -763,7 +763,7 @@
   <div class="tc" id="tab-loonstroken">
     <div class="sec">
       <div class="sh"><div class="st">Loonstroken <span class="pill" id="ls-pill">-</span></div>
-        <div class="hr2"><select id="ls-periode" class="sb" style="width:auto" onchange="lsLaad(this.value)"></select><input class="sb" id="ls-zoek" type="text" placeholder="Zoek op naam (alle maanden)..." oninput="lsZoek()"><button class="btn bd bsm" onclick="lsLaad()" title="Opnieuw ophalen">↻</button></div></div>
+        <div class="hr2"><select id="ls-periode" class="sb" style="width:auto" onchange="lsLaad(this.value)"></select><button class="btn bd bsm" id="ls-filter-open" onclick="lsFilterOpen()" title="Alleen stroken die nog niet (zeker) gekoppeld zijn, uit alle maanden">Alleen te koppelen</button><input class="sb" id="ls-zoek" type="text" placeholder="Zoek op naam (alle maanden)..." oninput="lsZoek()"><button class="btn bd bsm" onclick="lsLaad()" title="Opnieuw ophalen">↻</button></div></div>
       <label id="ls-drop" class="ls-drop" for="ls-input"><input type="file" id="ls-input" accept="application/pdf,.pdf" multiple style="display:none" onchange="lsBestanden(this.files)">
         <div style="font-size:1.6rem">📥</div><div><b>Sleep hier de PDF('s) uit Exact Online</b> of klik om te kiezen</div><div class="lay-sub">Eén PDF per BV met alle medewerkers. Je kunt meerdere BV's tegelijk slepen.</div></label>
       <div id="ls-resultaat" style="padding:0 24px"></div>

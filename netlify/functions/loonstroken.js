@@ -129,7 +129,8 @@ exports.handler = beveiligd('loonstroken', async (event, g) => {
     const periodes = Array.from(new Set((per.data || []).map(x => x.periode))).sort().reverse();
     const periode = q.periode || periodes[0] || '';
     let sel = db.from('hr_loonstroken').select('id,created_at,bv,exact_nr,periode,run,naam_strook,afdeling,functie,documenten,paginas,shiftbase_id,naam,email,koppeling,koppeling_reden,bron_naam,geupload_door').order('bv').order('naam_strook').limit(5000);
-    if (q.zoek) sel = sel.or('naam.ilike.%' + String(q.zoek).replace(/[%,()]/g, '') + '%,naam_strook.ilike.%' + String(q.zoek).replace(/[%,()]/g, '') + '%');
+    if (q.open) sel = sel.neq('koppeling', 'vast').neq('koppeling', 'zeker').neq('koppeling', 'handmatig'); // v0.52.2: alleen te koppelen (alle periodes)
+    else if (q.zoek) sel = sel.or('naam.ilike.%' + String(q.zoek).replace(/[%,()]/g, '') + '%,naam_strook.ilike.%' + String(q.zoek).replace(/[%,()]/g, '') + '%');
     else if (periode !== 'alle') sel = sel.eq('periode', periode);
     const { data, error } = await sel;
     if (error) throw new Error(error.message);

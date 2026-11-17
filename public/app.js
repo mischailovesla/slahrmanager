@@ -2573,28 +2573,31 @@
     a.download = 'declaraties_' + dcStatus + '_' + dcVandaag() + '.csv'; a.click();
   };
   // ---------- Loonstroken uit Exact Online (v0.51.0) ----------
-  var lsData = null, lsPeriode = '', lsZoekT = null;
+  var lsData = null, lsPeriode = '', lsZoekT = null, lsAlleenOpen = false;
   var LS_KOP = { vast: ['bg', '✓ vast'], zeker: ['bg', '✓ automatisch'], handmatig: ['bg', '✓ handmatig'], voorstel: ['bo', 'voorstel'], '': ['br', 'niet gekoppeld'] };
   var lsPer = function (p) { var mn = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'], m = String(p || '').match(/^(\d{4})-(\d{2})$/); return m ? mn[+m[2] - 1] + ' ' + m[1] : (p || ''); };
   window.lsLaad = async function (periode) {
     if (periode !== undefined) lsPeriode = periode;
     var zoek = (g('ls-zoek').value || '').trim();
     g('ls-body').innerHTML = '<tr><td colspan="7" class="leeg grijs">Laden…</td></tr>';
-    var r = await api('/api/loonstroken?periode=' + encodeURIComponent(lsPeriode) + (zoek.length > 1 ? '&zoek=' + encodeURIComponent(zoek) : ''));
+    var r = await api('/api/loonstroken?periode=' + encodeURIComponent(lsPeriode) + (lsAlleenOpen ? '&open=1' : zoek.length > 1 ? '&zoek=' + encodeURIComponent(zoek) : ''));
     if (!r.success) { lsData = null; g('ls-body').innerHTML = '<tr><td colspan="7" class="leeg grijs">🔒 ' + esc(r.bericht) + '</td></tr>'; g('ls-drop').style.display = /salarisinzage/.test(r.bericht || '') ? 'none' : ''; return; }
     lsData = r; if (!lsPeriode) lsPeriode = r.periode || '';
     if (r.ontbreekt) { g('ls-body').innerHTML = '<tr><td colspan="7"><div class="alert">' + esc(r.melding) + '</div></td></tr>'; return; }
     g('ls-periode').innerHTML = (r.periodes || []).map(function (p) { return '<option value="' + esc(p) + '"' + (p === r.periode ? ' selected' : '') + '>' + esc(lsPer(p)) + '</option>'; }).join('') + '<option value="alle"' + (r.periode === 'alle' ? ' selected' : '') + '>Alle periodes</option>';
-    g('ls-periode').disabled = zoek.length > 1;
+    g('ls-periode').disabled = zoek.length > 1 || lsAlleenOpen;
+    var fb = g('ls-filter-open'); if (fb) { fb.className = 'btn bsm ' + (lsAlleenOpen ? 'bp' : 'bd'); fb.textContent = (lsAlleenOpen ? '✓ ' : '') + 'Alleen te koppelen' + (r.open ? ' (' + r.open + ')' : ''); }
     var nb = document.querySelector('.nav button[data-tab="loonstroken"]'); if (nb) nb.textContent = 'Loonstroken' + (r.open ? ' (' + r.open + ')' : '');
     lsRender();
   };
-  window.lsZoek = function () { clearTimeout(lsZoekT); lsZoekT = setTimeout(function () { lsLaad(); }, 350); };
+  window.lsFilterOpen = function (aan) { lsAlleenOpen = aan === undefined ? !lsAlleenOpen : !!aan; if (lsAlleenOpen) g('ls-zoek').value = ''; lsLaad(); };
+  window.lsZoek = function () { if (lsAlleenOpen) { lsAlleenOpen = false; } clearTimeout(lsZoekT); lsZoekT = setTimeout(function () { lsLaad(); }, 350); };
   function lsRender() {
     var rijen = (lsData && lsData.rijen) || [], zoek = (g('ls-zoek').value || '').trim().length > 1;
     g('ls-pill').textContent = rijen.length;
     var open = rijen.filter(function (x) { return !x.koppeling || x.koppeling === 'voorstel'; }).length;
-    g('ls-open').innerHTML = open ? '<div class="alert" style="margin:12px 24px 0">' + open + ' loonstro' + (open === 1 ? 'ok is' : 'ken zijn') + ' nog niet (zeker) gekoppeld. Bevestig het voorstel of kies de juiste medewerker. Daarna onthoudt het dashboard het Exact-nummer, dus volgende maand gaat het vanzelf.</div>' : '';
+    var openTot = (lsData && lsData.open) || 0;
+    g('ls-open').innerHTML = openTot && !lsAlleenOpen ? '<div class="alert" style="margin:12px 24px 0">' + openTot + ' loonstro' + (openTot === 1 ? 'ok is' : 'ken zijn') + ' nog niet (zeker) gekoppeld' + (open !== openTot ? ' (' + open + ' in deze lijst)' : '') + '. Bevestig het voorstel of kies de juiste medewerker. Daarna onthoudt het dashboard het Exact-nummer, dus volgende maand gaat het vanzelf. <a href="#" onclick="lsFilterOpen(true);return false"><b>Toon alleen deze →</b></a></div>' : '';
     g('ls-body').innerHTML = rijen.length ? rijen.map(function (x) {
       var k = LS_KOP[x.koppeling || ''] || LS_KOP[''];
       var kop = '<span class="badge ' + k[0] + '" title="' + esc(x.koppeling_reden || '') + '">' + k[1] + '</span>';
@@ -2607,7 +2610,7 @@
         + '<td>' + esc(x.bv) + '<br><small class="lay-sub">' + esc(String(x.afdeling || '').replace(/^SLA\s*/, '')) + '</small></td>'
         + '<td>' + wie + '</td><td>' + kop + '</td>'
         + '<td style="white-space:nowrap"><button class="btn bd bsm" onclick="lsOpen(\'' + x.id + '\')" title="PDF openen/downloaden">📄</button> <button class="btn bd bsm" onclick="lsKoppelKies(\'' + x.id + '\')" title="Andere medewerker kiezen">🔗</button> <button class="btn bd bsm" onclick="lsVerwijder(\'' + x.id + '\')" title="Verwijderen (verkeerde upload)">🗑</button></td></tr>';
-    }).join('') : '<tr><td colspan="7" class="leeg grijs">' + (zoek ? 'Niets gevonden.' : 'Nog geen loonstroken. Sleep hierboven de PDF uit Exact Online erin.') + '</td></tr>';
+    }).join('') : '<tr><td colspan="7" class="leeg grijs">' + (lsAlleenOpen ? 'Alles is gekoppeld. 🎉' : zoek ? 'Niets gevonden.' : 'Nog geen loonstroken. Sleep hierboven de PDF uit Exact Online erin.') + '</td></tr>';
     g('ls-alles').checked = false; lsSel();
   }
   var lsGekozen = function (scope) { return Array.prototype.map.call(document.querySelectorAll((scope || '#ls-body') + ' .ls-kies:checked'), function (c) { return c.value; }); };

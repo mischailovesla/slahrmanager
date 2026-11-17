@@ -1,5 +1,5 @@
 /**
- * SLA HR — Loonstroken automatisch uit de mail naar het HR Dashboard (v0.52.0, 17-11-2026)
+ * SLA HR — Loonstroken automatisch uit de mail naar het HR Dashboard (v0.52.1, 17-11-2026: doorgestuurde kopieën niet dubbel)
  *
  * Wat doet het?
  *   HRM Online (Mahdia) mailt per BV de loonproductie: "SLA Midden B.V., Periodeverslagen Maandelijks 2026-10/1"
@@ -40,7 +40,7 @@ function verwerk_(bereik, proef) {
   var lock = LockService.getScriptLock(); if (!lock.tryLock(5000)) { Logger.log('Draait al.'); return; }
   try {
     var q = CONFIG.ZOEK + ' ' + bereik + ' -label:"' + CONFIG.LABEL_OK + '" -label:"' + CONFIG.LABEL_FOUT + '"';
-    var threads = GmailApp.search(q, 0, 100), start = Date.now(), samenvatting = [], fouten = [];
+    var threads = GmailApp.search(q, 0, 100), start = Date.now(), samenvatting = [], fouten = [], gezien = {};
     Logger.log(threads.length + ' mail(s) gevonden: ' + q);
     for (var i = 0; i < threads.length; i++) {
       if ((Date.now() - start) / 1000 > 300) { Logger.log('Tijd op, de rest volgt bij de volgende run.'); break; }
@@ -48,6 +48,10 @@ function verwerk_(bereik, proef) {
       t.getMessages().forEach(function (m) {
         m.getAttachments({ includeInlineImages: false }).forEach(function (a) {
           if (!CONFIG.BIJLAGE.test(a.getName())) return;
+          // doorgestuurde kopie (Fwd/FW) in dezelfde run: zelfde bestand niet nog een keer sturen
+          var hash = Utilities.base64Encode(Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, a.getBytes()));
+          if (gezien[hash]) { Logger.log('DUBBEL (overgeslagen)  ' + m.getSubject() + '  →  ' + a.getName()); gestuurd++; return; }
+          gezien[hash] = true;
           if (proef) { Logger.log('PROEF  ' + m.getDate().toISOString().slice(0, 10) + '  ' + m.getSubject() + '  →  ' + a.getName() + ' (' + Math.round(a.getSize() / 1024) + ' kB)'); gestuurd++; return; }
           var r = stuur_(a, m, sleutel);
           if (r.ok) {
