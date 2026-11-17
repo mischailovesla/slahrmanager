@@ -676,6 +676,8 @@
     h += '<div class="sec"><div class="sh"><div class="st">Gesprekken <span class="pill">' + dosGesprekken.length + '</span></div><div class="hr2"><button class="btn bp bsm" data-gs-nieuw="1">+ Gesprek vastleggen</button></div></div><div style="padding:6px 24px 14px">' + (dosGesprekken.length ? dosGesprekken.map(gsKaart).join('') : '<div class="leeg grijs" style="padding:8px 0">Nog geen gesprekken vastgelegd.</div>') + '</div></div>';
     // Training & certificaten uit SLA Academy (fase 4a)
     h += acKaart(d.academy, d.academyFout);
+    // v0.51.1: loonstroken uit Exact (alleen zichtbaar met salarisinzage; anders verdwijnt de sectie)
+    if (p && p.id) h += '<div class="sec" id="dos-ls-sec"><div class="sh"><div class="st">Loonstroken <span class="pill" id="dos-ls-pill">-</span></div><div class="hr2"><button class="btn bd bsm" id="dos-ls-bundel" onclick="lsBundel(\'#dos-ls\')" disabled title="De aangevinkte stroken als één PDF">📄 Als één PDF</button><button class="btn bd bsm" id="dos-ls-mail" onclick="lsMail(\'#dos-ls\')" disabled title="Naar het e-mailadres uit Shiftbase">✉ Mail</button></div></div><div id="dos-ls"><div class="leeg grijs" style="padding:14px 24px">Laden…</div></div></div>';
     // Secties
     h += '<div class="sec"><div class="sh"><div class="st">Dossierregels <span class="pill">' + d.totaal + '</span></div></div>';
     d.secties.forEach(function (s) {
@@ -687,6 +689,7 @@
     h += '<div class="sec"><div class="sh"><div class="st">Notitie toevoegen</div></div><div style="padding:14px 24px"><textarea id="dos-notitie" rows="3" style="width:100%;padding:10px 14px;border:1.5px solid #e8e2de;border-radius:8px;font:inherit;font-size:.88rem;min-height:70px" placeholder="Interne notitie (gesprek, afspraak, observatie). Wordt opgeslagen met jouw naam en datum en komt in het dossier en de PDF-export."></textarea><div style="margin-top:8px;text-align:right"><button class="btn bp bsm" id="dos-notitie-btn" onclick="dossierNotitie()">Notitie opslaan</button></div></div></div>';
     g('dos-inhoud').innerHTML = h;
     laadChecklistsInDossier(d.naam, d.email, p ? p.id : id);
+    if (p && p.id) lsDossier(p.id);
   };
   var laatsteDossierQs = '';
   window.dossierNotitie = async function () {
@@ -2607,8 +2610,21 @@
     }).join('') : '<tr><td colspan="7" class="leeg grijs">' + (zoek ? 'Niets gevonden.' : 'Nog geen loonstroken. Sleep hierboven de PDF uit Exact Online erin.') + '</td></tr>';
     g('ls-alles').checked = false; lsSel();
   }
-  var lsGekozen = function () { return Array.prototype.map.call(document.querySelectorAll('.ls-kies:checked'), function (c) { return c.value; }); };
+  var lsGekozen = function (scope) { return Array.prototype.map.call(document.querySelectorAll((scope || '#ls-body') + ' .ls-kies:checked'), function (c) { return c.value; }); };
   window.lsSel = function () { var n = lsGekozen().length; g('ls-bundel').disabled = !n; g('ls-mail').disabled = !n; g('ls-sel').textContent = n ? n + ' gekozen' : ''; };
+  // v0.51.1: loonstroken in het medewerkersdossier
+  window.lsDossier = async function (sid) {
+    var r = await api('/api/loonstroken?shiftbaseId=' + encodeURIComponent(sid)), sec = g('dos-ls-sec'); if (!sec) return;
+    if (!r.success || r.ontbreekt) { sec.remove(); return; } // geen salarisinzage (of tabel nog niet aangemaakt): sectie niet tonen
+    var rijen = r.rijen || []; g('dos-ls-pill').textContent = rijen.length;
+    g('dos-ls').innerHTML = rijen.length ? '<div class="tw"><table><tbody>' + rijen.map(function (x) {
+      var docs = (x.documenten || []).filter(function (d) { return d !== 'Salarisspecificatie'; });
+      return '<tr><td style="width:30px"><input type="checkbox" class="ls-kies" value="' + x.id + '" onchange="lsDosSel()"></td><td><b>' + esc(lsPer(x.periode)) + '</b> <small class="lay-sub">' + esc(x.run || '') + '</small>' + (docs.length ? ' ' + docs.map(function (d) { return '<span class="badge boat">' + esc(d) + '</span>'; }).join(' ') : '') + '</td>'
+        + '<td>' + esc(x.bv) + ' <small class="lay-sub">Exact ' + esc(x.exact_nr) + '</small></td><td>' + (x.koppeling === 'voorstel' ? '<span class="badge bo" title="' + esc(x.koppeling_reden || '') + '">voorstel</span>' : '') + '</td>'
+        + '<td style="text-align:right"><button class="btn bd bsm" onclick="lsOpen(\'' + x.id + '\')" title="PDF openen">📄</button></td></tr>';
+    }).join('') + '</tbody></table></div>' : '<div class="leeg grijs" style="padding:14px 24px">Nog geen loonstroken. Sleep de PDF uit Exact Online in <b>In dienst → Loonstroken</b>.</div>';
+  };
+  window.lsDosSel = function () { var n = lsGekozen('#dos-ls').length; g('dos-ls-bundel').disabled = !n; g('dos-ls-mail').disabled = !n; };
   window.lsAllesKiezen = function (aan) { document.querySelectorAll('#ls-body tr:not([style*="none"]) .ls-kies').forEach(function (c) { c.checked = aan; }); lsSel(); };
   // --- uploaden (slepen of kiezen), één bestand tegelijk
   window.lsBestanden = async function (files) {
@@ -2673,20 +2689,20 @@
     if (r.success) { g('ls-koppel-modal').classList.remove('open'); toast(sid ? 'Gekoppeld aan ' + r.naam + (r.aantal > 1 ? ' (' + r.aantal + ' stroken)' : '') : 'Ontkoppeld', 'ok'); lsLaad(); }
     else toast('Fout: ' + r.bericht, 'err');
   };
-  window.lsBundel = async function () {
-    var ids = lsGekozen(); if (!ids.length) return;
-    var b = g('ls-bundel'); b.disabled = true;
+  window.lsBundel = async function (scope) {
+    var ids = lsGekozen(scope); if (!ids.length) return;
+    var b = g(scope ? 'dos-ls-bundel' : 'ls-bundel'); b.disabled = true;
     var r = await api('/api/loonstroken', { actie: 'bundel', ids: ids });
     b.disabled = false;
     if (r.success) downloadB64(r.bestand.content, r.bestand.filename); else toast('Fout: ' + r.bericht, 'err');
   };
-  window.lsMail = async function () {
-    var ids = lsGekozen(); if (!ids.length) return;
+  window.lsMail = async function (scope) {
+    var ids = lsGekozen(scope); if (!ids.length) return;
     var taal = confirm('Mail in het Engels?\n\nOK = Engels · Annuleren = Nederlands') ? 'en' : 'nl';
     var pv = await api('/api/loonstroken', { actie: 'mail', ids: ids, taal: taal, preview: true });
     if (!pv.success) { alert(pv.bericht); return; }
     if (!confirm(pv.aantal + ' loonstro' + (pv.aantal === 1 ? 'ok' : 'ken') + ' als één PDF mailen naar ' + pv.naam + '\n' + pv.to + ' (e-mailadres uit Shiftbase)\n\nOnderwerp: ' + pv.subject + '\n\nVersturen?')) return;
-    var b = g('ls-mail'); b.disabled = true;
+    var b = g(scope ? 'dos-ls-mail' : 'ls-mail'); b.disabled = true;
     var r = await api('/api/loonstroken', { actie: 'mail', ids: ids, taal: taal });
     b.disabled = false;
     if (r.success) toast('Verstuurd naar ' + r.to, 'ok'); else toast('Fout: ' + r.bericht, 'err');

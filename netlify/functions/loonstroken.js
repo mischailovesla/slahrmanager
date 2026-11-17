@@ -2,6 +2,7 @@
 // v0.51.0 /api/loonstroken — loonstroken uit Exact Online splitsen, koppelen, bekijken en mailen.
 // Alleen voor personen met salarisinzage (_lib/salarisinzage.js).
 //   GET  ?periode=YYYY-MM|alle                         -> { rijen, periodes, tellingen }
+//   GET  ?shiftbaseId=<id>                              -> { rijen }  alle stroken van één medewerker (dossier, v0.51.1)
 //   POST { actie:'start', naam, bytes }                -> { pad, token, bucket }   getekende upload-URL voor het origineel
 //   POST { actie:'verwerk', pad, naam }                -> { stroken, waarschuwingen, ... }  knippen + koppelen + opslaan
 //   POST { actie:'koppel', id, shiftbaseId }           -> handmatig koppelen (leeg = ontkoppelen); onthoudt Exact-nr -> Shiftbase
@@ -73,6 +74,12 @@ exports.handler = beveiligd('loonstroken', async (event, g) => {
 
   if (event.httpMethod === 'GET') {
     const q = event.queryStringParameters || {};
+    // v0.51.1: alle stroken van één medewerker (dossier)
+    if (q.shiftbaseId) {
+      const { data, error } = await db.from('hr_loonstroken').select('id,bv,exact_nr,periode,run,naam_strook,afdeling,documenten,paginas,koppeling,koppeling_reden').eq('shiftbase_id', String(q.shiftbaseId)).order('periode', { ascending: false }).limit(500);
+      if (error) { if (ONTBREEKT.test(error.message)) return { ontbreekt: true, rijen: [] }; throw new Error(error.message); }
+      return { rijen: data || [] };
+    }
     const per = await db.from('hr_loonstroken').select('periode,koppeling').order('periode', { ascending: false }).limit(20000);
     if (per.error) { if (ONTBREEKT.test(per.error.message)) return { ontbreekt: true, melding: ontbreektMelding, rijen: [], periodes: [] }; throw new Error(per.error.message); }
     const periodes = Array.from(new Set((per.data || []).map(x => x.periode))).sort().reverse();

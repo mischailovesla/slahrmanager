@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.51.1', datum: '17-11-2026', titel: 'Loonstroken in het dossier', punten: [
+    'In het <b>medewerkersdossier</b> staat nu een blok <b>Loonstroken</b> met alle stroken van die medewerker, nieuwste bovenaan. Klik <b>📄</b> om er één te openen, of vink er een paar aan en kies <b>📄 Als één PDF</b> of <b>✉ Mail</b>.',
+    'Het blok is alleen zichtbaar voor personen met salarisinzage. Een strook komt in het dossier zodra hij op <b>In dienst → Loonstroken</b> aan de medewerker is gekoppeld.'
+  ] },
   { nummer: '0.51.0', datum: '17-11-2026', titel: 'Nieuw: Loonstroken uit Exact Online', punten: [
     'Nieuwe pagina <b>In dienst → Loonstroken</b>. Sleep de PDF uit Exact Online erin (één bestand per BV, meerdere tegelijk mag). Het dashboard knipt hem per medewerker en bewaart elke strook als eigen PDF.',
     'Koppelen aan Shiftbase gaat vanzelf op <b>geboortedatum + achternaam</b>. Twijfel (bijv. andere achternaam na trouwen) wordt een <b>voorstel</b> dat je met <b>✓ klopt</b> bevestigt; niet gevonden kies je zelf via <b>⋯ → 🔗</b>. Het Exact-nummer wordt onthouden, dus volgende maand gaat het vanzelf.',
