@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.52.4', datum: '17-11-2026', titel: 'Loonheffing: wijzigen voor bestaande medewerkers', punten: [
+    'In de mail <b>Loonheffingsverklaring</b> staat nu een link naar het <b>wijzigingsformulier loonheffingskorting</b>. Gebruik dat voor iemand die al in dienst is en de korting wil aan- of uitzetten: geen welkomstmail en geen indiensttredingsformulier.',
+    'Kies je in die mail iemand die al langer dan 30 dagen in dienst is, dan krijg je een waarschuwing met een knop die meteen het goede formulier opent (naam, e-mail en taal gaan mee).'
+  ] },
   { nummer: '0.52.3', datum: '17-11-2026', titel: 'Loonstroken: maanden januari t/m september', punten: [
     'Bij loonstroken van januari t/m september las het dashboard de runcode (bijv. <i>M2026.9.1</i>) niet goed. Daardoor overschreven die maanden elkaar en bleef er per medewerker maar één over. Opgelost: elke maand en elke run wordt nu apart bewaard.',
     'De oude import moet één keer opnieuw: zie de stappen van Mischa (label weghalen en <i>importeerAlles()</i> opnieuw draaien).'

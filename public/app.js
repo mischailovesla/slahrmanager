@@ -888,11 +888,18 @@
     var taal = persoon && persoon.taal === 'EN' ? 'en' : 'nl';
     lmTpl = (persoon && persoon.status && persoon.status.indexOf('Verzonden') === 0 ? 'herinnering-' : 'uitnodiging-') + taal;
     lmBouwTbar(); lmHerbouw();
-    g('lm-zoek').value = ''; g('lm-zoek-res').classList.remove('open');
+    g('lm-zoek').value = ''; g('lm-zoek-res').classList.remove('open'); g('lm-bestaand').style.display = 'none';
     g('lm-modal').classList.add('open');
     if (!persoon) setTimeout(function () { g('lm-zoek').focus(); }, 60);
   };
   window.closeLoonMail = function () { g('lm-modal').classList.remove('open'); };
+  // v0.52.4: vanuit de loonheffingsmail door naar het wijzigingsformulier (bestaande medewerker), naam/e-mail/taal gaan mee
+  window.lmNaarKorting = function () {
+    var p = { naam: g('lm-naam').value.trim(), email: g('lm-to').value.trim(), taal: /-en$/.test(lmTpl) ? 'EN' : 'NL' };
+    closeLoonMail(); swT('loonheffingskorting', 'Loonheffingskorting');
+    openKrtModal(p.naam || p.email ? p : null);
+    g('krt-mti').textContent = 'Formulier loonheffingskorting versturen' + (p.naam ? ' — ' + p.naam : '');
+  };
   function lmBouwTbar() {
     g('lm-tbar').innerHTML = lhTemplates.map(function (t) { return '<button type="button" class="tb' + (t.key === lmTpl ? ' sel' : '') + '" data-tpl="' + t.key + '">' + esc(t.label) + '</button>'; }).join('');
     g('lm-tbar').querySelectorAll('[data-tpl]').forEach(function (b) { b.onclick = function () { lmTpl = b.getAttribute('data-tpl'); lmBouwTbar(); lmHerbouw(); }; });
@@ -4133,6 +4140,11 @@
     if (!m) return;
     g('lm-naam').value = m.naam || ''; g('lm-to').value = m.email || '';
     if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
+    // v0.52.4: al langer in dienst? Dan is dit waarschijnlijk een wijziging van de loonheffingskorting, geen nieuwe medewerker
+    var di = String(m.indienst || '').match(/^(\d{2})-(\d{2})-(\d{4})$/), dagen = di ? Math.floor((Date.now() - new Date(+di[3], +di[2] - 1, +di[1])) / 864e5) : 0;
+    var vak = g('lm-bestaand');
+    if (dagen > 30) { vak.innerHTML = '<b>' + esc(m.naam) + ' is al in dienst sinds ' + esc(m.indienst) + '.</b> Deze mail is voor nieuwe medewerkers ("Welcome to SLA"). Wil ' + esc(m.voornaam || m.naam) + ' de loonheffingskorting aan- of uitzetten? <button class="btn bp bsm" style="margin-left:6px" onclick="lmNaarKorting()">→ Wijzigingsformulier loonheffingskorting</button>'; vak.style.display = ''; }
+    else { vak.style.display = 'none'; }
     lmHerbouw();
   });
   function vbKies(m) {

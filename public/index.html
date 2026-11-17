@@ -110,7 +110,8 @@
     <div class="mh"><div class="mti" id="lm-titel">Mail — Loonheffingsverklaring</div><button class="mc" onclick="closeLoonMail()">×</button></div>
     <div class="mb2">
       <div class="fg"><label>Zoek in Shiftbase <span style="color:#888;font-weight:400">(vult de velden hieronder in)</span></label><div class="zoeklijst" style="position:relative"><input type="text" id="lm-zoek" placeholder="Typ een naam..." autocomplete="off"><div class="zoekres" id="lm-zoek-res"></div></div></div>
-      <div class="fg"><label>Template</label><div class="tbar" id="lm-tbar"></div></div>
+      <div class="alert" id="lm-bestaand" style="display:none;margin:0 0 14px"></div>
+      <div class="fg"><label>Template</label><div class="tbar" id="lm-tbar"></div><div class="lay-sub" style="margin-top:6px">Is dit iemand die al in dienst is en de loonheffingskorting wil <b>aan- of uitzetten</b>? Gebruik dan het <a href="#" onclick="lmNaarKorting();return false"><b>wijzigingsformulier loonheffingskorting →</b></a> (geen welkomstmail, geen indiensttredingsformulier).</div></div>
       <div class="fr"><div class="fg"><label>Aan (e-mail)</label><input type="email" id="lm-to" placeholder="medewerker@email.com"></div>
         <div class="fg"><label>Naam medewerker</label><input type="text" id="lm-naam" placeholder="Voornaam Achternaam" oninput="lmHerbouw()"></div></div>
       <div class="fg"><label>Deadline</label><input type="text" id="lm-dl" placeholder="bijv. 15-05-2026" oninput="lmHerbouw()"></div>
