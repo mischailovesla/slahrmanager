@@ -2486,6 +2486,81 @@
     if (p.eerdereHaccp && p.eerdereHaccp.length && !confirm(m.naam + ' kreeg al eerder een waarschuwing met een HACCP-regel (' + p.eerdereHaccp.join(', ') + '). Toch een nieuwe opstellen?')) return;
     openWrModal({ naam: p.naam || m.naam, email: p.email || '', adres: p.adres || '', winkel: p.winkelNaam || '', datumOvertreding: m.datumOvertreding, toelichting: m.toelichting, taal: p.taal || 'NL', regels: (hcData.regelTeksten || []).join(' | ') });
   });
+
+  // ---------- v0.53.0 Algemene HACCP-brief aan het team ----------
+  var hbCfg = null, hbOntv = [], hbBewerkt = false;
+  function hbTaal() { var b = g('hb-taal').querySelector('.tb.sel'); return b ? b.getAttribute('data-taal') : 'NL+EN'; }
+  g('hb-taal').querySelectorAll('.tb').forEach(function (b) { b.onclick = function () { g('hb-taal').querySelectorAll('.tb').forEach(function (x) { x.classList.remove('sel'); }); b.classList.add('sel'); hbHerbouw(true); }; });
+  window.hbSluit = function () { g('hb-modal').classList.remove('open'); };
+  window.hbOpen = async function () {
+    if (!hbCfg) { var r = await api('/api/haccp', { actie: 'sjablonen' }); if (!r.success) { toast(r.bericht, 'err'); return; } hbCfg = r; }
+    if (!medewerkers.length) await laadMedewerkers(false);
+    var winkels = {}; medewerkers.forEach(function (m) { if (m.winkelCode && m.winkelCode !== 'HO') winkels[m.winkelCode] = m.winkelNaam || m.winkelCode; });
+    g('hb-winkel').innerHTML = '<option value="">Alle winkels</option>' + Object.keys(winkels).sort(function (a, b) { return winkels[a].localeCompare(winkels[b]); }).map(function (c) { return '<option value="' + esc(c) + '">' + esc(winkels[c]) + '</option>'; }).join('');
+    if (!g('hb-ingang').value) { var d = new Date(); d.setDate(d.getDate() + 7); g('hb-ingang').value = etIso(d); }
+    if (!g('hb-af-naam').value) g('hb-af-naam').value = (hbCfg.afzender && hbCfg.afzender.naam) || '';
+    if (!g('hb-af-functie').value) { try { g('hb-af-functie').value = localStorage.getItem('et-af-functie') || ''; } catch (e) { } }
+    hbKiesWinkel(); g('hb-modal').classList.add('open');
+  };
+  window.hbKiesWinkel = function () {
+    var code = g('hb-winkel').value, hw = hcData && code ? (hcData.winkels || []).find(function (w) { return w.code === code && w.verwacht; }) : null;
+    g('hb-opties').innerHTML = '<label>Optionele zin</label><label class="chk" style="margin:4px 0"><input type="checkbox" id="hb-o-cijfers"' + (hw ? ' checked' : ' disabled') + ' onchange="hbHerbouw(true)"> <span>Cijfers van deze winkel noemen' + (hw ? ': <b>' + hw.gemist + ' van de ' + hw.verwacht + '</b> verplichte lijsten niet afgerond (' + hw.pctGemist + '%)' : ' <span style="color:#888">(kies een winkel en klik eerst op Ophalen op deze pagina)</span>') + '</span></label>';
+    hbOntv = medewerkers.filter(function (m) { return m.winkelCode && m.winkelCode !== 'HO' && (!code || m.winkelCode === code); }).sort(function (a, b) { return a.naam.localeCompare(b.naam, 'nl'); });
+    g('hb-ontv').innerHTML = hbOntv.map(function (o, i) {
+      var ok = o.email && o.email.indexOf('@') > -1;
+      return '<label class="chk" style="padding:6px 12px;border-bottom:1px solid #f1ece8;margin:0;font-size:.82rem"><input type="checkbox" value="' + i + '"' + (ok ? ' checked' : ' disabled') + ' onchange="hbTel()"> <span><b>' + esc(o.naam) + '</b> <span style="color:#888">' + esc(o.email || 'geen e-mail') + (o.functie ? ' · ' + esc(o.functie) : '') + (code ? '' : ' · ' + esc(o.winkelNaam || '')) + '</span></span></label>';
+    }).join('') || '<div class="leeg grijs" style="padding:12px">Geen medewerkers gevonden</div>';
+    hbBewerkt = false; hbHerbouw(false); hbTel();
+  };
+  function hbTekstIn(taal) {
+    var en = taal === 'EN', sj = hbCfg.sjablonen[taal], code = g('hb-winkel').value, naam = code ? g('hb-winkel').selectedOptions[0].textContent : '';
+    var hw = hcData && code ? (hcData.winkels || []).find(function (w) { return w.code === code; }) : null, cijfers = !!(g('hb-o-cijfers') && g('hb-o-cijfers').checked && hw);
+    var v = { winkel: naam, winkel_kort: naam ? ' ' + naam : '', ingangsdatum: etLang(g('hb-ingang').value, en), afzender_naam: g('hb-af-naam').value.trim(), afzender_functie: g('hb-af-functie').value.trim() };
+    if (cijfers) Object.assign(v, { gemist: hw.gemist, verplicht: hw.verwacht, pct: hw.pctGemist, periode: etLang(hcData.periode.van, en) + (en ? ' to ' : ' t/m ') + etLang(hcData.periode.tot, en) });
+    return { onderwerp: etVul(sj.onderwerp, v, {}), tekst: etVul(sj.tekst, v, { cijfers: cijfers }) };
+  }
+  window.hbHerbouw = function (vraag) {
+    if (!hbCfg) return;
+    if (vraag && hbBewerkt && !confirm('De tekst opnieuw opbouwen? Je eigen aanpassingen in de tekst gaan dan verloren.')) return;
+    try { if (g('hb-af-functie').value.trim()) localStorage.setItem('et-af-functie', g('hb-af-functie').value.trim()); } catch (e) { }
+    var taal = hbTaal(), t;
+    if (taal === 'NL+EN') { var a = hbTekstIn('NL'), b = hbTekstIn('EN'); t = { onderwerp: a.onderwerp + ' / ' + b.onderwerp.replace(/ at SLA.*$/, ''), tekst: a.tekst + '\n\n— — —\n\n**English version**\n\n' + b.tekst }; }
+    else t = hbTekstIn(taal);
+    g('hb-onderwerp').value = t.onderwerp; g('hb-tekst').value = t.tekst; hbBewerkt = false;
+  };
+  function hbGekozen() { return Array.prototype.map.call(g('hb-ontv').querySelectorAll('input:checked'), function (c) { return hbOntv[+c.value]; }); }
+  window.hbTel = function () { var n = hbGekozen().length; g('hb-ontv-tel').textContent = '(' + n + ' gekozen)'; g('hb-slbl').textContent = 'Versturen naar ' + n; };
+  window.hbAlles = function () { var c = g('hb-ontv').querySelectorAll('input:not([disabled])'), aan = Array.prototype.some.call(c, function (x) { return !x.checked; }); c.forEach(function (x) { x.checked = aan; }); hbTel(); };
+  function hbCheck() {
+    if (!g('hb-ingang').value) return 'Vul de ingangsdatum in';
+    if (!g('hb-af-naam').value.trim() || !g('hb-af-functie').value.trim()) return 'Vul de naam en functie van de afzender in';
+    var open = ((g('hb-tekst').value + ' ' + g('hb-onderwerp').value).match(/\{(\w+)\}/g) || []).filter(function (x) { return x !== '{voornaam}'; });
+    return open.length ? 'Nog niet ingevuld: ' + open.join(', ') : '';
+  }
+  window.hbVoorbeeld = async function () {
+    var f = hbCheck(); if (f) { toast(f, 'err'); return; }
+    var o = hbGekozen()[0] || { naam: 'Voorbeeld Medewerker', voornaam: 'Voorbeeld', email: '' };
+    var r = await api('/api/haccp', { actie: 'team', winkel: g('hb-winkel').value, onderwerp: g('hb-onderwerp').value.trim(), tekst: g('hb-tekst').value, ontvanger: { naam: o.naam, email: o.email, voornaam: o.voornaam }, taal: hbTaal(), preview: true });
+    if (!r.success) { toast(r.bericht, 'err'); return; }
+    var win = window.open('', '_blank'); if (!win) { toast('Pop-up geblokkeerd', 'err'); return; }
+    win.document.write('<title>' + esc(r.subject) + '</title><div style="font-family:Arial;padding:10px 20px;color:#555">Onderwerp: <b>' + esc(r.subject) + '</b></div>' + r.html); win.document.close();
+  };
+  window.hbVerstuur = async function () {
+    var f = hbCheck(); if (f) { toast(f, 'err'); return; }
+    var lijst = hbGekozen(); if (!lijst.length) { toast('Kies minstens één ontvanger', 'err'); return; }
+    var wn = g('hb-winkel').value ? 'SLA ' + g('hb-winkel').selectedOptions[0].textContent : 'alle winkels';
+    if (!confirm('HACCP-brief versturen naar ' + lijst.length + ' medewerker(s) van ' + wn + '?\n\nIedereen krijgt een eigen mail; de brief komt in het dossier.')) return;
+    var b = g('hb-sbtn'); b.disabled = true; var ok = 0, fout = [];
+    for (var i = 0; i < lijst.length; i++) {
+      g('hb-slbl').textContent = 'Versturen… ' + (i + 1) + ' / ' + lijst.length;
+      var o = lijst[i];
+      var r = await api('/api/haccp', { actie: 'team', winkel: o.winkelCode || g('hb-winkel').value, onderwerp: g('hb-onderwerp').value.trim(), tekst: g('hb-tekst').value, ontvanger: { naam: o.naam, email: o.email, voornaam: o.voornaam }, taal: hbTaal() });
+      if (r.success) ok++; else fout.push(o.naam + ': ' + r.bericht);
+    }
+    b.disabled = false; hbTel();
+    if (fout.length) alert(ok + ' verstuurd, ' + fout.length + ' mislukt:\n\n' + fout.join('\n'));
+    else { toast('HACCP-brief verstuurd naar ' + ok + ' medewerker(s)', 'ok'); hbSluit(); }
+  };
   // ---------- Declaraties uit SLA Academy (v0.49.0) ----------
   var dcData = null, dcStatus = 'open';
   var dcEur = function (x) { return '€ ' + Number(x || 0).toLocaleString('nl-NL', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); };

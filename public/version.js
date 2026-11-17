@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.53.0', datum: '17-11-2026', titel: 'Nieuw: HACCP-brief aan het team', punten: [
+    'Op <b>Dossier → HACCP-naleving</b> staat de knop <b>✉ HACCP-brief aan team</b>: een algemene brief (net als die over eindtijd en afsluiten) over het belang van HACCP en dat het bij het werk hoort. Het is <b>geen waarschuwing</b>.',
+    'De brief zet de afspraken (huisregels HR57–HR61) op een rij met een ingangsdatum: samen verantwoordelijk in het tijdvak, de leidinggevende verdeelt en controleert, naar waarheid registreren, eigen code, en melden als het niet lukt.',
+    'Kies één winkel of alle winkels, Nederlands, Engels of beide. Heb je eerst op <b>Ophalen</b> geklikt, dan kun je de cijfers van de winkel noemen (bijv. "12 van de 56 lijsten niet afgerond").',
+    'Iedereen krijgt een eigen mail met de eigen voornaam. De brief komt in het dossier onder Vrije brieven (categorie HACCP), zodat je er bij een latere waarschuwing naar kunt verwijzen.'
+  ] },
   { nummer: '0.52.4', datum: '17-11-2026', titel: 'Loonheffing: wijzigen voor bestaande medewerkers', punten: [
     'In de mail <b>Loonheffingsverklaring</b> staat nu een link naar het <b>wijzigingsformulier loonheffingskorting</b>. Gebruik dat voor iemand die al in dienst is en de korting wil aan- of uitzetten: geen welkomstmail en geen indiensttredingsformulier.',
     'Kies je in die mail iemand die al langer dan 30 dagen in dienst is, dan krijg je een waarschuwing met een knop die meteen het goede formulier opent (naam, e-mail en taal gaan mee).'

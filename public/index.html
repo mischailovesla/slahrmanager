@@ -732,10 +732,28 @@
   </div>
 
   <!-- FOOIVERDELING (v0.46.0) -->
+  <!-- v0.53.0 Algemene HACCP-brief aan het team -->
+  <div class="mo" id="hb-modal"><div class="modal" style="width:860px">
+    <div class="mh"><div class="mti">✉ HACCP-brief aan het team</div><button class="mc" onclick="hbSluit()">×</button></div>
+    <div class="mb2">
+      <div class="alert grijs" style="margin:0 0 14px;font-size:.8rem">Algemene brief: <b>HACCP hoort bij je werk</b>. Het belang van voedselveiligheid en de afspraken (huisregels HR57–HR61) met een ingangsdatum. Het is <b>geen waarschuwing</b>; daarna kun je wel naar deze brief verwijzen. Iedere ontvanger krijgt een eigen mail met de eigen voornaam en de brief komt in zijn/haar dossier (Vrije brieven, categorie HACCP).</div>
+      <div class="fr"><div class="fg"><label>Winkel</label><select id="hb-winkel" onchange="hbKiesWinkel()"></select></div>
+        <div class="fg"><label>Taal</label><div class="tbar" id="hb-taal"><button type="button" class="tb" data-taal="NL">Nederlands</button><button type="button" class="tb" data-taal="EN">English</button><button type="button" class="tb sel" data-taal="NL+EN">Nederlands + English</button></div></div></div>
+      <div class="fr"><div class="fg"><label>Ingangsdatum afspraken</label><input type="date" id="hb-ingang" onchange="hbHerbouw(true)"></div>
+        <div class="fg"><label>Afzender (naam)</label><input type="text" id="hb-af-naam" onchange="hbHerbouw(true)"></div>
+        <div class="fg"><label>Functie afzender</label><input type="text" id="hb-af-functie" placeholder="bijv. Operations Manager" onchange="hbHerbouw(true)"></div></div>
+      <div class="fg" id="hb-opties"></div>
+      <div class="fg"><label>Onderwerp</label><input type="text" id="hb-onderwerp"></div>
+      <div class="fg"><label>Tekst <span style="color:#888;font-weight:400">(aan te passen; **vet**, "- " opsomming, "1. " genummerd; {voornaam} wordt per ontvanger ingevuld)</span></label><textarea id="hb-tekst" rows="18" style="min-height:340px;font-size:.84rem;line-height:1.5" oninput="hbBewerkt=true"></textarea></div>
+      <div class="fg"><label>Ontvangers <span id="hb-ontv-tel" style="color:#888;font-weight:400"></span> <a href="#" onclick="hbAlles();return false" style="font-weight:400;font-size:.78rem">alles aan/uit</a></label><div id="hb-ontv" style="border:1.5px solid #e8e2de;border-radius:8px;max-height:260px;overflow:auto"></div></div>
+    </div>
+    <div class="mf"><button class="btn bd" onclick="hbVoorbeeld()">👁 Voorbeeld mail</button><button class="btn bp" id="hb-sbtn" onclick="hbVerstuur()"><span id="hb-slbl">Versturen</span></button></div>
+  </div></div>
+
   <div class="tc" id="tab-haccp">
     <div class="sec">
       <div class="sh"><div class="st">HACCP-naleving</div>
-        <div class="hr2"><input type="date" id="hc-van" class="sb" style="width:auto"><input type="date" id="hc-tot" class="sb" style="width:auto"><select id="hc-lijst" class="sb" style="width:auto"><option value="">Alle verplichte lijsten</option></select><button class="btn bp bsm" onclick="hcLaad(false)">Ophalen</button><button class="btn bd bsm" onclick="hcLaad(true)" title="Rooster opnieuw uit Shiftbase halen">↻</button></div></div>
+        <div class="hr2"><input type="date" id="hc-van" class="sb" style="width:auto"><input type="date" id="hc-tot" class="sb" style="width:auto"><select id="hc-lijst" class="sb" style="width:auto"><option value="">Alle verplichte lijsten</option></select><button class="btn bp bsm" onclick="hcLaad(false)">Ophalen</button><button class="btn bd bsm" onclick="hcLaad(true)" title="Rooster opnieuw uit Shiftbase halen">↻</button><button class="btn bp bsm" onclick="hbOpen()" title="Algemene brief aan het team: HACCP hoort bij je werk (geen waarschuwing)">✉ HACCP-brief aan team</button></div></div>
       <div id="hc-status" class="lay-sub" style="padding:10px 24px 0">Kies een periode en klik op Ophalen.</div>
       <div class="stats" id="hc-kpi" style="padding:16px 24px 0"></div>
       <div class="tw"><table><thead><tr><th>Winkel</th><th style="text-align:right">Verplicht</th><th style="text-align:right">Niet afgerond</th><th style="text-align:right">Te laat</th><th style="text-align:right">Op tijd</th><th style="text-align:right" title="Dagen zonder rooster: winkel dicht, telt niet mee">Dicht</th></tr></thead><tbody id="hc-winkels"></tbody></table></div>

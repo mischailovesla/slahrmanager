@@ -4,7 +4,10 @@
 //   die in het tijdvak geroosterd stond, en per medewerker hoe vaak een lijst niet is afgerond tijdens zijn/haar dienst.
 //   De waarschuwing zelf loopt via de bestaande module (/api/waarschuwing-mail), voorgevuld door de browser.
 // ============================================================
-const { beveiligd } = require('./_lib/auth');
+const { beveiligd, body, logActie } = require('./_lib/auth');
+const HB = require('./_lib/haccpbrief');
+const E = require('./_lib/eindtijd');
+const D = require('./_lib/datum');
 const SB = require('./_lib/shiftbase');
 const S = require('./_lib/sheets');
 const C = require('./_lib/config');
@@ -24,7 +27,42 @@ async function laadRooster(van, tot, ververs) {
   return v;
 }
 
-exports.handler = beveiligd('haccp', async (event) => {
+// v0.53.0: algemene HACCP-brief aan het team (zoals de teambrief Eindtijd & afsluiten)
+//   POST { actie:'sjablonen' }                                   -> { sjablonen, afzender }
+//   POST { actie:'team', winkel, onderwerp, tekst, ontvanger:{naam,email,voornaam}, taal:'NL'|'EN'|'NL+EN', preview? }
+//        -> één mail per ontvanger (de browser loopt de lijst af), gelogd als brief (categorie "HACCP") in het dossier
+async function teamPost(p, g) {
+  if (p.actie === 'sjablonen') return { sjablonen: HB.SJABLONEN, afzender: { naam: g.naam || '' } };
+  if (p.actie !== 'team') throw new Error('Onbekende actie');
+  const o = p.ontvanger || {};
+  const naam = String(o.naam || '').trim(), email = String(o.email || '').trim();
+  const voornaam = String(o.voornaam || '').trim() || naam.split(' ')[0];
+  const onderwerp = String(p.onderwerp || '').trim();
+  if (!onderwerp) throw new Error('Vul het onderwerp in.');
+  const tekst = E.vul(String(p.tekst || ''), { voornaam }, {});
+  const open = E.openVariabelen(tekst + ' ' + onderwerp);
+  if (open.length) throw new Error('Nog niet ingevuld in de tekst: ' + open.map(v => '{' + v + '}').join(', '));
+  const taal = ['NL', 'EN', 'NL+EN'].includes(String(p.taal || '').toUpperCase()) ? String(p.taal).toUpperCase() : 'NL';
+  const T = require('./_lib/sjablonen');
+  const kop = taal === 'EN' ? 'SLA HR &middot; Food safety' : taal === 'NL+EN' ? 'SLA HR &middot; Voedselveiligheid / Food safety' : 'SLA HR &middot; Voedselveiligheid';
+  const html = T.slaWrap(T.slaHead('#009f4b', kop) + '<tr><td style="padding:32px 36px 28px">' + E.naarHtml(tekst) + '</td></tr>' + T.slaFoot());
+  const text = tekst.replace(/\*\*([^*]+)\*\*/g, '$1');
+  if (p.preview) return { subject: onderwerp, html, text };
+  if (!naam) throw new Error('Ontvanger zonder naam.');
+  if (!email || email.indexOf('@') === -1) throw new Error('Geen geldig e-mailadres voor ' + naam + '.');
+  const w = C.WINKEL_BV_MAP[p.winkel] || {};
+  const M = require('./_lib/mail');
+  const resendId = await M.verstuur({ to: email, subject: onderwerp, text, html, tags: [{ name: 'bron', value: 'haccp' }, { name: 'type', value: 'teambrief' }, { name: 'taal', value: taal.replace('+', '_') }] });
+  let rij = 0;
+  try { rij = await S.logBrief({ naam, email, bv: w.bv || '', categorie: HB.CATEGORIE, onderwerp, tekst, metPdf: false }, D.stempel()); }
+  catch (e) { console.warn('haccp logBrief:', e.message); }
+  await M.logMail({ door: g.email, bron: 'haccp', type: 'teambrief', naar: email, naam, onderwerp, taal, rij, resend_id: resendId });
+  await logActie({ door: g.email, actie: 'mail', bron: 'haccp', veld: 'teambrief ' + (w.naam || p.winkel || 'alle winkels'), rij, naam, nieuw: email, details: onderwerp });
+  return { bericht: 'Verstuurd naar ' + naam, rij };
+}
+
+exports.handler = beveiligd('haccp', async (event, g) => {
+  if (event.httpMethod === 'POST') return await teamPost(body(event), g);
   const q = event.queryStringParameters || {};
   const iso = s => /^\d{4}-\d{2}-\d{2}$/.test(String(s || '')) ? s : null;
   const acad = await H.haal(iso(q.van), iso(q.tot));
