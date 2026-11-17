@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.53.1', datum: '17-11-2026', titel: 'HACCP-brief: alle winkels', punten: [
+    'Bij <b>Alle winkels</b> bleef <i>{winkel_kort}</i> in het onderwerp staan, waardoor versturen niet lukte. Opgelost: het onderwerp wordt dan "HACCP hoort bij je werk bij SLA".'
+  ] },
   { nummer: '0.53.0', datum: '17-11-2026', titel: 'Nieuw: HACCP-brief aan het team', punten: [
     'Op <b>Dossier → HACCP-naleving</b> staat de knop <b>✉ HACCP-brief aan team</b>: een algemene brief (net als die over eindtijd en afsluiten) over het belang van HACCP en dat het bij het werk hoort. Het is <b>geen waarschuwing</b>.',
     'De brief zet de afspraken (huisregels HR57–HR61) op een rij met een ingangsdatum: samen verantwoordelijk in het tijdvak, de leidinggevende verdeelt en controleert, naar waarheid registreren, eigen code, en melden als het niet lukt.',

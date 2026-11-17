@@ -2517,7 +2517,9 @@
     var hw = hcData && code ? (hcData.winkels || []).find(function (w) { return w.code === code; }) : null, cijfers = !!(g('hb-o-cijfers') && g('hb-o-cijfers').checked && hw);
     var v = { winkel: naam, winkel_kort: naam ? ' ' + naam : '', ingangsdatum: etLang(g('hb-ingang').value, en), afzender_naam: g('hb-af-naam').value.trim(), afzender_functie: g('hb-af-functie').value.trim() };
     if (cijfers) Object.assign(v, { gemist: hw.gemist, verplicht: hw.verwacht, pct: hw.pctGemist, periode: etLang(hcData.periode.van, en) + (en ? ' to ' : ' t/m ') + etLang(hcData.periode.tot, en) });
-    return { onderwerp: etVul(sj.onderwerp, v, {}), tekst: etVul(sj.tekst, v, { cijfers: cijfers }) };
+    // v0.53.1: lege waarde (alle winkels) zelf invullen; etVul laat lege variabelen staan
+    var leeg = function (t) { return String(t).replace(/\{winkel_kort\}/g, v.winkel_kort); };
+    return { onderwerp: etVul(leeg(sj.onderwerp), v, {}), tekst: etVul(leeg(sj.tekst), v, { cijfers: cijfers }) };
   }
   window.hbHerbouw = function (vraag) {
     if (!hbCfg) return;
