@@ -68,6 +68,50 @@ async function onthoudKoppeling(db, r, shiftbaseId, naam, door) {
   if (error) throw new Error(error.message);
 }
 
+// Origineel in de opslag (bron/...) knippen, koppelen en opslaan. Ook gebruikt door /api/loonstroken-import (mail van salaris).
+async function verwerkBron(db, pad, bronNaam, door) {
+  const p = { naam: bronNaam }, g = { email: door };
+  const bron = await downloadBytes(db, pad);
+  let res;
+  try { res = await L.lees(bron); } catch (e) { throw new Error('Kon de PDF niet lezen: ' + e.message); }
+  if (!res.stroken.length) throw new Error('Geen loonstroken gevonden in dit bestand. Is het de PDF met salarisspecificaties uit Exact Online?');
+  const waarschuwingen = res.waarschuwingen.slice();
+  if (!/exact/i.test(res.maker)) waarschuwingen.push('Dit bestand lijkt niet uit Exact Online te komen (maker: ' + (res.maker || 'onbekend') + '). Controleer de stroken.');
+  // koppelen
+  const [medewerkers, kop] = await Promise.all([SB.getMedewerkers(false).catch(e => { waarschuwingen.push('Shiftbase niet bereikbaar: koppelen alleen op eerdere koppelingen (' + e.message + ').'); return []; }),
+    db.from('hr_exact_koppeling').select('*').in('bv', Array.from(new Set(res.stroken.map(s => s.bv))))]);
+  if (kop.error && ONTBREEKT.test(kop.error.message)) throw new Error(ontbreektMelding);
+  const koppelingen = {}; (kop.data || []).forEach(k => { koppelingen[k.bv + '|' + k.exact_nr] = k; });
+  const lijst = medewerkers.map(m => ({ id: m.id, naam: m.naam, voornaam: m.voornaam, email: m.email, gebDatum: m.gebDatum || '' }));
+  // bestaande rijen (zelfde run opnieuw geüpload): handmatige koppeling niet overschrijven
+  const { data: bestaand } = await db.from('hr_loonstroken').select('bv,exact_nr,run,shiftbase_id,naam,email,koppeling,koppeling_reden').in('run', Array.from(new Set(res.stroken.map(s => s.run))));
+  const oud = {}; (bestaand || []).forEach(b => { oud[b.bv + '|' + b.exact_nr + '|' + b.run] = b; });
+  const nu = new Date().toISOString();
+  const rijen = await parallel(res.stroken, 6, async s => {
+    const bytes = await L.knip(res.doc, s.paginaIdx, 'Salarisspecificatie ' + s.naamStrook + ' ' + s.periode);
+    const spad = L.opslagPad(s);
+    const up = await db.storage.from(L.BUCKET).upload(spad, bytes, { contentType: 'application/pdf', upsert: true });
+    if (up.error) throw new Error('Opslag (' + s.naamStrook + '): ' + up.error.message);
+    const o = oud[s.bv + '|' + s.exactNr + '|' + s.run];
+    const k = o && o.koppeling === 'handmatig' ? { shiftbaseId: o.shiftbase_id, naam: o.naam, email: o.email, zekerheid: 'handmatig', reden: o.koppeling_reden } : L.koppel(s, lijst, koppelingen);
+    return { bv: s.bv, exact_nr: s.exactNr, periode: s.periode, run: s.run, naam_strook: s.naamStrook, afdeling: s.afdeling || null, functie: s.functie || null, documenten: s.documenten, paginas: s.paginaIdx.length,
+      pad: spad, bron_pad: pad, bron_naam: String(p.naam || '').slice(0, 120), shiftbase_id: k.shiftbaseId || null, naam: k.naam || null, email: k.email || null, koppeling: k.zekerheid, koppeling_reden: k.reden,
+      geupload_door: g.email, bijgewerkt_op: nu, _nieuw: !o };
+  });
+  const nieuw = rijen.filter(r => r._nieuw).length; rijen.forEach(r => delete r._nieuw);
+  const { error } = await db.from('hr_loonstroken').upsert(rijen, { onConflict: 'bv,exact_nr,run' });
+  if (error) throw new Error(ONTBREEKT.test(error.message) ? ontbreektMelding : error.message);
+  // zekere koppelingen meteen onthouden (voorstellen pas na bevestigen)
+  const zeker = rijen.filter(r => r.koppeling === 'zeker' && r.shiftbase_id).map(r => ({ bv: r.bv, exact_nr: r.exact_nr, shiftbase_id: r.shiftbase_id, naam: r.naam, door: g.email + ' (automatisch)', bijgewerkt_op: nu }));
+  if (zeker.length) { const z = await db.from('hr_exact_koppeling').upsert(zeker, { ignoreDuplicates: true }); if (z.error) waarschuwingen.push('Koppelingen onthouden mislukt: ' + z.error.message); }
+  const tel = { vast: 0, zeker: 0, voorstel: 0, handmatig: 0, '': 0 }; rijen.forEach(r => { tel[r.koppeling] = (tel[r.koppeling] || 0) + 1; });
+  const bvs = Array.from(new Set(rijen.map(r => r.bv))), periodes = Array.from(new Set(rijen.map(r => r.periode)));
+  await logActie({ door: g.email, actie: 'upload', bron: 'loonstroken', veld: 'verwerk', naam: bvs.join(', '), nieuw: periodes.join(', '),
+    details: (p.naam || pad) + ': ' + res.paginas + ' pagina\'s → ' + rijen.length + ' loonstroken (' + nieuw + ' nieuw); gekoppeld ' + (tel.vast + tel.zeker + tel.handmatig) + ', voorstel ' + tel.voorstel + ', niet gekoppeld ' + tel[''] });
+  return { bestand: p.naam || '', paginas: res.paginas, aantal: rijen.length, nieuw, vervangen: rijen.length - nieuw, tellingen: tel, bvs, periodes, waarschuwingen,
+    nietGekoppeld: rijen.filter(r => !r.shiftbase_id || r.koppeling === 'voorstel').map(r => ({ naam_strook: r.naam_strook, exact_nr: r.exact_nr, voorstel: r.koppeling === 'voorstel' ? r.naam : '', reden: r.koppeling_reden })) };
+}
+
 exports.handler = beveiligd('loonstroken', async (event, g) => {
   await SI.eis(g.email, 'Loonstroken');
   const db = admin();
@@ -108,45 +152,7 @@ exports.handler = beveiligd('loonstroken', async (event, g) => {
   if (p.actie === 'verwerk') {
     const pad = String(p.pad || '');
     if (!/^bron\/[\w\-/.]+\.pdf$/i.test(pad)) throw new Error('Ongeldig bestandspad.');
-    const bron = await downloadBytes(db, pad);
-    let res;
-    try { res = await L.lees(bron); } catch (e) { throw new Error('Kon de PDF niet lezen: ' + e.message); }
-    if (!res.stroken.length) throw new Error('Geen loonstroken gevonden in dit bestand. Is het de PDF met salarisspecificaties uit Exact Online?');
-    const waarschuwingen = res.waarschuwingen.slice();
-    if (!/exact/i.test(res.maker)) waarschuwingen.push('Dit bestand lijkt niet uit Exact Online te komen (maker: ' + (res.maker || 'onbekend') + '). Controleer de stroken.');
-    // koppelen
-    const [medewerkers, kop] = await Promise.all([SB.getMedewerkers(false).catch(e => { waarschuwingen.push('Shiftbase niet bereikbaar: koppelen alleen op eerdere koppelingen (' + e.message + ').'); return []; }),
-      db.from('hr_exact_koppeling').select('*').in('bv', Array.from(new Set(res.stroken.map(s => s.bv))))]);
-    if (kop.error && ONTBREEKT.test(kop.error.message)) throw new Error(ontbreektMelding);
-    const koppelingen = {}; (kop.data || []).forEach(k => { koppelingen[k.bv + '|' + k.exact_nr] = k; });
-    const lijst = medewerkers.map(m => ({ id: m.id, naam: m.naam, voornaam: m.voornaam, email: m.email, gebDatum: m.gebDatum || '' }));
-    // bestaande rijen (zelfde run opnieuw geüpload): handmatige koppeling niet overschrijven
-    const { data: bestaand } = await db.from('hr_loonstroken').select('bv,exact_nr,run,shiftbase_id,naam,email,koppeling,koppeling_reden').in('run', Array.from(new Set(res.stroken.map(s => s.run))));
-    const oud = {}; (bestaand || []).forEach(b => { oud[b.bv + '|' + b.exact_nr + '|' + b.run] = b; });
-    const nu = new Date().toISOString();
-    const rijen = await parallel(res.stroken, 6, async s => {
-      const bytes = await L.knip(res.doc, s.paginaIdx, 'Salarisspecificatie ' + s.naamStrook + ' ' + s.periode);
-      const spad = L.opslagPad(s);
-      const up = await db.storage.from(L.BUCKET).upload(spad, bytes, { contentType: 'application/pdf', upsert: true });
-      if (up.error) throw new Error('Opslag (' + s.naamStrook + '): ' + up.error.message);
-      const o = oud[s.bv + '|' + s.exactNr + '|' + s.run];
-      const k = o && o.koppeling === 'handmatig' ? { shiftbaseId: o.shiftbase_id, naam: o.naam, email: o.email, zekerheid: 'handmatig', reden: o.koppeling_reden } : L.koppel(s, lijst, koppelingen);
-      return { bv: s.bv, exact_nr: s.exactNr, periode: s.periode, run: s.run, naam_strook: s.naamStrook, afdeling: s.afdeling || null, functie: s.functie || null, documenten: s.documenten, paginas: s.paginaIdx.length,
-        pad: spad, bron_pad: pad, bron_naam: String(p.naam || '').slice(0, 120), shiftbase_id: k.shiftbaseId || null, naam: k.naam || null, email: k.email || null, koppeling: k.zekerheid, koppeling_reden: k.reden,
-        geupload_door: g.email, bijgewerkt_op: nu, _nieuw: !o };
-    });
-    const nieuw = rijen.filter(r => r._nieuw).length; rijen.forEach(r => delete r._nieuw);
-    const { error } = await db.from('hr_loonstroken').upsert(rijen, { onConflict: 'bv,exact_nr,run' });
-    if (error) throw new Error(ONTBREEKT.test(error.message) ? ontbreektMelding : error.message);
-    // zekere koppelingen meteen onthouden (voorstellen pas na bevestigen)
-    const zeker = rijen.filter(r => r.koppeling === 'zeker' && r.shiftbase_id).map(r => ({ bv: r.bv, exact_nr: r.exact_nr, shiftbase_id: r.shiftbase_id, naam: r.naam, door: g.email + ' (automatisch)', bijgewerkt_op: nu }));
-    if (zeker.length) { const z = await db.from('hr_exact_koppeling').upsert(zeker, { ignoreDuplicates: true }); if (z.error) waarschuwingen.push('Koppelingen onthouden mislukt: ' + z.error.message); }
-    const tel = { vast: 0, zeker: 0, voorstel: 0, handmatig: 0, '': 0 }; rijen.forEach(r => { tel[r.koppeling] = (tel[r.koppeling] || 0) + 1; });
-    const bvs = Array.from(new Set(rijen.map(r => r.bv))), periodes = Array.from(new Set(rijen.map(r => r.periode)));
-    await logActie({ door: g.email, actie: 'upload', bron: 'loonstroken', veld: 'verwerk', naam: bvs.join(', '), nieuw: periodes.join(', '),
-      details: (p.naam || pad) + ': ' + res.paginas + ' pagina\'s → ' + rijen.length + ' loonstroken (' + nieuw + ' nieuw); gekoppeld ' + (tel.vast + tel.zeker + tel.handmatig) + ', voorstel ' + tel.voorstel + ', niet gekoppeld ' + tel[''] });
-    return { bestand: p.naam || '', paginas: res.paginas, aantal: rijen.length, nieuw, vervangen: rijen.length - nieuw, tellingen: tel, bvs, periodes, waarschuwingen,
-      nietGekoppeld: rijen.filter(r => !r.shiftbase_id || r.koppeling === 'voorstel').map(r => ({ naam_strook: r.naam_strook, exact_nr: r.exact_nr, voorstel: r.koppeling === 'voorstel' ? r.naam : '', reden: r.koppeling_reden })) };
+    return await verwerkBron(db, pad, p.naam, g.email);
   }
 
   if (p.actie === 'koppel') {
@@ -228,3 +234,4 @@ exports.handler = beveiligd('loonstroken', async (event, g) => {
   throw new Error('Onbekende actie');
 });
 exports._mailInhoud = mailInhoud;
+exports.verwerkBron = verwerkBron;

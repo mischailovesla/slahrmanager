@@ -93,5 +93,13 @@ async function nepPdf() {
   const m = require('../netlify/functions/loonstroken')._mailInhoud('Thea', ['2026-04', '2026-05', '2026-06'], 'en');
   assert.strictEqual(m.subject, 'Your payslips – April 2026, May 2026 and June 2026');
   assert.ok(/DUO/.test(m.text));
+  // import-endpoint: sleutel
+  const I = require('../netlify/functions/loonstroken-import');
+  delete process.env.LOONSTROKEN_IMPORT_SECRET; assert.strictEqual(I._sleutelKlopt('x'), null, 'zonder env staat de import uit');
+  process.env.LOONSTROKEN_IMPORT_SECRET = 'kort'; assert.strictEqual(I._sleutelKlopt('kort'), null, 'te korte sleutel = uit');
+  process.env.LOONSTROKEN_IMPORT_SECRET = 'a'.repeat(40);
+  assert.strictEqual(I._sleutelKlopt('a'.repeat(40)), true); assert.strictEqual(I._sleutelKlopt('b'.repeat(40)), false); assert.strictEqual(I._sleutelKlopt(''), false);
+  const r401 = await I.handler({ httpMethod: 'POST', headers: { 'x-import-sleutel': 'fout' }, body: '{}' }); assert.strictEqual(r401.statusCode, 401);
+  delete process.env.LOONSTROKEN_IMPORT_SECRET;
   console.log('✓ loonstroken');
 })().catch(e => { console.error('✗ loonstroken:', e.message); process.exitCode = 1; });

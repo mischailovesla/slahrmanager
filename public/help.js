@@ -95,7 +95,7 @@ window.HR_HELP = {
       + '<li>Klopt er iets niet? Klik <b>✕</b> en geef een reden. De medewerker krijgt die per mail en kan een verbeterde declaratie indienen.</li></ol>'
       + '<p><b>Mogelijk dubbel</b> betekent: zelfde medewerker, zelfde aankoopdatum en zelfde bedrag. Kijk dan even naar beide bonnetjes.</p>' },
     { id: 'loonstroken', titel: 'Loonstroken (Exact Online)', html:
-      '<ol><li>Download in <b>Exact Online</b> de loonstroken van de maand als PDF: één bestand per BV met alle medewerkers.</li>'
+      '<p>De loonstroken die HRM Online per BV mailt, komen <b>elk uur vanzelf</b> binnen. Je hoeft dan alleen stap 3 te doen. Zelf toevoegen (bijv. oudere maanden):</p><ol><li>Download in <b>Exact Online</b> de loonstroken van de maand als PDF: één bestand per BV met alle medewerkers.</li>'
       + '<li>Open <b>In dienst → Loonstroken</b> en sleep de PDF\'s in het vak (of klik erop om ze te kiezen). Het dashboard knipt elke PDF per medewerker en laat zien hoeveel stroken het vond.</li>'
       + '<li>Kijk naar de kolom <b>Koppeling</b>. <b>✓</b> is goed. Bij <b>voorstel</b> controleer je de naam en klik je <b>✓ klopt</b>. Bij <b>niet gekoppeld</b> kies je via <b>⋯ → 🔗</b> de juiste medewerker (staat iemand niet in de lijst, dan is hij uit dienst; de strook blijft gewoon te downloaden).</li>'
       + '<li><b>Iemand vraagt om loonstroken</b> (bijv. voor DUO): typ de naam in het zoekveld (zoekt in alle maanden), vink de maanden aan en kies <b>📄 Download als één PDF</b> of <b>✉ Mail naar medewerker</b>.</li></ol>'
