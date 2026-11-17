@@ -52,12 +52,15 @@ async function verrijk(a) {
     const laatste = l.map(b => dmy(b.verzenddatum)).filter(Boolean).sort().pop();
     return laatste ? { iso: laatste, tekst: E.langeDatum(laatste) } : null;
   };
-  const eerdereWrs = p => wrs.filter(r => zelfde(r, p) && /eindtijd/i.test(r.regels || '')).map(r => String(r.verzenddatum || '').slice(0, 10)).filter(Boolean);
+  // v0.53.2: met de tekenstatus (voor gezien) erbij
+  let tekenLijst = []; try { tekenLijst = await require('./_lib/ondertekening').statusVoor('waarschuwing'); } catch (e) { console.warn('eindtijd tekenstatus:', e.message); }
+  const eerdereWrsMet = p => wrs.filter(r => zelfde(r, p) && /eindtijd/i.test(r.regels || '')).map(r => { const t = require('./_lib/ondertekening').koppel(tekenLijst, r); return { datum: String(r.verzenddatum || '').slice(0, 10), status: t ? t.status : '', getekend: t ? t.getekend : '', herinneringen: t ? t.herinneringen : 0 }; }).filter(x => x.datum);
+  const eerdereWrs = p => eerdereWrsMet(p).map(x => x.datum);
   const persoon = (uid, naam) => {
     const m = opId[uid] || opNaam[normNaam(naam)];
     const p = m ? { naam: m.naam, voornaam: m.voornaam || String(m.naam).split(' ')[0], email: m.email, adres: m.adres, winkelCode: m.winkelCode, winkelNaam: m.winkelNaam, bv: m.winkelBv, functie: m.functie, contractType: m.contractType, contractEinde: m.contractEinde, vast: !m.contractEinde, inDienst: true }
       : { naam, voornaam: String(naam || '').split(' ')[0], email: '', adres: '', inDienst: false, vast: false };
-    p.eerderBericht = eerder(p); p.eerdereWaarschuwingen = eerdereWrs(p);
+    p.eerderBericht = eerder(p); p.eerdereWaarschuwingen = eerdereWrs(p); p.waarschuwingen = eerdereWrsMet(p);
     // v0.48.1: taal uit de loonheffingsuitnodiging (NL/EN), anders NL
     const lh = loon.filter(r => zelfde(r, p)).pop(); p.taal = lh && String(lh.taal || '').toUpperCase() === 'EN' ? 'EN' : 'NL';
     return p;

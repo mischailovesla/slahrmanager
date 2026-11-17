@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.53.2', datum: '17-11-2026', titel: 'Waarschuwingen: tekenstatus zichtbaar + automatische herinnering', punten: [
+    'In <b>Waarschuwingen</b> staat een nieuwe kolom <b>Voor gezien</b>: <i>✓ getekend</i> met de datum, of <i>wacht</i> met het aantal herinneringen.',
+    'Op <b>Eindtijd &amp; afsluiten</b> staat per medewerker de kolom <b>Waarschuwing</b>, met de datum van de waarschuwing en of die al voor gezien is getekend.',
+    'Nieuw: medewerkers die een waarschuwing nog niet voor gezien hebben getekend, krijgen automatisch een <b>herinnering</b> (NL of EN, met een nieuwe link): na 3 dagen, daarna om de 3 dagen, maximaal 3 keer. Elke dag om 09:25. Zie Signaleringen → <i>Herinnering voor gezien tekenen</i>.'
+  ] },
   { nummer: '0.53.1', datum: '17-11-2026', titel: 'HACCP-brief: alle winkels', punten: [
     'Bij <b>Alle winkels</b> bleef <i>{winkel_kort}</i> in het onderwerp staan, waardoor versturen niet lukte. Opgelost: het onderwerp wordt dan "HACCP hoort bij je werk bij SLA".'
   ] },

@@ -1358,9 +1358,17 @@
     wrData = d.rijen; wrRegels = d.huisregels; wrWinkels = d.winkels;
     g('wr-count').textContent = wrData.length + ' verstuurd';
     g('wr-body').innerHTML = wrData.map(function (r) {
-      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.winkel || '-') + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.datumOvertreding || '-') + '</td><td title="' + esc(r.regels) + '" style="max-width:320px;white-space:normal;font-size:.78rem">' + esc(r.regels || '-') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bSent(r.status) + '</td><td><div class="vb-knoppen"><button class="btn bd bsm" data-wr-rij="' + r.rij + '">Opnieuw</button>' + dosBtn(r.naam, r.email) + '</div></td></tr>';
-    }).join('') || '<tr><td colspan="9" class="leeg grijs">Nog geen waarschuwingen verstuurd</td></tr>';
+      var gz = tekenBadge(r.teken);
+      return '<tr><td><strong>' + esc(r.naam) + '</strong></td><td>' + esc(r.email) + '</td><td>' + esc(r.winkel || '-') + '</td><td><span class="badge boat">' + esc(r.bv || '-') + '</span></td><td>' + esc(r.datumOvertreding || '-') + '</td><td title="' + esc(r.regels) + '" style="max-width:320px;white-space:normal;font-size:.78rem">' + esc(r.regels || '-') + '</td><td><span class="badge boat">' + esc(r.taal || 'NL') + '</span></td><td>' + bSent(r.status) + '</td><td>' + gz + '</td><td><div class="vb-knoppen"><button class="btn bd bsm" data-wr-rij="' + r.rij + '">Opnieuw</button>' + dosBtn(r.naam, r.email) + '</div></td></tr>';
+    }).join('') || '<tr><td colspan="10" class="leeg grijs">Nog geen waarschuwingen verstuurd</td></tr>';
   };
+  // v0.53.2: status van 'voor gezien tekenen' (waarschuwingen)
+  function tekenBadge(t) {
+    if (!t) return '<span class="no-doc" title="Geen digitale ondertekening gevonden">-</span>';
+    var d = function (iso) { return String(iso || '').split('-').reverse().join('-'); };
+    if (t.status === 'getekend') return '<span class="badge bg" title="Voor gezien getekend">✓ getekend ' + esc(d(t.getekend)) + '</span>';
+    return '<span class="badge bo" title="Verstuurd ' + esc(d(t.aangemaakt)) + (t.laatsteHerinnering ? ' · laatste herinnering ' + esc(d(t.laatsteHerinnering)) : '') + '">wacht' + (t.herinneringen ? ' · ' + t.herinneringen + '× herinnerd' : '') + '</span>';
+  }
   document.addEventListener('click', async function (e) {
     var b = e.target.closest && e.target.closest('button[data-wr-rij]'); if (!b) return;
     if (!wrData) await laadWaarschuwingen();
@@ -3472,6 +3480,7 @@
     if (b === 'nieuwe-medewerkers' || b === 'loonheffing-herinneringen' || b === 'korting-herinneringen' || (b === 'checklist' && /^Onboarding/.test(t.titel || ''))) return 'instroom';
     if (b === 'checkin' || b === 'verzuim' || b === 'gesprek' || b === 'mto-actie' || b === 'stille-afwezigen' || b === 'weekend-beschikbaarheid' || b === 'jeugd') return 'mensen';
     if (b === 'ontslag-herinneringen' || b === 'dossier' || b === 'checklist') return 'uitstroom';
+    if (b === 'teken-herinneringen') return 'mensen'; // v0.53.2
     return 'overig';
   }
   window.tkThema = function (k) { tkThemaSel = (!k || tkThemaSel === k) ? null : k; renderTaken(); var s = g('tk-sec'); if (tkThemaSel && s) s.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
@@ -4580,15 +4589,17 @@
       var p = m.persoon || {}, id = code + i;
       var contract = !p.inDienst ? '<span class="badge br">uit dienst</span>' : p.vast ? '<span class="badge bdk" title="Geen einddatum in Shiftbase">vast</span>' : '<span class="badge boat" title="Einddatum contract">t/m ' + esc(p.contractEinde) + '</span>';
       var tb = p.eerderBericht ? '<span class="badge bg">' + esc(p.eerderBericht.tekst) + '</span>' : '<span class="lay-sub" style="display:inline">-</span>';
-      var wrsEerder = (p.eerdereWaarschuwingen || []).length ? '<div class="lay-sub">eerder gewaarschuwd: ' + esc(p.eerdereWaarschuwingen.join(', ')) + '</div>' : '';
+      var wrsEerder = '';
+      // v0.53.2: eindtijd-waarschuwingen met de status van 'voor gezien tekenen'
+      var wrsKol = (p.waarschuwingen || []).length ? p.waarschuwingen.map(function (x) { return '<div style="white-space:nowrap;margin:2px 0"><span class="lay-sub" style="display:inline">' + esc(x.datum) + '</span> ' + tekenBadge(x.status ? { status: x.status, getekend: x.getekend, herinneringen: x.herinneringen, aangemaakt: '' } : null) + '</div>'; }).join('') : '<span class="lay-sub" style="display:inline">-</span>';
       var knop = !p.inDienst ? '' : '<button class="btn bsm ' + (m.voorgedragen ? '" style="background:#c0392b;color:#fff"' : 'bd"') + ' data-et-wrs="' + i + '">⚠ Waarschuwing</button>';
       return '<tr><td><strong>' + esc(m.naam) + '</strong>' + (m.voorgedragen ? ' <span class="badge br">voor te dragen</span>' : '') + (p.andereWinkel ? ' <span class="badge boat">vaste winkel: ' + esc(p.winkelNaam || '?') + '</span>' : '') + wrsEerder + '</td>'
         + '<td style="text-align:right">' + m.aantalTotaal + '</td><td style="text-align:right"><strong>' + m.aantalLaat + '</strong> <span class="lay-sub" style="display:inline">(' + m.pctLaat + '%)</span></td><td style="text-align:right">' + m.aantalNa22 + '</td><td style="text-align:right">' + m.gemMin + ' min</td><td style="text-align:right">' + (m.zonderUitklok ? '<span class="badge bo">' + m.zonderUitklok + '</span>' : '0') + '</td>'
-        + '<td>' + contract + '</td><td>' + tb + '</td><td><div class="vb-knoppen"><button class="btn bd bsm" data-et-dienst="' + id + '">Diensten</button>' + knop + (p.inDienst ? dosBtn(p.naam, p.email) : '') + '</div></td></tr>'
-        + '<tr id="et-d-' + id + '" style="display:none"><td></td><td colspan="8" style="background:#faf8f6;padding:8px 14px"><table style="width:100%"><thead><tr><th>Datum</th><th>Rooster tot</th><th>Uitgeklokt</th><th style="text-align:right">Te laat</th><th>Status</th><th>Goedgekeurd door</th></tr></thead><tbody>'
+        + '<td>' + contract + '</td><td>' + tb + '</td><td>' + wrsKol + '</td><td><div class="vb-knoppen"><button class="btn bd bsm" data-et-dienst="' + id + '">Diensten</button>' + knop + (p.inDienst ? dosBtn(p.naam, p.email) : '') + '</div></td></tr>'
+        + '<tr id="et-d-' + id + '" style="display:none"><td></td><td colspan="9" style="background:#faf8f6;padding:8px 14px"><table style="width:100%"><thead><tr><th>Datum</th><th>Rooster tot</th><th>Uitgeklokt</th><th style="text-align:right">Te laat</th><th>Status</th><th>Goedgekeurd door</th></tr></thead><tbody>'
         + m.diensten.map(function (d) { return '<tr><td>' + esc(etLang(d.datum)) + '</td><td>' + esc(d.roosterEind) + '</td><td>' + esc(d.eind) + (d.zonderUitklok ? ' <span class="badge bo">zonder uitklok</span>' : '') + '</td><td style="text-align:right;' + (d.laat > etData.instellingen.drempel ? 'color:#c0392b;font-weight:700' : '') + '">' + d.laat + ' min</td><td>' + esc(d.status) + '</td><td>' + esc(d.gekeurdDoor || '-') + '</td></tr>'; }).join('')
         + '</tbody></table></td></tr>';
-    }).join('') || '<tr><td colspan="9" class="leeg grijs">Geen sluitdiensten in deze periode</td></tr>';
+    }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen sluitdiensten in deze periode</td></tr>';
   }
   window.etCsv = function () {
     var w = etData && etData.winkels[etWinkel]; if (!w) return;
@@ -4732,7 +4743,8 @@
       b.disabled = false; g('et-slbl').textContent = 'Verstuur waarschuwing + PDF';
       if (!r.success) { toast('Fout: ' + r.bericht, 'err'); return; }
       toast(r.bericht, 'ok'); etSluit();
-      p.eerdereWaarschuwingen = (p.eerdereWaarschuwingen || []).concat([etIso(new Date()).split('-').reverse().join('-')]); etKies(etWinkel);
+      p.eerdereWaarschuwingen = (p.eerdereWaarschuwingen || []).concat([etIso(new Date()).split('-').reverse().join('-')]);
+      p.waarschuwingen = (p.waarschuwingen || []).concat([{ datum: etIso(new Date()).split('-').reverse().join('-'), status: 'wacht', getekend: '', herinneringen: 0 }]); etKies(etWinkel);
       wrData = null; return;
     }
     var lijst = etGekozen(); if (!lijst.length) { toast('Kies minstens één ontvanger', 'err'); return; }

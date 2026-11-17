@@ -234,6 +234,53 @@ async function ontslagHerinneringen(droog) {
   return rap;
 }
 
+// ---- v0.53.2: herinnering om een waarschuwing voor gezien te tekenen ----
+// Open ondertekeningen (soort waarschuwing): eerste herinnering na COOLDOWN_DAGEN, daarna om de COOLDOWN_DAGEN, max. TEKEN_MAX_HERINNERINGEN.
+// Na het maximum (of als de link na 60 dagen verloopt) geen mail meer; de status blijft zichtbaar bij Waarschuwingen en Eindtijd.
+const TEKEN_SOORTEN = ['waarschuwing'], TEKEN_MAX_HERINNERINGEN = 3, TEKEN_GELDIG_DAGEN = 55;
+function tekenHerinnerKandidaten(lijst, her, vandaagIso) {
+  const dagen = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 864e5);
+  return (lijst || []).filter(r => {
+    if (r.status !== 'wacht' || !r.email || r.email.indexOf('@') === -1 || !r.aangemaakt) return false;
+    const oud = dagen(r.aangemaakt, vandaagIso), eerder = (her || {})[r.id] || [];
+    if (oud < C.COOLDOWN_DAGEN || oud > TEKEN_GELDIG_DAGEN) return false;
+    if (eerder.length >= TEKEN_MAX_HERINNERINGEN) return false;
+    const laatste = eerder.slice(-1)[0];
+    return !laatste || dagen(laatste, vandaagIso) >= C.COOLDOWN_DAGEN;
+  });
+}
+function tekenHerinnerMail(r, link) {
+  const en = r.taal === 'EN', voornaam = String(r.naam || '').trim().split(/\s+/)[0] || '';
+  const d = r.aangemaakt.split('-').reverse().join('-');
+  const subject = en ? 'Reminder: please sign your letter as seen' : 'Herinnering: wil je je brief voor gezien tekenen?';
+  const tekst = en
+    ? ['Dear ' + voornaam + ',', 'On ' + d + ' we sent you a written warning. We have not yet received your signature as seen.', 'Signing as seen only confirms that you have received the letter, not that you agree with it. You can also add a response.', 'Sign here: ' + link, 'Questions? Email hr@ilovesla.com.', 'Kind regards,\nSLA HR']
+    : ['Beste ' + voornaam + ',', 'Op ' + d + ' hebben we je een schriftelijke waarschuwing gestuurd. We hebben nog niet gezien dat je die voor gezien hebt getekend.', 'Daarmee bevestig je alleen dat je de brief hebt ontvangen, niet dat je het ermee eens bent. Je kunt er ook een reactie bij geven.', 'Teken hier: ' + link, 'Vragen? Mail naar hr@ilovesla.com.', 'Met vriendelijke groet,\nSLA HR'];
+  const F2 = "font-family:'Helvetica Neue',Arial,sans-serif;font-size:14px;color:#333d3a;line-height:1.7;margin:0 0 14px";
+  const body = tekst.filter(t => !/^(Sign here|Teken hier):/.test(t)).map(t => '<p style="' + F2 + '">' + esc(t).replace(/\n/g, '<br>') + '</p>').join('');
+  const html = T.metGezienKnop(T.slaWrap(T.slaHead('#c0392b', en ? 'SLA HR &middot; Reminder' : 'SLA HR &middot; Herinnering') + '<tr><td style="padding:32px 36px 28px">' + body + '</td></tr>' + T.slaFoot()), link, en);
+  return { subject, text: tekst.join('\n\n'), html };
+}
+async function tekenHerinneringen(droog) {
+  const rap = { naam: 'teken-herinneringen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  const ON = require('./ondertekening'), I = require('./instellingen'), U = require('./uploads');
+  const vandaag = new Date().toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' });
+  for (const soort of TEKEN_SOORTEN) {
+    let lijst = []; try { lijst = await ON.statusVoor(soort); } catch (e) { rap.fouten.push(soort + ': ' + e.message); continue; }
+    const her = await I.lees(ON.HERINNER_SLEUTEL, {}).catch(() => ({})) || {};
+    for (const r of tekenHerinnerKandidaten(lijst, her, vandaag)) {
+      rap.gevonden.push({ naam: r.naam, email: r.email, titel: r.titel, verstuurd: r.aangemaakt, eerder: r.herinneringen });
+      let m; try { m = tekenHerinnerMail(r, U.uploadLink(soort, r.naam)); } catch (e) { rap.fouten.push(r.naam + ': ' + e.message); continue; }
+      await mailOfDroog(rap, { to: r.email, subject: m.subject, text: m.text, html: m.html, kort: { naam: r.naam, email: r.email, taal: r.taal } }, async () => {
+        const nu = await I.lees(ON.HERINNER_SLEUTEL, {}).catch(() => ({})) || {};
+        nu[r.id] = (nu[r.id] || []).concat([vandaag]);
+        await I.schrijf(ON.HERINNER_SLEUTEL, nu, 'signalering');
+      });
+    }
+  }
+  return rap;
+}
+
 // ---- 4. Nieuwe medewerkers zonder loonheffingsuitnodiging (checkNieuweMedewerkers v9.4) ----
 function vindNieuweMedewerkers(med, loonEmails, loonNamen, vandaag) {
   const grens = plusDagen(vandaag, -C.SB_NIEUW_DAGEN);
@@ -1142,7 +1189,7 @@ async function dagoverzichtTest(naar) {
   return { bericht: 'Test-weekoverzicht met ' + items.length + ' onderwerp(en) verstuurd naar ' + naar + '.' };
 }
 
-const CHECKS = { 'dagoverzicht': dagoverzicht, 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto, 'lh-model': lhModel };
+const CHECKS = { 'teken-herinneringen': tekenHerinneringen, 'dagoverzicht': dagoverzicht, 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto, 'lh-model': lhModel };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 // ---- Automatisch naar salaris (maandag + donderdag) ----
@@ -1312,4 +1359,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { ontvangenZonderLoonheffing, INDIENST_HER_SLEUTEL, indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto, lhModel };
+module.exports = { tekenHerinnerKandidaten, tekenHerinnerMail, tekenHerinneringen, ontvangenZonderLoonheffing, INDIENST_HER_SLEUTEL, indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto, lhModel };

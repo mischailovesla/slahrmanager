@@ -202,4 +202,21 @@ async function controleer(hash) {
   const r = (data || [])[0]; if (!r) return { gevonden: false };
   return { gevonden: true, soort: r.getekend_hash === h ? 'ondertekend' : 'origineel', titel: r.titel, naam: r.naam, status: r.status, getekend: r.getekend_op ? stempel(r.getekend_op) : '' };
 }
-module.exports = { maakOndertekend, MODUS, modusVan, KEUZE, aanmaken, openVoor, info, stuurCode, teken, overzicht, controleer, maskeer, sha };
+// v0.53.2: tekenstatus per document voor de tabellen (Waarschuwingen, Eindtijd) + aantal automatische herinneringen
+const HERINNER_SLEUTEL = 'teken_herinneringen';
+const nlDag = x => x ? new Date(x).toLocaleDateString('sv-SE', { timeZone: 'Europe/Amsterdam' }) : '';   // hr_instellingen: { <ondertekening-id>: ['jjjj-mm-dd', …] }
+async function statusVoor(soort) {
+  const [{ data, error }, her] = await Promise.all([
+    admin().from('hr_ondertekening').select('id,soort,titel,naam,email,rij,taal,status,aangemaakt_op,getekend_op').eq('soort', soort).in('status', ['wacht', 'getekend']).order('aangemaakt_op', { ascending: false }).limit(2000),
+    require('./instellingen').lees(HERINNER_SLEUTEL, {}).catch(() => ({}))
+  ]);
+  fout(error, 'Ondertekeningen lezen');
+  return (data || []).map(r => ({ id: r.id, titel: r.titel, naam: r.naam, email: r.email, rij: r.rij, taal: r.taal, status: r.status, aangemaakt: nlDag(r.aangemaakt_op), getekend: nlDag(r.getekend_op), herinneringen: ((her || {})[r.id] || []).length, laatsteHerinnering: ((her || {})[r.id] || []).slice(-1)[0] || '' }));
+}
+// Bij een logregel (naam + verzenddatum dd-mm-jjjj [+ rij]) de bijbehorende ondertekening zoeken
+function koppel(lijst, r) {
+  const nn = normNaam(r.naam), m = String(r.verzenddatum || '').match(/(\d{2})-(\d{2})-(\d{4})/), dag = m ? m[3] + '-' + m[2] + '-' + m[1] : '';
+  const eigen = (lijst || []).filter(x => normNaam(x.naam) === nn);
+  return eigen.find(x => r.rij && x.rij === r.rij && (!dag || x.aangemaakt === dag)) || eigen.find(x => dag && x.aangemaakt === dag) || null;
+}
+module.exports = { HERINNER_SLEUTEL, statusVoor, koppel, maakOndertekend, MODUS, modusVan, KEUZE, aanmaken, openVoor, info, stuurCode, teken, overzicht, controleer, maskeer, sha };
