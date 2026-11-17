@@ -8,13 +8,13 @@
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['sbtemplates', 'Shiftbase-templates'], ['checkin', 'Check-in 30/60'], ['eerstedienst', 'Tijd tot eerste dienst']] },
-    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['fooi', 'Fooiverdeling'], ['declaraties', 'Declaraties'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
+    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['fooi', 'Fooiverdeling'], ['declaraties', 'Declaraties'], ['loonstroken', 'Loonstroken'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['eindtijd', 'Eindtijd & afsluiten'], ['haccp', 'HACCP-naleving'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegang & log (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, eindtijd: 1, haccp: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, declaraties: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, eindtijd: 1, haccp: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, declaraties: 1, loonstroken: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -70,6 +70,7 @@
     if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
     if (tab === 'fooi' && !foData) foLaad(false); // v0.46.0
     if (tab === 'declaraties') dcLaad(); // v0.49.0
+    if (tab === 'loonstroken' && !lsData) lsLaad(); // v0.51.0
     if (tab === 'haccp' && !hcData) hcLaad(false); // v0.50.0
     if (tab === 'eindtijd' && !etCfg) api('/api/eindtijd').then(function (c) { if (c.success) etCfg = c; }); // v0.48.0
     if (tab === 'verloopanalyse' && !vrlData) laadVerloop(12, false);
@@ -137,6 +138,7 @@
     vastloners: ['Vastloners', 'Maandmutaties salaris voor de vaste krachten en store managers.'],
     fooi: ['Fooiverdeling', 'Fooi per maand verdelen: gedeelde BV\'s naar winkel (50% uren / 50% omzet), daarna per medewerker naar gewerkte uren.'],
     haccp: ['HACCP-naleving', 'Verplichte HACCP-lijsten die niet zijn afgerond, naast het rooster: wie stond er in het tijdvak, en waarschuwen waar nodig.'],
+    loonstroken: ['Loonstroken', 'Sleep de PDF uit Exact Online hierheen: het dashboard knipt hem per medewerker, koppelt aan Shiftbase en bewaart elke strook. Opvragen, bundelen en mailen.'],
     declaraties: ['Declaraties', 'Voorgeschoten uitgaven die medewerkers in SLA Academy indienen: bonnetje bekijken, betalen of afwijzen.'],
     training: ['Training & certificaten', 'Voortgang in SLA Academy per winkel en medewerker.'],
     verlenging: ['Contractverlengingen', 'Aflopende tijdelijke contracten: besluit vastleggen, advies van de Store Manager en vervolg.'],
@@ -2566,6 +2568,134 @@
     var a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob(['﻿' + rows.join('\r\n')], { type: 'text/csv;charset=utf-8' }));
     a.download = 'declaraties_' + dcStatus + '_' + dcVandaag() + '.csv'; a.click();
+  };
+  // ---------- Loonstroken uit Exact Online (v0.51.0) ----------
+  var lsData = null, lsPeriode = '', lsZoekT = null;
+  var LS_KOP = { vast: ['bg', '✓ vast'], zeker: ['bg', '✓ automatisch'], handmatig: ['bg', '✓ handmatig'], voorstel: ['bo', 'voorstel'], '': ['br', 'niet gekoppeld'] };
+  var lsPer = function (p) { var mn = ['jan', 'feb', 'mrt', 'apr', 'mei', 'jun', 'jul', 'aug', 'sep', 'okt', 'nov', 'dec'], m = String(p || '').match(/^(\d{4})-(\d{2})$/); return m ? mn[+m[2] - 1] + ' ' + m[1] : (p || ''); };
+  window.lsLaad = async function (periode) {
+    if (periode !== undefined) lsPeriode = periode;
+    var zoek = (g('ls-zoek').value || '').trim();
+    g('ls-body').innerHTML = '<tr><td colspan="7" class="leeg grijs">Laden…</td></tr>';
+    var r = await api('/api/loonstroken?periode=' + encodeURIComponent(lsPeriode) + (zoek.length > 1 ? '&zoek=' + encodeURIComponent(zoek) : ''));
+    if (!r.success) { lsData = null; g('ls-body').innerHTML = '<tr><td colspan="7" class="leeg grijs">🔒 ' + esc(r.bericht) + '</td></tr>'; g('ls-drop').style.display = /salarisinzage/.test(r.bericht || '') ? 'none' : ''; return; }
+    lsData = r; if (!lsPeriode) lsPeriode = r.periode || '';
+    if (r.ontbreekt) { g('ls-body').innerHTML = '<tr><td colspan="7"><div class="alert">' + esc(r.melding) + '</div></td></tr>'; return; }
+    g('ls-periode').innerHTML = (r.periodes || []).map(function (p) { return '<option value="' + esc(p) + '"' + (p === r.periode ? ' selected' : '') + '>' + esc(lsPer(p)) + '</option>'; }).join('') + '<option value="alle"' + (r.periode === 'alle' ? ' selected' : '') + '>Alle periodes</option>';
+    g('ls-periode').disabled = zoek.length > 1;
+    var nb = document.querySelector('.nav button[data-tab="loonstroken"]'); if (nb) nb.textContent = 'Loonstroken' + (r.open ? ' (' + r.open + ')' : '');
+    lsRender();
+  };
+  window.lsZoek = function () { clearTimeout(lsZoekT); lsZoekT = setTimeout(function () { lsLaad(); }, 350); };
+  function lsRender() {
+    var rijen = (lsData && lsData.rijen) || [], zoek = (g('ls-zoek').value || '').trim().length > 1;
+    g('ls-pill').textContent = rijen.length;
+    var open = rijen.filter(function (x) { return !x.koppeling || x.koppeling === 'voorstel'; }).length;
+    g('ls-open').innerHTML = open ? '<div class="alert" style="margin:12px 24px 0">' + open + ' loonstro' + (open === 1 ? 'ok is' : 'ken zijn') + ' nog niet (zeker) gekoppeld. Bevestig het voorstel of kies de juiste medewerker. Daarna onthoudt het dashboard het Exact-nummer, dus volgende maand gaat het vanzelf.</div>' : '';
+    g('ls-body').innerHTML = rijen.length ? rijen.map(function (x) {
+      var k = LS_KOP[x.koppeling || ''] || LS_KOP[''];
+      var kop = '<span class="badge ' + k[0] + '" title="' + esc(x.koppeling_reden || '') + '">' + k[1] + '</span>';
+      if (x.koppeling === 'voorstel') kop += ' <button class="btn bd bsm" onclick="lsBevestig(\'' + x.id + '\')" title="' + esc(x.koppeling_reden || '') + '">✓ klopt</button>';
+      var wie = x.naam ? '<strong>' + esc(x.naam) + '</strong>' + (x.email ? '<br><small>' + esc(x.email) + '</small>' : '') : '<span class="lay-sub">—</span>';
+      var docs = (x.documenten || []).filter(function (d) { return d !== 'Salarisspecificatie'; });
+      return '<tr data-id="' + x.id + '"><td><input type="checkbox" class="ls-kies" value="' + x.id + '" onchange="lsSel()"></td>'
+        + '<td>' + esc(lsPer(x.periode)) + '<br><small class="lay-sub">' + esc(x.run || '') + '</small></td>'
+        + '<td>' + esc(x.naam_strook) + '<br><small class="lay-sub">Exact ' + esc(x.exact_nr) + (x.paginas > 1 ? ' · ' + x.paginas + ' pag.' : '') + '</small>' + (docs.length ? '<br><small>' + docs.map(function (d) { return '<span class="badge boat">' + esc(d) + '</span>'; }).join(' ') + '</small>' : '') + '</td>'
+        + '<td>' + esc(x.bv) + '<br><small class="lay-sub">' + esc(String(x.afdeling || '').replace(/^SLA\s*/, '')) + '</small></td>'
+        + '<td>' + wie + '</td><td>' + kop + '</td>'
+        + '<td style="white-space:nowrap"><button class="btn bd bsm" onclick="lsOpen(\'' + x.id + '\')" title="PDF openen/downloaden">📄</button> <button class="btn bd bsm" onclick="lsKoppelKies(\'' + x.id + '\')" title="Andere medewerker kiezen">🔗</button> <button class="btn bd bsm" onclick="lsVerwijder(\'' + x.id + '\')" title="Verwijderen (verkeerde upload)">🗑</button></td></tr>';
+    }).join('') : '<tr><td colspan="7" class="leeg grijs">' + (zoek ? 'Niets gevonden.' : 'Nog geen loonstroken. Sleep hierboven de PDF uit Exact Online erin.') + '</td></tr>';
+    g('ls-alles').checked = false; lsSel();
+  }
+  var lsGekozen = function () { return Array.prototype.map.call(document.querySelectorAll('.ls-kies:checked'), function (c) { return c.value; }); };
+  window.lsSel = function () { var n = lsGekozen().length; g('ls-bundel').disabled = !n; g('ls-mail').disabled = !n; g('ls-sel').textContent = n ? n + ' gekozen' : ''; };
+  window.lsAllesKiezen = function (aan) { document.querySelectorAll('#ls-body tr:not([style*="none"]) .ls-kies').forEach(function (c) { c.checked = aan; }); lsSel(); };
+  // --- uploaden (slepen of kiezen), één bestand tegelijk
+  window.lsBestanden = async function (files) {
+    var lijst = Array.prototype.filter.call(files || [], function (f) { return /\.pdf$/i.test(f.name); });
+    if (!lijst.length) { toast('Sleep PDF-bestanden uit Exact Online', 'err'); return; }
+    var log = g('ls-resultaat'); log.innerHTML = '';
+    for (var i = 0; i < lijst.length; i++) {
+      var f = lijst[i], regel = document.createElement('div'); regel.className = 'alert grijs'; regel.style.marginTop = '8px';
+      regel.innerHTML = '⏳ <b>' + esc(f.name) + '</b>: uploaden…'; log.appendChild(regel);
+      try {
+        var st = await api('/api/loonstroken', { actie: 'start', naam: f.name, bytes: f.size });
+        if (!st.success) throw new Error(st.bericht);
+        var up = await sb.storage.from(st.bucket).uploadToSignedUrl(st.pad, st.token, f, { contentType: 'application/pdf', upsert: false });
+        if (up.error) throw new Error(up.error.message);
+        regel.innerHTML = '⏳ <b>' + esc(f.name) + '</b>: knippen en koppelen…';
+        var r = await api('/api/loonstroken', { actie: 'verwerk', pad: st.pad, naam: f.name });
+        if (!r.success) throw new Error(r.bericht);
+        var t = r.tellingen || {}, gek = (t.vast || 0) + (t.zeker || 0) + (t.handmatig || 0);
+        regel.className = 'alert ' + (r.nietGekoppeld.length || r.waarschuwingen.length ? '' : 'groen');
+        regel.innerHTML = '✓ <b>' + esc(f.name) + '</b> (' + esc(r.bvs.join(', ')) + ', ' + esc(r.periodes.map(lsPer).join(', ')) + '): ' + r.paginas + ' pagina\'s → <b>' + r.aantal + ' loonstroken</b>'
+          + (r.vervangen ? ' (' + r.vervangen + ' bestonden al en zijn vervangen)' : '') + '. Gekoppeld: <b>' + gek + '</b>' + (t.voorstel ? ', voorstel: <b>' + t.voorstel + '</b>' : '') + (t[''] ? ', niet gekoppeld: <b>' + t[''] + '</b>' : '') + '.'
+          + (r.nietGekoppeld.length ? '<ul style="margin:6px 0 0 18px">' + r.nietGekoppeld.map(function (x) { return '<li>' + esc(x.naam_strook) + ' (Exact ' + esc(x.exact_nr) + '): ' + (x.voorstel ? 'voorstel <b>' + esc(x.voorstel) + '</b> — ' : '') + esc(x.reden || '') + '</li>'; }).join('') + '</ul>' : '')
+          + (r.waarschuwingen.length ? '<ul style="margin:6px 0 0 18px">' + r.waarschuwingen.map(function (w) { return '<li>⚠ ' + esc(w) + '</li>'; }).join('') + '</ul>' : '');
+        lsPeriode = r.periodes[0] || lsPeriode;
+      } catch (e) { regel.className = 'alert'; regel.innerHTML = '✗ <b>' + esc(f.name) + '</b>: ' + esc(e.message); }
+    }
+    g('ls-input').value = ''; g('ls-zoek').value = ''; lsLaad();
+  };
+  (function () {
+    var z = document.getElementById('ls-drop'); if (!z) return;
+    ['dragenter', 'dragover'].forEach(function (ev) { z.addEventListener(ev, function (e) { e.preventDefault(); z.classList.add('ls-over'); }); });
+    ['dragleave', 'drop'].forEach(function (ev) { z.addEventListener(ev, function (e) { e.preventDefault(); z.classList.remove('ls-over'); }); });
+    z.addEventListener('drop', function (e) { lsBestanden(e.dataTransfer.files); });
+  })();
+  // --- acties
+  window.lsOpen = async function (id) {
+    var w = window.open('', '_blank');
+    var r = await api('/api/loonstroken', { actie: 'open', id: id });
+    if (!r.success) { if (w) w.close(); alert(r.bericht); return; }
+    if (w) w.location = r.url; else location.href = r.url;
+  };
+  window.lsBevestig = async function (id) {
+    var r = await api('/api/loonstroken', { actie: 'bevestig', ids: [id] });
+    if (r.success) { toast('Koppeling bevestigd en onthouden', 'ok'); lsLaad(); } else toast('Fout: ' + r.bericht, 'err');
+  };
+  window.lsKoppelKies = async function (id) {
+    var x = (lsData.rijen || []).find(function (r) { return r.id === id; }); if (!x) return;
+    if (!medewerkers.length) await laadMedewerkers(false);
+    var m = g('ls-koppel-modal');
+    g('ls-k-titel').textContent = x.naam_strook + ' · Exact ' + x.exact_nr + ' · ' + x.bv;
+    g('ls-k-id').value = id; g('ls-k-zoek').value = ''; lsKoppelFilter('');
+    m.classList.add('open'); setTimeout(function () { g('ls-k-zoek').focus(); }, 50);
+  };
+  window.lsKoppelFilter = function (q) {
+    var n = String(q || '').toLowerCase(), lijst = medewerkers.filter(function (m) { return !n || m.naam.toLowerCase().indexOf(n) > -1 || String(m.winkelNaam || '').toLowerCase().indexOf(n) > -1; }).slice(0, 40);
+    g('ls-k-lijst').innerHTML = lijst.map(function (m) { return '<button type="button" class="btn bd bsm" style="display:block;width:100%;text-align:left;margin-bottom:4px" onclick="lsKoppel(\'' + esc(m.id) + '\')"><strong>' + esc(m.naam) + '</strong> <small class="lay-sub">' + esc(m.winkelNaam || '') + (m.functie ? ' · ' + esc(m.functie) : '') + '</small></button>'; }).join('') || '<div class="lay-sub">Geen medewerkers gevonden.</div>';
+  };
+  window.lsKoppel = async function (sid) {
+    var id = g('ls-k-id').value;
+    if (sid === '' && !confirm('Koppeling verwijderen? Ook het onthouden Exact-nummer wordt vergeten.')) return;
+    var r = await api('/api/loonstroken', { actie: 'koppel', id: id, shiftbaseId: sid });
+    if (r.success) { g('ls-koppel-modal').classList.remove('open'); toast(sid ? 'Gekoppeld aan ' + r.naam + (r.aantal > 1 ? ' (' + r.aantal + ' stroken)' : '') : 'Ontkoppeld', 'ok'); lsLaad(); }
+    else toast('Fout: ' + r.bericht, 'err');
+  };
+  window.lsBundel = async function () {
+    var ids = lsGekozen(); if (!ids.length) return;
+    var b = g('ls-bundel'); b.disabled = true;
+    var r = await api('/api/loonstroken', { actie: 'bundel', ids: ids });
+    b.disabled = false;
+    if (r.success) downloadB64(r.bestand.content, r.bestand.filename); else toast('Fout: ' + r.bericht, 'err');
+  };
+  window.lsMail = async function () {
+    var ids = lsGekozen(); if (!ids.length) return;
+    var taal = confirm('Mail in het Engels?\n\nOK = Engels · Annuleren = Nederlands') ? 'en' : 'nl';
+    var pv = await api('/api/loonstroken', { actie: 'mail', ids: ids, taal: taal, preview: true });
+    if (!pv.success) { alert(pv.bericht); return; }
+    if (!confirm(pv.aantal + ' loonstro' + (pv.aantal === 1 ? 'ok' : 'ken') + ' als één PDF mailen naar ' + pv.naam + '\n' + pv.to + ' (e-mailadres uit Shiftbase)\n\nOnderwerp: ' + pv.subject + '\n\nVersturen?')) return;
+    var b = g('ls-mail'); b.disabled = true;
+    var r = await api('/api/loonstroken', { actie: 'mail', ids: ids, taal: taal });
+    b.disabled = false;
+    if (r.success) toast('Verstuurd naar ' + r.to, 'ok'); else toast('Fout: ' + r.bericht, 'err');
+  };
+  window.lsVerwijder = async function (id) {
+    var x = (lsData.rijen || []).find(function (r) { return r.id === id; }); if (!x) return;
+    if (!confirm('Loonstrook van ' + (x.naam || x.naam_strook) + ' (' + lsPer(x.periode) + ', ' + x.bv + ') verwijderen?\nAlleen bedoeld voor een verkeerde upload; het origineel blijft in Exact.')) return;
+    var r = await api('/api/loonstroken', { actie: 'verwijder', id: id });
+    if (r.success) { toast('Verwijderd', 'ok'); lsLaad(); } else toast('Fout: ' + r.bericht, 'err');
   };
   // ---------- Fooiverdeling (v0.46.0) ----------
   var foData = null;

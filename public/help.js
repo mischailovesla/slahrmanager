@@ -94,6 +94,12 @@ window.HR_HELP = {
       + '<li>Betaal via de bank (handig: <b>📥 CSV</b> met naam, IBAN en bedrag). Vink daarna de betaalde declaraties aan en klik <b>✓ Geselecteerde betaald</b>, of <b>✓ Betaald</b> op één regel.</li>'
       + '<li>Klopt er iets niet? Klik <b>✕</b> en geef een reden. De medewerker krijgt die per mail en kan een verbeterde declaratie indienen.</li></ol>'
       + '<p><b>Mogelijk dubbel</b> betekent: zelfde medewerker, zelfde aankoopdatum en zelfde bedrag. Kijk dan even naar beide bonnetjes.</p>' },
+    { id: 'loonstroken', titel: 'Loonstroken (Exact Online)', html:
+      '<ol><li>Download in <b>Exact Online</b> de loonstroken van de maand als PDF: één bestand per BV met alle medewerkers.</li>'
+      + '<li>Open <b>In dienst → Loonstroken</b> en sleep de PDF\'s in het vak (of klik erop om ze te kiezen). Het dashboard knipt elke PDF per medewerker en laat zien hoeveel stroken het vond.</li>'
+      + '<li>Kijk naar de kolom <b>Koppeling</b>. <b>✓</b> is goed. Bij <b>voorstel</b> controleer je de naam en klik je <b>✓ klopt</b>. Bij <b>niet gekoppeld</b> kies je via <b>⋯ → 🔗</b> de juiste medewerker (staat iemand niet in de lijst, dan is hij uit dienst; de strook blijft gewoon te downloaden).</li>'
+      + '<li><b>Iemand vraagt om loonstroken</b> (bijv. voor DUO): typ de naam in het zoekveld (zoekt in alle maanden), vink de maanden aan en kies <b>📄 Download als één PDF</b> of <b>✉ Mail naar medewerker</b>.</li></ol>'
+      + '<p>Mailen gaat <b>alleen naar het e-mailadres uit Shiftbase</b>. Vraagt iemand om de stroken naar een ander adres te sturen, controleer dan eerst bij de store manager of het echt de medewerker is, en laat het adres eventueel in Shiftbase aanpassen. Alleen personen met salarisinzage zien deze pagina.</p>' },
     { id: 'fooi', titel: 'Fooiverdeling', html:
       '<ol><li>Open <b>In dienst → Fooiverdeling</b>. De maand staat standaard op vorige maand.</li>'
       + '<li>Plak de tabel uit de mail van Jop in het vak links en klik <b>Invullen</b>. Franchise en Haarlem worden overgeslagen.</li>'

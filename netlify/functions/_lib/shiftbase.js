@@ -107,11 +107,14 @@ function verwerk(usersLijst, contractsLijst, typeNamen) {
       leeftijd = jr - +gb[1] - ((nu.getMonth() + 1 < +gb[2] || (nu.getMonth() + 1 === +gb[2] && nu.getDate() < +gb[3])) ? 1 : 0);
       verjaardag = vj.toLocaleDateString('sv-SE');
     }
-    out.push({ leeftijd, verjaardag,
+    const mw = { leeftijd, verjaardag,
       id: String(u.id || ''), naam, voornaam: String(u.first_name || '').trim(), email: String(u.email || '').trim(), adres,
       indienst: ddmm(ci.vroegste || u.startdate || ''), contractEinde: ddmm(ci.einde || ''), contractType: ci.contractType || '',
       functie: ci.functie || '', contractUren: ci.uren == null || isNaN(ci.uren) ? null : ci.uren, winkelCode: code, winkelNaam, winkelBv: code ? WINKEL_BV_MAP[code].bv : ''
-    });
+    };
+    // v0.51.0: geboortedatum alleen server-side (loonstroken koppelen); niet-enumerable, dus gaat niet mee in JSON naar de browser
+    Object.defineProperty(mw, 'gebDatum', { value: gb && gb[1] !== '0000' ? gb[1] + '-' + gb[2] + '-' + gb[3] : '', enumerable: false });
+    out.push(mw);
   }
   out.sort((a, b) => a.naam.localeCompare(b.naam, 'nl'));
   return out;

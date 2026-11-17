@@ -3,7 +3,7 @@
 Herbouw van het SLA HR Dashboard (Google Apps Script) als Netlify-app.
 Wordt **naast** het bestaande Apps Script-dashboard gebouwd; dat blijft leidend tot een module volledig is overgezet.
 
-## Status: cutover gedaan (19-10-2026) — stap 6 (v0.12.0) Sheets → Supabase; fase 1 (v0.13.0) takenlijst/checklists; fase 2 (v0.14.3) contractketen, verzuim, jeugd, oproepaanbod, uitstroomreden, exit-survey; fase 3a (v0.15.0) check-in 30/60 dagen; fase 3c (v0.16.0) scorekaart per winkel; fase 3b (v0.17.0) gesprekken; fase 4a (v0.18.0) training & certificaten (Academy); fase 4b (v0.19.0) HR-maandrapport; fase 4c (v0.20.0) contractverlenging; AVG-pakket (v0.27.0) bewaartermijnen, verlopende uploadlinks, geen medische info
+## Status: cutover gedaan (19-10-2026) — stap 6 (v0.12.0) Sheets → Supabase; fase 1 (v0.13.0) takenlijst/checklists; fase 2 (v0.14.3) contractketen, verzuim, jeugd, oproepaanbod, uitstroomreden, exit-survey; fase 3a (v0.15.0) check-in 30/60 dagen; fase 3c (v0.16.0) scorekaart per winkel; fase 3b (v0.17.0) gesprekken; fase 4a (v0.18.0) training & certificaten (Academy); fase 4b (v0.19.0) HR-maandrapport; fase 4c (v0.20.0) contractverlenging; AVG-pakket (v0.27.0) bewaartermijnen, verlopende uploadlinks, geen medische info; loonstroken (v0.51.0) Exact-PDF splitsen per medewerker, koppelen aan Shiftbase, bundelen/mailen — migratie 0026
 
 | Werkt | Nog in Apps Script |
 |---|---|

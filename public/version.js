@@ -2,6 +2,13 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.51.0', datum: '17-11-2026', titel: 'Nieuw: Loonstroken uit Exact Online', punten: [
+    'Nieuwe pagina <b>In dienst → Loonstroken</b>. Sleep de PDF uit Exact Online erin (één bestand per BV, meerdere tegelijk mag). Het dashboard knipt hem per medewerker en bewaart elke strook als eigen PDF.',
+    'Koppelen aan Shiftbase gaat vanzelf op <b>geboortedatum + achternaam</b>. Twijfel (bijv. andere achternaam na trouwen) wordt een <b>voorstel</b> dat je met <b>✓ klopt</b> bevestigt; niet gevonden kies je zelf via <b>⋯ → 🔗</b>. Het Exact-nummer wordt onthouden, dus volgende maand gaat het vanzelf.',
+    'Nabetalingen en correcties van eerdere maanden horen bij de strook van de maand waarin ze zijn uitbetaald. Dezelfde PDF nog een keer slepen vervangt de stroken, er komen geen dubbele.',
+    '<b>Opvragen</b> (bijv. voor DUO): zoek op naam, vink de maanden aan en kies <b>Download als één PDF</b> of <b>Mail naar medewerker</b>. Mailen gaat alleen naar het e-mailadres uit Shiftbase.',
+    'Alleen personen met salarisinzage zien deze pagina. Bedragen worden niet uitgelezen of opgeslagen, alleen naam, Exact-nummer, BV en periode. Elke inzage, download en mail staat in het toegangslog.'
+  ] },
   { nummer: '0.50.1', datum: '16-11-2026', titel: 'Loonheffing afkeuren', punten: [
     'Bij <b>Klaar voor salaris</b> staat onder <b>⋯</b> nu <b>🗑 Loonheffing afkeuren</b>. Gebruik dit als de loonheffingsverklaring leeg, onleesbaar of het verkeerde formulier is, ook als het dashboard het bestand zelf niet als leeg herkent.',
     'Je geeft een reden op. Het document gaat uit het dossier (niet echt gewist; wie, wanneer en waarom blijft zichtbaar) en het dossier gaat terug naar <b>Wacht op formulier</b>. Met <b>Herinner</b> stuur je daarna een nieuwe uploadlink.'

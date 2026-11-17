@@ -395,3 +395,7 @@ td .lay-sub.cel-kort{max-width:200px}
 /* v0.44.1: advies store manager in de takenlijst */
 .tk-advies{margin-top:4px;font-size:.78rem;line-height:1.45;white-space:normal}
 .tk-advies-opm{color:var(--donker);font-style:italic}
+
+/* v0.51.0 Loonstroken: sleepvak */
+.ls-drop{display:block;margin:16px 24px 0;padding:22px;border:2px dashed var(--lijn2,#d9d2cc);border-radius:12px;text-align:center;cursor:pointer;background:#fbf8f6;transition:background .15s,border-color .15s}
+.ls-drop:hover,.ls-drop.ls-over{border-color:var(--groen,#009f4b);background:#eef8f2}
