@@ -12,6 +12,11 @@ const L = require('../netlify/functions/_lib/loonstroken');
   assert.deepStrictEqual([it[0].x, it[0].y, it[2].x, it[2].y], [10, 20, 50, 60]);
 }
 
+// --- runcode uit bestandsnaam/onderwerp (v0.52.3)
+assert.strictEqual(L.runUitNaam('Loonstroken_Maandelijks_2026_9_1.pdf'), 'M2026.9.1');
+assert.strictEqual(L.runUitNaam('SLA Midden B.V., Periodeverslagen Maandelijks 2026-10/3'), 'M2026.10.3');
+assert.strictEqual(L.runUitNaam('iets.pdf'), '');
+
 // --- naam op de strook ontleden
 assert.deepStrictEqual(L.ontleedNaam('Mevrouw J. Loewy'), { initialen: 'J', achternaam: 'loewy' });
 assert.deepStrictEqual(L.ontleedNaam('M.C.C. Coulouvrat-Cren'), { initialen: 'MCC', achternaam: 'coulouvrat cren' });
@@ -53,7 +58,7 @@ async function nepPdf() {
       t('Medewerkergegevens', 17, 602.33); t('Medewerker', 17, 590.99); t(nr, 173.53, 590.99); t('Geboortedatum', 17, 579.65); t(geb, 159.31, 579.65);
       t('Afdeling', 205, 579.65); t("SLA Middenweg A'dam", 300, 579.65);
     } else t('Vervolg van de specificatie', 17, 700);
-    t('Exact Online', 14.17, 3.11); t('M2026.10.3', 549.15, 3.11); t(pag, 279.82, 3.11);
+    t('Exact Online', 14.17, 3.11); t(nr === '105229' || (!titel) ? 'M2026.9.1' : 'M2026.10.3', 549.15, 3.11); t(pag, 279.82, 3.11);
   };
   pagina('Salarisspecificatie', '105181', '2026-10', 'Mevrouw J. Loewy', '11-02-2000', 'Pagina 1 van 1');
   pagina('Nabetalingsspecificatie', '105214', '2026-10', 'Mevrouw M.K. Busse', '25-04-2004', 'Pagina 1 van 1');

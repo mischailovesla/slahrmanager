@@ -125,7 +125,8 @@ function waarde(items, label, opts) {
 const pp = s => { const m = String(s || '').match(/^(\d{4})-(\d{1,2})$/); return m ? m[1] + '-' + m[2].padStart(2, '0') : ''; };
 function paginaInfo(items) {
   const pag = items.map(i => i.t.match(/^Pagina (\d+) van (\d+)$/)).find(Boolean);
-  const run = (items.find(i => /^[A-Z]\d{4}\.\d{2}\.\d+$/.test(i.t)) || {}).t || '';
+  // runcode in de voettekst: M2026.10.3, maar bij maand 1-9 zonder voorloopnul: M2026.9.1 (v0.52.3)
+  const run = (items.find(i => /^[A-Z]\d{4}\.\d{1,2}\.\d+$/.test(i.t)) || {}).t || '';
   const titel = items.filter(i => i.y > 805).sort((a, b) => b.y - a.y)[0];
   const info = {
     soort: titel ? titel.t : '',
@@ -136,8 +137,8 @@ function paginaInfo(items) {
     pagina: pag ? +pag[1] : 1, paginas: pag ? +pag[2] : 1, run, bv: '', naamStrook: ''
   };
   // verwerkingsperiode: uit de runcode (M2026.10.3 = periode 2026-10, run 3); anders de periode op de strook
-  const rm = run.match(/^[A-Z](\d{4})\.(\d{2})\./);
-  info.periode = rm ? rm[1] + '-' + rm[2] : info.periodeStrook;
+  const rm = run.match(/^[A-Z](\d{4})\.(\d{1,2})\./);
+  info.periode = rm ? rm[1] + '-' + rm[2].padStart(2, '0') : info.periodeStrook;
   // Adresblok: tussen de kop en "Medewerkergegevens". Bovenste regel links = BV, rechts = medewerker.
   const kopY = Math.min.apply(null, items.filter(i => i.x >= 400 && i.y > 740 && i.y < 805).map(i => i.y).concat([760]));
   const mg = items.find(i => i.t === 'Medewerkergegevens');
@@ -152,7 +153,9 @@ function paginaInfo(items) {
 // ---------- 3. Hele PDF: pagina's → loonstroken ----------
 // Eén loonstrook = alle documenten van één medewerker in deze run (salarisspecificatie, nabetaling, correcties van eerdere
 // periodes), in de volgorde van het origineel. Een vervolgpagina ("Pagina 2 van 2") zonder kop hoort bij de vorige pagina.
-async function lees(pdfBytes) {
+// bronNaam (bestandsnaam of mailonderwerp) is een reserve voor de runcode: 'Loonstroken_Maandelijks_2026_9_1' / '… Maandelijks 2026-9/1'
+function runUitNaam(s) { const m = String(s || '').match(/(\d{4})[-_](\d{1,2})[\/_](\d{1,2})(?!\d)/); return m ? 'M' + m[1] + '.' + (+m[2]) + '.' + (+m[3]) : ''; }
+async function lees(pdfBytes, bronNaam) {
   const doc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true, updateMetadata: false });
   const perNr = new Map(), waarschuwingen = [];
   let vorige = null;
@@ -175,7 +178,13 @@ async function lees(pdfBytes) {
     vorige = s;
   });
   const stroken = Array.from(perNr.values());
-  for (const s of stroken) { delete s.periodeStrook; delete s.soort; if (!s.periode) waarschuwingen.push(s.naamStrook + ' (' + s.exactNr + '): geen periode gevonden.'); }
+  const reserveRun = runUitNaam(bronNaam);
+  for (const s of stroken) {
+    delete s.periodeStrook; delete s.soort;
+    if (!s.periode) waarschuwingen.push(s.naamStrook + ' (' + s.exactNr + '): geen periode gevonden.');
+    // nooit een lege runcode: anders overschrijven maanden elkaar (uniek op bv + exact_nr + run)
+    if (!s.run) { s.run = reserveRun || ('P' + (s.periode || 'onbekend')); waarschuwingen.push(s.naamStrook + ' (' + s.exactNr + '): geen runcode op de strook, gebruikt ' + s.run + '.'); }
+  }
   let maker = ''; try { maker = doc.getCreator() || ''; } catch (e) { /* */ }
   return { doc, stroken, paginas: doc.getPageCount(), waarschuwingen, maker };
 }
@@ -242,4 +251,4 @@ const veiligPad = s => String(s || '').replace(/[^\w.\-]+/g, '_').replace(/_+/g,
 function opslagPad(s) { return 'stroken/' + s.periode + '/' + veiligPad(s.bv) + '/' + veiligPad(s.run || 'run') + '_' + s.exactNr + '_' + slug(s.naamStrook) + '.pdf'; }
 function bestandsnaam(naam, periode) { return 'Salarisspecificatie_' + String(naam || 'medewerker').trim().replace(/[^\wÀ-ÿ\-]+/g, '_') + '_' + periode + '.pdf'; }
 
-module.exports = { BUCKET, MAX_BYTES, tokens, tekstItems, paginaInfo, lees, knip, bundel, ontleedNaam, achternaamPast, koppel, ddmmjjjjNaarIso, opslagPad, bestandsnaam };
+module.exports = { runUitNaam, BUCKET, MAX_BYTES, tokens, tekstItems, paginaInfo, lees, knip, bundel, ontleedNaam, achternaamPast, koppel, ddmmjjjjNaarIso, opslagPad, bestandsnaam };

@@ -2,6 +2,10 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.52.3', datum: '17-11-2026', titel: 'Loonstroken: maanden januari t/m september', punten: [
+    'Bij loonstroken van januari t/m september las het dashboard de runcode (bijv. <i>M2026.9.1</i>) niet goed. Daardoor overschreven die maanden elkaar en bleef er per medewerker maar één over. Opgelost: elke maand en elke run wordt nu apart bewaard.',
+    'De oude import moet één keer opnieuw: zie de stappen van Mischa (label weghalen en <i>importeerAlles()</i> opnieuw draaien).'
+  ] },
   { nummer: '0.52.2', datum: '17-11-2026', titel: 'Loonstroken: filter op te koppelen', punten: [
     'Op <b>In dienst → Loonstroken</b> staat bovenin de knop <b>Alleen te koppelen</b>: je ziet dan alleen de stroken die nog niet (zeker) gekoppeld zijn, uit alle maanden en BV\'s. Nog een keer klikken zet het filter uit.',
     'De melding boven de tabel heeft een link <b>Toon alleen deze →</b> die hetzelfde doet. Na het koppelen verdwijnt de strook uit de gefilterde lijst.'

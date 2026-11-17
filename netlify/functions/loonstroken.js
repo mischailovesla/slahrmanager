@@ -73,7 +73,7 @@ async function verwerkBron(db, pad, bronNaam, door) {
   const p = { naam: bronNaam }, g = { email: door };
   const bron = await downloadBytes(db, pad);
   let res;
-  try { res = await L.lees(bron); } catch (e) { throw new Error('Kon de PDF niet lezen: ' + e.message); }
+  try { res = await L.lees(bron, bronNaam); } catch (e) { throw new Error('Kon de PDF niet lezen: ' + e.message); }
   if (!res.stroken.length) throw new Error('Geen loonstroken gevonden in dit bestand. Is het de PDF met salarisspecificaties uit Exact Online?');
   const waarschuwingen = res.waarschuwingen.slice();
   if (!/exact/i.test(res.maker)) waarschuwingen.push('Dit bestand lijkt niet uit Exact Online te komen (maker: ' + (res.maker || 'onbekend') + '). Controleer de stroken.');

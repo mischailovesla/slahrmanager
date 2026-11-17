@@ -105,6 +105,19 @@ function poging_(id) {
 }
 function label_(naam) { return GmailApp.getUserLabelByName(naam) || GmailApp.createLabel(naam); }
 
+// Eenmalig opnieuw importeren (v0.52.3): haalt de labels "in HR" en "mislukt" weg, zodat importeerAlles() alles opnieuw stuurt.
+// Veilig: het dashboard vervangt bestaande stroken (geen dubbele) en onthoudt de koppelingen.
+function opnieuwImporteren() {
+  [CONFIG.LABEL_OK, CONFIG.LABEL_FOUT].forEach(function (naam) {
+    var l = GmailApp.getUserLabelByName(naam); if (!l) return;
+    var n = 0, threads;
+    do { threads = l.getThreads(0, 100); if (threads.length) l.removeFromThreads(threads); n += threads.length; } while (threads.length === 100);
+    Logger.log('Label "' + naam + '" weggehaald bij ' + n + ' mail(s).');
+  });
+  var p = PropertiesService.getScriptProperties(); Object.keys(p.getProperties()).forEach(function (k) { if (k.indexOf('poging_') === 0) p.deleteProperty(k); });
+  Logger.log('Klaar. Draai nu importeerAlles() een paar keer tot er 0 mails worden gevonden.');
+}
+
 function installeerTrigger() {
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'importeer') ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger('importeer').timeBased().everyHours(1).create();
