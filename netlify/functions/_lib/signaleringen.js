@@ -494,12 +494,16 @@ function weekendHtml(lijst, weken) {
 async function weekendBeschikbaarheid(droog) {
   const rap = { naam: 'weekend-beschikbaarheid', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
   const vandaag = vandaag0(), weken = C.WEEKEND_SIGNAAL_WEKEN;
-  const [med, ros, abs] = await Promise.all([
+  const [med, ros, abs, besch] = await Promise.all([
     SB.getMedewerkers(true),
     SB.sbGet('rosters?min_date=' + isoDag(plusDagen(vandaag, -(weken * 7 + 56))) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || []),
-    SB.sbGet('absentees?min_date=' + isoDag(plusDagen(vandaag, -(weken * 7 + 7))) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || [])
+    SB.sbGet('absentees?min_date=' + isoDag(plusDagen(vandaag, -(weken * 7 + 7))) + '&max_date=' + isoDag(vandaag)).then(r => (r && r.data) || r || []),
+    W.leesBeschikbaarheid(plusDagen(vandaag, -(weken * 7 + 7)), vandaag)   // v0.53.4: opgegeven beschikbaarheid
   ]);
-  const lijst = await zonderVertrekkers(W.bepaalWeekendOntwijkers(med, ros, abs, vandaag, weken, C.WEEKEND_UITGESLOTEN_WINKELS), rap);
+  // Controle-info zonder persoonsgegevens: hoeveel regels, welke velden, welke soorten (om de koppeling met Shiftbase te kunnen nakijken)
+  if (besch === null) rap.fouten.push('beschikbaarheid uit Shiftbase kon niet worden gelezen; taken tonen geen beschikbaarheid');
+  else { const eerste = besch.length ? W.beschObj(besch[0]) : {}; rap.beschikbaarheidInfo = { regels: besch.length, velden: Object.keys(eerste), soorten: Array.from(new Set(besch.slice(0, 500).map(x => { const a = W.beschObj(x); return String(a.available_type || a.availability_type || a.type || a.availability || a.status || a.available || ''); }))).slice(0, 10), herkend: besch.filter(x => W.beschSoort(W.beschObj(x))).length }; }
+  const lijst = await zonderVertrekkers(W.bepaalWeekendOntwijkers(med, ros, abs, vandaag, weken, C.WEEKEND_UITGESLOTEN_WINKELS, besch && besch.length ? besch : null), rap);
   rap.gevonden = lijst;
   if (!lijst.length) return rap;
   // v0.32.2: geen mail meer aan HR (ook niet in het dagoverzicht); de bevindingen staan als taak in het dashboard.

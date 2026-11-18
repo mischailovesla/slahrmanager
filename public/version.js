@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.53.4', datum: '18-11-2026', titel: 'Weekendbeschikbaarheid: ook de opgegeven beschikbaarheid', punten: [
+    'De weekendcheck kijkt nu ook naar de <b>beschikbaarheid die de medewerker in Shiftbase heeft opgegeven</b> voor vrijdag, zaterdag en zondag, niet alleen naar het rooster.',
+    'Was iemand elk weekend op minstens 2 dagen <b>wél beschikbaar</b> maar toch niet ingeroosterd, dan krijg je geen briefvoorstel meer. De taak heet dan <b>Weekend: wél beschikbaar, niet ingeroosterd — rooster bespreken met store manager</b>, met de knop Dossier.',
+    'Bij de andere taken staat erbij wat er is opgegeven: hoeveel weekenddagen beschikbaar, niet beschikbaar, of dat er niets is opgegeven.',
+    'De onderbouwing in de brief noemt nu ook de opgegeven beschikbaarheid.'
+  ] },
   { nummer: '0.53.3', datum: '18-11-2026', titel: 'Lopende dossiers: kolom Afgerond (7 dagen)', punten: [
     'Wat de afgelopen 7 dagen naar salaris is gegaan, verdwijnt niet meer meteen uit <b>Lopende dossiers</b>. Het staat nog een week in de groene kolom <b>Afgerond</b>, bij Instroom en bij Uitstroom.',
     'Per kaart zie je wanneer er getekend is, wanneer het naar salaris ging en of dat <i>automatisch na tekenen</i>, <i>automatisch (ma/do)</i> of <i>handmatig</i> gebeurde. Met de knop open je het getekende document.',
