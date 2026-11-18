@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.53.3', datum: '18-11-2026', titel: 'Lopende dossiers: kolom Afgerond (7 dagen)', punten: [
+    'Wat de afgelopen 7 dagen naar salaris is gegaan, verdwijnt niet meer meteen uit <b>Lopende dossiers</b>. Het staat nog een week in de groene kolom <b>Afgerond</b>, bij Instroom en bij Uitstroom.',
+    'Per kaart zie je wanneer er getekend is, wanneer het naar salaris ging en of dat <i>automatisch na tekenen</i>, <i>automatisch (ma/do)</i> of <i>handmatig</i> gebeurde. Met de knop open je het getekende document.',
+    'De kolom telt niet mee in het aantal lopende dossiers.'
+  ] },
   { nummer: '0.53.2', datum: '17-11-2026', titel: 'Waarschuwingen: tekenstatus zichtbaar + automatische herinnering', punten: [
     'In <b>Waarschuwingen</b> staat een nieuwe kolom <b>Voor gezien</b>: <i>✓ getekend</i> met de datum, of <i>wacht</i> met het aantal herinneringen.',
     'Op <b>Eindtijd &amp; afsluiten</b> staat per medewerker de kolom <b>Waarschuwing</b>, met de datum van de waarschuwing en of die al voor gezien is getekend.',

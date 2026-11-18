@@ -508,6 +508,7 @@
     var o = ovData.open, f = function (lijst) { return (lijst || []).filter(function (r) { return inWinkel(r.naam, r.email); }); };
     var proc = [];
     var loon = f(o.loonheffing);
+    var af = ovData.afgerond || { loonheffing: [], ontslag: [] }, afDagen = af.dagen || 7; // v0.53.3
     proc.push({ naam: 'Instroom · loonheffing', stappen: [
       { naam: 'Wacht op formulier', items: loon.filter(function (r) { return r.ontvangen !== 'Ja' || (!r.docUrl && !r.salaris) || (!r.docUrl2 && !r.indienstRetour); }).map(function (r) {
         // v0.48.2: alleen het indiensttredingsformulier binnen → loonheffingsverklaring ontbreekt nog; niet klaar voor salaris
@@ -516,12 +517,14 @@
         if (r.ontvangen === 'Ja') return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' <span class="badge br" title="Het online indiensttredingsformulier is nog niet ingevuld. Herinneringen gaan automatisch (max. 1 per 3 dagen).">Indienst ontbreekt</span>' + (r.salaris ? ' <span class="lay-sub">loonheffing al naar salaris ' + esc(String(r.salaris).split(' ')[0]) + '</span>' : ''), dagenSinds(r.verzenddatum || r.status), idhBtn(r) || '', [bUp('loonheffing', r, true), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)], true);
         return kaart(r, 'deadline ' + esc(r.deadline || '-') + ' · ' + (r.aantalHer || 0) + 'x herinnerd', dagenSinds(r.status), lmBtn(r).replace('>Mail<', '>Herinner<'), [bUp('loonheffing', r, false), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)], true); }) },
       { naam: 'Indienst retour', items: loon.filter(function (r) { return r.indienstRetour && !r.salaris; }).map(function (r) { return kaart(r, '↩ ' + esc(r.indienstRetour.reden) + ' · ' + bDoc(r.docUrl2, 'Indienst (oud)'), irDagen(r), irKnop(r, 'herinner'), [irKnop(r, 'intrekken'), bDoc(r.docUrl, 'Loonheffing'), dosBtn(r.naam, r.email)], true); }) },
-      { naam: 'Klaar voor salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && !r.salaris && !r.indienstRetour && r.docUrl2 && r.docUrl; }).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + (r.docUrl2 ? bDoc(r.docUrl2, 'Indienst') : '<span class="badge br" title="Gaat niet naar salaris zonder indiensttredingsformulier">Indienst ontbreekt</span>') + bIc(r), dagenSinds(r.status), bSal('loonheffing', r), icKnoppen(r).concat([bAfkeur(r), irKnop(r, 'retour'), lmBtn(r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)])); }) },
+      { naam: 'Klaar voor salaris', items: loon.filter(function (r) { return r.ontvangen === 'Ja' && !r.salaris && !r.indienstRetour && r.docUrl2 && r.docUrl; }).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + (r.docUrl2 ? bDoc(r.docUrl2, 'Indienst') : '<span class="badge br" title="Gaat niet naar salaris zonder indiensttredingsformulier">Indienst ontbreekt</span>') + bIc(r), dagenSinds(r.status), bSal('loonheffing', r), icKnoppen(r).concat([bAfkeur(r), irKnop(r, 'retour'), lmBtn(r), dosBtn(r.naam, r.email), bArch('loonheffing', r.rij, r.naam)])); }) },,
+      { naam: 'Afgerond (' + afDagen + ' dagen)', afgerond: true, items: f(af.loonheffing).map(function (r) { return kaart(r, bDoc(r.docUrl, 'Loonheffing') + ' ' + bDoc(r.docUrl2, 'Indienst') + '<div class="lay-sub" style="margin-top:4px">✓ naar salaris ' + esc(r.salaris) + (r.salarisDoor ? ' · ' + esc(r.salarisDoor) : '') + '</div>', null, '', [dosBtn(r.naam, r.email)]); }) }
     ] });
     var ont = f(o.ontslag), tp = function (r) { return (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + ' · ' + esc(r.bedrijf || '-') + ' · einde ' + esc(r.einddatum || '-') + bCtl(r); };
     proc.push({ naam: 'Uitstroom', stappen: [
       { naam: 'Wacht op handtekening', items: ont.filter(function (r) { return r.ondertekend !== 'Ja'; }).map(function (r) { return kaart(r, tp(r), dagenSinds(r.status), omBtn(r).replace('>Mail<', '>Herinner<'), [bUp('ontslag', r, false), bDoc(r.briefUrl, '⬇ Brief'), dosBtn(r.naam, r.email), bArch('ontslag', r.rij, r.naam)], true); }) },
-      { naam: 'Klaar voor salaris', items: ont.filter(function (r) { return r.ondertekend === 'Ja' && !r.salaris; }).map(function (r) { return kaart(r, tp(r), dagenSinds(r.status), bSal('ontslag', r), [bDoc(r.briefUrl, '⬇ Brief'), dosBtn(r.naam, r.email), bArch('ontslag', r.rij, r.naam)]); }) },
+      { naam: 'Klaar voor salaris', items: ont.filter(function (r) { return r.ondertekend === 'Ja' && !r.salaris; }).map(function (r) { return kaart(r, tp(r), dagenSinds(r.status), bSal('ontslag', r), [bDoc(r.briefUrl, '⬇ Brief'), dosBtn(r.naam, r.email), bArch('ontslag', r.rij, r.naam)]); }) },,
+      { naam: 'Afgerond (' + afDagen + ' dagen)', afgerond: true, items: f(af.ontslag).map(function (r) { return kaart(r, tp(r) + '<div class="lay-sub" style="margin-top:4px">✓ getekend' + (r.getekendOp ? ' ' + esc(r.getekendOp) : '') + '<br>✓ naar salaris ' + esc(r.salaris) + (r.salarisDoor ? ' · ' + esc(r.salarisDoor) : '') + '</div>', null, bDoc(r.docUrl, 'Getekend document'), [bDoc(r.briefUrl, '⬇ Brief'), dosBtn(r.naam, r.email)]); }) }
     ] });
     var opl = f(o.overplaatsing), ot = function (r) { return esc(r.huidigeBV || '?') + ' → ' + esc(r.nieuweBV || '?') + ' · per ' + esc(r.ingangsdatum || '-'); };
     proc.push({ naam: 'Overplaatsing', stappen: [
@@ -534,9 +537,10 @@
     ] });
     var totaal = 0, h = '';
     proc.forEach(function (p) {
-      var n = p.stappen.reduce(function (s, st) { return s + st.items.length; }, 0); totaal += n; if (!n) return;
+      // v0.53.3: 'Afgerond' telt niet mee als lopend; de proceskolommen blijven zichtbaar zolang er iets afgerond is
+      var n = p.stappen.reduce(function (s, st) { return s + (st.afgerond ? 0 : st.items.length); }, 0), nAf = p.stappen.reduce(function (s, st) { return s + (st.afgerond ? st.items.length : 0); }, 0); totaal += n; if (!n && !nAf) return;
       h += '<div class="ov-proc"><div class="ov-proc-naam">' + esc(p.naam) + ' <span class="pill">' + n + '</span></div><div class="ov-stappen" style="grid-template-columns:repeat(' + p.stappen.length + ',minmax(0,1fr))">'
-        + p.stappen.map(function (st, i) { return '<div class="ov-stap"><div class="ov-stap-kop"><span class="ov-stap-nr">' + (i + 1) + '</span>' + esc(st.naam) + ' <span class="ov-stap-n">' + st.items.length + '</span></div>' + (st.items.join('') || '<div class="ov-leeg">—</div>') + '</div>'; }).join('') + '</div></div>';
+        + p.stappen.map(function (st, i) { return '<div class="ov-stap"' + (st.afgerond ? ' style="background:#eef6f0"' : '') + '><div class="ov-stap-kop"><span class="ov-stap-nr">' + (st.afgerond ? '✓' : (i + 1)) + '</span>' + esc(st.naam) + ' <span class="ov-stap-n">' + st.items.length + '</span></div>' + (st.items.join('') || '<div class="ov-leeg">—</div>') + '</div>'; }).join('') + '</div></div>';
     });
     g('ov-open-count').textContent = totaal;
     el.innerHTML = h || '<div class="leeg" style="padding:18px 24px">✓ Geen lopende dossiers</div>';

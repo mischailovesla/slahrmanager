@@ -28,6 +28,31 @@ exports.handler = beveiligd('overzicht', async () => {
   const somOpen = som.filter(d => d.verwerkt !== 'Ja');
   const oplOpen = opl.filter(d => isVerzonden(d.status) && d.ondertekend !== 'Ja');
 
+  // v0.53.3: afgerond = naar salaris in de laatste AFGEROND_DAGEN dagen, zodat je kunt nagaan wat er (automatisch) is gebeurd.
+  // Getekend-tijdstip uit hr_ondertekening; automatisch of handmatig uit hr_mails (bron 'salaris').
+  const AFGEROND_DAGEN = 7;
+  const salarisRecent = d => { const v = parseNLDatum(String(d.salaris || '').split(' ')[0]); const n = v ? dagenTot(v) : null; return n !== null && n <= 0 && n >= -AFGEROND_DAGEN; };
+  const loonAf = loon.filter(d => salarisRecent(d) && d.docUrl2), ontslagAf = ontslag.filter(salarisRecent);
+  if (loonAf.length || ontslagAf.length) {
+    try {
+      const { admin } = require('./_lib/auth'), { normNaam } = require('./_lib/util');
+      const van = new Date(Date.now() - (AFGEROND_DAGEN + 2) * 864e5).toISOString();
+      const [mails, teken] = await Promise.all([
+        admin().from('hr_mails').select('door,type,rij,naam,tijdstip').eq('bron', 'salaris').gte('tijdstip', van).order('tijdstip', { ascending: false }).limit(500),
+        ontslagAf.length ? admin().from('hr_ondertekening').select('naam,status,getekend_op').eq('soort', 'ontslag').eq('status', 'getekend').gte('getekend_op', new Date(Date.now() - 120 * 864e5).toISOString()).limit(1000) : Promise.resolve({ data: [] })
+      ]);
+      const nl = x => x ? new Date(x).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '') : '';
+      const doorLabel = d => !d ? '' : d === 'signalering' ? 'automatisch (ma/do)' : /^automatisch/.test(d) ? 'automatisch na tekenen' : 'handmatig (' + String(d).split('@')[0] + ')';
+      const doorVan = (type, r) => { const m = (mails.data || []).find(x => x.type === type && (x.rij === r.rij || normNaam(x.naam) === normNaam(r.naam))); return m ? doorLabel(m.door) : ''; };
+      loonAf.forEach(r => { r.salarisDoor = doorVan('loonheffing', r); });
+      ontslagAf.forEach(r => {
+        r.salarisDoor = doorVan('ontslag', r);
+        const t = (teken.data || []).filter(x => normNaam(x.naam) === normNaam(r.naam)).map(x => x.getekend_op).sort().pop();
+        if (t) r.getekendOp = nl(t);
+      });
+    } catch (e) { console.warn('afgerond:', e.message); }
+  }
+
   // Aanzegging-alert: einddatum binnen AANZEG_VENSTER_DAGEN en nog niet verstuurd/ondertekend
   const aanzegAlerts = ontslag
     .map(d => ({ d, dagen: dagenTot(parseNLDatum(d.einddatum)) }))
@@ -72,6 +97,7 @@ exports.handler = beveiligd('overzicht', async () => {
     aanzegAlerts,
     open: {
       loonheffing: loonOpen, ontslag: ontslagOpen, sommatie: somOpen, overplaatsing: oplOpen
-    }
+    },
+    afgerond: { dagen: AFGEROND_DAGEN, loonheffing: loonAf, ontslag: ontslagAf }
   };
 });
