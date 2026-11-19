@@ -26,6 +26,7 @@ const SOORTEN = {
   waarschuwing: { label: 'Waarschuwing voor gezien getekend', labelEN: 'Warning signed as seen', bestanden: [{ key: 'waarschuwing', label: 'Voor gezien getekende brief', labelEN: 'Letter signed as seen', verplicht: true }] },
   beschikbaarheid: { label: 'Kennisgeving beschikbaarheid voor gezien getekend', labelEN: 'Availability notice signed as seen', bestanden: [{ key: 'beschikbaarheid', label: 'Voor gezien getekende brief', labelEN: 'Letter signed as seen', verplicht: true }] },
   contract: { label: 'Ondertekende arbeidsovereenkomst', labelEN: 'Signed employment contract', bestanden: [{ key: 'contract', label: 'Ondertekend contract', labelEN: 'Signed contract', verplicht: true }] }, // v0.33.0: contract op maat
+  dossier: { label: 'Document in dossier', labelEN: 'Document', bestanden: [{ key: 'document', label: 'Document', labelEN: 'Document', verplicht: true }] },   // v0.54.0: alleen door HR (dossier-document.js)
   korting: { label: 'Formulier loonheffingskorting', labelEN: 'Payroll tax credit form', bestanden: [{ key: 'korting', label: 'Ondertekend formulier loonheffingskorting', labelEN: 'Signed payroll tax credit form', verplicht: true }] }
 };
 const b64u = b => Buffer.from(b).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

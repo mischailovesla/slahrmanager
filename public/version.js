@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.54.0', datum: '19-11-2026', titel: 'Document toevoegen aan een dossier', punten: [
+    'Onderaan elk medewerkersdossier staat nu <b>📎 Document toevoegen</b>: upload een pdf, foto of Word-bestand met een korte omschrijving, bijvoorbeeld de mail met een reactie op een waarschuwing.',
+    'Het document komt in het dossier onder <b>Documenten</b>, met de datum en wie het heeft toegevoegd. Het wordt veilig opgeslagen, net als de andere documenten.',
+    'Een mail bewaar je als pdf via <i>Afdrukken → Opslaan als PDF</i>.',
+    '<b>Eenmalig:</b> draai migratie <code>0027_dossier_documenten.sql</code> in Supabase.'
+  ] },
   { nummer: '0.53.6', datum: '19-11-2026', titel: 'Eindtijd: "geaccordeerd" in plaats van "goedgekeurd"', punten: [
     'Op <b>Eindtijd &amp; afsluiten</b> heet de regel "Goedgekeurd" nu <b>Uren geaccordeerd (voor loon)</b>, en de kolom bij de diensten <b>Geaccordeerd door</b>. Accorderen in Shiftbase is nodig om gewerkte uren uit te betalen; het betekent niet dat er vooraf toestemming was om langer te blijven.'
   ] },

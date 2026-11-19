@@ -690,6 +690,12 @@
       h += '<div class="tw"><table><tbody>' + s.rijen.map(function (r) { return '<tr>' + rijNaarCellen(s.key, r) + '</tr>'; }).join('') + '</tbody></table></div>';
     });
     h += '</div>';
+    // v0.54.0: los document (bijv. mail als pdf) toevoegen
+    h += '<div class="sec"><div class="sh"><div class="st">📎 Document toevoegen</div></div><div style="padding:14px 24px;display:grid;grid-template-columns:2fr 2fr auto;gap:10px;align-items:end">'
+      + '<div class="fg" style="margin:0"><label>Omschrijving</label><input type="text" id="dos-doc-oms" maxlength="200" placeholder="bijv. Reactie op waarschuwing van 16-11-2026 (mail 19-11)"></div>'
+      + '<div class="fg" style="margin:0"><label>Bestand (pdf, foto, Word; max. 15 MB)</label><input type="file" id="dos-doc-file" accept=".pdf,.jpg,.jpeg,.png,.heic,.heif,.doc,.docx"></div>'
+      + '<button class="btn bp" id="dos-doc-btn" onclick="dossierDocument()">Toevoegen</button></div>'
+      + '<div class="lay-sub" style="padding:0 24px 14px">Een mail bewaar je als pdf via Afdrukken → Opslaan als PDF. Het document komt onder <b>Documenten</b> in dit dossier, met jouw naam en de datum.</div></div>';
     h += '<div class="sec"><div class="sh"><div class="st">Notitie toevoegen</div></div><div style="padding:14px 24px"><textarea id="dos-notitie" rows="3" style="width:100%;padding:10px 14px;border:1.5px solid #e8e2de;border-radius:8px;font:inherit;font-size:.88rem;min-height:70px" placeholder="Interne notitie (gesprek, afspraak, observatie). Wordt opgeslagen met jouw naam en datum en komt in het dossier en de PDF-export."></textarea><div style="margin-top:8px;text-align:right"><button class="btn bp bsm" id="dos-notitie-btn" onclick="dossierNotitie()">Notitie opslaan</button></div></div></div>';
     g('dos-inhoud').innerHTML = h;
     laadChecklistsInDossier(d.naam, d.email, p ? p.id : id);
@@ -703,6 +709,23 @@
     b.disabled = false;
     if (!r.success) { toast('Notitie: ' + r.bericht, 'err'); return; }
     toast(r.bericht, 'ok'); openDossier.apply(null, laatsteDossier);
+  };
+  window.dossierDocument = async function () {   // v0.54.0
+    var oms = g('dos-doc-oms').value.trim(), f = g('dos-doc-file').files[0], b = g('dos-doc-btn');
+    if (oms.length < 3) { toast('Vul een korte omschrijving in', 'err'); return; }
+    if (!f) { toast('Kies eerst een bestand', 'err'); return; }
+    if (f.size > 15 * 1024 * 1024) { toast('Bestand is te groot (max. 15 MB)', 'err'); return; }
+    var mime = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.hei[cf]$/i.test(f.name) ? 'image/heic' : /\.docx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : /\.doc$/i.test(f.name) ? 'application/msword' : '');
+    b.disabled = true; b.textContent = 'Uploaden…';
+    try {
+      var st = await api('/api/dossier-document', { stap: 'start', naam: laatsteDossier[0], bestandsnaam: f.name, mime: mime, bytes: f.size });
+      if (!st.success) throw new Error(st.bericht);
+      var up = await sb.storage.from(st.bucket).uploadToSignedUrl(st.pad, st.token, f, { contentType: mime, upsert: false });
+      if (up.error) throw new Error(up.error.message);
+      var r = await api('/api/dossier-document', { stap: 'klaar', naam: laatsteDossier[0], email: laatsteDossier[1], omschrijving: oms, pad: st.pad, naam_orig: f.name, bytes: f.size, mime: mime });
+      if (!r.success) throw new Error(r.bericht);
+      toast(r.bericht, 'ok'); openDossier.apply(null, laatsteDossier);
+    } catch (e) { toast('Document: ' + e.message, 'err'); b.disabled = false; b.textContent = 'Toevoegen'; }
   };
   window.dossierPdf = async function () {
     var b = g('dos-pdf'); b.disabled = true; toast('Dossier-PDF maken…', 'ok');
@@ -721,6 +744,7 @@
       case 'brief': return kv('Categorie', '<span class="badge bdk">' + esc(r.categorie || '-') + '</span>') + kv('Onderwerp', esc(r.onderwerp || '-')) + kv('BV', esc(r.bv || '-')) + kv('PDF', r.pdf === 'Ja' ? '<span class="badge bg">Ja</span>' : '<span class="no-doc">-</span>') + kv('Verstuurd', esc(r.verzenddatum || '-')) + kv('', '<button class="btn bd bsm" data-vb-print="' + esc(r.rij) + '">Brief</button> <button class="btn bd bsm" data-vb-opnieuw="' + esc(r.rij) + '">Opnieuw</button>');
       case 'ontslag': return kv('Type', '<span class="badge bdk">' + (r.type === 'aanzegging' ? 'Aanzegging' : 'Ontslag') + '</span>') + kv('BV', esc(r.bedrijf || '-')) + kv('Opzegging', esc(r.opzegging || '-')) + kv('Einddatum', esc(r.einddatum || '-')) + kv('Mail', bSent(r.status)) + kv('Ondertekend', bOk(r.ondertekend, 'Ja', 'Nee')) + kv('Docs', bDoc(r.docUrl, 'Getekend') + ' ' + bDoc(r.briefUrl, '⬇ Brief')) + kv('Naar salaris', bTog('mahdia-ontslag', r.mahdia, r.rij, r.naam) + ' ' + bSal('ontslag', r)) + kv('', omBtn(r) + ' ' + bArch('ontslag', r.rij, r.naam));
       case 'korting': return kv('Keuze', krtKeuzeBadge(r.keuze)) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Deadline', esc(r.deadline || '-')) + kv('Mail', bSent(r.status)) + kv('Retour', bOk(r.retour) + (r.docUrl ? ' ' + bDoc(r.docUrl, 'Formulier') : '')) + kv('Herinneringen', bH(r.herinnering, r.aantalHer)) + kv('Naar salaris', r.retour === 'Ja' ? bSal('korting', r) : '-') + kv('', '<button class="btn bd bsm" data-krt-rij="' + esc(r.rij) + '">Opnieuw</button>');
+      case 'document': return kv('Datum', esc(r.datum || '-')) + kv('Omschrijving', '<strong>' + esc(r.omschrijving || '-') + '</strong>') + kv('Bestand', bDoc(r.ref, '📄 ' + esc(r.bestand || 'Open'))) + kv('Toegevoegd door', esc(String(r.door || '-').split('@')[0])); // v0.54.0
       case 'notitie': return kv('Datum', esc(r.datum || '-')) + kv('Auteur', esc(r.auteur || '-')) + '<td colspan="4" style="white-space:pre-wrap;font-size:.85rem">' + esc(r.tekst || '') + '</td>';
       case 'waarschuwing': return kv('Winkel', esc(r.winkel || '-')) + kv('Datum overtreding', esc(r.datumOvertreding || '-')) + kv('Regels', '<span title="' + esc(r.regels || '') + '">' + esc((r.regels || '-').length > 90 ? r.regels.substring(0, 90) + '…' : (r.regels || '-')) + '</span>') + kv('Taal', esc(r.taal || 'NL')) + kv('Status', esc(r.status || '-')) + kv('', '<button class="btn bd bsm" data-wr-rij="' + esc(r.rij) + '">Opnieuw</button>');
       case 'beschikbaarheid': return kv('Winkel', esc(r.winkel || '-')) + kv('Ingangsdatum', esc(r.ingangsdatum || '-')) + kv('Onderbouwing', '<span title="' + esc(r.onderbouwing || '') + '">' + esc((r.onderbouwing || '-').length > 90 ? r.onderbouwing.substring(0, 90) + '…' : (r.onderbouwing || '-')) + '</span>') + kv('Taal', esc(r.taal || 'NL')) + kv('Status', esc(r.status || '-')) + kv('', '<button class="btn bd bsm" data-bk-rij="' + esc(r.rij) + '">Opnieuw</button>');

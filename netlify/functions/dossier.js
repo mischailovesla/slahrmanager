@@ -10,6 +10,17 @@ const SB = require('./_lib/shiftbase');
 const { AANZEG_VENSTER_DAGEN } = require('./_lib/config');
 const { normNaam, parseNLDatum, dagenTot } = require('./_lib/util');
 
+// v0.54.0: losse documenten die HR aan het dossier toevoegde (hr_uploads soort 'dossier')
+async function dossierDocumenten(match) {
+  try {
+    const { data, error } = await require('./_lib/auth').admin().from('hr_uploads').select('id,naam,email,bestanden,created_at').eq('soort', 'dossier').order('created_at', { ascending: false }).limit(2000);
+    if (error) return [];
+    const fmt = x => new Date(x).toLocaleString('nl-NL', { timeZone: 'Europe/Amsterdam', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }).replace(',', '');
+    const uit = [];
+    (data || []).filter(match).forEach(u => (u.bestanden || []).filter(b => b.key === 'document').forEach(b => uit.push({ naam: u.naam, email: u.email || '', datum: fmt(u.created_at), omschrijving: b.omschrijving || b.label || 'Document', bestand: b.naam_orig || '', door: b.door || '', ref: 'sb:' + u.id + ':document' })));
+    return uit;
+  } catch (e) { return []; }
+}
 async function laad(qs, ingelogd) {   // ingelogd = e-mail van de HR-gebruiker (salarisinzage)
   let persoon = null;
   const med = await SB.getMedewerkers(false).catch(() => []);
@@ -37,7 +48,8 @@ async function laad(qs, ingelogd) {   // ingelogd = e-mail van de HR-gebruiker (
     { key: 'brief', label: 'Vrije brieven', rijen: (await require('./_lib/salarisinzage').schermVoor(ingelogd, brieven.filter(match))) },   // v0.42.0
     { key: 'waarschuwing', label: 'Officiële waarschuwingen', rijen: wrs.filter(match) },
     { key: 'beschikbaarheid', label: 'Weekendbeschikbaarheid', rijen: bsk.filter(match) },
-    { key: 'notitie', label: 'Notities', rijen: notities.filter(match) }
+    { key: 'notitie', label: 'Notities', rijen: notities.filter(match) },
+    { key: 'document', label: 'Documenten', rijen: await dossierDocumenten(match) }   // v0.54.0
   ].concat(extra.map(t => ({ key: 'extra', label: t.label, rijen: t.rijen.filter(match), fout: t.fout })));
 
   // v0.45.3: gearchiveerde dossiers (loonheffing, overplaatsing) ook in het medewerkersdossier tonen, met de archiefdatum in de status.

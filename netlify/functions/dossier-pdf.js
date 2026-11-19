@@ -15,7 +15,8 @@ const LABELS = {
   brief: ['Categorie', 'categorie', 'Onderwerp', 'onderwerp', 'BV', 'bv', 'Verstuurd', 'verzenddatum', 'Tekst', 'tekst'],
   waarschuwing: ['Winkel', 'winkel', 'Datum overtreding', 'datumOvertreding', 'Overtreden regels', 'regels', 'Toelichting', 'toelichting', 'Status', 'status'],
   beschikbaarheid: ['Winkel', 'winkel', 'Ingangsdatum', 'ingangsdatum', 'Onderbouwing', 'onderbouwing', 'Status', 'status'],
-  notitie: ['Datum', 'datum', 'Auteur', 'auteur', 'Notitie', 'tekst']
+  notitie: ['Datum', 'datum', 'Auteur', 'auteur', 'Notitie', 'tekst'],
+  document: ['Datum', 'datum', 'Omschrijving', 'omschrijving', 'Bestand', 'bestand', 'Toegevoegd door', 'door']   // v0.54.0
 };
 const veld = v => v === undefined || v === null || v === '' ? '-' : String(v);
 
