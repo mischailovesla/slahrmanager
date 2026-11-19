@@ -628,6 +628,7 @@
     if (!d.success) { g('dos-inhoud').innerHTML = '<div class="alert rood">' + esc(d.bericht) + '</div>'; return; }
     var p = d.persoon, c = d.contract, h = '';
     laatsteDossierQs = qs;
+    dosPersoon = { naam: d.naam || naam || '', email: d.email || email || '' }; // v0.54.1: naam/e-mail uit het geladen dossier (ook als het via het id is geopend)
     h += '<div style="padding:0 0 10px;display:flex;gap:8px;align-items:center"><button class="btn bd bsm" onclick="renderMedewerkersLijst()">← Alle medewerkers</button><span style="flex:1"></span><button class="btn bd bsm" id="dos-pdf" onclick="dossierPdf()" title="Volledig dossier als PDF (inzageverzoek / jurist) — wordt gelogd">⬇ Dossier als PDF</button></div>';
     h += '<div class="dos-kop"><div class="dos-kaart"><div class="dos-naam">' + esc(d.naam) + '</div><div class="lay-sub">' + esc(d.email || '(geen e-mail)') + (p ? ' · ' + esc(p.winkelNaam || '-') + (p.winkelBv ? ' · ' + esc(p.winkelBv) : '') : ' · <em>niet gevonden in Shiftbase (alleen sheet-data)</em>') + '</div>';
     if (p) h += '<div class="dos-meta"><div><label>Functie</label><span>' + esc(p.functie || '-') + '</span></div><div><label>In dienst sinds</label><span>' + esc(p.indienst || '-') + '</span></div><div><label>Contract</label><span>' + esc(c.type || '-') + '</span></div><div><label>Contract eindigt</label><span>' + esc(c.einde || 'onbepaalde tijd / onbekend') + '</span></div><div><label>Adres</label><span>' + esc(p.adres || '-') + '</span></div></div>';
@@ -701,11 +702,11 @@
     laadChecklistsInDossier(d.naam, d.email, p ? p.id : id);
     if (p && p.id) lsDossier(p.id);
   };
-  var laatsteDossierQs = '';
+  var laatsteDossierQs = '', dosPersoon = { naam: '', email: '' };
   window.dossierNotitie = async function () {
     var ta = g('dos-notitie'), tekst = ta.value.trim(); if (tekst.length < 3) { toast('Typ eerst een notitie', 'err'); return; }
     var b = g('dos-notitie-btn'); b.disabled = true;
-    var r = await api('/api/notitie', { naam: laatsteDossier[0], email: laatsteDossier[1], tekst: tekst });
+    var r = await api('/api/notitie', { naam: dosPersoon.naam, email: dosPersoon.email, tekst: tekst });
     b.disabled = false;
     if (!r.success) { toast('Notitie: ' + r.bericht, 'err'); return; }
     toast(r.bericht, 'ok'); openDossier.apply(null, laatsteDossier);
@@ -718,11 +719,11 @@
     var mime = f.type || (/\.pdf$/i.test(f.name) ? 'application/pdf' : /\.hei[cf]$/i.test(f.name) ? 'image/heic' : /\.docx$/i.test(f.name) ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' : /\.doc$/i.test(f.name) ? 'application/msword' : '');
     b.disabled = true; b.textContent = 'Uploaden…';
     try {
-      var st = await api('/api/dossier-document', { stap: 'start', naam: laatsteDossier[0], bestandsnaam: f.name, mime: mime, bytes: f.size });
+      var st = await api('/api/dossier-document', { stap: 'start', naam: dosPersoon.naam, bestandsnaam: f.name, mime: mime, bytes: f.size });
       if (!st.success) throw new Error(st.bericht);
       var up = await sb.storage.from(st.bucket).uploadToSignedUrl(st.pad, st.token, f, { contentType: mime, upsert: false });
       if (up.error) throw new Error(up.error.message);
-      var r = await api('/api/dossier-document', { stap: 'klaar', naam: laatsteDossier[0], email: laatsteDossier[1], omschrijving: oms, pad: st.pad, naam_orig: f.name, bytes: f.size, mime: mime });
+      var r = await api('/api/dossier-document', { stap: 'klaar', naam: dosPersoon.naam, email: dosPersoon.email, omschrijving: oms, pad: st.pad, naam_orig: f.name, bytes: f.size, mime: mime });
       if (!r.success) throw new Error(r.bericht);
       toast(r.bericht, 'ok'); openDossier.apply(null, laatsteDossier);
     } catch (e) { toast('Document: ' + e.message, 'err'); b.disabled = false; b.textContent = 'Toevoegen'; }

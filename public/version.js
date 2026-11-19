@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.54.1', datum: '19-11-2026', titel: 'Fix: document of notitie toevoegen vanuit de medewerkerslijst', punten: [
+    'Opende je een dossier via de lijst <b>Medewerkers</b>, dan gaven <b>Document toevoegen</b> en <b>Notitie opslaan</b> de melding "Naam van de medewerker ontbreekt". Dat is opgelost.'
+  ] },
   { nummer: '0.54.0', datum: '19-11-2026', titel: 'Document toevoegen aan een dossier', punten: [
     'Onderaan elk medewerkersdossier staat nu <b>📎 Document toevoegen</b>: upload een pdf, foto of Word-bestand met een korte omschrijving, bijvoorbeeld de mail met een reactie op een waarschuwing.',
     'Het document komt in het dossier onder <b>Documenten</b>, met de datum en wie het heeft toegevoegd. Het wordt veilig opgeslagen, net als de andere documenten.',
