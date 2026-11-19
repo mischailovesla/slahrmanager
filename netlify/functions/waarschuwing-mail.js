@@ -19,7 +19,7 @@ exports.handler = beveiligd('waarschuwing-mail', async (event, g) => {
   const p = body(event);
   const naam = String(p.naam || '').trim(), to = String(p.to || '').trim(), adres = String(p.adres || '').trim();
   const isEN = String(p.taal || 'NL').toUpperCase() === 'EN';
-  const w = C.WINKEL_BV_MAP[p.winkel];
+  const w = C.WINKEL_BV_MAP[p.winkel] || (C.WAARSCHUWING_EXTRA_LOCATIES || {})[p.winkel];   // v0.53.5: ook Keuken
   if (!p.winkel) throw new Error('Selecteer een winkel.');
   if (!w) throw new Error('Onbekende winkel-afkorting.');
   const regels = T.regelsById(p.regelIds);

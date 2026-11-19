@@ -324,6 +324,11 @@ module.exports = {
     HO: { naam: 'HQ',               adres: 'Amstelveenseweg 124, 1075 XL Amsterdam', bv: 'SLA Holding BV' }
   },
 
+  // v0.53.5: extra locaties voor de waarschuwingsbrief (geen winkel, dus niet in WINKEL_BV_MAP: templates, MTO e.d. blijven ongemoeid)
+  WAARSCHUWING_EXTRA_LOCATIES: {
+    KE: { naam: 'Keuken', adres: '', bv: 'SLA Hofhouse BV' }   // keukenmedewerkers vallen onder SLA Hofhouse BV (Mischa, 19-11-2026)
+  },
+
   // Shiftbase department_id -> winkelcode (uit Shiftbase.gs v9.4)
   // v0.47.4: vaste winkel handmatig vastzetten als het Shiftbase-team niet de echte winkel is (bijv. ingewerkt in een andere winkel).
   // Sleutel = volledige naam zoals in Shiftbase, in kleine letters; waarde = winkelcode uit WINKEL_BV_MAP. Weghalen zodra Shiftbase klopt.

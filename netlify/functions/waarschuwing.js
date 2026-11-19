@@ -2,7 +2,8 @@
 const { beveiligd } = require('./_lib/auth');
 const S = require('./_lib/sheets');
 const C = require('./_lib/config');
-const winkels = Object.keys(C.WINKEL_BV_MAP).map(code => Object.assign({ code }, C.WINKEL_BV_MAP[code])).sort((a, b) => a.naam.localeCompare(b.naam));
+const LOC = Object.assign({}, C.WINKEL_BV_MAP, C.WAARSCHUWING_EXTRA_LOCATIES || {});   // v0.53.5: + Keuken (SLA Hofhouse BV)
+const winkels = Object.keys(LOC).map(code => Object.assign({ code }, LOC[code])).sort((a, b) => a.naam.localeCompare(b.naam));
 const T = require('./_lib/sjablonen');
 exports.handler = beveiligd('waarschuwing', async () => {
   const rijen = await S.getWaarschuwingen();

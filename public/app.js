@@ -1438,6 +1438,7 @@
     g('wr-naam').value = m.naam || ''; g('wr-email').value = m.email || '';
     if (m.adres) g('wr-adres').value = m.adres;
     if (m.winkelCode && wrWinkels.some(function (w) { return w.code === m.winkelCode; })) g('wr-winkel').value = m.winkelCode;
+    else if (/keuken/i.test(m.winkelNaam || '') && wrWinkels.some(function (w) { return w.code === 'KE'; })) g('wr-winkel').value = 'KE'; // v0.53.5
     if (!m.email) toast('Geen e-mailadres in Shiftbase voor ' + m.naam + ' — vul handmatig in', 'err');
   });
 
