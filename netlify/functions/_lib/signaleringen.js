@@ -130,8 +130,10 @@ async function syncFormulieren(droog) {
 async function loonHerinneringen(droog) {
   const rap = { naam: 'loonheffing-herinneringen', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
   const vandaag = vandaag0(), id = C.SHEETS.loonheffing.id;
+  let OG = null; try { const O = require('./opgezegd'), k = await O.laad(); OG = r => O.na(k, r, O.uitnodiging(r)); } catch (e) { rap.fouten.push('ontslagdossiers lezen: ' + e.message); }
   for (const r of await S.getLoonheffing()) {
     if (r.ontvangen === 'Ja' || !r.email || r.email.indexOf('@') === -1 || !r.deadline) continue;
+    if (OG && OG(r)) { rap.overgeslagenOntslag = (rap.overgeslagenOntslag || 0) + 1; continue; } // v0.54.2: inmiddels ontslag/aanzegging
     const naDeadline = dagenSinds(r.deadline, vandaag);
     if (naDeadline === null || naDeadline < 0) continue;
     const sindsLaatste = dagenSinds(r.herinnering, vandaag);
@@ -169,7 +171,9 @@ function indienstOntbreektKandidaten(rijen, her, vandaag) {
 }
 async function indienstOntbreektHerinneringen(rap, vandaag) {
   const I = require('./instellingen'), her = Object.assign({}, (await I.lees(INDIENST_HER_SLEUTEL, {})) || {});
-  const lijst = indienstOntbreektKandidaten(await S.getLoonheffing(), her, vandaag);
+  let rijen = await S.getLoonheffing();
+  try { const O = require('./opgezegd'), k = await O.laad(); rijen = rijen.filter(r => !O.na(k, r, O.uitnodiging(r))); } catch (e) { rap.fouten.push('ontslagdossiers lezen: ' + e.message); }
+  const lijst = indienstOntbreektKandidaten(rijen, her, vandaag);
   rap.indienstOntbreekt = lijst.length;
   for (const { r, eerder, stop, nu } of lijst) {
     rap.gevonden.push({ soort: 'indienst', naam: r.naam, email: r.email, rij: r.rij, deadline: r.deadline, eerder, gestopt: stop });
@@ -327,7 +331,9 @@ async function nieuweMedewerkers(droog) {
   const loonEmails = {}, loonNamen = {};
   loon.forEach(r => { const e = r.email.toLowerCase(); if (e) loonEmails[e] = true; const n = normNaam(r.naam); if (n) loonNamen[n] = true; });
   const vandaag = vandaag0();
-  const nieuw = vindNieuweMedewerkers(med, loonEmails, loonNamen, vandaag);
+  let nieuw = vindNieuweMedewerkers(med, loonEmails, loonNamen, vandaag);
+  // v0.54.2: al ontslag/aanzegging sinds de start (Shiftbase staat nog op actief) → niet (opnieuw) uitnodigen
+  try { const O = require('./opgezegd'), k = await O.laad(); const voor = nieuw.length; nieuw = nieuw.filter(p => !O.na(k, p, p.start)); rap.overgeslagenOntslag = voor - nieuw.length; } catch (e) { rap.fouten.push('ontslagdossiers lezen: ' + e.message); }
   rap.gevonden = nieuw;
   if (!nieuw.length) return rap;
   // De check draait elke 4 uur; het HR-lijstje (schakelaar uit) of 'zonder e-mail' gaat alleen mee met de eerste run van de dag.

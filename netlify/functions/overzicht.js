@@ -21,7 +21,9 @@ exports.handler = beveiligd('overzicht', async () => {
   const VENSTER = require('./_lib/config').INDIENST_HER_VENSTER_DAGEN || 60;
   const recentIndienst = d => { const v = parseNLDatum(String(d.verzenddatum || String(d.status || '').replace(/^\D*/, '')).split(' ')[0]); const n = v ? dagenTot(v) : null; return n !== null && n >= -VENSTER; };
   const indienstMist = d => d.ontvangen === 'Ja' && !d.docUrl2 && recentIndienst(d);
-  const loonOpen = loon.filter(d => (d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ontvangen !== 'Ja' || recent(d))) || d.herinnering)) || indienstMist(d));
+  // v0.54.2: ontslag/aanzegging ná (of rond) de uitnodiging → loonheffing niet meer nodig, niet tonen
+  let OG = null; try { const O = require('./_lib/opgezegd'); const k = O.kaart(await S.getOntslag(true)); OG = r => O.na(k, r, O.uitnodiging(r)); } catch (e) { console.warn('opgezegd:', e.message); }
+  const loonOpen = loon.filter(d => ((d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ontvangen !== 'Ja' || recent(d))) || d.herinnering)) || indienstMist(d)) && !(OG && d.ontvangen !== 'Ja' && OG(d)));
   await require('./_lib/indienstcontrole').controleer(loonOpen); // v0.35.2: controle indiensttredingsformulier
   const ontslagOpen = ontslag.filter(d => d.mahdia !== 'Ja' && !d.salaris && ((isVerzonden(d.status) && (d.ondertekend !== 'Ja' || recent(d))) || d.herinnering));
   try { const ctl = await require('./_lib/dossiercontrole').laad(ontslag); ontslagOpen.forEach(r => { if (ctl[r.rij]) r.controle = ctl[r.rij]; }); } catch (e) { console.warn('dossiercontrole:', e.message); } // v0.27.2
@@ -93,7 +95,7 @@ exports.handler = beveiligd('overzicht', async () => {
       ontslagTotaal: ontslag.length, ontslagOndertekend: ontslag.filter(d => d.ondertekend === 'Ja').length,
       sommaties: som.length, overplaatsingen: opl.length
     },
-    werklijst: { instroom: loon.filter(d => d.ontvangen !== 'Ja').length, indienst: oplOpen.length, dossier: somOpen.length, uitstroom: ontslagOpen.filter(d => d.ondertekend !== 'Ja').length },
+    werklijst: { instroom: loon.filter(d => d.ontvangen !== 'Ja' && !(OG && OG(d))).length, indienst: oplOpen.length, dossier: somOpen.length, uitstroom: ontslagOpen.filter(d => d.ondertekend !== 'Ja').length },
     aanzegAlerts,
     open: {
       loonheffing: loonOpen, ontslag: ontslagOpen, sommatie: somOpen, overplaatsing: oplOpen

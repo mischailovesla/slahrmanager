@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.54.2', datum: '19-11-2026', titel: 'Wie ontslag heeft, verdwijnt uit Instroom', punten: [
+    'Staat er voor een medewerker een <b>ontslagbevestiging of aanzegging</b> die ná (of rond) de loonheffingsuitnodiging is verstuurd, dan verdwijnt die persoon uit <b>Instroom · Wacht op formulier</b>.',
+    'Zo iemand krijgt ook <b>geen herinneringen</b> meer voor de loonheffing of het indiensttredingsformulier, en <b>geen nieuwe automatische uitnodiging</b> als Shiftbase hem of haar nog als actief toont.',
+    'Een <b>herintreder</b> (oud ontslagdossier, ruim vóór de nieuwe start) krijgt gewoon wél een uitnodiging.'
+  ] },
   { nummer: '0.54.1', datum: '19-11-2026', titel: 'Fix: document of notitie toevoegen vanuit de medewerkerslijst', punten: [
     'Opende je een dossier via de lijst <b>Medewerkers</b>, dan gaven <b>Document toevoegen</b> en <b>Notitie opslaan</b> de melding "Naam van de medewerker ontbreekt". Dat is opgelost.'
   ] },
