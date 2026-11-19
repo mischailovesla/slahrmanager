@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.53.6', datum: '19-11-2026', titel: 'Eindtijd: "geaccordeerd" in plaats van "goedgekeurd"', punten: [
+    'Op <b>Eindtijd &amp; afsluiten</b> heet de regel "Goedgekeurd" nu <b>Uren geaccordeerd (voor loon)</b>, en de kolom bij de diensten <b>Geaccordeerd door</b>. Accorderen in Shiftbase is nodig om gewerkte uren uit te betalen; het betekent niet dat er vooraf toestemming was om langer te blijven.'
+  ] },
   { nummer: '0.53.5', datum: '19-11-2026', titel: 'Waarschuwing ook voor de keuken', punten: [
     'Bij <b>Waarschuwingen → Nieuwe waarschuwing + PDF</b> staat <b>Keuken (SLA Hofhouse BV)</b> nu in de keuzelijst Winkel. Zoek je een keukenmedewerker op in Shiftbase, dan wordt Keuken automatisch gekozen.'
   ] },

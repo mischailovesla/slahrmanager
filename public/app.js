@@ -4584,7 +4584,7 @@
       + kaart('cw', '⌀', w.team.gemMin + ' min', 'gemiddeld te laat · max ' + w.team.maxMin)
       + kaart('cr', '€', '€ ' + w.kosten.inclLasten.toLocaleString('nl-NL'), String(w.kosten.extraUren).replace('.', ',') + ' extra uur (incl. ' + Math.round(etData.instellingen.lasten * 100) + '% lasten)');
     var info = [];
-    if (w.goedkeuring.length) info.push('<b>Goedgekeurd</b>: ' + w.goedkeuring.map(function (x) { return esc(x.naam) + ' ' + x.aantal + (x.laat ? ' (waarvan ' + x.laat + ' &gt; 30 min te laat)' : ''); }).join(' · '));
+    if (w.goedkeuring.length) info.push('<b title="Accorderen in Shiftbase is nodig om gewerkte uren uit te betalen. Het betekent niet dat er vooraf toestemming was om langer te blijven.">Uren geaccordeerd (voor loon)</b>: ' + w.goedkeuring.map(function (x) { return esc(x.naam) + ' ' + x.aantal + (x.laat ? ' (waarvan ' + x.laat + ' &gt; 30 min te laat)' : ''); }).join(' · '));
     info.push('<b>Gem. uitloop per weekdag</b>: ' + w.team.weekdagen.map(function (x) { return esc(x.dag) + ' ' + x.gemMin; }).join(' · ') + ' min');
     var let_ = [];
     if (w.team.zonderUitklok) let_.push(w.team.zonderUitklok + ' sluitdienst(en) zonder uitklok (eindtijd van de timesheet gebruikt)');
@@ -4601,7 +4601,7 @@
       return '<tr><td><strong>' + esc(m.naam) + '</strong>' + (m.voorgedragen ? ' <span class="badge br">voor te dragen</span>' : '') + (p.andereWinkel ? ' <span class="badge boat">vaste winkel: ' + esc(p.winkelNaam || '?') + '</span>' : '') + wrsEerder + '</td>'
         + '<td style="text-align:right">' + m.aantalTotaal + '</td><td style="text-align:right"><strong>' + m.aantalLaat + '</strong> <span class="lay-sub" style="display:inline">(' + m.pctLaat + '%)</span></td><td style="text-align:right">' + m.aantalNa22 + '</td><td style="text-align:right">' + m.gemMin + ' min</td><td style="text-align:right">' + (m.zonderUitklok ? '<span class="badge bo">' + m.zonderUitklok + '</span>' : '0') + '</td>'
         + '<td>' + contract + '</td><td>' + tb + '</td><td>' + wrsKol + '</td><td><div class="vb-knoppen"><button class="btn bd bsm" data-et-dienst="' + id + '">Diensten</button>' + knop + (p.inDienst ? dosBtn(p.naam, p.email) : '') + '</div></td></tr>'
-        + '<tr id="et-d-' + id + '" style="display:none"><td></td><td colspan="9" style="background:#faf8f6;padding:8px 14px"><table style="width:100%"><thead><tr><th>Datum</th><th>Rooster tot</th><th>Uitgeklokt</th><th style="text-align:right">Te laat</th><th>Status</th><th>Goedgekeurd door</th></tr></thead><tbody>'
+        + '<tr id="et-d-' + id + '" style="display:none"><td></td><td colspan="9" style="background:#faf8f6;padding:8px 14px"><table style="width:100%"><thead><tr><th>Datum</th><th>Rooster tot</th><th>Uitgeklokt</th><th style="text-align:right">Te laat</th><th>Status</th><th title="Geaccordeerd voor de uitbetaling; geen toestemming vooraf">Geaccordeerd door</th></tr></thead><tbody>'
         + m.diensten.map(function (d) { return '<tr><td>' + esc(etLang(d.datum)) + '</td><td>' + esc(d.roosterEind) + '</td><td>' + esc(d.eind) + (d.zonderUitklok ? ' <span class="badge bo">zonder uitklok</span>' : '') + '</td><td style="text-align:right;' + (d.laat > etData.instellingen.drempel ? 'color:#c0392b;font-weight:700' : '') + '">' + d.laat + ' min</td><td>' + esc(d.status) + '</td><td>' + esc(d.gekeurdDoor || '-') + '</td></tr>'; }).join('')
         + '</tbody></table></td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen sluitdiensten in deze periode</td></tr>';
