@@ -2,6 +2,11 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.54.3', datum: '19-11-2026', titel: 'Brieven eindtijd & afsluiten: fooi neutraler verwoord', punten: [
+    'In de <b>waarschuwing</b> staat niet meer dat collega\'s door het late uitklokken minder fooi krijgen. Dat kon lezen alsof iemand bewust langer blijft voor de fooi.',
+    'In de <b>teambrief</b> en de <b>waarschuwing</b> staat bij de fooiregel nu dat die voor iedereen geldt en geen oordeel is over waarom iemand later klaar is.',
+    'Geldt voor de Nederlandse en de Engelse versie. Al verstuurde brieven veranderen niet.'
+  ] },
   { nummer: '0.54.2', datum: '19-11-2026', titel: 'Wie ontslag heeft, verdwijnt uit Instroom', punten: [
     'Staat er voor een medewerker een <b>ontslagbevestiging of aanzegging</b> die ná (of rond) de loonheffingsuitnodiging is verstuurd, dan verdwijnt die persoon uit <b>Instroom · Wacht op formulier</b>.',
     'Zo iemand krijgt ook <b>geen herinneringen</b> meer voor de loonheffing of het indiensttredingsformulier, en <b>geen nieuwe automatische uitnodiging</b> als Shiftbase hem of haar nog als actief toont.',

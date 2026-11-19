@@ -240,7 +240,7 @@ Daarom zetten we de afspraken nog één keer duidelijk op een rij:
 4. **Na 22:00 uur werken we niet zonder toestemming.**
 5. **Klok uit zodra je klaar bent.**
 
-Vanaf {ingangsdatum} tellen uren na je geroosterde eindtijd zonder toestemming niet mee voor de fooiverdeling.
+Vanaf {ingangsdatum} tellen uren na je geroosterde eindtijd zonder toestemming niet mee voor de fooiverdeling. Dit geldt voor iedereen, zodat de fooi eerlijk wordt verdeeld over de geroosterde uren. Het is geen oordeel over waarom iemand later klaar is.
 
 **Wat gebeurt er als deze afspraken niet worden nagekomen?**
 
@@ -270,7 +270,7 @@ const WAARSCHUWING = {
 - Diensten met uitklokken na 22:00 uur: **{aantal_na_22}**
 - Grootste overschrijding: **{ergste_datum}**: geroosterd tot {rooster_eind}, uitgeklokt om {uitklok}
 
-Dit is niet acceptabel. Je kunt niet zomaar een of twee uur na je geroosterde tijd klaar zijn zonder overleg. Dat heeft gevolgen voor de planning en de loonkosten. Het is ook niet eerlijk tegenover je collega's: zij ronden op tijd af en krijgen daardoor een kleiner deel van de fooi.
+Dit is niet acceptabel. Je kunt niet zomaar een of twee uur na je geroosterde tijd klaar zijn zonder overleg. Dat heeft gevolgen voor de planning en de loonkosten. Het is ook niet eerlijk tegenover je collega's die hun sluitwerk wel binnen de geroosterde tijd afronden.
 
 **Wat we vanaf nu van je verwachten:**
 
@@ -282,7 +282,7 @@ Dit is niet acceptabel. Je kunt niet zomaar een of twee uur na je geroosterde ti
 **Wat er verandert vanaf {ingangsdatum}:**
 
 - Uren na je geroosterde eindtijd zonder toestemming worden niet automatisch goedgekeurd. Je leidinggevende bespreekt ze met je en beoordeelt ze.
-- Deze uren tellen niet mee voor de fooiverdeling.
+- Deze uren tellen niet mee voor de fooiverdeling. Dit geldt voor iedereen, zodat de fooi eerlijk wordt verdeeld over de geroosterde uren. Het is geen oordeel over waarom iemand later klaar is.
 
 **Gevolgen:** deze brief is een schriftelijke waarschuwing en wordt opgenomen in je personeelsdossier. Blijf je na deze waarschuwing zonder toestemming na je eindtijd doorwerken, dan volgen verdere arbeidsrechtelijke maatregelen.[[contract]] Bij herhaling kan dat ook gevolgen hebben voor de verlenging van je contract.[[/contract]]
 
@@ -309,7 +309,7 @@ That is why we are setting out the agreements clearly one more time:
 4. **We do not work after 22:00 without permission.**
 5. **Clock out as soon as you are done.**
 
-From {ingangsdatum}, hours worked after your scheduled end time without permission will not count towards the tip distribution.
+From {ingangsdatum}, hours worked after your scheduled end time without permission will not count towards the tip distribution. This applies to everyone, so that tips are shared fairly based on scheduled hours. It is not a judgement on why someone finishes later.
 
 **What happens if these agreements are not followed?**
 
@@ -339,7 +339,7 @@ const WAARSCHUWING_EN = {
 - Shifts clocked out after 22:00: **{aantal_na_22}**
 - Largest overrun: **{ergste_datum}**: scheduled until {rooster_eind}, clocked out at {uitklok}
 
-This is not acceptable. You cannot simply finish one or two hours after your scheduled time without discussing it first. This affects the schedule and labour costs. It is also unfair to your colleagues: they finish on time and therefore receive a smaller share of the tips.
+This is not acceptable. You cannot simply finish one or two hours after your scheduled time without discussing it first. This affects the schedule and labour costs. It is also unfair to your colleagues who do finish their closing tasks within the scheduled time.
 
 **What we expect from you from now on:**
 
@@ -351,7 +351,7 @@ This is not acceptable. You cannot simply finish one or two hours after your sch
 **What changes from {ingangsdatum}:**
 
 - Hours after your scheduled end time without permission are not approved automatically. Your manager will discuss and assess them with you.
-- These hours do not count towards the tip distribution.
+- These hours do not count towards the tip distribution. This applies to everyone, so that tips are shared fairly based on scheduled hours. It is not a judgement on why someone finishes later.
 
 **Consequences:** this letter is a written warning and will be added to your personnel file. If you continue to work past your end time without permission after this warning, further employment measures will follow.[[contract]] If it happens again, this may also affect the renewal of your contract.[[/contract]]
 
