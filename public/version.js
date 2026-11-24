@@ -2,6 +2,13 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.56.0', datum: '24-11-2026', titel: 'Loonadministratie: uren, ziektecontrole en mutatie-mail voor Mahdia', punten: [
+    'Nieuwe tab <b>In dienst → Loonadministratie</b> met een afvinklijst per loonmaand: <b>6e</b> uren-uitdraai en ziektecontrole voor de uurloners, <b>18e</b> mutaties, wachtdagen en uitdienst voor de vastloners.',
+    '<b>Uurloners (6e):</b> één klik haalt alle gewerkte uren van de maand uit Shiftbase, per BV, winkel en medewerker, als <b>Excel</b> voor Mahdia. Nog niet goedgekeurde timesheets staan erbij met een waarschuwing.',
+    '<b>Ziektecontrole:</b> bij elke ziekmelding van een uurloner zie je of die op <b>0 uur</b> staat. Staan er uren op een ziektedag, of zijn er uren geklokt op een ziektedag, dan krijg je een rode of oranje melding met de reden.',
+    '<b>Vastloners (18e):</b> mutaties (vakantie, ziekte, overig), <b>wachtdagen</b> en wie <b>uit dienst</b> gaat, vergeleken met de ontslagdossiers. Het dashboard maakt er één <b>concept-mail aan Mahdia</b> van: jij controleert, past aan en verstuurt (je krijgt een kopie). Daarna zijn mutaties en uitdienst vanzelf afgevinkt.',
+    '<b>Herinnering:</b> vanaf 3 dagen vóór de deadline staat een open stap als taak op het Overzicht, rood als hij te laat is. Valt de 6e of 18e in het weekend, dan telt de vrijdag ervoor. De herinnering geldt vanaf loonmaand november 2026.'
+  ] },
   { nummer: '0.55.0', datum: '24-11-2026', titel: 'Werkgeversverklaring maken vanuit het dossier', punten: [
     'In elk medewerkersdossier staat nu de knop <b>📄 Werkgeversverklaring</b>: bewijs van dienstverband en inkomen, bijvoorbeeld voor een huurwoning of hypotheek.',
     '<b>Functie, werkgever (BV), startdatum, einddatum, contractvorm en uren</b> komen uit het dossier. Het <b>salaris</b> staat niet in het dashboard: dat vul je zelf in (voorgesteld uit een eerder Contract op maat, als dat er is). Controleer het altijd aan de hand van het contract.',

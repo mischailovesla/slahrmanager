@@ -23,6 +23,7 @@ window.HR_HELP = {
       + '<tr><td>Controle: mail niet aangekomen</td><td>elk uur 08–22 u</td><td>HR + taak</td></tr>'
       + '<tr><td>Contracten, verlengingen, aanzegtermijn, proeftijd, verzuim</td><td>dagelijks</td><td>takenlijst</td></tr>'
       + '<tr><td>Shiftbase-datacontrole en dossiercontrole</td><td>1e van de maand (aparte mail)</td><td>HR</td></tr>'
+      + '<tr><td>Herinnering loonadministratie (uren 6e, mutaties 18e)</td><td>werkdagen, vanaf 3 dagen vooraf</td><td>takenlijst</td></tr>'
       + '<tr><td>Jubilea volgende week</td><td>maandag</td><td>HR</td></tr>'
       + '<tr><td>Winkelmail per winkel</td><td>maandag 07:50</td><td>store manager</td></tr>'
       + '</tbody></table>'

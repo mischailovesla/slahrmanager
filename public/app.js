@@ -8,13 +8,13 @@
   // ---------- Nav: lifecycle-groepen (zelfde indeling als Layout.gs v1.8) ----------
   var GROEPEN = [
     { label: 'Instroom', items: [['loonheffing', 'Loonheffingsverklaring'], ['contract', 'Contracten & starters'], ['contractmaatwerk', 'Contract op maat'], ['sbtemplates', 'Shiftbase-templates'], ['checkin', 'Check-in 30/60'], ['eerstedienst', 'Tijd tot eerste dienst']] },
-    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['vastloners', 'Vastloners'], ['fooi', 'Fooiverdeling'], ['declaraties', 'Declaraties'], ['loonstroken', 'Loonstroken'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
+    { label: 'In dienst', items: [['loonheffingskorting', 'Loonheffingskorting'], ['oproepaanbod', 'Oproepaanbod'], ['overplaatsing', 'Overplaatsing'], ['vakantie', 'Vakantieplanner'], ['loonadmin', 'Loonadministratie'], ['vastloners', 'Vastloners'], ['fooi', 'Fooiverdeling'], ['declaraties', 'Declaraties'], ['loonstroken', 'Loonstroken'], ['training', 'Training (Academy)'], ['verlenging', 'Contractverlenging'], ['mto', 'Tevredenheid (MTO)']] },
     { label: 'Dossier', items: [['gesprekken', 'Gesprekken'], ['beschikbaarheid', 'Beschikbaarheid'], ['waarschuwing', 'Waarschuwingen'], ['eindtijd', 'Eindtijd & afsluiten'], ['haccp', 'HACCP-naleving'], ['sommatie', 'Sommaties'], ['brief', 'Vrije brieven']] },
     { label: 'Uitstroom', items: [['ontslag', 'Ontslag & aanzegging'], ['verloopanalyse', 'Verloopanalyse'], ['exit', 'Exit-surveys']] },
     { label: 'Beheer', items: [['winkelmail', 'Winkelmail store managers'], ['toegang', 'Toegang & log (AVG)'], ['bewaartermijn', 'Bewaartermijnen (AVG)'], ['archief', 'Archief herstellen'], ['gegevens', 'Gegevens & export']] }
   ];
   // Welke modules in deze stap al "echt" zijn (de rest opent een placeholder)
-  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, eindtijd: 1, haccp: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, fooi: 1, declaraties: 1, loonstroken: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
+  var ECHT = { eerstedienst: 1, sbtemplates: 1, contractmaatwerk: 1, help: 1, winkelmail: 1, overview: 1, dossier: 1, loonheffing: 1, brief: 1, ontslag: 1, sommatie: 1, overplaatsing: 1, signalering: 1, waarschuwing: 1, eindtijd: 1, haccp: 1, beschikbaarheid: 1, loonheffingskorting: 1, contract: 1, vastloners: 1, loonadmin: 1, fooi: 1, declaraties: 1, loonstroken: 1, vakantie: 1, verloopanalyse: 1, toegang: 1, bewaartermijn: 1, archief: 1, gegevens: 1, oproepaanbod: 1, exit: 1, checkin: 1, scorekaart: 1, gesprekken: 1, training: 1, verlenging: 1, mto: 1 };
 
   function bouwNav() {
     var nav = g('nav'), spacer = nav.querySelector('.spacer');
@@ -69,6 +69,7 @@
     if (tab === 'contract' && !ctrData) laadContract(false);
     if (tab === 'vakantie' && !vakData) laadVakantie(vakJaar);
     if (tab === 'fooi' && !foData) foLaad(false); // v0.46.0
+    if (tab === 'loonadmin' && !g('la-pill').textContent.replace('-', '')) laLaad(); // v0.56.0
     if (tab === 'declaraties') dcLaad(); // v0.49.0
     if (tab === 'loonstroken' && !lsData) lsLaad(); // v0.51.0
     if (tab === 'haccp' && !hcData) hcLaad(false); // v0.50.0
@@ -135,6 +136,7 @@
     oproepaanbod: ['Oproepaanbod', 'Aanbod vaste arbeidsomvang na 12 maanden oproepwerk (art. 7:628a BW).'],
     overplaatsing: ['Overplaatsing', 'Overplaatsing naar een andere BV of standplaatswijziging, met brief en doorgeven aan salaris.'],
     vakantie: ['Vakantieplanner', 'Vakantie en afwezigheid per winkel per week.'],
+    loonadmin: ['Loonadministratie', 'Wat je rond de 6e (uurloners: uren en ziektecontrole) en de 18e (vastloners, wachtdagen, uitdienst) aan Mahdia doorgeeft.'],
     vastloners: ['Vastloners', 'Maandmutaties salaris voor de vaste krachten en store managers.'],
     fooi: ['Fooiverdeling', 'Fooi per maand verdelen: gedeelde BV\'s naar winkel (50% uren / 50% omzet), daarna per medewerker naar gewerkte uren.'],
     haccp: ['HACCP-naleving', 'Verplichte HACCP-lijsten die niet zijn afgerond, naast het rooster: wie stond er in het tijdvak, en waarschuwen waar nodig.'],
@@ -2553,6 +2555,133 @@
     });
     if (!n) t += 'Geen bijzonderheden deze maand.\n';
     navigator.clipboard.writeText(t).then(function () { toast('Overzicht gekopieerd', 'ok'); }, function () { toast('Kopiëren mislukt', 'err'); });
+  };
+
+  // ---------- Loonadministratie (v0.56.0): 6e uren + ziektecontrole uurloners, 18e mutaties + uitdienst vastloners ----------
+  var laU = null, laM = null, laCheckLaadt = false;
+  (function () {
+    var mn = ['januari', 'februari', 'maart', 'april', 'mei', 'juni', 'juli', 'augustus', 'september', 'oktober', 'november', 'december'];
+    var nu = new Date(), vm = new Date(nu.getFullYear(), nu.getMonth() - 1, 1), h = '', jh = '';
+    for (var i = 0; i < 12; i++) h += '<option value="' + (i + 1) + '">' + mn[i] + '</option>';
+    for (var y = nu.getFullYear(); y >= nu.getFullYear() - 2; y--) jh += '<option value="' + y + '">' + y + '</option>';
+    g('la-maand').innerHTML = h; g('la-jaar').innerHTML = jh; g('la-maand').value = String(vm.getMonth() + 1); g('la-jaar').value = String(vm.getFullYear());
+  })();
+  function laJM() { return { jaar: Number(g('la-jaar').value), maand: Number(g('la-maand').value) }; }
+  function laPer() { var p = laJM(); return 'jaar=' + p.jaar + '&maand=' + p.maand; }
+  function laU2(n) { return String(Math.round(n * 100) / 100).replace('.', ','); }
+  function laDagen(n) { return n + ' dag' + (n === 1 ? '' : 'en'); }
+  function laDownload(b64, naam) {
+    var bin = atob(b64), arr = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    var a = document.createElement('a'); a.href = url; a.download = naam; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+  }
+  function laKleur(ernst) { return ernst === 'rood' ? 'br' : ernst === 'oranje' ? 'bo' : ernst === 'ok' ? 'bg' : ''; }
+  window.laNaarVastloners = function () { swT('vastloners', 'Vastloners'); };
+
+  // Checklist (de 4 stappen van de gekozen loonmaand)
+  function laCheck(stappen) {
+    g('la-check').innerHTML = stappen.map(function (s) {
+      var chip;
+      if (s.klaar) chip = '<span class="badge bg">✓ ' + (s.viaMail ? 'mail verstuurd' : 'afgevinkt') + (s.tijd ? ' ' + esc(s.tijd) : '') + (s.door ? ' · ' + esc(String(s.door).split('@')[0]) : '') + '</span>';
+      else if (s.dagen < 0) chip = '<span class="badge br">' + laDagen(-s.dagen) + ' te laat · deadline ' + esc(s.deadline) + '</span>';
+      else if (s.dagen <= 3) chip = '<span class="badge bo">deadline ' + esc(s.deadline) + (s.dagen === 0 ? ' (vandaag)' : ' (over ' + laDagen(s.dagen) + ')') + '</span>';
+      else chip = '<span class="badge">deadline ' + esc(s.deadline) + '</span>';
+      return '<label style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #f0ebe7;cursor:pointer"><input type="checkbox"' + (s.klaar ? ' checked' : '') + ' onchange="laVink(\'' + s.sleutel + '\',this.checked)" style="width:18px;height:18px;flex:none"><span style="flex:1' + (s.klaar ? ';color:#888078;text-decoration:line-through' : '') + '">' + esc(s.label) + '</span>' + chip + '</label>';
+    }).join('');
+  }
+  window.laLaad = async function () {
+    laU = null; laM = null; g('la-xl').disabled = true;
+    g('la-u-status').innerHTML = 'Klik op Ophalen. Het duurt even: alle timesheets en ziekmeldingen van de maand worden uit Shiftbase gelezen.';
+    ['la-u-kpi', 'la-u-waarsch', 'la-z', 'la-u', 'la-m-kpi', 'la-m-waarsch', 'la-m'].forEach(function (id) { g(id).style.display = 'none'; });
+    g('la-m-status').innerHTML = 'Klik op Ophalen: je krijgt de mutaties, de wachtdagen, wie uit dienst gaat en een kant-en-klare mail aan Mahdia om te controleren.';
+    var r = await api('/api/loonronde?' + laPer());
+    if (!r.success) { g('la-check').innerHTML = '<div class="alert rood" style="margin:0">' + esc(r.bericht) + '</div>'; return; }
+    g('la-pill').textContent = r.periode.label;
+    laCheck(r.stappen);
+  };
+  window.laVink = async function (stap, klaar) {
+    var p = laJM(), r = await api('/api/loonronde', { actie: 'afvinken', jaar: p.jaar, maand: p.maand, stap: stap, klaar: !!klaar });
+    if (!r.success) { toast(r.bericht || 'Opslaan mislukt', 'err'); window.laLaad(); return; }
+    laCheck(r.stappen);
+  };
+
+  // 6e: uurloners
+  window.laUren = async function (ververs) {
+    var st = g('la-u-status'); st.innerHTML = 'Uren en afwezigheid ophalen uit Shiftbase… even geduld.';
+    ['la-u-kpi', 'la-u-waarsch', 'la-z', 'la-u'].forEach(function (id) { g(id).style.display = 'none'; }); g('la-xl').disabled = true;
+    var r = await api('/api/loonronde?stap=uurloners&' + laPer() + (ververs ? '&ververs=1' : ''));
+    if (!r.success) { st.innerHTML = '<span style="color:#c0392b">' + esc(r.bericht) + '</span>'; return; }
+    laU = r; g('la-xl').disabled = false;
+    var u = r.uren, z = r.ziekte;
+    st.innerHTML = 'Periode <strong>' + esc(r.periode.label) + '</strong> · opgehaald ' + esc(r.opgehaald) + ' · ' + u.afgewezen + ' afgewezen timesheet(s) niet meegeteld';
+    var kpi = g('la-u-kpi');
+    kpi.innerHTML = '<div class="card cg"><div class="si sig">⏱</div><div><div class="sv">' + laU2(u.totaal.uren) + '</div><div class="sl">Uren uurloners</div></div></div><div class="card cd"><div class="si sid">👤</div><div><div class="sv">' + u.totaal.medewerkers + '</div><div class="sl">Medewerkers met uren</div></div></div><div class="card cw"><div class="si siw">🤒</div><div><div class="sv">' + z.totaal.ziekeMedewerkers + '</div><div class="sl">Met ziekmelding</div></div></div><div class="card" style="border-top:3px solid ' + (z.totaal.teCorrigeren ? '#c0392b' : '#009f4b') + '"><div class="si" style="background:' + (z.totaal.teCorrigeren ? '#fdecea' : '#e6f6ec') + '">' + (z.totaal.teCorrigeren ? '⚠' : '✓') + '</div><div><div class="sv">' + z.totaal.teCorrigeren + '</div><div class="sl">Ziekte te corrigeren</div></div></div>';
+    kpi.style.display = 'grid';
+    var w = g('la-u-waarsch');
+    if (u.waarschuwingen.length) { w.innerHTML = '<div class="alert geel" style="margin:0"><strong>⚠ Controleren (' + u.waarschuwingen.length + ')</strong><ul style="margin:8px 0 0;padding-left:18px">' + u.waarschuwingen.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>'; w.style.display = 'block'; }
+    // ziektecontrole
+    var zh = '<div style="font-weight:700;margin:0 0 8px">Ziektecontrole: staan alle ziektedagen op 0 uur?</div>';
+    if (!z.totaal.ziekeMedewerkers) zh += '<div class="alert groen" style="margin:0">✓ Geen ziekmeldingen van uurloners in ' + esc(r.periode.label) + '.</div>';
+    else {
+      if (!z.metAfwijking.length) zh += '<div class="alert groen" style="margin:0 0 10px">✓ Alle ' + z.totaal.ziekmeldingen + ' ziekmelding(en) van ' + z.totaal.ziekeMedewerkers + ' medewerker(s) staan op 0 uur.</div>';
+      else zh += '<div class="tw" style="margin:0 -24px"><table><thead><tr><th>Medewerker</th><th>Winkel</th><th>Ziek</th><th style="text-align:right">Uren op ziekte</th><th>Controle</th></tr></thead><tbody>' + z.metAfwijking.map(function (m) {
+        var per = m.periodes.map(function (p) { return esc(p.start) + (p.eind !== p.start ? ' t/m ' + esc(p.eind) : '') + (p.deelDag ? ' (deel v/d dag)' : ''); }).join('<br>');
+        var af = m.afwijkingen.map(function (a) { return '<div style="margin-bottom:3px"><span class="badge ' + laKleur(a.ernst) + '">' + (a.ernst === 'rood' ? 'te corrigeren' : a.ernst === 'oranje' ? 'controleren' : 'info') + '</span> ' + esc(a.tekst) + '</div>'; }).join('');
+        return '<tr><td><strong>' + esc(m.naam) + '</strong></td><td>' + esc(m.winkel) + '</td><td style="font-size:.78rem">' + per + '</td><td style="text-align:right"><strong>' + laU2(m.uren) + '</strong></td><td style="font-size:.8rem">' + af + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+      var ok = z.totaal.ziekeMedewerkers - z.totaal.metAfwijking;
+      if (ok > 0 && z.metAfwijking.length) zh += '<div class="lay-sub" style="margin-top:8px">+ ' + ok + ' medewerker(s) met ziekmelding op 0 uur: in orde.</div>';
+    }
+    g('la-z').innerHTML = zh; g('la-z').style.display = 'block';
+    // uren per BV en per medewerker
+    var uh = '<div style="padding:14px 24px 0;font-weight:700">Gewerkte uren per BV</div><div class="tw"><table><thead><tr><th>BV</th><th style="text-align:right">Medewerkers</th><th style="text-align:right">Uren</th></tr></thead><tbody>' + u.perBv.map(function (b) { return '<tr><td><strong>' + esc(b.bv) + '</strong></td><td style="text-align:right">' + b.medewerkers + '</td><td style="text-align:right"><strong>' + laU2(b.uren) + '</strong></td></tr>'; }).join('') + '<tr><td><strong>Totaal</strong></td><td style="text-align:right">' + u.totaal.medewerkers + '</td><td style="text-align:right"><strong>' + laU2(u.totaal.uren) + '</strong></td></tr></tbody></table></div>';
+    uh += '<details style="padding:8px 24px 16px"><summary style="cursor:pointer;font-size:.85rem;color:#009f4b;font-weight:600">Per medewerker (' + u.regels.length + ' regels)</summary><div class="tw" style="margin-top:8px"><table><thead><tr><th>Medewerker</th><th>Winkel</th><th>BV</th><th style="text-align:right">Uren</th><th style="text-align:right">Nog niet goedgekeurd</th></tr></thead><tbody>' + u.regels.map(function (x) { return '<tr><td>' + esc(x.naam) + (x.einde ? ' <span class="badge bo">uit dienst ' + esc(x.einde.split('-').reverse().join('-')) + '</span>' : '') + '</td><td>' + esc(x.winkel) + '</td><td>' + esc(x.bv) + '</td><td style="text-align:right">' + laU2(x.uren) + '</td><td style="text-align:right">' + (x.openUren ? laU2(x.openUren) : '') + '</td></tr>'; }).join('') + '</tbody></table></div></details>';
+    g('la-u').innerHTML = uh; g('la-u').style.display = 'block';
+  };
+  window.laExport = async function () {
+    var p = laJM(), r = await api('/api/loonronde', { actie: 'export', jaar: p.jaar, maand: p.maand });
+    if (!r.success) { toast(r.bericht || 'Export mislukt', 'err'); return; }
+    laDownload(r.base64, r.bestandsnaam); toast('Excel gedownload: ' + r.bestandsnaam, 'ok');
+  };
+
+  // 18e: vastloners, wachtdagen, uitdienst + mail aan Mahdia
+  window.laMut = async function () {
+    var st = g('la-m-status'); st.innerHTML = 'Mutaties, wachtdagen en uitdienst ophalen uit Shiftbase… even geduld.';
+    ['la-m-kpi', 'la-m-waarsch', 'la-m'].forEach(function (id) { g(id).style.display = 'none'; });
+    var r = await api('/api/loonronde?stap=mutaties&' + laPer());
+    if (!r.success) { st.innerHTML = '<span style="color:#c0392b">' + esc(r.bericht) + '</span>'; return; }
+    laM = r;
+    var t = r.vastloners.totalen, ud = r.uitdienst;
+    st.innerHTML = 'Loonmaand <strong>' + esc(r.periode.label) + '</strong> · ' + r.vastloners.aantal + ' vastloners · opgehaald ' + esc(r.opgehaald);
+    var kpi = g('la-m-kpi');
+    kpi.innerHTML = '<div class="card cg"><div class="si sig">🏝</div><div><div class="sv">' + t.verlofDagen + '</div><div class="sl">Vakantiedagen</div></div></div><div class="card cw"><div class="si siw">🤒</div><div><div class="sv">' + t.ziekDagen + '</div><div class="sl">Ziektedagen</div></div></div><div class="card" style="border-top:3px solid #c0392b"><div class="si" style="background:#fdecea">⚠</div><div><div class="sv">' + t.wachtdagen + '</div><div class="sl">Wachtdagen</div></div></div><div class="card cd"><div class="si sid">🚪</div><div><div class="sv">' + ud.uitdienst.length + '</div><div class="sl">Uit dienst</div></div></div>';
+    kpi.style.display = 'grid';
+    var alle = (r.vastloners.waarschuwingen || []).map(function (x) { return { ernst: 'oranje', tekst: x }; }).concat(ud.controle || []);
+    var w = g('la-m-waarsch');
+    if (alle.length) { w.innerHTML = '<div class="alert geel" style="margin:0"><strong>⚠ Controleer vóór je de mail verstuurt (' + alle.length + ')</strong><ul style="margin:8px 0 0;padding-left:18px">' + alle.map(function (x) { return '<li' + (x.ernst === 'grijs' ? ' style="color:#888078"' : '') + '>' + esc(x.tekst) + '</li>'; }).join('') + '</ul></div>'; w.style.display = 'block'; }
+    g('la-ud-body').innerHTML = ud.uitdienst.length ? ud.uitdienst.map(function (x) { return '<tr><td><strong>' + esc(x.naam) + '</strong></td><td>' + esc(x.winkel) + (x.bv ? '<div class="lay-sub">' + esc(x.bv) + '</div>' : '') + '</td><td><span class="badge ' + (x.soort === 'vastloner' ? 'bo' : '') + '">' + esc(x.soort) + '</span></td><td>' + esc(x.einddatum) + '</td><td>' + esc(x.maand) + '</td></tr>'; }).join('') : '<tr><td colspan="5" style="text-align:center;color:#009f4b;padding:24px">✓ Niemand uit dienst van ' + esc(ud.venster.van) + ' t/m ' + esc(ud.venster.tot) + '</td></tr>';
+    g('la-m-aan').textContent = r.aan ? '(aan ' + r.aan + ', kopie naar jezelf)' : '';
+    g('la-m-onderwerp').value = r.mail.subject; g('la-m-tekst').value = r.mail.text;
+    var v = g('la-m-verstuurd');
+    if (r.mailStatus) { v.innerHTML = '✓ Deze mail is al verstuurd op <strong>' + esc(r.mailStatus.tijd) + '</strong> door ' + esc(String(r.mailStatus.door).split('@')[0]) + '. Je kunt hem opnieuw sturen als er iets is veranderd.'; v.style.display = 'block'; } else v.style.display = 'none';
+    g('la-m').style.display = 'block';
+  };
+  window.laMailKopieer = function () {
+    var t = g('la-m-tekst').value; if (!t) { toast('Haal eerst de gegevens op', 'err'); return; }
+    navigator.clipboard.writeText(t).then(function () { toast('Tekst gekopieerd', 'ok'); }, function () { toast('Kopiëren mislukt', 'err'); });
+  };
+  window.laMailVerstuur = async function (opnieuw) {
+    if (!laM) { toast('Haal eerst de gegevens op', 'err'); return; }
+    if (!opnieuw && !confirm('Deze mail nu versturen aan ' + (laM.aan || 'de salarisadministratie') + '? Je krijgt zelf een kopie.')) return;
+    var p = laJM(), b = g('la-m-btn'); b.disabled = true;
+    var r = await api('/api/loonronde', { actie: 'mail', jaar: p.jaar, maand: p.maand, onderwerp: g('la-m-onderwerp').value, tekst: g('la-m-tekst').value, opnieuw: !!opnieuw });
+    b.disabled = false;
+    if (r.alVerstuurd) { if (confirm(r.bericht)) window.laMailVerstuur(true); return; }
+    if (!r.success) { toast(r.bericht || 'Versturen mislukt', 'err'); return; }
+    toast(r.bericht, 'ok'); laCheck(r.stappen);
+    var v = g('la-m-verstuurd'); v.innerHTML = '✓ Verstuurd op <strong>' + esc(r.mail.tijd) + '</strong>.'; v.style.display = 'block';
   };
 
   // ---------- HACCP-naleving (v0.50.0): Academy-lijsten naast het Shiftbase-rooster ----------

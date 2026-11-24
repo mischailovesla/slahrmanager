@@ -1199,7 +1199,16 @@ async function dagoverzichtTest(naar) {
   return { bericht: 'Test-weekoverzicht met ' + items.length + ' onderwerp(en) verstuurd naar ' + naar + '.' };
 }
 
-const CHECKS = { 'teken-herinneringen': tekenHerinneringen, 'dagoverzicht': dagoverzicht, 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto, 'lh-model': lhModel };
+// ---- Loonronde (v0.56.0): herinnering aan de aanlevermomenten richting salaris (6e uurloners, 18e vastloners/uitdienst) ----
+// Geen mail: open stappen verschijnen als taak op het Overzicht tot ze in tab Loonadministratie zijn afgevinkt.
+async function loonronde(droog) {
+  const rap = { naam: 'loonronde', gevonden: [], verstuurd: [], fouten: [], droog: !!droog || !actief() };
+  try { rap.gevonden = await require('./loonronde').openStappen(vandaag0()); }
+  catch (e) { rap.fouten.push('loonronde: ' + e.message); }
+  return rap;
+}
+
+const CHECKS = { 'loonronde': loonronde, 'teken-herinneringen': tekenHerinneringen, 'dagoverzicht': dagoverzicht, 'winkelmail': winkelmail, 'mail-bounces': mailBounces, 'jubilea': jubilea, 'datacontrole': datacontrole, 'zomerpiek': zomerpiek, 'sync-formulieren': syncFormulieren, 'loonheffing-herinneringen': loonHerinneringen, 'ontslag-herinneringen': ontslagHerinneringen, 'nieuwe-medewerkers': nieuweMedewerkers, 'aanzegtermijnen': aanzegtermijnen, 'stille-afwezigen': stilleAfwezigen, 'weekend-beschikbaarheid': weekendBeschikbaarheid, 'korting-herinneringen': kortingHerinneringen, 'vakantiepieken': vakantiepieken, 'bewaartermijnen': bewaartermijnen, 'data-hygiene': dataHygiene, 'contractketen': contractketen, 'verzuim': verzuim, 'jeugd': jeugd, 'oproepaanbod': oproepaanbod, 'checkin': checkin, 'maandrapport': maandrapport, 'verlengingen': verlengingen, 'exit-survey': exitSurvey, 'salaris': salaris, 'mto': mto, 'lh-model': lhModel };
 
 // Eén check draaien + loggen in hr_signaleringen (migratie 0004). Faalt nooit hard op het loggen.
 // ---- Automatisch naar salaris (maandag + donderdag) ----
@@ -1369,4 +1378,4 @@ async function draai(naam, droog, bron) {
   return rap;
 }
 
-module.exports = { tekenHerinnerKandidaten, tekenHerinnerMail, tekenHerinneringen, ontvangenZonderLoonheffing, INDIENST_HER_SLEUTEL, indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto, lhModel };
+module.exports = { loonronde, tekenHerinnerKandidaten, tekenHerinnerMail, tekenHerinneringen, ontvangenZonderLoonheffing, INDIENST_HER_SLEUTEL, indienstOntbreektKandidaten, dagoverzichtTest, vindJubilea, controleerData, bepaalZomerpiek, piekSeizoen, piekWeken, jubilea, datacontrole, zomerpiek, CHECKS, draai, actief, vindNieuweMedewerkers, vindAflopendeContracten, aanzegLijst, contractMail, bepaalStilleAfwezigen, syncFormulieren, loonHerinneringen, ontslagHerinneringen, nieuweMedewerkers, aanzegtermijnen, stilleAfwezigen, weekendBeschikbaarheid, kortingHerinneringen, vakantiepieken, bewaartermijnen, dataHygiene, hygieneOverzicht, contractketen, verzuim, jeugd, oproepaanbod, checkin, maandrapport, verlengingen, laadVerlengingen, exitSurvey, vertrekkers, vertrekt, loonDeadline, loonAutoAan, salaris, mto, lhModel };

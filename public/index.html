@@ -731,6 +731,46 @@
     <div class="alert grijs"><strong>Werkwijze:</strong> de maandkiezer staat standaard op de vorige maand — de maand die naar de salarisadministratie gaat. Vastloner = functie met "store manager" in Shiftbase óf naam in de vaste lijst (config.js). Wachtdag komt uit Shiftbase; de 4-wekenregel (art. 7:629 lid 10 BW) wordt nagerekend en afwijkingen staan in het gele blok. Loonconsequenties bij "Overig" zijn de wettelijke hoofdregel — nog af te stemmen met de salarisadministratie/CAO.</div>
   </div>
 
+  <!-- LOONADMINISTRATIE (v0.56.0): 6e uurloners, 18e vastloners/uitdienst -->
+  <div class="tc" id="tab-loonadmin">
+    <div class="sec">
+      <div class="sh"><div class="st">Loonadministratie <span class="pill" id="la-pill">-</span></div>
+        <div class="hr2"><span class="lay-sub">Loonmaand</span><select id="la-maand" class="sb" style="width:auto" onchange="laLaad()"></select><select id="la-jaar" class="sb" style="width:auto" onchange="laLaad()"></select></div></div>
+      <div class="lay-sub" style="padding:10px 24px 0">Wat je voor deze loonmaand aan Mahdia doorgeeft. Vink af wat klaar is; open stappen komen als taak op het Overzicht vanaf 3 dagen vóór de deadline.</div>
+      <div id="la-check" style="padding:8px 24px 6px"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><div class="st">Uurloners: uren en ziektecontrole <span class="pill">deadline 6e</span></div>
+        <div class="hr2"><button class="btn bp bsm" onclick="laUren(false)">Ophalen uit Shiftbase</button><button class="btn bd bsm" onclick="laUren(true)" title="Opnieuw uit Shiftbase halen">↻</button><button class="btn bd bsm" id="la-xl" onclick="laExport()" disabled>⬇ Excel (uren + controle)</button></div></div>
+      <div id="la-u-status" class="lay-sub" style="padding:10px 24px 0">Klik op Ophalen. Het duurt even: alle timesheets en ziekmeldingen van de maand worden uit Shiftbase gelezen.</div>
+      <div class="stats" id="la-u-kpi" style="display:none;padding:16px 24px 0"></div>
+      <div id="la-u-waarsch" style="display:none;padding:14px 24px 0"></div>
+      <div id="la-z" style="display:none;padding:14px 24px 0"></div>
+      <div id="la-u" style="display:none"></div>
+    </div>
+
+    <div class="sec">
+      <div class="sh"><div class="st">Vastloners: mutaties, wachtdagen en uitdienst <span class="pill">deadline 18e</span></div>
+        <div class="hr2"><button class="btn bp bsm" onclick="laMut()">Ophalen uit Shiftbase</button><button class="btn bd bsm" onclick="laNaarVastloners()" title="Volledig overzicht per manager met periodes en loonconsequentie">Vastloners-tab</button></div></div>
+      <div id="la-m-status" class="lay-sub" style="padding:10px 24px 0">Klik op Ophalen: je krijgt de mutaties, de wachtdagen, wie uit dienst gaat en een kant-en-klare mail aan Mahdia om te controleren.</div>
+      <div class="stats" id="la-m-kpi" style="display:none;padding:16px 24px 0"></div>
+      <div id="la-m-waarsch" style="display:none;padding:14px 24px 0"></div>
+      <div id="la-m" style="display:none">
+        <div class="tw"><table><thead><tr><th>Uit dienst</th><th>Winkel / BV</th><th>Soort</th><th>Laatste dag</th><th>Maand</th></tr></thead><tbody id="la-ud-body"></tbody></table></div>
+        <div style="padding:16px 24px 20px">
+          <div class="fg"><label>Mail aan de salarisadministratie <span id="la-m-aan" style="color:#888;font-weight:400"></span></label><input type="text" id="la-m-onderwerp"></div>
+          <div class="fg"><label>Tekst <span style="color:#888;font-weight:400">(controleer en pas aan; wat je hier ziet gaat zo de deur uit)</span></label><textarea id="la-m-tekst" rows="20" style="min-height:360px;font-size:.84rem;line-height:1.5"></textarea></div>
+          <div id="la-m-verstuurd" class="alert groen" style="display:none;margin:0 0 12px"></div>
+          <div class="hr2"><button class="btn bd" onclick="laMailKopieer()">📋 Kopieer tekst</button><button class="btn bp" id="la-m-btn" onclick="laMailVerstuur(false)">✉ Verstuur naar Mahdia</button></div>
+          <div class="lay-sub" style="margin-top:8px">Je krijgt zelf een kopie. Na het versturen worden <em>Mutaties vastloners</em> en <em>Uitdienst</em> automatisch afgevinkt.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert grijs"><strong>Werkwijze:</strong> de loonmaand staat standaard op de vorige maand. <strong>Uurloners</strong> = iedereen die niet als vastloner telt (zelfde regel als de Vastloners-tab). De uren komen uit de Shiftbase-timesheets (geklokt, excl. pauze; afgewezen tellen niet, nog niet goedgekeurde staan er wel in met een waarschuwing), per BV en winkel. De <strong>ziektecontrole</strong> kijkt bij elke ziekmelding van een uurloner of die op 0 uur staat; is er ook uren geklokt op een ziektedag (niet bij een halve dag), dan krijg je een oranje melding. <strong>Uitdienst</strong> = einddatum in Shiftbase vanaf het begin van de loonmaand t/m het eind van de maand erna, vergeleken met de ontslagdossiers. Valt een deadline in het weekend, dan telt de vrijdag ervoor (feestdagen niet). Het Excel-formaat is een voorstel; wil Mahdia een andere indeling, dan passen we de kolommen aan.</div>
+  </div>
+
   <!-- FOOIVERDELING (v0.46.0) -->
   <!-- v0.53.0 Algemene HACCP-brief aan het team -->
   <div class="mo" id="hb-modal"><div class="modal" style="width:860px">
