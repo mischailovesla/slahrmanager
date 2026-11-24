@@ -42,6 +42,10 @@ function werkdagOpOfVoor(d) { const x = new Date(d.getFullYear(), d.getMonth(), 
 // Deadline voor loonmaand (jaar, maand 1-12): dag `dag` van de maand erna (new Date(jaar, maand, dag) = volgende maand)
 const deadlineVan = (jaar, maand, dag) => werkdagOpOfVoor(new Date(Number(jaar), Number(maand), dag));
 
+// Vastloners lopen van de 18e t/m de 17e: ronde oktober = 18-10 t/m 17-11 (de nieuwe periode begint op de 18e, dus geen dag dubbel)
+const VAST_DAG = () => Number(C.LOONRONDE_VAST_DAG) || 18;
+function vastVenster(jaar, maand) { jaar = Number(jaar); maand = Number(maand); return { start: new Date(jaar, maand - 1, VAST_DAG()), eind: new Date(jaar, maand, VAST_DAG() - 1) }; }
+
 // ---------- Afvinken (hr_instellingen) ----------
 const sleutelVan = p => 'loonronde_' + p.sleutel;
 async function leesStatus(jaar, maand) {
@@ -230,9 +234,9 @@ const uurTekst = n => String(r2(n)).replace('.', ',');
 function bouwMutatieMail(vl, ud, afzender) {
   const p = vl.periode, regels = [];
   const metMutatie = vl.regels.filter(r => r.heeftMutatie), zonder = vl.regels.length - metMutatie.length;
-  regels.push('Hoi Mahdia,', '', 'Hierbij de mutaties voor de vastloners over ' + p.label + ' (' + p.start + ' t/m ' + p.eind + ') en de medewerkers die uit dienst gaan of zijn gegaan.', '');
+  regels.push('Hoi Mahdia,', '', 'Hierbij de mutaties voor de vastloners over de periode ' + p.start + ' t/m ' + p.eind + ' en de medewerkers die uit dienst gaan of zijn gegaan.', '');
   regels.push('MUTATIES VASTLONERS');
-  if (!metMutatie.length) regels.push('Geen mutaties in ' + p.label + '.');
+  if (!metMutatie.length) regels.push('Geen mutaties in deze periode.');
   for (const r of metMutatie) {
     regels.push(r.naam + (r.locatie && r.locatie !== '-' ? ' (' + r.locatie + ')' : ''));
     if (r.verlofDagen) regels.push('  - Vakantie: ' + r.verlofDagen + ' dag(en)' + (r.verlofUren ? ' / ' + uurTekst(r.verlofUren) + ' uur' : '') + ' — ' + r.verlofRegels.map(x => x.start + (x.eind !== x.start ? ' t/m ' + x.eind : '')).join(', '));
@@ -242,13 +246,13 @@ function bouwMutatieMail(vl, ud, afzender) {
   if (zonder > 0 && metMutatie.length) regels.push('', 'Geen mutaties bij de overige ' + zonder + ' vastloner(s).');
   regels.push('', 'WACHTDAGEN (ZIEKTE)');
   const wacht = vl.regels.filter(r => r.wachtdagen.length);
-  if (!wacht.length) regels.push('Geen wachtdagen in ' + p.label + '.');
+  if (!wacht.length) regels.push('Geen wachtdagen in deze periode.');
   for (const r of wacht) regels.push('- ' + r.naam + ': ' + r.wachtdagen.map(w => w.datum + (w.uren ? ' (' + uurTekst(w.uren) + ' uur)' : '')).join(', '));
   regels.push('', 'UIT DIENST (einddatum ' + ud.venster.van + ' t/m ' + ud.venster.tot + ')');
   if (!ud.uitdienst.length) regels.push('Niemand uit dienst in deze periode.');
   for (const x of ud.uitdienst) regels.push('- ' + x.naam + ' (' + (x.bv ? x.bv + ', ' : '') + x.winkel + ', ' + x.soort + '): laatste dag ' + x.einddatum);
   regels.push('', 'Laat je het weten als je iets anders nodig hebt?', '', 'Groet,', afzender || 'HR');
-  return { subject: 'Mutaties vastloners, wachtdagen en uitdienst — ' + p.label + ' (SLA)', text: regels.join('\n') };
+  return { subject: 'Mutaties vastloners, wachtdagen en uitdienst — ' + p.start + ' t/m ' + p.eind + ' (SLA)', text: regels.join('\n') };
 }
 
 // ---------- Excel (xlsx) zonder extra pakket: zip.js schrijft de onderdelen ----------
@@ -316,12 +320,12 @@ async function laadUurloners(jaar, maand, ververs) {
 }
 async function laadMutaties(jaar, maand, afzender) {
   const SB = require('./shiftbase'), V = require('./vastloners'), p = periode(jaar, maand);
-  const [vl, users, med] = await Promise.all([V.getVastlonerMaand(p.jaar, p.maand), SB.sbGet('users').then(r => (r && r.data) || r || []), SB.getMedewerkers(false)]);
+  const [vl, users, med] = await Promise.all([V.getVastlonerMaand(p.jaar, p.maand, vastVenster(p.jaar, p.maand)), SB.sbGet('users').then(r => (r && r.data) || r || []), SB.getMedewerkers(false)]);
   let ontslag = [], ontslagFout = '';
   try { ontslag = await require('./sheets').getOntslag(true); } catch (e) { ontslagFout = e.message; }
-  // uitdienst: loonmaand + de maand erna (de maand waarin de 18e valt)
-  const tot = isoVan(new Date(p.jaar, p.maand + 1, 0));
-  const ud = uitdienstLijst(users, med, ontslag, p.van, tot);
+  // uitdienst: zelfde periode als de vastloners (18e t/m 17e)
+  const vw = vastVenster(p.jaar, p.maand);
+  const ud = uitdienstLijst(users, med, ontslag, isoVan(vw.start), isoVan(vw.eind));
   if (ontslagFout) ud.controle.unshift({ ernst: 'grijs', tekst: 'Ontslagdossiers konden niet worden gelezen (' + ontslagFout + '); alleen Shiftbase is gecontroleerd.' });
   const mail = bouwMutatieMail(vl, ud, afzender);
   const st = await leesStatus(p.jaar, p.maand);
@@ -332,4 +336,4 @@ async function status(jaar, maand) {
   return { periode: p, stappen: stappenOverzicht(p.jaar, p.maand, st), mail: st.mail };
 }
 
-module.exports = { periode, standaardMaand, STAPPEN, werkdagOpOfVoor, deadlineVan, stappenOverzicht, openStappen, leesStatus, zetStap, zetMail, bouwContext, verwerkUren, ziekteControle, berekenUurloners, uitdienstLijst, bouwMutatieMail, maakXlsx, uurlonersBladen, laadUurloners, laadMutaties, status };
+module.exports = { vastVenster, periode, standaardMaand, STAPPEN, werkdagOpOfVoor, deadlineVan, stappenOverzicht, openStappen, leesStatus, zetStap, zetMail, bouwContext, verwerkUren, ziekteControle, berekenUurloners, uitdienstLijst, bouwMutatieMail, maakXlsx, uurlonersBladen, laadUurloners, laadMutaties, status };

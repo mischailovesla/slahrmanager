@@ -50,8 +50,9 @@ async function verlofTypes() {
   return map;
 }
 // Pure rekenfunctie (testbaar): maandoverzicht
-function berekenMaand(vastloners, absLijst, typeMap, jaar, maand) {
-  const start = new Date(jaar, maand - 1, 1), eind = new Date(jaar, maand, 0);
+// venster (optioneel) = { start: Date, eind: Date }: eigen periode i.p.v. de kalendermaand (Loonadministratie: 18e t/m 17e)
+function berekenMaand(vastloners, absLijst, typeMap, jaar, maand, venster) {
+  const start = venster ? venster.start : new Date(jaar, maand - 1, 1), eind = venster ? venster.eind : new Date(jaar, maand, 0);
   const perId = {};
   vastloners.forEach(v => { perId[v.id] = { naam: v.naam, email: v.email, functie: v.functie, locatie: v.locatie, verlofDagen: 0, verlofUren: 0, ziekDagen: 0, ziekUren: 0, verlofRegels: [], ziekteperiodes: [], overig: [], wachtdagen: [] }; });
   const waarschuwingen = [], ziekRuw = {};
@@ -105,17 +106,17 @@ function berekenMaand(vastloners, absLijst, typeMap, jaar, maand) {
     return r;
   });
   tot.verlofUren = Math.round(tot.verlofUren * 100) / 100; tot.ziekUren = Math.round(tot.ziekUren * 100) / 100;
-  return { periode: { jaar, maand, label: MAANDEN[maand - 1] + ' ' + jaar, start: D.kort(start), eind: D.kort(eind) }, aantalVastloners: vastloners.length, totalen: tot, regels, waarschuwingen };
+  return { periode: { jaar, maand, label: venster ? D.kort(start) + ' t/m ' + D.kort(eind) : MAANDEN[maand - 1] + ' ' + jaar, start: D.kort(start), eind: D.kort(eind) }, aantalVastloners: vastloners.length, totalen: tot, regels, waarschuwingen };
 }
-async function getVastlonerMaand(jaar, maand) {
+async function getVastlonerMaand(jaar, maand, venster) {
   jaar = Number(jaar); maand = Number(maand);
   if (!jaar || !maand || maand < 1 || maand > 12) throw new Error('Ongeldige maand.');
   const med = await SB.getMedewerkers(false);
   const vastloners = bepaalVastloners(med);
   if (!vastloners.length) throw new Error('Geen vastloners herkend. Controleer VASTLONER_TREFWOORDEN/VASTLONER_NAMEN in config.js.');
-  const start = new Date(jaar, maand - 1, 1), eind = new Date(jaar, maand, 0), terug = plusDagen(start, -C.VL_TERUGKIJK_DAGEN);
+  const start = venster ? venster.start : new Date(jaar, maand - 1, 1), eind = venster ? venster.eind : new Date(jaar, maand, 0), terug = plusDagen(start, -C.VL_TERUGKIJK_DAGEN);
   const [typeMap, abs] = await Promise.all([verlofTypes(), SB.sbGet('absentees?min_date=' + iso(terug) + '&max_date=' + iso(eind))]);
-  const r = berekenMaand(vastloners, abs || [], typeMap, jaar, maand);
+  const r = berekenMaand(vastloners, abs || [], typeMap, jaar, maand, venster);
   r.vastloners = vastloners; r.typeMap = typeMap; r.opgehaald = D.stempel();
   return r;
 }

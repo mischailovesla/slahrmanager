@@ -2654,7 +2654,7 @@
     if (!r.success) { st.innerHTML = '<span style="color:#c0392b">' + esc(r.bericht) + '</span>'; return; }
     laM = r;
     var t = r.vastloners.totalen, ud = r.uitdienst;
-    st.innerHTML = 'Loonmaand <strong>' + esc(r.periode.label) + '</strong> · ' + r.vastloners.aantal + ' vastloners · opgehaald ' + esc(r.opgehaald);
+    st.innerHTML = 'Periode <strong>' + esc(r.periode.start) + ' t/m ' + esc(r.periode.eind) + '</strong> · ' + r.vastloners.aantal + ' vastloners · opgehaald ' + esc(r.opgehaald);
     var kpi = g('la-m-kpi');
     kpi.innerHTML = '<div class="card cg"><div class="si sig">🏝</div><div><div class="sv">' + t.verlofDagen + '</div><div class="sl">Vakantiedagen</div></div></div><div class="card cw"><div class="si siw">🤒</div><div><div class="sv">' + t.ziekDagen + '</div><div class="sl">Ziektedagen</div></div></div><div class="card" style="border-top:3px solid #c0392b"><div class="si" style="background:#fdecea">⚠</div><div><div class="sv">' + t.wachtdagen + '</div><div class="sl">Wachtdagen</div></div></div><div class="card cd"><div class="si sid">🚪</div><div><div class="sv">' + ud.uitdienst.length + '</div><div class="sl">Uit dienst</div></div></div>';
     kpi.style.display = 'grid';

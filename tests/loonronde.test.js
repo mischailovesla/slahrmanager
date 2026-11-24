@@ -116,12 +116,22 @@ const vl = V.berekenMaand(vastloners, [
   abs('1', '1019458', '2026-10-12', '2026-10-12', 8, { wait_days: 1, wait_hours: 8 })
 ], C.VL_TYPE_MAP, 2026, 10);
 const mail = L.bouwMutatieMail(vl, ud, 'Mischa');
-assert.ok(/oktober 2026/.test(mail.subject));
-for (const s of ['Hoi Mahdia,', 'MUTATIES VASTLONERS', 'Lisa Seidelt (Zuidas)', 'Vakantie: 3 dag(en) / 24 uur', 'Ziek: 1 dag(en)', 'WACHTDAGEN (ZIEKTE)', '- Lisa Seidelt: 12-10-2026 (8 uur)', 'UIT DIENST (einddatum 01-10-2026 t/m 30-11-2026)', '- Mo Leaver (SLA Ceintuur BV, Ceintuurbaan, uurloner): laatste dag 20-10-2026', 'Geen mutaties bij de overige 1 vastloner(s).', 'Groet,\nMischa'])
+assert.ok(/01-10-2026 t\/m 31-10-2026/.test(mail.subject));
+for (const s of ['Hoi Mahdia,', 'over de periode 01-10-2026 t/m 31-10-2026', 'MUTATIES VASTLONERS', 'Lisa Seidelt (Zuidas)', 'Vakantie: 3 dag(en) / 24 uur', 'Ziek: 1 dag(en)', 'WACHTDAGEN (ZIEKTE)', '- Lisa Seidelt: 12-10-2026 (8 uur)', 'UIT DIENST (einddatum 01-10-2026 t/m 30-11-2026)', '- Mo Leaver (SLA Ceintuur BV, Ceintuurbaan, uurloner): laatste dag 20-10-2026', 'Geen mutaties bij de overige 1 vastloner(s).', 'Groet,\nMischa'])
   assert.ok(mail.text.indexOf(s) > -1, 'mail mist: ' + s);
 assert.ok(mail.text.indexOf('Anna Maeda') === -1, 'vastloner zonder mutatie staat niet in de lijst');
 const leeg = L.bouwMutatieMail(V.berekenMaand(vastloners, [], C.VL_TYPE_MAP, 2026, 10), { uitdienst: [], controle: [], venster: { van: '01-10-2026', tot: '30-11-2026' } }, '');
-for (const s of ['Geen mutaties in oktober 2026.', 'Geen wachtdagen in oktober 2026.', 'Niemand uit dienst in deze periode.', 'Groet,\nHR']) assert.ok(leeg.text.indexOf(s) > -1, 'lege mail mist: ' + s);
+for (const s of ['Geen mutaties in deze periode.', 'Geen wachtdagen in deze periode.', 'Niemand uit dienst in deze periode.', 'Groet,\nHR']) assert.ok(leeg.text.indexOf(s) > -1, 'lege mail mist: ' + s);
+
+// 6b. Vastloners: periode 18e t/m 17e (geen dag dubbel), ook over de jaarwisseling
+const vw = L.vastVenster(2026, 10), vw12 = L.vastVenster(2026, 12);
+assert.deepStrictEqual([iso(vw.start), iso(vw.eind)], ['2026-10-18', '2026-11-17']);
+assert.deepStrictEqual([iso(vw12.start), iso(vw12.eind)], ['2026-12-18', '2027-01-17']);
+const vlV = V.berekenMaand(vastloners, [abs('1', '1019457', '2026-10-17', '2026-10-19', 8), abs('1', '1019458', '2026-11-17', '2026-11-18', 8, { wait_days: 1, wait_hours: 8 })], C.VL_TYPE_MAP, 2026, 10, vw);
+assert.strictEqual(vlV.periode.start, '18-10-2026'); assert.strictEqual(vlV.periode.eind, '17-11-2026');
+assert.strictEqual(vlV.regels[0].verlofDagen, 2);   // alleen 18 en 19 oktober vallen in de periode
+assert.strictEqual(vlV.regels[0].ziekDagen, 1);     // 17 november wel, 18 november al in de volgende periode
+assert.ok(/18-10-2026 t\/m 17-11-2026/.test(L.bouwMutatieMail(vlV, ud, 'M').subject));
 
 // 7. Excel: schrijven en weer lezen met de eigen lezer
 const buf = L.maakXlsx(L.uurlonersBladen(res));
