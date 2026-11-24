@@ -89,7 +89,10 @@ async function openStappen(vandaag, leesFn) {
     for (const s of stappenOverzicht(jaar, maand, st, vandaag)) {
       if (s.klaar || !(s.dagen <= 3 && s.dagen >= -10)) continue;
       const wanneer = s.dagen < 0 ? (-s.dagen) + ' dag' + (s.dagen === -1 ? '' : 'en') + ' te laat' : s.dagen === 0 ? 'vandaag deadline' : 'deadline ' + s.deadline + ' (over ' + s.dagen + ' dag' + (s.dagen === 1 ? '' : 'en') + ')';
-      uit.push({ sleutel: p.sleutel + '|' + s.sleutel, stap: s.sleutel, jaar, maand, loonmaand: p.label, label: s.label, deadline: s.deadline, dagen: s.dagen, titel: s.label + ' — ' + p.label, sub: wanneer });
+      // v0.56.2: vastloners lopen van de 18e t/m de 17e en worden de maand erna uitbetaald: toon die periode i.p.v. de uren-maand
+      let tekst = p.label;
+      if (s.groep === 'vastloners') { const vw = vastVenster(jaar, maand), pn = periode(maand === 12 ? jaar + 1 : jaar, maand === 12 ? 1 : maand + 1); tekst = ddmm(isoVan(vw.start)).slice(0, 5) + ' t/m ' + ddmm(isoVan(vw.eind)).slice(0, 5) + ' (salaris ' + pn.label + ')'; }
+      uit.push({ sleutel: p.sleutel + '|' + s.sleutel, stap: s.sleutel, jaar, maand, loonmaand: tekst, label: s.label, deadline: s.deadline, dagen: s.dagen, titel: s.label + ' — ' + tekst, sub: wanneer });
     }
   }
   return uit.sort((a, b) => a.dagen - b.dagen);
@@ -98,7 +101,7 @@ async function openStappen(vandaag, leesFn) {
 // ---------- Uurloners: uren + ziektecontrole ----------
 function bouwContext(users, med) {
   const byId = {};
-  for (const rec of users || []) { const u = rec1(rec, 'User'); if (u.id != null) byId[String(u.id)] = { naam: naamVan(u), email: String(u.email || '').trim().toLowerCase(), enddate: String(u.enddate || '').slice(0, 10), anon: u.anonymized === true || u.anonymized === '1' || u.anonymized === 1 }; }
+  for (const rec of users || []) { const u = rec1(rec, 'User'); if (u.id != null) byId[String(u.id)] = { teams: ((rec && rec.Team) || []).filter(t => t && t.name), naam: naamVan(u), email: String(u.email || '').trim().toLowerCase(), enddate: String(u.enddate || '').slice(0, 10), anon: u.anonymized === true || u.anonymized === '1' || u.anonymized === 1 }; }
   const V = require('./vastloners');
   const vastIds = new Set(V.bepaalVastloners(med || []).map(v => String(v.id)));
   const vastNamen = new Set((C.VASTLONER_NAMEN || []).map(normNaam)), uitgesloten = new Set((C.SB_UITGESLOTEN_NAMEN || []).map(normNaam));
@@ -106,16 +109,22 @@ function bouwContext(users, med) {
   const isVast = uid => { const u = byId[uid]; if (!u) return false; if (u.email && uitsl.indexOf(u.email) > -1) return false; return vastIds.has(uid) || vastNamen.has(normNaam(u.naam)) || (u.email && extra.indexOf(u.email) > -1); };
   const isUurloner = uid => { const u = byId[uid]; return !!u && !u.anon && !isVast(uid) && !uitgesloten.has(normNaam(u.naam)); };
   const medById = {}; for (const m of med || []) medById[String(m.id)] = m;
-  return { byId, isVast, isUurloner, medById };
+  // Keuken, inpak, HQ e.d. regelt Jop: wie geen winkelteam heeft en wél in zo'n team zit, hoort niet in de loonronde
+  const isBuiten = uid => {
+    const u = byId[uid]; if (!u) return false;
+    const teams = u.teams.filter(t => !(C.SB_FRANCHISE_DEPTS || {})[String(t.department_id || '')]);
+    if (teams.some(t => (C.SB_DEPT_CODE || {})[String(t.department_id || '')])) return false;
+    const m = medById[uid];
+    return teams.some(t => C.LOONRONDE_BUITEN_TEAMS.test(String(t.name))) || !!(m && C.LOONRONDE_BUITEN_TEAMS.test(String(m.winkelNaam || '')));
+  };
+  return { byId, isVast, isUurloner, isBuiten, medById };
 }
 function plaatsVan(dept, teamId, depNaam, teamNaam) {
   const code = (C.SB_DEPT_CODE || {})[dept];
   if (code && C.WINKEL_BV_MAP[code]) return { bv: C.WINKEL_BV_MAP[code].bv, winkel: C.WINKEL_BV_MAP[code].naam };
   const naam = depNaam[dept] || teamNaam[String(teamId || '')] || 'Onbekend';
   if ((C.SB_FRANCHISE_DEPTS || {})[dept] || C.FRANCHISE_NAAM.test(naam)) return null; // franchise: niet via SLA-salaris
-  const ke = (C.WAARSCHUWING_EXTRA_LOCATIES || {}).KE;
-  const bv = /keuken/i.test(naam) ? (ke ? ke.bv : '(BV onbekend)') : /^hq$|kantoor/i.test(naam) ? C.WINKEL_BV_MAP.HO.bv : '(BV onbekend)';
-  return { bv, winkel: naam };
+  return { buiten: true, winkel: naam };                                              // keuken, inpak, HQ: regelt Jop
 }
 // Timesheets -> uren per uurloner per winkel + uren per dag (voor de ziektecontrole)
 function verwerkUren(tsLijst, ctx, teams, depts, p) {
@@ -123,7 +132,7 @@ function verwerkUren(tsLijst, ctx, teams, depts, p) {
   const depNaam = {}, teamNaam = {}, teamDept = {};
   for (const rec of depts || []) { const d = rec1(rec, 'Department'); if (d.id != null) depNaam[String(d.id)] = String(d.name || '').trim(); }
   for (const rec of teams || []) { const t = rec1(rec, 'Team'); if (t.id != null) { teamNaam[String(t.id)] = String(t.name || '').trim(); teamDept[String(t.id)] = String(t.department_id || ''); } }
-  const per = {}, perDag = {}; let openUren = 0, openAantal = 0, afgewezen = 0, vastOvergeslagen = 0;
+  const per = {}, perDag = {}; let openUren = 0, openAantal = 0, afgewezen = 0, vastOvergeslagen = 0, buitenUren = 0; const buitenIds = new Set();
   for (const rec of tsLijst || []) {
     const t = rec1(rec, 'Timesheet');
     const datum = String(t.date || '').slice(0, 10);
@@ -136,6 +145,7 @@ function verwerkUren(tsLijst, ctx, teams, depts, p) {
     const uren = F.urenVan(t); if (!(uren > 0)) continue;
     const dept = String(t.department_id || teamDept[String(t.team_id || '')] || '');
     const pl = plaatsVan(dept, t.team_id, depNaam, teamNaam); if (!pl) continue;
+    if (pl.buiten) { buitenUren += uren; buitenIds.add(uid); continue; }
     const open = /pend|open|wacht/.test(st);
     if (open) { openUren += uren; openAantal++; }
     const k = uid + '|' + pl.bv + '|' + pl.winkel;
@@ -150,8 +160,7 @@ function verwerkUren(tsLijst, ctx, teams, depts, p) {
   const perBv = Object.values(bvs).map(b => ({ bv: b.bv, uren: r2(b.uren), medewerkers: b.ids.size })).sort((a, b) => a.bv.localeCompare(b.bv, 'nl'));
   const waarschuwingen = [];
   if (openAantal) waarschuwingen.push(openAantal + ' timesheet(s) met ' + String(r2(openUren)).replace('.', ',') + ' uur zijn nog niet goedgekeurd in Shiftbase; ze staan er wel in. Keur ze eerst goed (of af) voordat je de uitdraai doorstuurt.');
-  const onbekendBv = regels.filter(r => /onbekend/i.test(r.bv)); if (onbekendBv.length) waarschuwingen.push(onbekendBv.length + ' regel(s) in een team zonder bekende BV (' + [...new Set(onbekendBv.map(r => r.winkel))].join(', ') + ') — controleer bij welke BV deze uren horen.');
-  return { regels, perBv, totaal: { uren: r2(regels.reduce((n, r) => n + r.uren, 0)), medewerkers: medew.size, regels: regels.length }, afgewezen, vastOvergeslagen, waarschuwingen, perDag };
+  return { regels, perBv, totaal: { uren: r2(regels.reduce((n, r) => n + r.uren, 0)), medewerkers: medew.size, regels: regels.length }, afgewezen, vastOvergeslagen, buiten: { uren: r2(buitenUren), medewerkers: buitenIds.size }, waarschuwingen, perDag };
 }
 // Ziekmeldingen van uurloners: staan alle ziektedagen op 0 uur?
 function ziekteControle(absLijst, typeMap, ctx, perDag, p) {
@@ -159,7 +168,7 @@ function ziekteControle(absLijst, typeMap, ctx, perDag, p) {
   let ziekeRegels = 0;
   for (const a0 of absLijst || []) {
     const a = rec1(a0, 'Absentee'), uid = String(a.user_id || '');
-    if (!uid || !ctx.isUurloner(uid)) continue;
+    if (!uid || !ctx.isUurloner(uid) || ctx.isBuiten(uid)) continue;
     if (a.deleted === true || String(a.deleted) === '1') continue;
     const status = String(a.status || ''), sl = status.toLowerCase();
     if (sl.indexOf('declin') > -1 || sl.indexOf('reject') > -1) continue;
@@ -204,7 +213,7 @@ function berekenUurloners(inv, p) {
 // ---------- Uitdienst ----------
 const isFlexTeam = t => !!t && (String(t.type || '').toLowerCase().includes('flex') || t.hidden === true || t.hidden === '1' || t.hidden === 1 || String(t.name || '').toLowerCase().includes('flex'));
 function uitdienstLijst(users, med, ontslag, van, tot) {
-  const ctx = bouwContext(users, med), uit = [];
+  const ctx = bouwContext(users, med), uit = []; let buiten = 0;
   const uitgesloten = new Set((C.SB_UITGESLOTEN_NAMEN || []).map(normNaam));
   for (const rec of users || []) {
     const u = rec1(rec, 'User'), uid = String(u.id || ''), e = String(u.enddate || '').slice(0, 10);
@@ -214,6 +223,7 @@ function uitdienstLijst(users, med, ontslag, van, tot) {
     let winkel = '', bv = '';
     for (const t of basis) { const code = (C.SB_DEPT_CODE || {})[String(t.department_id || '')]; if (eigen.length && code) { winkel = C.WINKEL_BV_MAP[code].naam; bv = C.WINKEL_BV_MAP[code].bv; break; } }
     if (!winkel && basis[0]) winkel = String(basis[0].name).replace(/^SLA\s*/i, '').trim();
+    if (ctx.isBuiten(uid)) { buiten++; continue; }
     const m = ctx.medById[uid];
     uit.push({ id: uid, naam, email: ctx.byId[uid].email, einddatum: ddmm(e), einddatumIso: e, winkel: winkel || '-', bv: bv || (m && m.winkelBv) || '', soort: ctx.isVast(uid) ? 'vastloner' : 'uurloner', functie: (m && m.functie) || '', maand: MAANDEN[+e.slice(5, 7) - 1] + ' ' + e.slice(0, 4) });
   }
@@ -226,7 +236,23 @@ function uitdienstLijst(users, med, ontslag, van, tot) {
     if (!uit.some(x => matcht(x, r))) controle.push({ ernst: 'oranje', tekst: 'Ontslagdossier ' + r.naam + ' heeft einddatum ' + r.einddatum + ', maar Shiftbase heeft geen einddatum in deze periode — zet de uitdienst ook in Shiftbase, anders mist Mahdia hem of haar.' });
   }
   for (const x of uit) if (!(ontslag || []).some(r => matcht(x, r))) controle.push({ ernst: 'grijs', tekst: x.naam + ' heeft in Shiftbase einddatum ' + x.einddatum + ' maar geen ontslagdossier (ontslagbevestiging/aanzegging) in het dashboard.' });
+  if (buiten) controle.push({ ernst: 'grijs', tekst: buiten + ' medewerker(s) van keuken/inpak/HQ gaan uit dienst in deze periode; die regelt Jop en staan niet in de lijst.' });
   return { uitdienst: uit, controle, venster: { van: ddmm(van), tot: ddmm(tot) } };
+}
+
+// Vastloners: ziektedagen horen op de contracturen te staan (niet op 0, niet op een ander aantal)
+function vastZiekteControle(vl, vastloners, med) {
+  const cu = {}; for (const m of med || []) cu[String(m.id)] = Number(m.contractUren);
+  const uit = [];
+  (vl.regels || []).forEach((r, i) => {
+    const v = vastloners[i], wk = v ? cu[String(v.id)] : NaN, exp = wk > 0 ? wk / 5 : null;
+    for (const p of r.ziekteperiodes || []) {
+      const label = p.start + (p.eind !== p.start ? ' t/m ' + p.eind : ''), perDag = p.dagen ? p.uren / p.dagen : 0;
+      if (!(p.uren > 0)) uit.push({ ernst: 'rood', tekst: r.naam + ': ziekte ' + label + ' staat op 0 uur — een vastloner moet op de contracturen staan' + (exp ? ' (±' + uurTekst(exp) + ' u/dag)' : '') + '.' });
+      else if (exp && !p.deelDag && Math.abs(perDag - exp) > 0.75) uit.push({ ernst: 'oranje', tekst: r.naam + ': ziekte ' + label + ' staat op ' + uurTekst(perDag) + ' u/dag, maar het contract is ' + uurTekst(wk) + ' u/week (±' + uurTekst(exp) + ' u/dag) — controleer de uren.' });
+    }
+  });
+  return uit;
 }
 
 // ---------- Mail aan Mahdia (concept; HR controleert en verstuurt) ----------
@@ -327,13 +353,13 @@ async function laadMutaties(jaar, maand, afzender) {
   const vw = vastVenster(p.jaar, p.maand);
   const ud = uitdienstLijst(users, med, ontslag, isoVan(vw.start), isoVan(vw.eind));
   if (ontslagFout) ud.controle.unshift({ ernst: 'grijs', tekst: 'Ontslagdossiers konden niet worden gelezen (' + ontslagFout + '); alleen Shiftbase is gecontroleerd.' });
-  const mail = bouwMutatieMail(vl, ud, afzender);
+  const mail = bouwMutatieMail(vl, ud, afzender), ziekteVast = vastZiekteControle(vl, vl.vastloners, med);
   const st = await leesStatus(p.jaar, p.maand);
-  return { periode: vl.periode, vastloners: { aantal: vl.aantalVastloners, totalen: vl.totalen, waarschuwingen: vl.waarschuwingen, regels: vl.regels.filter(r => r.heeftMutatie).map(r => ({ naam: r.naam, locatie: r.locatie, verlofDagen: r.verlofDagen, ziekDagen: r.ziekDagen, wachtdagen: r.wachtdagen, overig: r.overig.length })) }, uitdienst: ud, mail, mailStatus: st.mail, aan: C.SALARIS_EMAIL, opgehaald: nuNL() };
+  return { periode: vl.periode, vastloners: { aantal: vl.aantalVastloners, totalen: vl.totalen, waarschuwingen: vl.waarschuwingen, regels: vl.regels.filter(r => r.heeftMutatie).map(r => ({ naam: r.naam, locatie: r.locatie, verlofDagen: r.verlofDagen, ziekDagen: r.ziekDagen, wachtdagen: r.wachtdagen, overig: r.overig.length })) }, uitdienst: ud, mail, ziekteVast, mailStatus: st.mail, aan: C.SALARIS_EMAIL, opgehaald: nuNL() };
 }
 async function status(jaar, maand) {
   const p = periode(jaar, maand), st = await leesStatus(p.jaar, p.maand);
   return { periode: p, stappen: stappenOverzicht(p.jaar, p.maand, st), mail: st.mail };
 }
 
-module.exports = { vastVenster, periode, standaardMaand, STAPPEN, werkdagOpOfVoor, deadlineVan, stappenOverzicht, openStappen, leesStatus, zetStap, zetMail, bouwContext, verwerkUren, ziekteControle, berekenUurloners, uitdienstLijst, bouwMutatieMail, maakXlsx, uurlonersBladen, laadUurloners, laadMutaties, status };
+module.exports = { vastZiekteControle, vastVenster, periode, standaardMaand, STAPPEN, werkdagOpOfVoor, deadlineVan, stappenOverzicht, openStappen, leesStatus, zetStap, zetMail, bouwContext, verwerkUren, ziekteControle, berekenUurloners, uitdienstLijst, bouwMutatieMail, maakXlsx, uurlonersBladen, laadUurloners, laadMutaties, status };

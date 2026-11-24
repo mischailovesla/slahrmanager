@@ -238,6 +238,7 @@ module.exports = {
   VL_ZIEKTE_WOORDEN: ['ziek', 'sick', 'verzuim'],
   VL_VERLOF_WOORDEN: ['vakantie', 'verlof', 'vrij', 'holiday', 'vacation', 'atv', 'tvt'],
   VL_SAMENTEL_DAGEN: 28,      // 4-wekenregel art. 7:629 lid 10 BW
+  LOONRONDE_BUITEN_TEAMS: /keuken|inpak|hq|kantoor|magazijn/i, // v0.56.1: teams die Jop regelt en niet in de loonronde horen
   LOONRONDE_VANAF: '2026-11', // v0.56.0: herinneringen loonadministratie (6e/18e) gelden vanaf deze loonmaand (jjjj-mm); oudere rondes geven geen alarm
   VL_TERUGKIJK_DAGEN: 70,     // om samentelling te kunnen beoordelen
 

@@ -2,6 +2,13 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.56.2', datum: '24-11-2026', titel: 'Loonadministratie: herinnering toont de juiste periode', punten: [
+    'De herinnering op het beginscherm noemt bij de <b>vastloners</b> nu de periode (bijv. <b>18-11 t/m 17-12</b>) en de salarismaand, in plaats van de maand van de uurloners. Zo is meteen duidelijk om welke aanlevering het gaat.'
+  ] },
+  { nummer: '0.56.1', datum: '24-11-2026', titel: 'Loonadministratie: alleen winkels, en ziektecheck voor vastloners', punten: [
+    '<b>Keuken, inpak en HQ</b> staan niet meer in de uren-uitdraai, de ziektecontrole en de uitdienstlijst: die regelt Jop. Onderaan het overzicht staat hoeveel uren daarbuiten zijn gelaten.',
+    '<b>Vastloners:</b> bij de mutaties (18e) wordt nu ook gecontroleerd of hun <b>ziektedagen op de contracturen</b> staan. 0 uur is rood, een afwijkend aantal uren per dag is oranje.'
+  ] },
   { nummer: '0.56.0', datum: '24-11-2026', titel: 'Loonadministratie: uren, ziektecontrole en mutatie-mail voor Mahdia', punten: [
     'Nieuwe tab <b>In dienst → Loonadministratie</b> met een afvinklijst per loonmaand: <b>6e</b> uren-uitdraai en ziektecontrole voor de uurloners, <b>18e</b> mutaties, wachtdagen en uitdienst voor de vastloners.',
     '<b>Uurloners (6e):</b> één klik haalt alle gewerkte uren van de maand uit Shiftbase, per BV, winkel en medewerker, als <b>Excel</b> voor Mahdia. Nog niet goedgekeurde timesheets staan erbij met een waarschuwing.',

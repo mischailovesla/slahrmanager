@@ -42,7 +42,8 @@ const users = [
 const med = [
   { id: '1', naam: 'Lisa Seidelt', email: 'lisa@x.nl', functie: 'Senior Store Manager', winkelNaam: 'Zuidas', winkelBv: 'SLA Zuidas BV' },
   { id: '2', naam: 'Piet Jansen', email: 'piet@x.nl', functie: 'SLA-maker', winkelNaam: 'Ceintuurbaan', winkelBv: 'SLA Ceintuur BV' },
-  { id: '3', naam: 'Kees de Vries', email: 'kees@x.nl', functie: 'Keukenhulp', winkelNaam: 'Keuken', winkelBv: '' }
+  { id: '3', naam: 'Kees de Vries', email: 'kees@x.nl', functie: 'Keukenhulp', winkelNaam: 'Keuken', winkelBv: '' },
+  { id: '9', naam: 'Anna Maeda', email: '', functie: 'Store Manager', winkelNaam: 'Utrechtsestraat', winkelBv: 'SLA Utrechtse BV', contractUren: 40 }
 ];
 const ts = (datum, uid, tot, status, dept) => ({ Timesheet: { date: datum, user_id: uid, total: tot, status: status || 'Approved', department_id: dept || '153188' } });
 const timesheets = [
@@ -67,23 +68,22 @@ const res = L.berekenUurloners({ timesheets, users, teams: [], depts, absentees,
 const u = res.uren;
 assert.deepStrictEqual(u.regels.map(r => [r.bv, r.winkel, r.naam, r.uren]), [
   ['SLA Ceintuur BV', 'Ceintuurbaan', 'Mo Leaver', 3],
-  ['SLA Ceintuur BV', 'Ceintuurbaan', 'Piet Jansen', 15.5],   // 6 + 4,5 (nog niet goedgekeurd) + 5; afgewezen telt niet
-  ['SLA Hofhouse BV', 'Keuken', 'Kees de Vries', 7]
-]);
+  ['SLA Ceintuur BV', 'Ceintuurbaan', 'Piet Jansen', 15.5]    // 6 + 4,5 (nog niet goedgekeurd) + 5; afgewezen telt niet
+]);                                                           // Kees (keuken) hoort bij Jop: niet in de uitdraai
 assert.strictEqual(u.regels[1].openUren, 4.5);
 assert.strictEqual(u.regels[0].einde, '2026-10-20');
-assert.deepStrictEqual(u.totaal, { uren: 25.5, medewerkers: 3, regels: 3 });
-assert.deepStrictEqual(u.perBv, [{ bv: 'SLA Ceintuur BV', uren: 18.5, medewerkers: 2 }, { bv: 'SLA Hofhouse BV', uren: 7, medewerkers: 1 }]);
+assert.deepStrictEqual(u.totaal, { uren: 18.5, medewerkers: 2, regels: 2 });
+assert.deepStrictEqual(u.buiten, { uren: 7, medewerkers: 1 });
+assert.deepStrictEqual(u.perBv, [{ bv: 'SLA Ceintuur BV', uren: 18.5, medewerkers: 2 }]);
 assert.strictEqual(u.afgewezen, 1); assert.strictEqual(u.vastOvergeslagen, 1);
 assert.ok(u.waarschuwingen.some(w => /1 timesheet\(s\) met 4,5 uur/.test(w)));
 assert.strictEqual(u.perDag, undefined);
 
 const z = res.ziekte;
-assert.deepStrictEqual(z.totaal, { ziekeMedewerkers: 3, metAfwijking: 3, teCorrigeren: 2, ziekmeldingen: 3 });
-assert.deepStrictEqual(z.metAfwijking.map(m => [m.naam, m.ernst]), [['Mo Leaver', 'rood'], ['Piet Jansen', 'oranje'], ['Kees de Vries', 'grijs']]);
+assert.deepStrictEqual(z.totaal, { ziekeMedewerkers: 2, metAfwijking: 2, teCorrigeren: 2, ziekmeldingen: 2 });   // Kees (keuken) telt niet mee
+assert.deepStrictEqual(z.metAfwijking.map(m => [m.naam, m.ernst]), [['Mo Leaver', 'rood'], ['Piet Jansen', 'oranje']]);
 assert.strictEqual(z.metAfwijking[0].afwijkingen[0].soort, 'uren'); assert.ok(/6 uur/.test(z.metAfwijking[0].afwijkingen[0].tekst));
 assert.strictEqual(z.metAfwijking[1].afwijkingen[0].soort, 'gewerkt'); assert.ok(/12-10-2026 \(5 u\)/.test(z.metAfwijking[1].afwijkingen[0].tekst));
-assert.strictEqual(z.metAfwijking[2].afwijkingen[0].soort, 'lopend'); assert.strictEqual(z.metAfwijking[2].periodes[0].dagen, 2); // 30 + 31 oktober
 // Een ziekmelding op 0 uur zonder geklokte uren is gewoon goed: geen afwijking
 const schoon = L.berekenUurloners({ timesheets: [], users, teams: [], depts, absentees: [abs('2', '1019458', '2026-10-12', '2026-10-13', 0)], typeMap: C.VL_TYPE_MAP, med }, L.periode(2026, 10)).ziekte;
 assert.deepStrictEqual(schoon.totaal, { ziekeMedewerkers: 1, metAfwijking: 0, teCorrigeren: 0, ziekmeldingen: 1 });
@@ -123,6 +123,19 @@ assert.ok(mail.text.indexOf('Anna Maeda') === -1, 'vastloner zonder mutatie staa
 const leeg = L.bouwMutatieMail(V.berekenMaand(vastloners, [], C.VL_TYPE_MAP, 2026, 10), { uitdienst: [], controle: [], venster: { van: '01-10-2026', tot: '30-11-2026' } }, '');
 for (const s of ['Geen mutaties in deze periode.', 'Geen wachtdagen in deze periode.', 'Niemand uit dienst in deze periode.', 'Groet,\nHR']) assert.ok(leeg.text.indexOf(s) > -1, 'lege mail mist: ' + s);
 
+// 6a. Vastloners: ziektedagen moeten op de contracturen staan (contract 40 u/week = 8 u/dag)
+const vlZ = V.berekenMaand([{ id: '9', naam: 'Anna Maeda', email: '', functie: 'Store Manager', locatie: 'Utrechtsestraat' }, { id: '10', naam: 'Zonder Contract', email: '', functie: 'Store Manager', locatie: '-' }], [
+  abs('9', '1019458', '2026-10-05', '2026-10-05', 0),    // 0 uur → rood
+  abs('9', '1019458', '2026-10-06', '2026-10-06', 4),    // 4 u/dag i.p.v. 8 → oranje
+  abs('9', '1019458', '2026-10-07', '2026-10-07', 8),    // goed
+  abs('10', '1019458', '2026-10-05', '2026-10-05', 0)    // geen contracturen bekend, maar 0 uur is altijd fout
+], C.VL_TYPE_MAP, 2026, 10);
+const zc = L.vastZiekteControle(vlZ, [{ id: '9' }, { id: '10' }], med);
+assert.deepStrictEqual(zc.map(x => x.ernst), ['rood', 'oranje', 'rood']);
+assert.ok(/Anna Maeda: ziekte 05-10-2026 staat op 0 uur/.test(zc[0].tekst) && /±8 u\/dag/.test(zc[0].tekst));
+assert.ok(/4 u\/dag, maar het contract is 40 u\/week/.test(zc[1].tekst));
+assert.ok(!/±/.test(zc[2].tekst));
+
 // 6b. Vastloners: periode 18e t/m 17e (geen dag dubbel), ook over de jaarwisseling
 const vw = L.vastVenster(2026, 10), vw12 = L.vastVenster(2026, 12);
 assert.deepStrictEqual([iso(vw.start), iso(vw.eind)], ['2026-10-18', '2026-11-17']);
@@ -140,7 +153,7 @@ const x = X.lees(buf);
 assert.deepStrictEqual(x.kop, ['BV', 'Winkel', 'Medewerker', 'Uren', 'Waarvan nog niet goedgekeurd', 'Laatste dag (uit dienst)']);
 assert.deepStrictEqual(x.rijen[1].slice(0, 4), ['SLA Ceintuur BV', 'Ceintuurbaan', 'Piet Jansen', 15.5]);
 assert.strictEqual(x.rijen[1][4], 4.5);
-assert.strictEqual(x.rijen[x.rijen.length - 1][2], 'TOTAAL'); assert.strictEqual(x.rijen[x.rijen.length - 1][3], 25.5);
+assert.strictEqual(x.rijen[x.rijen.length - 1][2], 'TOTAAL'); assert.strictEqual(x.rijen[x.rijen.length - 1][3], 18.5);
 // speciale tekens blijven heel (& < > ")
 const speciaal = X.lees(L.maakXlsx([{ naam: 'Test: blad?', kolommen: [{ kop: 'Naam' }, { kop: 'Uren', uren: true }], rijen: [['A & B <C> "D"', 1.25]] }]));
 assert.deepStrictEqual(speciaal.rijen[0], ['A & B <C> "D"', 1.25]);
