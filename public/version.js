@@ -2,6 +2,13 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.57.1', datum: '24-11-2026', titel: 'Waarschuwing: feiten automatisch in de toelichting', punten: [
+    'In het waarschuwingsvenster staat boven de toelichting nu <b>📊 Vul toelichting in</b>, met een periode (standaard de laatste 8 weken).',
+    'Is <b>HR01</b> (5 minuten voor je dienst aanwezig) aangevinkt, dan komen alle diensten waarop de medewerker later inklokte dan de geroosterde begintijd erin: datum, begintijd, inkloktijd en minuten te laat.',
+    'Is <b>HR50</b> of <b>HR57</b> (HACCP) aangevinkt, dan komen de dagen erin waarop een verplichte HACCP-lijst niet is afgerond terwijl de medewerker in het tijdvak op het rooster stond.',
+    'Niets aangevinkt? Dan zoekt hij beide en zegt hij welke regel(s) je nog moet aanvinken. De tekst volgt de gekozen taal (NL/EN) en de datum van de overtreding wordt de laatste gevonden datum.',
+    'Controleer de lijst altijd even: bij een groot verschil (meer dan een uur) kan het rooster achteraf zijn aangepast.'
+  ] },
   { nummer: '0.57.0', datum: '24-11-2026', titel: 'Te laat begonnen: inkloktijden uit Shiftbase', punten: [
     'Het dashboard bewaart nu ook de <b>inkloktijd</b> uit Shiftbase (en uit de Excel-export), niet alleen de uitkloktijd.',
     'Onder <b>Eindtijd & afsluiten</b> staat per winkel een nieuw blok <b>Te laat begonnen</b>: per medewerker het aantal diensten, hoe vaak te laat ingeklokt, hoe vaak meer dan 5 minuten (en hoeveel daarvan ochtenddiensten), het gemiddelde, het maximum en diensten zonder inklok.',

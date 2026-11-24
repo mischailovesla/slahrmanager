@@ -1507,6 +1507,7 @@
     if (r) { g('wr-naam').value = r.naam || ''; g('wr-email').value = r.email || ''; g('wr-adres').value = r.adres || ''; g('wr-datum').value = r.datumOvertreding || ''; g('wr-toel').value = r.toelichting || ''; }
     zetTaal('wr-taal', r ? r.taal : 'NL');
     wrBouwLijst(r && r.regels ? r.regels.split(' | ') : []);
+    (function () { var t = new Date(); t.setDate(t.getDate() - 1); var v = new Date(t); v.setDate(v.getDate() - 55); var f = function (d) { return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }; g('wr-fvan').value = f(v); g('wr-ftot').value = f(t); g('wr-fstatus').textContent = ''; })();
     g('wr-zoek-res').classList.remove('open');
     g('wr-modal').classList.add('open');
     if (!r) setTimeout(function () { g('wr-zoek').focus(); }, 60);
@@ -1538,6 +1539,48 @@
     b.disabled = false; g('wr-slbl').textContent = 'Verstuur waarschuwing + PDF';
     if (r.success) { toast(r.bericht, 'ok'); closeWrModal(); laadWaarschuwingen(); if (g('tab-dossier').classList.contains('active') && laatsteDossier) openDossier.apply(null, laatsteDossier); }
     else toast('Fout: ' + r.bericht, 'err');
+  };
+  // v0.57.1: feiten voor de toelichting: te laat ingeklokt (HR01) en niet afgeronde HACCP-lijsten (HR50/HR57)
+  var WR_LAAT = ['HR01'], WR_HACCP = ['HR50', 'HR57'];
+  function wrNorm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z ]/g, ' ').replace(/\s+/g, ' ').trim(); }
+  function wrDag(iso, en) { var d = new Date(iso + 'T12:00:00'), dg = en ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['zo', 'ma', 'di', 'wo', 'do', 'vr', 'za']; return dg[d.getDay()] + ' ' + iso.slice(8, 10) + '-' + iso.slice(5, 7) + '-' + iso.slice(0, 4); }
+  function wrFeitenTekst(laat, haccp, en) {
+    var delen = [];
+    if (laat.length) delen.push((en ? 'On the following shifts you clocked in after your scheduled start time (source: Shiftbase):\n' : 'Bij de volgende diensten klokte je later in dan je geroosterde begintijd (bron: Shiftbase):\n')
+      + laat.map(function (d) { return '• ' + wrDag(d.datum, en) + ' · ' + (en ? 'shift from ' : 'dienst vanaf ') + d.roosterStart + ' · ' + (en ? 'clocked in ' : 'ingeklokt ') + d.inklok + ' · ' + d.laat + (en ? ' min late' : ' min te laat'); }).join('\n')
+      + (en ? '\n\nUnder the house rules you are present 5 minutes before your shift starts.' : '\n\nVolgens de huisregels ben je 5 minuten voor het begin van je dienst aanwezig.'));
+    if (haccp.length) delen.push((en ? 'On the following days you were scheduled during the time window of a mandatory HACCP list, and the list was not completed that day:\n' : 'Op de volgende dagen stond je op het rooster in het tijdvak van een verplichte HACCP-lijst, en is die lijst die dag niet afgerond:\n')
+      + haccp.map(function (v) { return '• ' + wrDag(v.datum, en) + ' · ' + v.lijst + ' (' + (en ? 'to be completed ' : 'af te ronden ') + v.tijdvak + ') · ' + (en ? 'your shift ' : 'jouw dienst ') + v.dienst; }).join('\n')
+      + (en ? '\n\nEveryone on the schedule during that time window is jointly responsible for completing the list on time.' : '\n\nIedereen die in dat tijdvak op het rooster staat, is er samen verantwoordelijk voor dat de lijst op tijd is afgerond.'));
+    return delen.join('\n\n');
+  }
+  window.wrFeiten = async function () {
+    var naam = g('wr-naam').value.trim(); if (!naam) { toast('Kies eerst de medewerker', 'err'); return; }
+    var van = g('wr-fvan').value, tot = g('wr-ftot').value; if (!van || !tot || tot < van) { toast('Kies een geldige periode', 'err'); return; }
+    var gek = wrGekozen(), wilLaat = gek.some(function (x) { return WR_LAAT.indexOf(x) >= 0; }), wilHaccp = gek.some(function (x) { return WR_HACCP.indexOf(x) >= 0; }), alles = !wilLaat && !wilHaccp;
+    var b = g('wr-fbtn'); b.disabled = true; g('wr-fstatus').textContent = 'Shiftbase en HACCP ophalen… (10-20 seconden)';
+    var res = await Promise.all([
+      alles || wilLaat ? api('/api/eindtijd', { actie: 'analyse', bron: 'shiftbase', van: van, tot: tot }) : Promise.resolve(null),
+      alles || wilHaccp ? api('/api/haccp?van=' + van + '&tot=' + tot) : Promise.resolve(null)
+    ]);
+    b.disabled = false;
+    var n = wrNorm(naam), fout = [], laat = [], haccp = [];
+    var e = res[0];
+    if (e && !e.success) fout.push('Shiftbase: ' + e.bericht);
+    else if (e && e.begin) Object.keys(e.begin.winkels).forEach(function (c) { e.begin.winkels[c].forEach(function (m) { if (wrNorm(m.naam) === n) m.diensten.forEach(function (d) { if (d.laat > 0) laat.push(d); }); }); });
+    var h = res[1];
+    if (h && !h.success) fout.push('HACCP: ' + h.bericht);
+    else if (h && h.medewerkers) h.medewerkers.forEach(function (m) { if (wrNorm(m.naam) === n) haccp = haccp.concat(m.voorvallen || []); });
+    laat.sort(function (a, c) { return a.datum.localeCompare(c.datum); }); haccp.sort(function (a, c) { return a.datum.localeCompare(c.datum); });
+    var tekst = wrFeitenTekst(laat, haccp, leesTaal('wr-taal') === 'EN');
+    g('wr-fstatus').innerHTML = esc(laat.length + ' keer te laat ingeklokt · ' + haccp.length + ' HACCP-lijst(en) niet afgerond') + (fout.length ? ' <span style="color:#c0392b">' + esc(fout.join(' · ')) + '</span>' : '');
+    if (!tekst) { toast('Niets gevonden voor ' + naam + ' in deze periode', 'err'); return; }
+    var oud = g('wr-toel').value.trim();
+    g('wr-toel').value = oud && !confirm('De toelichting vervangen door de opgehaalde feiten?\n\nOK = vervangen · Annuleren = eronder toevoegen') ? oud + '\n\n' + tekst : tekst;
+    var data = laat.map(function (d) { return d.datum; }).concat(haccp.map(function (v) { return v.datum; })).sort();
+    if (!g('wr-datum').value.trim() && data.length) { var l = data[data.length - 1]; g('wr-datum').value = l.slice(8, 10) + '-' + l.slice(5, 7) + '-' + l.slice(0, 4); }
+    if (alles) toast('Gevonden en ingevuld. Vink nog de bijbehorende huisregel(s) aan (' + (laat.length ? 'HR01' : '') + (laat.length && haccp.length ? ', ' : '') + (haccp.length ? 'HR57' : '') + ').', 'ok');
+    if (laat.some(function (d) { return d.laat > 60; })) toast('Let op: er zit een dienst bij met meer dan een uur verschil. Controleer of het rooster toen niet was aangepast.', 'err');
   };
   koppelSbZoek('wr-zoek', 'wr-zoek-res', function (m) {
     if (!m) return;
