@@ -629,7 +629,7 @@
     var p = d.persoon, c = d.contract, h = '';
     laatsteDossierQs = qs;
     dosPersoon = { naam: d.naam || naam || '', email: d.email || email || '' }; // v0.54.1: naam/e-mail uit het geladen dossier (ook als het via het id is geopend)
-    h += '<div style="padding:0 0 10px;display:flex;gap:8px;align-items:center"><button class="btn bd bsm" onclick="renderMedewerkersLijst()">← Alle medewerkers</button><span style="flex:1"></span><button class="btn bd bsm" id="dos-pdf" onclick="dossierPdf()" title="Volledig dossier als PDF (inzageverzoek / jurist) — wordt gelogd">⬇ Dossier als PDF</button></div>';
+    h += '<div style="padding:0 0 10px;display:flex;gap:8px;align-items:center"><button class="btn bd bsm" onclick="renderMedewerkersLijst()">← Alle medewerkers</button><span style="flex:1"></span><button class="btn bd bsm" id="dos-wv" onclick="wvOpen()" title="Werkgeversverklaring (bewijs van dienstverband en inkomen) maken en mailen">📄 Werkgeversverklaring</button><button class="btn bd bsm" id="dos-pdf" onclick="dossierPdf()" title="Volledig dossier als PDF (inzageverzoek / jurist) — wordt gelogd">⬇ Dossier als PDF</button></div>';
     h += '<div class="dos-kop"><div class="dos-kaart"><div class="dos-naam">' + esc(d.naam) + '</div><div class="lay-sub">' + esc(d.email || '(geen e-mail)') + (p ? ' · ' + esc(p.winkelNaam || '-') + (p.winkelBv ? ' · ' + esc(p.winkelBv) : '') : ' · <em>niet gevonden in Shiftbase (alleen sheet-data)</em>') + '</div>';
     if (p) h += '<div class="dos-meta"><div><label>Functie</label><span>' + esc(p.functie || '-') + '</span></div><div><label>In dienst sinds</label><span>' + esc(p.indienst || '-') + '</span></div><div><label>Contract</label><span>' + esc(c.type || '-') + '</span></div><div><label>Contract eindigt</label><span>' + esc(c.einde || 'onbepaalde tijd / onbekend') + '</span></div><div><label>Adres</label><span>' + esc(p.adres || '-') + '</span></div></div>';
     h += '</div><div class="dos-kaart">';
@@ -703,6 +703,85 @@
     if (p && p.id) lsDossier(p.id);
   };
   var laatsteDossierQs = '', dosPersoon = { naam: '', email: '' };
+  // ---------- v0.55.0: Werkgeversverklaring vanuit het dossier ----------
+  var wvTimer = null;
+  function wvVeld(id, label, html) { return '<div class="fg"><label for="' + id + '">' + label + '</label>' + html + '</div>'; }
+  function wvSel(id, opts) { return '<select id="' + id + '">' + opts.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + '</option>'; }).join('') + '</select>'; }
+  function wvLees() {
+    var v = function (id) { return (g(id).value || '').trim(); };
+    return { taal: v('wv-taal'), naam: v('wv-naam'), email: v('wv-email'), functie: v('wv-functie'), bv: v('wv-bv'), bvAdres: v('wv-adres'), soort: v('wv-soort'), startdatum: v('wv-start'), einddatum: v('wv-eind'),
+      vorm: v('wv-vorm'), uren: v('wv-uren'), loonsoort: v('wv-loonsoort'), bedrag: v('wv-bedrag'), toeslag: v('wv-toeslag'), proeftijd: v('wv-proef'), doel: v('wv-doel') };
+  }
+  function wvToon(r) {
+    var h = '';
+    if (r.fouten && r.fouten.length) h += '<div class="alert rood" style="margin:0 0 8px"><strong>Nog niet compleet:</strong><br>' + r.fouten.map(esc).join('<br>') + '</div>';
+    if (r.let_op && r.let_op.length) h += '<div class="alert geel" style="margin:0 0 8px"><strong>Let op:</strong><br>' + r.let_op.map(esc).join('<br>') + '</div>';
+    if (r.handtekening === false) h += '<div class="alert geel" style="margin:0 0 8px">Je hebt nog geen handtekening ingesteld (Mijn handtekening). De PDF heeft dan ruimte om te printen en met de hand te tekenen.</div>';
+    if (r.voorbeeld && !(r.fouten && r.fouten.length)) h += '<div class="lay-sub" style="margin:6px 0 4px">Zo komt de tekst in de PDF:</div><pre style="white-space:pre-wrap;font:12px/1.5 inherit;background:#f7f5f1;border:1px solid var(--lijn);border-radius:8px;padding:12px 14px;margin:0">' + esc(r.voorbeeld.replace(/\*\*/g, '')) + '</pre>';
+    g('wv-check').innerHTML = h;
+  }
+  async function wvControle() {
+    var r = await api('/api/werkgeversverklaring', Object.assign(wvLees(), { actie: 'controle' }));
+    if (!r.success) { g('wv-check').innerHTML = '<div class="alert rood">' + esc(r.bericht) + '</div>'; return null; }
+    wvToon(r); return r;
+  }
+  function wvPlan() { clearTimeout(wvTimer); wvTimer = setTimeout(wvControle, 500); }
+  window.wvOpen = async function () {
+    var m = g('wv-modal');
+    if (!m) {
+      m = document.createElement('div'); m.className = 'mo'; m.id = 'wv-modal';
+      m.innerHTML = '<div class="modal" style="width:760px"><div class="mh"><div class="mti">Werkgeversverklaring</div><button class="mc" type="button">×</button></div><div class="mb2" style="padding:18px 28px">'
+        + '<div id="wv-melding"></div><div class="lay-sub" style="margin-bottom:12px">Bewijs van dienstverband en inkomen, bijvoorbeeld voor een huurwoning. Functie, werkgever, datums en uren komen uit het dossier. Het <b>salaris staat niet in het dashboard</b>: controleer het bedrag zelf aan de hand van het contract. Het salaris komt niet in het logboek van het dossier.</div>'
+        + '<div class="fr">' + wvVeld('wv-naam', 'Naam', '<input type="text" id="wv-naam">') + wvVeld('wv-email', 'E-mail medewerker', '<input type="email" id="wv-email">') + wvVeld('wv-taal', 'Taal', wvSel('wv-taal', [['EN', 'Engels'], ['NL', 'Nederlands']])) + '</div>'
+        + '<div class="fr">' + wvVeld('wv-functie', 'Functie', '<input type="text" id="wv-functie">') + wvVeld('wv-bv', 'Werkgever (BV)', '<input type="text" id="wv-bv">') + '</div>'
+        + wvVeld('wv-adres', 'Adres werkgever', '<input type="text" id="wv-adres">')
+        + '<div class="fr">' + wvVeld('wv-soort', 'Soort contract', wvSel('wv-soort', [['bepaald', 'Bepaalde tijd'], ['onbepaald', 'Onbepaalde tijd']])) + wvVeld('wv-start', 'Startdatum', '<input type="date" id="wv-start">') + wvVeld('wv-eind', 'Einddatum', '<input type="date" id="wv-eind">') + '</div>'
+        + '<div class="fr">' + wvVeld('wv-vorm', 'Uren', wvSel('wv-vorm', [['vast', 'Vast aantal uren'], ['oproep', 'Oproepbasis (nul uren)']])) + wvVeld('wv-uren', 'Contracturen per week', '<input type="text" id="wv-uren" inputmode="decimal">') + wvVeld('wv-proef', 'Proeftijd (maanden, optioneel)', '<input type="text" id="wv-proef" inputmode="numeric">') + '</div>'
+        + '<div class="fr">' + wvVeld('wv-loonsoort', 'Loon', wvSel('wv-loonsoort', [['maand', 'Bruto per maand'], ['uur', 'Bruto per uur']])) + wvVeld('wv-bedrag', 'Bedrag (€)', '<input type="text" id="wv-bedrag" inputmode="decimal">') + wvVeld('wv-toeslag', 'Vakantietoeslag (%)', '<input type="text" id="wv-toeslag" inputmode="decimal">') + '</div>'
+        + wvVeld('wv-doel', 'Doel (optioneel, komt in de zin "op verzoek van de medewerker ...")', '<input type="text" id="wv-doel" placeholder="bijv. for a rental application / voor een huuraanvraag">')
+        + '<div id="wv-bron" class="lay-sub" style="margin:2px 0 8px"></div><div id="wv-check"></div></div>'
+        + '<div class="mf"><button class="btn bd" id="wv-pdf" type="button">⬇ PDF downloaden</button><button class="btn bp" id="wv-mail" type="button">Mail naar medewerker</button></div></div>';
+      document.body.appendChild(m);
+      m.querySelector('.mc').onclick = function () { m.classList.remove('open'); };
+      m.onclick = function (e) { if (e.target === m) m.classList.remove('open'); };
+      m.addEventListener('input', wvPlan); m.addEventListener('change', wvPlan);
+      g('wv-pdf').onclick = window.wvPdf; g('wv-mail').onclick = window.wvVerstuur;
+    }
+    g('wv-check').innerHTML = '<div class="leeg grijs"><span class="sp" style="border-color:rgba(0,0,0,.15);border-top-color:#009f4b"></span> Gegevens ophalen…</div>'; g('wv-melding').innerHTML = ''; g('wv-bron').textContent = '';
+    m.classList.add('open');
+    var qs = laatsteDossierQs || ('naam=' + encodeURIComponent(dosPersoon.naam || '') + '&email=' + encodeURIComponent(dosPersoon.email || ''));
+    var r = await api('/api/werkgeversverklaring?' + qs);
+    if (!r.success) { g('wv-check').innerHTML = '<div class="alert rood">' + esc(r.bericht) + '</div>'; return; }
+    var v = r.voorstel;
+    var set = function (id, x) { g(id).value = x == null ? '' : x; };
+    set('wv-naam', v.naam); set('wv-email', v.email); set('wv-taal', v.taal || 'EN'); set('wv-functie', v.functie); set('wv-bv', v.bv); set('wv-adres', v.bvAdres);
+    set('wv-soort', v.soort); set('wv-start', v.startdatum); set('wv-eind', v.einddatum); set('wv-vorm', v.vorm); set('wv-uren', v.uren); set('wv-proef', v.proeftijd);
+    set('wv-loonsoort', v.loonsoort); set('wv-bedrag', v.bedrag); set('wv-toeslag', v.toeslag); set('wv-doel', v.doel);
+    g('wv-bron').textContent = v.bronSalaris ? 'Salaris voorgesteld uit: ' + v.bronSalaris : (v.contractType ? 'Contracttype in Shiftbase: ' + v.contractType : '');
+    var mag = !!r.salarisInzage;
+    g('wv-melding').innerHTML = mag ? '' : '<div class="alert rood" style="margin:0 0 12px">Een werkgeversverklaring bevat het salaris en kan alleen worden opgesteld door de personen met salarisinzage (Jop, Ymke en Mischa).</div>';
+    g('wv-pdf').disabled = g('wv-mail').disabled = !mag;
+    if (mag) wvControle(); else g('wv-check').innerHTML = '';
+  };
+  window.wvPdf = async function () {
+    var r = await wvControle(); if (!r) return;
+    if (r.fouten.length) { toast('De verklaring is nog niet compleet', 'err'); return; }
+    toast('PDF maken…', 'ok');
+    var x = await api('/api/werkgeversverklaring', Object.assign(wvLees(), { actie: 'pdf' }));
+    if (!x.success) { toast(x.bericht, 'err'); return; }
+    downloadB64(x.pdf, x.bestandsnaam || 'Werkgeversverklaring.pdf');
+  };
+  window.wvVerstuur = async function () {
+    var p = wvLees();
+    if (!p.email) { toast('Vul het e-mailadres van de medewerker in', 'err'); return; }
+    var c = await wvControle(); if (!c) return;
+    if (c.fouten.length) { toast('De verklaring is nog niet compleet', 'err'); return; }
+    if (!confirm('Werkgeversverklaring versturen naar ' + p.email + '?\n\n' + c.samenvatting + (c.let_op.length ? '\n\nLet op:\n- ' + c.let_op.join('\n- ') : '') + '\n\nBekijk bij twijfel eerst de PDF.')) return;
+    var b = g('wv-mail'); b.disabled = true; b.textContent = 'Versturen…';
+    var r = await api('/api/werkgeversverklaring', Object.assign(p, { actie: 'versturen' }));
+    b.disabled = false; b.textContent = 'Mail naar medewerker';
+    if (r.success) { toast(r.bericht, 'ok'); g('wv-modal').classList.remove('open'); if (laatsteDossier) openDossier.apply(null, laatsteDossier); } else toast('Fout: ' + r.bericht, 'err');
+  };
   window.dossierNotitie = async function () {
     var ta = g('dos-notitie'), tekst = ta.value.trim(); if (tekst.length < 3) { toast('Typ eerst een notitie', 'err'); return; }
     var b = g('dos-notitie-btn'); b.disabled = true;

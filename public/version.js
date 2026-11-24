@@ -2,6 +2,13 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.55.0', datum: '24-11-2026', titel: 'Werkgeversverklaring maken vanuit het dossier', punten: [
+    'In elk medewerkersdossier staat nu de knop <b>📄 Werkgeversverklaring</b>: bewijs van dienstverband en inkomen, bijvoorbeeld voor een huurwoning of hypotheek.',
+    '<b>Functie, werkgever (BV), startdatum, einddatum, contractvorm en uren</b> komen uit het dossier. Het <b>salaris</b> staat niet in het dashboard: dat vul je zelf in (voorgesteld uit een eerder Contract op maat, als dat er is). Controleer het altijd aan de hand van het contract.',
+    'Kies <b>Engels of Nederlands</b>. Je ziet eerst een controle met let-op-meldingen, bijvoorbeeld bij een tijdelijk contract, een medewerker die nog niet in dienst is of een nulurencontract.',
+    'Download de <b>PDF</b> of mail hem direct naar de medewerker. De PDF krijgt je handtekening, naam en functie (Mijn handtekening). Het verzonden document staat in het dossier onder <b>Vrije brieven</b>.',
+    'Alleen de personen met <b>salarisinzage</b> (Jop, Ymke, Mischa) kunnen een verklaring opstellen. Het salaris komt <b>niet</b> in het logboek van het dossier.'
+  ] },
   { nummer: '0.54.3', datum: '19-11-2026', titel: 'Brieven eindtijd & afsluiten: fooi neutraler verwoord', punten: [
     'In de <b>waarschuwing</b> staat niet meer dat collega\'s door het late uitklokken minder fooi krijgen. Dat kon lezen alsof iemand bewust langer blijft voor de fooi.',
     'In de <b>teambrief</b> en de <b>waarschuwing</b> staat bij de fooiregel nu dat die voor iedereen geldt en geen oordeel is over waarom iemand later klaar is.',
