@@ -109,6 +109,7 @@ exports.handler = beveiligd('eindtijd', async (event, g) => {
     const a = E.analyseer(diensten, { van: p.van || '', tot: p.tot || '', winkels: WINKELS });
     if (!a.overzicht.length) throw new Error('Geen diensten van SLA-winkels gevonden' + (p.van ? ' tussen ' + E.nlDatum(p.van) + ' en ' + E.nlDatum(p.tot) : '') + '.');
     await verrijk(a);
+    a.begin = E.beginAnalyse(diensten, { van: p.van || '', tot: p.tot || '', winkels: WINKELS }); // v0.57.0
     a.bron = bron; a.opgehaald = D.stempel();
     return a;
   }

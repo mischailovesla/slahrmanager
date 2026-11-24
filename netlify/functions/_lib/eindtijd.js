@@ -74,7 +74,7 @@ function vanExport(blad) {
   const i = n => kop.indexOf(n);
   const mist = KOLOMMEN.filter(k => i(k) < 0);
   if (mist.length) throw new Error('Dit lijkt geen Shiftbase-export "Urenregistratie": kolom(men) ' + mist.join(', ') + ' ontbreken. Exporteer in Shiftbase via Urenregistratie → Exporteren (xlsx).');
-  const k = {}; ['Gebruikers-id', 'Naam', 'Datum', 'Team', 'Team-id', 'Afdeling-id', 'Status', 'Rooster starttijd', 'Rooster eindtijd', 'Eindtijd', 'Uitgeklokt om', 'Gewerkt', 'Rooster totaal', 'Uurloon', 'Contracttype', 'Gekeurd door'].forEach(n => { k[n] = i(n); });
+  const k = {}; ['Gebruikers-id', 'Naam', 'Datum', 'Team', 'Team-id', 'Afdeling-id', 'Status', 'Rooster starttijd', 'Rooster eindtijd', 'Eindtijd', 'Uitgeklokt om', 'Ingeklokt om', 'Dienst', 'Gewerkt', 'Rooster totaal', 'Uurloon', 'Contracttype', 'Gekeurd door'].forEach(n => { k[n] = i(n); });
   const v = (r, n) => (k[n] >= 0 ? r[k[n]] : null);
   const uit = [];
   for (const r of blad.rijen || []) {
@@ -87,7 +87,11 @@ function vanExport(blad) {
     if (typeof uk === 'number' && uk > 0) eind = dagVerschil(datum, serieDatum(uk)) * 1440 + tijdMin(uk);
     else if (uk && isoDatum(uk)) eind = dagVerschil(datum, isoDatum(uk)) * 1440 + tijdMin(String(uk).slice(10));
     if (eind == null) { eind = tijdMin(v(r, 'Eindtijd')); zonder = true; }
+    const ik = v(r, 'Ingeklokt om'); let inklok = null; // v0.57.0
+    if (typeof ik === 'number' && ik > 0) inklok = dagVerschil(datum, serieDatum(ik)) * 1440 + tijdMin(ik);
+    else if (ik && isoDatum(ik)) inklok = dagVerschil(datum, isoDatum(ik)) * 1440 + tijdMin(String(ik).slice(10));
     uit.push({
+      rStart, inklok, dienst: String(v(r, 'Dienst') || '').trim(),
       uid: String(v(r, 'Gebruikers-id') == null ? '' : v(r, 'Gebruikers-id')).replace(/\.0$/, ''),
       naam: String(v(r, 'Naam') || '').trim(), datum,
       deptId: String(v(r, 'Afdeling-id') == null ? '' : v(r, 'Afdeling-id')).replace(/\.0$/, ''),
@@ -113,7 +117,8 @@ function vanApi(o) {
     if (r.deleted === true || r.deleted === '1' || r.deleted === 1) continue;
     const d = (rec && rec.Department) || r.Department; if (d && d.id != null) deptNaam[String(d.id)] = String(d.name || '');
     const s = tijdMin(r.starttime); let e = tijdMin(r.endtime); if (e != null && s != null && e <= s) e += 1440;
-    const w = { rEind: e, rTotaal: num(r.total), dept: String(r.department_id || '') };
+    const sh = (rec && rec.Shift) || r.Shift || {};
+    const w = { rStart: s, rEind: e, rTotaal: num(r.total), dept: String(r.department_id || ''), dienst: String(sh.long_name || sh.name || r.name || '') };
     rooster[String(r.id) + '|' + String(r.date || '').slice(0, 10)] = w;
     if (!rooster[String(r.id)]) rooster[String(r.id)] = w;
   }
@@ -128,12 +133,15 @@ function vanApi(o) {
     let eind = null, zonder = false;
     if (t.clocked_out && isoDatum(t.clocked_out)) eind = dagVerschil(datum, isoDatum(t.clocked_out)) * 1440 + tijdMin(String(t.clocked_out).slice(10));
     if (eind == null) { eind = tijdMin(t.endtime); zonder = true; }
+    let inklok = null; // v0.57.0: inkloktijd bewaren (te laat begonnen)
+    if (t.clocked_in && isoDatum(t.clocked_in)) inklok = dagVerschil(datum, isoDatum(t.clocked_in)) * 1440 + tijdMin(String(t.clocked_in).slice(10));
     const ti = teamInfo[String(t.team_id || '')] || {};
     const dept = String(t.department_id || ti.dept || (ro && ro.dept) || '');
     const u = (rec && rec.User) || {};
     uit.push({
       uid: String(t.user_id || ''), naam: naamVan[String(t.user_id)] || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || ('Medewerker #' + t.user_id),
       datum, deptId: dept, team: deptNaam[dept] || ti.naam || '', status: statusVan(t.status),
+      rStart: ro ? ro.rStart : null, inklok, dienst: ro ? ro.dienst : '',
       rEind, eind: naRooster(eind, rEind), zonderUitklok: zonder,
       gewerkt: num(t.total), rTotaal: ro ? ro.rTotaal : null, uurloon: num(t.wage), contracttype: '',
       gekeurdDoor: t.reviewed_by ? (naamVan[String(t.reviewed_by)] || ('#' + t.reviewed_by)) : ''
@@ -401,4 +409,38 @@ function naarHtml(tekst) {
 }
 function naarPdfTekst(tekst) { return String(tekst || '').replace(/^(\s*)-\s+/gm, '$1• '); }
 
-module.exports = { INSTELLINGEN, CATEGORIE_TEAMBRIEF, TEAMBRIEF, WAARSCHUWING, TEAMBRIEF_EN, WAARSCHUWING_EN, SJABLONEN, vanExport, vanApi, analyseer, vul, openVariabelen, teamVars, medewerkerVars, naarHtml, naarPdfTekst, tijdMin, isoDatum, hhmm, nlDatum, langeDatum, periodeTekst, opsomming };
+// ---------- v0.57.0: te laat begonnen (inklok vs geroosterde begintijd) ----------
+// Alleen diensten met rooster. laat = inklok − roosterstart (minuten, negatief = eerder). Zonder inklok: apart geteld.
+const BEGIN = { drempel: 5, ochtendTot: 12 * 60 };
+function beginAnalyse(diensten, o) {
+  o = o || {}; const B = Object.assign({}, BEGIN, o.begin || {});
+  const per = {};
+  for (const d of diensten || []) {
+    if (!d.datum || d.status === 'afgekeurd' || d.rStart == null) continue;
+    if ((o.van && d.datum < o.van) || (o.tot && d.datum > o.tot)) continue;
+    const w = (o.winkels || {})[d.deptId]; if (!w) continue;
+    const wk = per[w.code] || (per[w.code] = {}), k = d.uid || d.naam;
+    const m = wk[k] || (wk[k] = { uid: d.uid, naam: d.naam, diensten: [] });
+    let laat = null;
+    if (d.inklok != null) { let i = Math.floor(d.inklok); // hele minuten (09:33:36 = 3 min te laat)
+      while (i < d.rStart - 720) i += 1440; while (i > d.rStart + 720) i -= 1440; laat = i - d.rStart; }
+    m.diensten.push({ datum: d.datum, dienst: d.dienst || '', roosterStart: hhmm(d.rStart), inklok: d.inklok == null ? '' : hhmm(Math.floor(d.inklok)), laat, zonderInklok: d.inklok == null, ochtend: d.rStart < B.ochtendTot, status: d.status });
+  }
+  const uit = {};
+  for (const code of Object.keys(per)) {
+    uit[code] = Object.values(per[code]).map(m => {
+      m.diensten.sort((a, b) => a.datum.localeCompare(b.datum));
+      const met = m.diensten.filter(x => x.laat != null), laat = met.filter(x => x.laat > 0), echt = met.filter(x => x.laat > B.drempel);
+      return Object.assign(m, {
+        aantal: m.diensten.length, aantalLaat: laat.length, aantalDrempel: echt.length,
+        ochtendLaat: echt.filter(x => x.ochtend).length, zonderInklok: m.diensten.length - met.length,
+        gemLaat: laat.length ? Math.round(laat.reduce((s, x) => s + x.laat, 0) / laat.length) : 0,
+        maxLaat: laat.reduce((mx, x) => Math.max(mx, x.laat), 0),
+        pctOpTijd: met.length ? Math.round(100 * (met.length - laat.length) / met.length) : null
+      });
+    }).sort((a, b) => b.aantalDrempel - a.aantalDrempel || b.aantalLaat - a.aantalLaat || a.naam.localeCompare(b.naam, 'nl'));
+  }
+  return { drempel: B.drempel, winkels: uit };
+}
+
+module.exports = { BEGIN, beginAnalyse, INSTELLINGEN, CATEGORIE_TEAMBRIEF, TEAMBRIEF, WAARSCHUWING, TEAMBRIEF_EN, WAARSCHUWING_EN, SJABLONEN, vanExport, vanApi, analyseer, vul, openVariabelen, teamVars, medewerkerVars, naarHtml, naarPdfTekst, tijdMin, isoDatum, hhmm, nlDatum, langeDatum, periodeTekst, opsomming };

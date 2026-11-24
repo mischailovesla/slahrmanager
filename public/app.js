@@ -4838,7 +4838,36 @@
         + m.diensten.map(function (d) { return '<tr><td>' + esc(etLang(d.datum)) + '</td><td>' + esc(d.roosterEind) + '</td><td>' + esc(d.eind) + (d.zonderUitklok ? ' <span class="badge bo">zonder uitklok</span>' : '') + '</td><td style="text-align:right;' + (d.laat > etData.instellingen.drempel ? 'color:#c0392b;font-weight:700' : '') + '">' + d.laat + ' min</td><td>' + esc(d.status) + '</td><td>' + esc(d.gekeurdDoor || '-') + '</td></tr>'; }).join('')
         + '</tbody></table></td></tr>';
     }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen sluitdiensten in deze periode</td></tr>';
+    etBegin(code);
   }
+  // v0.57.0: te laat begonnen (inklok vs roosterstart), per winkel
+  function etBegin(code) {
+    var b = etData && etData.begin, l = b && b.winkels ? b.winkels[code] || [] : null, w = etData && etData.winkels[code];
+    if (!l) { g('et-begin-sec').style.display = 'none'; return; }
+    g('et-begin-sec').style.display = '';
+    g('et-begin-titel').textContent = 'SLA ' + (w ? w.naam : code);
+    g('et-begin-drempel').textContent = b.drempel; document.querySelectorAll('.et-bd').forEach(function (x) { x.textContent = b.drempel; });
+    g('et-begin-pill').textContent = l.length + ' medewerkers · ' + l.filter(function (m) { return m.aantalDrempel; }).length + ' met > ' + b.drempel + ' min';
+    g('et-begin-body').innerHTML = l.map(function (m, i) {
+      var id = 'b' + code + i, kl = m.aantalDrempel >= 3 ? 'br' : m.aantalDrempel ? 'bo' : 'bg';
+      return '<tr><td><strong>' + esc(m.naam) + '</strong></td><td style="text-align:right">' + m.aantal + '</td><td style="text-align:right">' + (m.pctOpTijd == null ? '-' : m.pctOpTijd + '%') + '</td><td style="text-align:right">' + m.aantalLaat + '</td>'
+        + '<td style="text-align:right"><span class="badge ' + kl + '">' + m.aantalDrempel + '</span></td><td style="text-align:right">' + m.ochtendLaat + '</td><td style="text-align:right">' + (m.aantalLaat ? m.gemLaat + ' min' : '-') + '</td><td style="text-align:right">' + (m.maxLaat ? m.maxLaat + ' min' : '-') + '</td>'
+        + '<td style="text-align:right">' + (m.zonderInklok ? '<span class="badge bo">' + m.zonderInklok + '</span>' : '0') + '</td><td><button class="btn bd bsm" data-et-dienst="' + id + '">Diensten</button></td></tr>'
+        + '<tr id="et-d-' + id + '" style="display:none"><td></td><td colspan="9" style="background:#faf8f6;padding:8px 14px"><table style="width:100%"><thead><tr><th>Datum</th><th>Dienst</th><th>Rooster vanaf</th><th>Ingeklokt</th><th style="text-align:right">Te laat</th></tr></thead><tbody>'
+        + m.diensten.map(function (d) {
+          var t = d.zonderInklok ? '<span class="badge bo">zonder inklok</span>' : d.laat > 0 ? '<span style="' + (d.laat > b.drempel ? 'color:#c0392b;font-weight:700' : 'color:#b9770e') + '">' + d.laat + ' min</span>' : '<span class="lay-sub" style="display:inline">op tijd</span>';
+          return '<tr><td>' + esc(etLang(d.datum)) + '</td><td>' + esc(d.dienst || '-') + '</td><td>' + esc(d.roosterStart) + '</td><td>' + esc(d.inklok || '-') + '</td><td style="text-align:right">' + t + '</td></tr>';
+        }).join('') + '</tbody></table></td></tr>';
+    }).join('') || '<tr><td colspan="10" class="leeg grijs">Geen diensten met rooster in deze periode</td></tr>';
+  }
+  window.etBeginCsv = function () {
+    var l = etData && etData.begin && etData.begin.winkels[etWinkel], w = etData && etData.winkels[etWinkel]; if (!l) return;
+    var q = function (s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; };
+    var rows = [['Naam', 'Winkel', 'Datum', 'Dienst', 'Rooster vanaf', 'Ingeklokt', 'Minuten te laat'].join(';')];
+    l.forEach(function (m) { m.diensten.forEach(function (d) { rows.push([q(m.naam), q(w ? w.naam : etWinkel), d.datum, q(d.dienst), d.roosterStart, d.inklok || 'zonder inklok', d.laat == null ? '' : d.laat].join(';')); }); });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + rows.join('\n')], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'begintijd_' + (w ? w.naam : etWinkel).replace(/\s+/g, '_') + '_' + etData.periode.van + '_' + etData.periode.tot + '.csv'; a.click();
+  };
   window.etCsv = function () {
     var w = etData && etData.winkels[etWinkel]; if (!w) return;
     var q = function (s) { return '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"'; };

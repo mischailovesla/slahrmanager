@@ -2,6 +2,12 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.57.0', datum: '24-11-2026', titel: 'Te laat begonnen: inkloktijden uit Shiftbase', punten: [
+    'Het dashboard bewaart nu ook de <b>inkloktijd</b> uit Shiftbase (en uit de Excel-export), niet alleen de uitkloktijd.',
+    'Onder <b>Eindtijd & afsluiten</b> staat per winkel een nieuw blok <b>Te laat begonnen</b>: per medewerker het aantal diensten, hoe vaak te laat ingeklokt, hoe vaak meer dan 5 minuten (en hoeveel daarvan ochtenddiensten), het gemiddelde, het maximum en diensten zonder inklok.',
+    'Klik op <b>Diensten</b> voor de lijst per dag (dienst, rooster vanaf, ingeklokt, minuten te laat), of download alles als CSV.',
+    'Telt alle diensten met een rooster in de gekozen periode, ook dag- en ochtenddiensten. Hele minuten: 09:33:36 is 3 minuten te laat.'
+  ] },
   { nummer: '0.56.2', datum: '24-11-2026', titel: 'Loonadministratie: herinnering toont de juiste periode', punten: [
     'De herinnering op het beginscherm noemt bij de <b>vastloners</b> nu de periode (bijv. <b>18-11 t/m 17-12</b>) en de salarismaand, in plaats van de maand van de uurloners. Zo is meteen duidelijk om welke aanlevering het gaat.'
   ] },
