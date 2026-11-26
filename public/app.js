@@ -2888,7 +2888,7 @@
         + '<td style="white-space:nowrap">' + dcDat(String(x.ingediend).slice(0, 10)) + '</td>'
         + '<td><strong>' + esc(x.naam) + '</strong>' + (x.winkel_code ? ' <span class="badge boat">' + esc(x.winkel_code) + '</span>' : '') + (x.dubbel ? ' <span class="badge br" title="Zelfde medewerker, aankoopdatum en bedrag als een andere declaratie">mogelijk dubbel</span>' : '') + '</td>'
         + '<td style="white-space:nowrap">' + dcDat(x.datum) + '<div class="lay-sub">' + esc(x.leverancier) + '</div></td>'
-        + '<td style="max-width:280px"><span class="cel-kort" data-lees-titel="Omschrijving — ' + esc(x.naam) + '">' + esc(x.omschrijving) + '</span></td>'
+        + '<td style="min-width:200px;max-width:320px"><span class="cel-kort dc-oms" title="Klik om alles te lezen" data-lees-titel="Omschrijving — ' + esc(x.naam) + '">' + esc(x.omschrijving) + '</span></td>'
         + '<td style="text-align:right;white-space:nowrap"><strong>' + dcEur(x.bedrag) + '</strong></td>'
         + '<td style="white-space:nowrap;font-size:.8rem">' + esc(x.iban) + '<div class="lay-sub">' + esc(x.iban_naam) + '</div></td>'
         + '<td><button class="btn bd bsm" onclick="dcBon(\'' + x.id + '\')" title="Bonnetje bekijken">' + (x.bon_mime === 'application/pdf' ? '📄' : '🧾') + '</button></td>'

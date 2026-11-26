@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.57.3', datum: '26-11-2026', titel: 'Declaraties: rustiger overzicht', punten: [
+    'Een lange omschrijving liep over het bedrag en het IBAN heen. Hij blijft nu binnen zijn kolom (maximaal 2 regels); klik erop om alles te lezen.'
+  ] },
   { nummer: '0.57.2', datum: '26-11-2026', titel: 'Ondertekende PDF downloaden', punten: [
     'In de blokken <b>Digitaal ondertekenen</b> (o.a. onder Contract op maat, Ontslag & aanzegging, Waarschuwingen) staat bij elk ondertekend document nu de knop <b>📄 Ondertekende PDF</b>.',
     'Zo download je bijvoorbeeld een digitaal ondertekend contract op maat om het in Shiftbase bij de medewerker te uploaden. Contracten openen alleen voor wie salarisinzage heeft.'

@@ -300,6 +300,8 @@ tbody tr:hover td{background:#fdfaf8}
 /* Lange tekst in tabellen: één regel, klik = leesvenster */
 .cel-kort{max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer}
 .cel-kort:hover{color:var(--groen)}
+/* v0.57.3: declaraties — omschrijving max. 2 regels binnen de kolom (liep over bedrag en IBAN heen) */
+.cel-kort.dc-oms{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;white-space:normal;max-width:320px;line-height:1.4;font-size:.84rem}
 .cel-klem{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;cursor:pointer;font-size:.82rem;max-width:340px;line-height:1.4}
 .cel-klem:hover{color:var(--groen)}
 .cel-klem+.cel-meer,.cel-meer{border:none;background:none;padding:2px 0 0;font-family:inherit;font-size:.74rem;font-weight:700;color:var(--groen);cursor:pointer}
