@@ -191,9 +191,11 @@ async function teken(tok, p, meta) {
 // Voor het dashboard: alle ondertekeningen (laatste 6 maanden)
 async function overzicht() {
   const van = new Date(Date.now() - 183 * 864e5).toISOString();
-  const { data, error } = await admin().from('hr_ondertekening').select('id,soort,type,titel,naam,email,status,keuze,opmerking,aangemaakt_op,aangemaakt_door,code_verstuurd_op,getekend_op,getekend_naam,getekend_ip,met_handtekening,getekend_hash,origineel_hash').gte('aangemaakt_op', van).order('aangemaakt_op', { ascending: false });
+  const { data, error } = await admin().from('hr_ondertekening').select('id,soort,type,titel,naam,email,status,keuze,opmerking,aangemaakt_op,aangemaakt_door,code_verstuurd_op,getekend_op,getekend_naam,getekend_ip,met_handtekening,getekend_hash,origineel_hash,upload_id').gte('aangemaakt_op', van).order('aangemaakt_op', { ascending: false });
   fout(error, 'Ondertekeningen lezen');
-  return (data || []).map(r => Object.assign({}, r, { aangemaakt: stempel(r.aangemaakt_op), getekend: r.getekend_op ? stempel(r.getekend_op) : '', codeAangevraagd: !!r.code_verstuurd_op }));
+  // v0.57.2: ref naar de ondertekende PDF (opent via /api/document; contract alleen met salarisinzage)
+  const refVan = r => { const s = U.SOORTEN[r.soort]; return r.status === 'getekend' && r.upload_id && s && s.bestanden && s.bestanden[0] ? 'sb:' + r.upload_id + ':' + s.bestanden[0].key : ''; };
+  return (data || []).map(r => { const o = Object.assign({}, r, { aangemaakt: stempel(r.aangemaakt_op), getekend: r.getekend_op ? stempel(r.getekend_op) : '', codeAangevraagd: !!r.code_verstuurd_op, ref: refVan(r) }); delete o.upload_id; return o; });
 }
 // Controle: hoort een PDF (SHA-256) bij een ondertekend document?
 async function controleer(hash) {
