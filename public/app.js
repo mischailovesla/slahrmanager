@@ -2890,12 +2890,17 @@
         + '<td style="white-space:nowrap">' + dcDat(x.datum) + '<div class="lay-sub">' + esc(x.leverancier) + '</div></td>'
         + '<td style="min-width:200px;max-width:320px"><span class="cel-kort dc-oms" title="Klik om alles te lezen" data-lees-titel="Omschrijving — ' + esc(x.naam) + '">' + esc(x.omschrijving) + '</span></td>'
         + '<td style="text-align:right;white-space:nowrap"><strong>' + dcEur(x.bedrag) + '</strong></td>'
-        + '<td style="white-space:nowrap;font-size:.8rem">' + esc(x.iban) + '<div class="lay-sub">' + esc(x.iban_naam) + '</div></td>'
+        + '<td style="white-space:nowrap;font-size:.8rem">' + '<span class="dc-iban" onclick="dcKopieerIban(\'' + x.id + '\')" title="Klik om het IBAN te kopiëren">' + esc(x.iban) + '</span> <button class="btn bd bsm dc-kopie" onclick="dcKopieerIban(\'' + x.id + '\')" title="IBAN kopiëren (zonder spaties)">⧉</button><div class="lay-sub">' + esc(x.iban_naam) + '</div></td>'
         + '<td><button class="btn bd bsm" onclick="dcBon(\'' + x.id + '\')" title="Bonnetje bekijken">' + (x.bon_mime === 'application/pdf' ? '📄' : '🧾') + '</button></td>'
         + '<td>' + st + '<div style="margin-top:4px;white-space:nowrap">' + acties + '</div></td></tr>';
     }).join('') : '<tr><td colspan="9" class="leeg grijs">' + (open ? 'Geen openstaande declaraties. 🎉' : 'Niets gevonden.') + '</td></tr>';
     dcSom();
   }
+  window.dcKopieerIban = function (id) {
+    var x = dcData && dcData.rijen.find(function (y) { return y.id === id; }); if (!x || !x.iban) return;
+    var iban = String(x.iban).replace(/\s/g, '');
+    navigator.clipboard.writeText(iban).then(function () { toast('IBAN van ' + x.naam + ' gekopieerd: ' + iban, 'ok'); }, function () { toast('Kopiëren mislukt', 'err'); });
+  };
   window.dcSom = function () {
     var ids = Array.prototype.map.call(document.querySelectorAll('.dc-kies:checked'), function (c) { return c.value; });
     var som = dcData ? dcData.rijen.filter(function (x) { return ids.indexOf(x.id) > -1; }).reduce(function (a, x) { return a + x.bedrag; }, 0) : 0;

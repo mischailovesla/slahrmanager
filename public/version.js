@@ -2,6 +2,9 @@
 // Bij elke oplevering: bovenaan een nieuw item toevoegen (nummer, datum, titel, punten in gewone taal voor HR).
 // HR_VERSIE (badge en voettekst) komt automatisch uit het bovenste item; package.json volgt het nummer.
 window.HR_VERSIES = [
+  { nummer: '0.58.0', datum: '27-11-2026', titel: 'Declaraties: IBAN met één klik kopiëren', punten: [
+    'Bij elke declaratie staat naast het IBAN nu een <b>⧉</b>-knop. Klik erop (of op het IBAN zelf) en het rekeningnummer staat zonder spaties op je klembord, klaar om in je bankapp te plakken.'
+  ] },
   { nummer: '0.57.3', datum: '26-11-2026', titel: 'Declaraties: rustiger overzicht', punten: [
     'Een lange omschrijving liep over het bedrag en het IBAN heen. Hij blijft nu binnen zijn kolom (maximaal 2 regels); klik erop om alles te lezen.'
   ] },
